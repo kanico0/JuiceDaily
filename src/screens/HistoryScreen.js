@@ -4,7 +4,7 @@
 // expands to show individual entries for that day.
 // ─────────────────────────────────────────────────────────────
 
-import React, { useState, useMemo, useCallback } from 'react'
+import React, { useState, useMemo, useCallback, useEffect } from 'react'
 import {
   View,
   Text,
@@ -24,6 +24,7 @@ import { useJuiceLog } from '../services/JuiceLogStore'
 import { PRODUCE_DATA } from '../services/JuiceEngine'
 import { USDA_RDA } from '../constants/nutrition'
 import { BRAND, FONT_SIZE, FONT_WEIGHT, SPACE, RADIUS } from '../constants/tokens'
+import { getDevNow, onDevClockChange } from '../utils/DevClock'
 
 // ── Source icon helper ───────────────────────────────────────
 const SOURCE_ICON = { photo: Camera, manual: Keyboard, demo: Eye }
@@ -32,8 +33,8 @@ const SOURCE_COLOR = { photo: '#64B5F6', manual: '#CE93D8', demo: '#FFB74D' }
 function formatDate(dateKey) {
   const [y, m, d] = dateKey.split('-')
   const date = new Date(Number(y), Number(m) - 1, Number(d))
-  const today = new Date()
-  const yesterday = new Date()
+  const today = getDevNow()
+  const yesterday = getDevNow()
   yesterday.setDate(yesterday.getDate() - 1)
 
   if (dateKey === formatDateKey(today)) return 'Today'
@@ -132,9 +133,14 @@ function EntryDetailsModal({ entry, visible, onClose, onDelete }) {
 }
 
 // ── Day Section ──────────────────────────────────────────────
-function DaySection({ dateKey, entries, onEntryPress }) {
-  const [expanded, setExpanded] = useState(dateKey === formatDateKey(new Date()))
+function DaySection({ dateKey, entries, onEntryPress, devClockTick }) {
+  const [expanded, setExpanded] = useState(dateKey === formatDateKey(getDevNow()))
   const totalIngredients = entries.reduce((sum, e) => sum + (e.ingredients?.length || 0), 0)
+
+  useEffect(() => {
+    const isToday = dateKey === formatDateKey(getDevNow())
+    setExpanded(isToday)
+  }, [dateKey, devClockTick])
 
   return (
     <View style={s.daySection}>
@@ -192,6 +198,11 @@ function DaySection({ dateKey, entries, onEntryPress }) {
 export default function HistoryScreen({ navigation }) {
   const { entries, deleteEntry } = useJuiceLog()
   const [selectedEntry, setSelectedEntry] = useState(null)
+  const [devClockTick, setDevClockTick] = useState(0)
+
+  useEffect(() => {
+    return onDevClockChange(() => setDevClockTick((t) => t + 1))
+  }, [])
 
   // Group entries by dateKey, descending
   const groupedDays = useMemo(() => {
@@ -207,7 +218,7 @@ export default function HistoryScreen({ navigation }) {
       dateKey: key,
       entries: groups[key].sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
     }))
-  }, [entries])
+  }, [entries, devClockTick])
 
   const totalEntries = entries.length
   const totalDays = groupedDays.length
@@ -245,6 +256,7 @@ export default function HistoryScreen({ navigation }) {
                 dateKey={group.dateKey}
                 entries={group.entries}
                 onEntryPress={setSelectedEntry}
+                devClockTick={devClockTick}
               />
             ))
           )}

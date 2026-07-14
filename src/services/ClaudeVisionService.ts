@@ -9,6 +9,11 @@
 import { PRODUCE_DATA } from './JuiceEngine'
 import type { ScannedIngredient } from './JuiceEngine'
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator'
+import {
+  analyzeScanOnServer,
+  isServerScanAvailable,
+} from './quota/quotaService'
+import type { ScanQuotaSnapshot } from './subscriptions/subscriptionTypes'
 
 // ── Types ────────────────────────────────────────────────────
 
@@ -25,6 +30,9 @@ export interface VisionResult {
   scannedIngredients: ScannedIngredient[]
   rawResponse: string
   hasDepthData: boolean
+  // Present when the scan went through the server-authoritative
+  // quota path — lets the UI update its usage meter immediately.
+  quota?: ScanQuotaSnapshot | null
 }
 
 interface ClaudeMessage {
@@ -57,7 +65,11 @@ export function setClaudeApiKey(key: string): void {
 }
 
 export function isClaudeKeySet(): boolean {
-  return !!apiKey && apiKey.length > 10
+  return isServerScanAvailable() || (!!apiKey && apiKey.length > 10)
+}
+
+function createRequestId(): string {
+  return `scan-${Date.now()}-${Math.random().toString(36).slice(2, 12)}`
 }
 
 // ── Known produce IDs for the prompt ─────────────────────────
@@ -120,6 +132,23 @@ export async function identifyProduce(
   mediaType: string = 'image/jpeg',
   depthDataMm: number[] | null = null,
 ): Promise<VisionResult> {
+  const hasDepth = depthDataMm !== null && depthDataMm.length > 0
+
+  // Preferred path: server-authoritative scan through Supabase.
+  // The server enforces quota (reserve → vision → commit/release)
+  // and keeps the Anthropic key off the device.
+  if (isServerScanAvailable()) {
+    const { rawText, quota } = await analyzeScanOnServer(
+      imageBase64,
+      mediaType,
+      createRequestId(),
+      depthDataMm,
+    )
+    const result = parseVisionResponse(rawText, hasDepth)
+    return { ...result, quota }
+  }
+
+  // Dev/Expo Go fallback: direct Anthropic call with a local key.
   if (!apiKey) {
     throw new Error(
       'Claude API key not set. Call setClaudeApiKey() before using the vision service.'

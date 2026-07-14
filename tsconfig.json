@@ -12,5 +12,11 @@
   "include": [
     "**/*.ts",
     "**/*.tsx"
+  ],
+  "exclude": [
+    "node_modules",
+    "supabase",
+    "app.bak",
+    "components/scanner"
   ]
 }

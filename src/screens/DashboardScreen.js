@@ -276,6 +276,8 @@ export default function DashboardScreen({ navigation }) {
   }, [])
 
   const emotionalCopy = isEnabled('ff_emotional_copy')
+  const isPaywallDisabled = isEnabled('ff_dev_disable_paywalls')
+  const isPaywallForced = isEnabled('ff_dev_force_paywalls')
   const unclosedRings = ['base', 'power', 'kick'].filter((c) => !todayLog[c])
   const starterTip = useMemo(() => getStarterTip(challenge.currentDay, todayLog), [challenge.currentDay, todayLog])
 
@@ -453,7 +455,11 @@ export default function DashboardScreen({ navigation }) {
           {/* ═══ WEEKLY SPECTRUM BAR (tappable → Weekly Report) ═ */}
           <TouchableOpacity
             onPress={() => {
-              if (!hasFeatureAccess('weeklyReports')) {
+              if (isPaywallDisabled) {
+                navigation.navigate('WeeklyReport')
+                return
+              }
+              if (isPaywallForced || !hasFeatureAccess('weeklyReports')) {
                 setShowPaywall(true)
                 return
               }
@@ -697,7 +703,7 @@ export default function DashboardScreen({ navigation }) {
 
       {/* Strategic Paywall Modal */}
       <PaywallModal
-        visible={showPaywall}
+        visible={!isPaywallDisabled && showPaywall}
         onDismiss={() => setShowPaywall(false)}
         trigger={challenge.streak >= 3 ? 'streak_3' : 'feature_gate'}
       />

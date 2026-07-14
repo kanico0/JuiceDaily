@@ -31,6 +31,7 @@ import {
   ChevronRight,
   X,
   Leaf,
+  Crown,
   Zap,
   Shield,
   Droplets as DropIcon,
@@ -1168,7 +1169,7 @@ function ScanHome({ onScan, onBrowse, onExample, onExplore, totalLogs, showSecon
 
 // ── Browse Home: Stable Dashboard ────────────────────────────
 
-function BrowseHome({ onScan, onBrowse, onExample, onExplore, onViewToday, dailySummary, totalLogs, savedGoalId, onDismissGoalBanner, isReduced }) {
+function BrowseHome({ onScan, onBrowse, onExample, onExplore, onViewToday, onGlowLibrary, onSeasonalPacks, onBeginnerPath, isExpandedRecipes, dailySummary, totalLogs, savedGoalId, onDismissGoalBanner, isReduced }) {
   const fadeAnim = useRef(new Animated.Value(0)).current
   const btnScale = useRef(new Animated.Value(1)).current
   const goalData = savedGoalId ? GOALS.find((g) => g.id === savedGoalId) : null
@@ -1658,6 +1659,64 @@ function BrowseHome({ onScan, onBrowse, onExample, onExplore, onViewToday, daily
 
       {/* Low-friction browse actions */}
       <View style={browseHomeStyles.actions}>
+        {isExpandedRecipes && (
+          <>
+            <Pressable
+              style={({ pressed }) => [browseHomeStyles.actionCard, pressed && { opacity: 0.7 }]}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+                onBeginnerPath()
+              }}
+              hitSlop={4}
+              accessibilityRole="button"
+              accessibilityLabel="Beginner Glow Path"
+            >
+              <BookOpen size={20} color="#81C784" />
+              <View style={browseHomeStyles.actionContent}>
+                <Text style={browseHomeStyles.actionTitle}>Beginner Glow Path</Text>
+                <Text style={browseHomeStyles.actionDesc}>Day-by-day recipes to build consistency</Text>
+              </View>
+              <ChevronRight size={16} color={DARK.textMuted} />
+            </Pressable>
+
+            <Pressable
+              style={({ pressed }) => [browseHomeStyles.actionCard, pressed && { opacity: 0.7 }]}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+                onSeasonalPacks()
+              }}
+              hitSlop={4}
+              accessibilityRole="button"
+              accessibilityLabel="Seasonal Glow Packs"
+            >
+              <Leaf size={20} color="#64B5F6" />
+              <View style={browseHomeStyles.actionContent}>
+                <Text style={browseHomeStyles.actionTitle}>Seasonal Glow Packs</Text>
+                <Text style={browseHomeStyles.actionDesc}>Limited-time seasonal recipe drops</Text>
+              </View>
+              <ChevronRight size={16} color={DARK.textMuted} />
+            </Pressable>
+
+            <Pressable
+              style={({ pressed }) => [browseHomeStyles.actionCard, pressed && { opacity: 0.7 }]}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+                onGlowLibrary()
+              }}
+              hitSlop={4}
+              accessibilityRole="button"
+              accessibilityLabel="Glow Library"
+            >
+              <Crown size={20} color="#FFD54F" />
+              <View style={browseHomeStyles.actionContent}>
+                <Text style={browseHomeStyles.actionTitle}>Glow Library</Text>
+                <Text style={browseHomeStyles.actionDesc}>Pro-only recipe collections</Text>
+              </View>
+              <ChevronRight size={16} color={DARK.textMuted} />
+            </Pressable>
+          </>
+        )}
+
         <Pressable
           style={({ pressed }) => [browseHomeStyles.actionCard, pressed && { opacity: 0.7 }]}
           onPress={() => {
@@ -2291,6 +2350,7 @@ export default function ScanScreen({ navigation }) {
 
   const showSecondary = isEnabled('ff_scan_secondary_actions')
   const forceOnboarding = isEnabled('ff_force_onboarding')
+  const isExpandedRecipes = isEnabled('ff_expanded_recipes')
 
   // Onboarding step: 'browse' | 'tracking' | 'goal' | 'done'
   // 'browse' = stable Home/Dashboard (consistent home base)
@@ -2426,6 +2486,10 @@ export default function ScanScreen({ navigation }) {
               onBrowse={handleBrowseIdeas}
               onExample={handleExample}
               onExplore={handleExplore}
+              onGlowLibrary={() => navigation.navigate('GlowLibrary')}
+              onSeasonalPacks={() => navigation.navigate('SeasonalGlowPacks')}
+              onBeginnerPath={() => navigation.navigate('BeginnerGlowPath')}
+              isExpandedRecipes={isExpandedRecipes}
               onViewToday={() => navigation.navigate('PerformanceDashboard')}
               dailySummary={dailySummary}
               totalLogs={unlocks.totalLogsCount}

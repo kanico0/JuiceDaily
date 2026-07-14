@@ -237,6 +237,92 @@ const EVENT_SCHEMAS = {
     required: ['ts'],
     optional: ['ingredient_count', 'nutrients_found', 'score_increase', 'new_momentum'],
   },
+
+  // ── Monetization (subscriptions + scan quota) ──────────────
+  paywall_viewed: {
+    required: ['session_id', 'ts'],
+    optional: ['paywall_source', 'platform'],
+  },
+  paywall_dismissed: {
+    required: ['session_id', 'ts'],
+    optional: ['paywall_source'],
+  },
+  subscription_package_selected: {
+    required: ['session_id', 'ts'],
+    optional: ['package_type', 'paywall_source'],
+  },
+  subscription_purchase_started: {
+    required: ['session_id', 'ts'],
+    optional: ['package_type', 'paywall_source', 'platform'],
+  },
+  subscription_purchase_succeeded: {
+    required: ['session_id', 'ts'],
+    optional: ['package_type', 'paywall_source', 'platform'],
+  },
+  subscription_purchase_cancelled: {
+    required: ['session_id', 'ts'],
+    optional: ['package_type', 'paywall_source'],
+  },
+  subscription_purchase_failed: {
+    required: ['session_id', 'ts'],
+    optional: ['package_type', 'error_code'],
+  },
+  subscription_restore_started: {
+    required: ['session_id', 'ts'],
+    optional: ['source'],
+  },
+  subscription_restore_succeeded: {
+    required: ['session_id', 'ts'],
+    optional: ['package_type'],
+  },
+  subscription_restore_failed: {
+    required: ['session_id', 'ts'],
+    optional: ['error_code'],
+  },
+  pro_entitlement_activated: {
+    required: ['session_id', 'ts'],
+    optional: ['package_type', 'platform'],
+  },
+  pro_entitlement_expired: {
+    required: ['session_id', 'ts'],
+    optional: [],
+  },
+  billing_issue_detected: {
+    required: ['session_id', 'ts'],
+    optional: ['platform'],
+  },
+  scan_quota_viewed: {
+    required: ['session_id', 'ts'],
+    optional: ['plan', 'scans_used', 'scans_remaining'],
+  },
+  scan_quota_warning_shown: {
+    required: ['session_id', 'ts'],
+    optional: ['plan', 'scans_remaining', 'warning_level'],
+  },
+  scan_quota_reached: {
+    required: ['session_id', 'ts'],
+    optional: ['plan'],
+  },
+  scan_blocked_monthly_limit: {
+    required: ['session_id', 'ts'],
+    optional: ['plan'],
+  },
+  scan_blocked_daily_limit: {
+    required: ['session_id', 'ts'],
+    optional: ['plan'],
+  },
+  manual_log_selected_after_scan_limit: {
+    required: ['session_id', 'ts'],
+    optional: ['plan'],
+  },
+  upgrade_started_from_scan_limit: {
+    required: ['session_id', 'ts'],
+    optional: ['plan'],
+  },
+  upgrade_completed_from_scan_limit: {
+    required: ['session_id', 'ts'],
+    optional: ['package_type'],
+  },
 }
 
 // ── Prohibited field patterns (PII / sensitive) ──────────────

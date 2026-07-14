@@ -38,6 +38,8 @@ import colors from '../constants/colors'
 import NUTRIENT_LIBRARY from '../constants/NutrientLibrary.json'
 import { EMPTY_BATCH, USDA_RDA } from '../constants/nutrition'
 import SnapButton from '../components/SnapButton'
+import { useQuota } from '../services/quota/QuotaStore'
+import { selectQuotaLabel, selectQuotaExhausted } from '../services/subscriptions/subscriptionSelectors'
 import NutritionSummary from '../components/NutritionSummary'
 import BigSqueezeModal from '../components/BigSqueezeModal'
 import SnapGateModal from '../components/SnapGateModal'
@@ -347,6 +349,40 @@ function IngredientCloud({ searchQuery, onAdd, addedIds }) {
         <Text style={manualStyles.noResults}>No ingredients match "{searchQuery}"</Text>
       )}
     </View>
+  )
+}
+
+// ── Scan Quota Meter ─────────────────────────────────────────
+// Server-authoritative usage display under the Snap button.
+// Hidden when Supabase quota is not configured (rollback-safe).
+
+function QuotaMeter({ navigation }) {
+  const { quota } = useQuota()
+  const label = selectQuotaLabel(quota)
+  if (!label) return null
+
+  const exhausted = selectQuotaExhausted(quota)
+  const isFree = quota?.plan === 'free'
+
+  return (
+    <TouchableOpacity
+      onPress={() => {
+        if (exhausted && isFree) navigation.navigate('Paywall', { source: 'scan_meter' })
+      }}
+      activeOpacity={exhausted && isFree ? 0.7 : 1}
+      accessibilityRole="text"
+      accessibilityLabel={label}
+      style={{ alignItems: 'center', marginTop: 8 }}
+    >
+      <Text style={{ color: exhausted ? '#F0883E' : '#6E7681', fontSize: 12 }}>
+        {label}
+      </Text>
+      {exhausted && isFree && (
+        <Text style={{ color: '#7EE787', fontSize: 12, marginTop: 2 }}>
+          Upgrade to Pro for 60 scans / month — or keep logging manually free
+        </Text>
+      )}
+    </TouchableOpacity>
   )
 }
 
@@ -693,6 +729,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
         {!isSnapDepleted && (
           <View style={styles.buttonSection}>
             <SnapButton onPress={handleSnap} />
+            <QuotaMeter navigation={navigation} />
           </View>
         )}
 

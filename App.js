@@ -14,6 +14,8 @@ import Constants from 'expo-constants'
 import { setClaudeApiKey } from './src/services/ClaudeVisionService'
 import { ChallengeProvider } from './src/services/ChallengeStore'
 import { ProProvider } from './src/services/ProStore'
+import { SubscriptionProvider } from './src/services/subscriptions/SubscriptionStore'
+import { QuotaProvider } from './src/services/quota/QuotaStore'
 import { EducationProvider } from './src/services/EducationStore'
 import { FlagProvider } from './src/services/FeatureFlags'
 import { PantryProvider } from './src/services/PantryStore'
@@ -38,12 +40,17 @@ import NoviceJourneyScreen from './src/screens/NoviceJourneyScreen'
 import JuiceCalculatorScreen from './src/screens/JuiceCalculatorScreen'
 import ScanScreen from './src/screens/ScanScreen'
 import TodayScreen from './src/screens/TodayScreen'
+import GlowLibraryScreen from './src/screens/GlowLibraryScreen'
+import SeasonalGlowPacksScreen from './src/screens/SeasonalGlowPacksScreen'
+import BeginnerGlowPathScreen from './src/screens/BeginnerGlowPathScreen'
 import ExplainFlowScreen from './src/screens/ExplainFlowScreen'
 import PerformanceDashboardScreen from './src/screens/PerformanceDashboardScreen'
 import PerformanceOnboardingScreen from './src/screens/PerformanceOnboardingScreen'
 import ScanSuccessScreen from './src/screens/ScanSuccessScreen'
 import HistoryScreen from './src/screens/HistoryScreen'
 import IntroLaunchScreen from './src/screens/IntroLaunchScreen'
+import JuicingExperienceScreen from './src/screens/JuicingExperienceScreen'
+import PaywallScreen from './src/screens/PaywallScreen'
 import { NutritionScoreProvider } from './src/services/NutritionScoreStore'
 import { JuiceLogProvider, useJuiceLog } from './src/services/JuiceLogStore'
 import { refreshNudges } from './src/services/NotificationNudges'
@@ -76,6 +83,9 @@ function addSharedScreens(StackNav) {
       <StackNav.Screen name="JuiceSnap" component={JuiceSnapScreen} />
       <StackNav.Screen name="FridgeForager" component={FridgeForagerScreen} />
       <StackNav.Screen name="RecipeDetail" component={RecipeDetailScreen} />
+      <StackNav.Screen name="GlowLibrary" component={GlowLibraryScreen} />
+      <StackNav.Screen name="SeasonalGlowPacks" component={SeasonalGlowPacksScreen} />
+      <StackNav.Screen name="BeginnerGlowPath" component={BeginnerGlowPathScreen} />
       <StackNav.Screen name="WeeklyReport" component={WeeklyReportScreen} />
       <StackNav.Screen name="HallOfVitality" component={HallOfVitalityScreen} />
       <StackNav.Screen name="Settings" component={SettingsScreen} />
@@ -90,6 +100,7 @@ function addSharedScreens(StackNav) {
       <StackNav.Screen name="PerformanceOnboarding" component={PerformanceOnboardingScreen} options={{ animation: 'fade' }} />
       <StackNav.Screen name="ScanSuccess" component={ScanSuccessScreen} options={{ animation: 'fade' }} />
       <StackNav.Screen name="HistoryScreen" component={HistoryScreen} />
+      <StackNav.Screen name="Paywall" component={PaywallScreen} options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
     </>
   )
 }
@@ -155,7 +166,7 @@ function MainTabs() {
 // ── Root Navigator (hydration-aware intro gate) ─────────────
 
 function RootNavigator() {
-  const { activation, isHydrated: activationReady, recordIntroDismissed } = useActivation()
+  const { activation, isHydrated: activationReady, recordIntroDismissed, setExperienceLevel } = useActivation()
   const { isHydrated: logReady, totalLogCount } = useJuiceLog()
   const appStateRef = useRef(AppState.currentState)
 
@@ -184,7 +195,7 @@ function RootNavigator() {
 
   // Skip intro for returning users (have logs) or if intro was explicitly dismissed
   const skipIntro = activation.introDismissed || activation.totalLogsCount > 0 || totalLogCount > 0
-  const initialRoute = skipIntro ? 'Main' : 'IntroLaunch'
+  const initialRoute = skipIntro ? 'Main' : 'JuicingExperience'
   console.log('[RootNavigator] hydrated — introDismissed:', activation.introDismissed, 'activationLogs:', activation.totalLogsCount, 'juiceLogs:', totalLogCount, '→ route:', initialRoute)
 
   return (
@@ -206,12 +217,7 @@ function RootNavigator() {
             }}
             onSeeHow={() => {
               recordIntroDismissed()
-              navigation.dispatch(
-                CommonActions.reset({
-                  index: 0,
-                  routes: [{ name: 'Main' }],
-                })
-              )
+              navigation.navigate('JuicingExperience')
             }}
             onExplore={() => {
               recordIntroDismissed()
@@ -219,6 +225,54 @@ function RootNavigator() {
                 CommonActions.reset({
                   index: 0,
                   routes: [{ name: 'Main', state: { routes: [{ name: 'ExploreTab' }] } }],
+                })
+              )
+            }}
+          />
+        )}
+      </RootStack.Screen>
+
+      <RootStack.Screen name="JuicingExperience">
+        {({ navigation }) => (
+          <JuicingExperienceScreen
+            navigation={navigation}
+            onSelect={(value) => {
+              recordIntroDismissed()
+              setExperienceLevel(value)
+              if (value === 'experienced') {
+                navigation.dispatch(
+                  CommonActions.reset({
+                    index: 0,
+                    routes: [{ name: 'Main' }],
+                  })
+                )
+                return
+              }
+              navigation.dispatch(
+                CommonActions.reset({
+                  index: 0,
+                  routes: [
+                    {
+                      name: 'Main',
+                      state: {
+                        index: 2,
+                        routes: [
+                          { name: 'TodayTab' },
+                          { name: 'HistoryTab' },
+                          {
+                            name: 'ExploreTab',
+                            state: {
+                              index: 1,
+                              routes: [
+                                { name: 'ExploreHome' },
+                                { name: 'NoviceJourney' },
+                              ],
+                            },
+                          },
+                        ],
+                      },
+                    },
+                  ],
                 })
               )
             }}
@@ -249,6 +303,8 @@ export default function App() {
       <StreakProvider>
       <SocialChallengeProvider>
       <ProProvider>
+      <SubscriptionProvider>
+      <QuotaProvider>
       <EducationProvider>
       <UserProfileProvider>
       <ChallengeProvider>
@@ -263,6 +319,8 @@ export default function App() {
       </ChallengeProvider>
       </UserProfileProvider>
       </EducationProvider>
+      </QuotaProvider>
+      </SubscriptionProvider>
       </ProProvider>
       </SocialChallengeProvider>
       </StreakProvider>

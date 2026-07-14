@@ -40,6 +40,8 @@ function activationReducer(state, action) {
       return { ...state, trackingOptIn: true }
     case 'SET_GOAL':
       return { ...state, selectedGoal: action.goal }
+    case 'SET_EXPERIENCE_LEVEL':
+      return { ...state, experienceLevel: action.value }
     case 'RECORD_INTRO_DISMISSED':
       return { ...state, introDismissed: true }
     case 'RESET':
@@ -57,6 +59,7 @@ function createEmptyState() {
     onboardingComplete: false,
     trackingOptIn: false,
     selectedGoal: null,
+    experienceLevel: null,
     introDismissed: false,
   }
 }
@@ -125,6 +128,10 @@ export function ActivationProvider({ children }) {
     dispatch({ type: 'SET_GOAL', goal })
   }, [])
 
+  const setExperienceLevel = useCallback((value) => {
+    dispatch({ type: 'SET_EXPERIENCE_LEVEL', value })
+  }, [])
+
   const recordIntroDismissed = useCallback(() => {
     dispatch({ type: 'RECORD_INTRO_DISMISSED' })
   }, [])
@@ -143,9 +150,10 @@ export function ActivationProvider({ children }) {
     recordOnboardingComplete,
     recordTrackingOptIn,
     setGoal,
+    setExperienceLevel,
     recordIntroDismissed,
     resetActivation,
-  }), [state, isHydrated, unlocks, recordLog, recordOnboardingComplete, recordTrackingOptIn, setGoal, recordIntroDismissed, resetActivation])
+  }), [state, isHydrated, unlocks, recordLog, recordOnboardingComplete, recordTrackingOptIn, setGoal, setExperienceLevel, recordIntroDismissed, resetActivation])
 
   return (
     <ActivationContext.Provider value={value}>

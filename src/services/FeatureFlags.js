@@ -61,6 +61,9 @@ const DEFAULT_FLAGS = {
 
   // Dev overrides
   ff_force_onboarding: false,
+  ff_expanded_recipes: true,
+  ff_dev_disable_paywalls: false,
+  ff_dev_force_paywalls: false,
 }
 
 // ── Reducer ──────────────────────────────────────────────────

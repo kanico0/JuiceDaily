@@ -16,6 +16,7 @@ import {
   Platform,
   TextInput,
   Alert,
+  Linking,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import * as Haptics from 'expo-haptics'
@@ -35,6 +36,7 @@ import {
   MessageCircle,
   FlaskConical,
   Sparkles,
+  Crown,
 } from 'lucide-react-native'
 import MeshGradientBg from '../components/MeshGradientBg'
 import {
@@ -51,12 +53,24 @@ import { useOrganicPref, ORGANIC_MODES } from '../utils/organicPreference'
 import { useUserProfile, resetAllUserData } from '../services/UserProfileStore'
 import { useActivation } from '../services/ActivationStore'
 import { useNutritionScore } from '../services/NutritionScoreStore'
+import { useJuiceLog } from '../services/JuiceLogStore'
+import { useSubscription } from '../services/subscriptions/SubscriptionStore'
+import { useQuota } from '../services/quota/QuotaStore'
+import {
+  selectPlanLabel,
+  selectBillingStoreLabel,
+  selectRenewalLabel,
+  selectQuotaLabel,
+  selectNextRefreshLabel,
+} from '../services/subscriptions/subscriptionSelectors'
+import { MONETIZATION_ENABLED, TERMS_URL, PRIVACY_URL } from '../services/subscriptions/subscriptionConfig'
 import { advanceDevDay, getDevDayOffset, resetDevClock, getDevNow } from '../utils/DevClock'
 import { resetGlowStreak } from '../services/glowStreak'
 import { resetFocusForToday } from '../services/focusNutrient'
 import { resetAchievements } from '../services/achievements'
 import { resetWeeklySummary } from '../services/weeklySummary'
 import { BUILD_TARGET } from '../utils/buildTarget'
+import { clearState } from '../services/storage'
 import { getNudgeSettings, setNudgeSettings, resetNudgeSettings } from '../services/NudgeSettingsStore'
 import {
   ensurePermissions,
@@ -218,6 +232,123 @@ function SectionHeader({ icon, title, subtitle }) {
   )
 }
 
+// ── Subscription Section ─────────────────────────────────────
+// Plan status, scan quota, manage/restore, legal links.
+
+function SubscriptionSection({ navigation }) {
+  const { state, isPro, restore, openManagement } = useSubscription()
+  const { quota, refresh: refreshQuota } = useQuota()
+  const [restoring, setRestoring] = useState(false)
+
+  const planLabel = selectPlanLabel(state)
+  const storeLabel = selectBillingStoreLabel(state)
+  const renewalLabel = selectRenewalLabel(state)
+  const quotaLabel = selectQuotaLabel(quota)
+  const refreshLabel = selectNextRefreshLabel(quota)
+
+  const handleRestore = async () => {
+    setRestoring(true)
+    try {
+      const outcome = await restore()
+      if (outcome.status === 'restored') {
+        await refreshQuota()
+        Alert.alert('Purchases Restored', 'Your Pro subscription is active again.')
+      } else if (outcome.status === 'no_purchases') {
+        Alert.alert('No Purchases Found', 'We could not find a previous subscription for this account.')
+      } else {
+        Alert.alert('Restore Failed', 'Please try again later.')
+      }
+    } finally {
+      setRestoring(false)
+    }
+  }
+
+  const openLink = (url) => {
+    if (url) Linking.openURL(url).catch(() => {})
+  }
+
+  return (
+    <>
+      <SectionHeader
+        icon={<Crown size={18} color="#FFD54F" />}
+        title="Subscription"
+        subtitle={planLabel}
+      />
+      <View style={styles.settingsGroup}>
+        <View style={styles.helpRow}>
+          <View style={styles.helpInfo}>
+            <Text style={styles.helpLabel}>Current plan: {planLabel}</Text>
+            {renewalLabel ? <Text style={styles.helpDesc}>{renewalLabel}</Text> : null}
+            {storeLabel ? <Text style={styles.helpDesc}>{storeLabel}</Text> : null}
+            {quotaLabel ? <Text style={styles.helpDesc}>{quotaLabel}</Text> : null}
+            {refreshLabel ? <Text style={styles.helpDesc}>Scans refresh on {refreshLabel}</Text> : null}
+          </View>
+        </View>
+
+        {!isPro && (
+          <TouchableOpacity
+            style={styles.helpRow}
+            onPress={() => navigation.navigate('Paywall', { source: 'settings' })}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="Upgrade to Pro"
+          >
+            <Sparkles size={16} color="#7EE787" />
+            <View style={styles.helpInfo}>
+              <Text style={styles.helpLabel}>Upgrade to Pro</Text>
+              <Text style={styles.helpDesc}>60 AI scans per month, advanced reports & more</Text>
+            </View>
+            <Text style={styles.helpArrow}>→</Text>
+          </TouchableOpacity>
+        )}
+
+        {isPro && state.managementUrl ? (
+          <TouchableOpacity
+            style={styles.helpRow}
+            onPress={openManagement}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="Manage subscription"
+          >
+            <View style={styles.helpInfo}>
+              <Text style={styles.helpLabel}>Manage Subscription</Text>
+            </View>
+            <Text style={styles.helpArrow}>→</Text>
+          </TouchableOpacity>
+        ) : null}
+
+        <TouchableOpacity
+          style={styles.helpRow}
+          onPress={handleRestore}
+          disabled={restoring}
+          activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel="Restore purchases"
+        >
+          <View style={styles.helpInfo}>
+            <Text style={styles.helpLabel}>{restoring ? 'Restoring…' : 'Restore Purchases'}</Text>
+          </View>
+        </TouchableOpacity>
+
+        {(TERMS_URL || PRIVACY_URL) && (
+          <View style={[styles.helpRow, { justifyContent: 'center', gap: 24 }]}>
+            {TERMS_URL ? (
+              <TouchableOpacity onPress={() => openLink(TERMS_URL)} accessibilityRole="link">
+                <Text style={styles.helpDesc}>Terms of Use</Text>
+              </TouchableOpacity>
+            ) : null}
+            {PRIVACY_URL ? (
+              <TouchableOpacity onPress={() => openLink(PRIVACY_URL)} accessibilityRole="link">
+                <Text style={styles.helpDesc}>Privacy Policy</Text>
+              </TouchableOpacity>
+            ) : null}
+          </View>
+        )}
+      </View>
+    </>
+  )
+}
+
 // ── Setting Row ──────────────────────────────────────────────
 
 function SettingRow({ label, description, value, onValueChange, emergency, disabled }) {
@@ -274,6 +405,10 @@ const FLAG_LABELS = {
   ff_progressive_unlock: { label: 'Progressive Unlock', phase: 'ScanFirst' },
   ff_optimize_tab: { label: 'Optimize Tab', phase: 'ScanFirst' },
   ff_scan_secondary_actions: { label: 'Scan Secondary Actions', phase: 'ScanFirst' },
+
+  ff_expanded_recipes: { label: 'Expanded Recipes', phase: 'Dev' },
+  ff_dev_disable_paywalls: { label: 'Disable Paywalls', phase: 'Dev' },
+  ff_dev_force_paywalls: { label: 'Force Paywalls', phase: 'Dev' },
 }
 
 const PHASE_COLORS = {
@@ -286,6 +421,7 @@ const PHASE_COLORS = {
   Liquid: '#4DD0E1',
   Calculator: '#CE93D8',
   ScanFirst: '#4CAF50',
+  Dev: '#FFD54F',
 }
 
 export default function SettingsScreen({ navigation }) {
@@ -302,11 +438,21 @@ export default function SettingsScreen({ navigation }) {
   const { profile, setName: setProfileName, resetProfile } = useUserProfile()
   const { resetScore } = useNutritionScore()
   const { activation, resetActivation } = useActivation()
+  const { totalLogCount, resetLog } = useJuiceLog()
   const [profileNameInput, setProfileNameInput] = useState('')
   const [showDevFlags, setShowDevFlags] = useState(false)
   const [devClockOffset, setDevClockOffset] = useState(getDevDayOffset())
   const [nudgeSettings, setNudgeSettingsLocal] = useState(null)
   const [nudgePermDenied, setNudgePermDenied] = useState(false)
+
+  const clearActivationStorage = useCallback(async () => {
+    try {
+      const { default: AsyncStorage } = await import('@react-native-async-storage/async-storage')
+      await AsyncStorage.removeItem('@juicing_activation_v1')
+    } catch (e) {
+      console.warn('[Settings] clearActivationStorage failed:', e)
+    }
+  }, [])
 
   // Load settings on mount
   useEffect(() => {
@@ -796,6 +942,10 @@ export default function SettingsScreen({ navigation }) {
         )}
 
         {/* ═══ HELP & SUPPORT ═════════════════════════════════ */}
+        {MONETIZATION_ENABLED && (
+          <SubscriptionSection navigation={navigation} />
+        )}
+
         <SectionHeader
           icon={<HelpCircle size={18} color="#8B949E" />}
           title="Help & Support"
@@ -803,7 +953,14 @@ export default function SettingsScreen({ navigation }) {
         />
 
         <View style={styles.settingsGroup}>
-          <TouchableOpacity style={styles.helpRow} activeOpacity={0.7}>
+          <TouchableOpacity
+            style={styles.helpRow}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+              navigation.navigate('NoviceJourney')
+            }}
+            activeOpacity={0.7}
+          >
             <BookOpen size={16} color="#81C784" />
             <View style={styles.helpInfo}>
               <Text style={styles.helpLabel}>How to Juice</Text>
@@ -898,10 +1055,11 @@ export default function SettingsScreen({ navigation }) {
               {/* Reset Intro + Activation */}
               <TouchableOpacity
                 style={devStyles.resetLaunchBtn}
-                onPress={() => {
+                onPress={async () => {
                   Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+                  await clearActivationStorage()
                   resetActivation()
-                  Alert.alert('Intro Reset', 'introDismissed + onboarding cleared.\nReopen Scan tab to see Main Launch.')
+                  Alert.alert('Intro Reset', 'introDismissed + onboarding cleared.\nFully close + reopen the app to see IntroLaunch.')
                 }}
                 activeOpacity={0.7}
               >
@@ -909,6 +1067,20 @@ export default function SettingsScreen({ navigation }) {
                 <Text style={devStyles.resetLaunchHint}>
                   intro: {activation.introDismissed ? '✓ dismissed' : '✗ not seen'} · onboarding: {activation.onboardingComplete ? '✓ done' : '✗ pending'}
                 </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={devStyles.resetLaunchBtn}
+                onPress={async () => {
+                  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+                  await clearState('@juicing_log_entries_v1')
+                  resetLog()
+                  Alert.alert('History Reset', 'Cleared juice log entries.\nFully close + reopen the app to see IntroLaunch.')
+                }}
+                activeOpacity={0.7}
+              >
+                <Text style={devStyles.resetLaunchText}>Reset Juice Log History</Text>
+                <Text style={devStyles.resetLaunchHint}>entries: {totalLogCount}</Text>
               </TouchableOpacity>
 
               {/* Toggle Pro Mode */}

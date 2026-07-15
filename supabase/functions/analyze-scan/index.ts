@@ -1,15 +1,23 @@
 // ─────────────────────────────────────────────────────────────
 // analyze-scan — Server-authoritative AI scan.
 //
-// Flow: authenticate → reserve quota (idempotent) → call Anthropic
-// → commit on success / release on technical failure → return the
-// raw model text + updated quota snapshot.
+// Flow: authenticate (verified JWT, permanent accounts only) →
+// reserve quota (idempotent) → call Anthropic → commit on success /
+// release on technical failure → return the raw model text +
+// updated quota snapshot.
+//
+// Account gate: Supabase anonymous users carry the 'authenticated'
+// role, so role/uid checks are insufficient. The user record is
+// fetched from the Auth server via the verified token and the
+// server-trusted is_anonymous flag must be false BEFORE any funded
+// work (reservation, scan record, Anthropic call).
 //
 // Secrets (Supabase function secrets, never in the app):
 //   ANTHROPIC_API_KEY
 // ─────────────────────────────────────────────────────────────
 
 import { createClient } from 'npm:@supabase/supabase-js@2'
+import { evaluateScanUser, extractBearerToken } from '../_shared/authGate.ts'
 
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages'
 const MODEL = 'claude-sonnet-4-20250514'
@@ -63,14 +71,28 @@ Deno.serve(async (req) => {
   if (!anthropicKey) return json(500, { message: 'Server not configured' })
 
   // ── Authenticate the caller (user JWT) ─────────────────────
-  const authHeader = req.headers.get('Authorization') ?? ''
-  const jwt = authHeader.replace(/^Bearer\s+/i, '')
-  if (!jwt) return json(401, { message: 'Missing authorization' })
+  // admin.auth.getUser(jwt) validates the token against the Auth
+  // server (signature + expiry) and returns the canonical user
+  // record. Identity is never taken from the request body, and a
+  // merely Base64-decoded JWT payload is never trusted.
+  const jwt = extractBearerToken(req.headers.get('Authorization'))
+  if (!jwt) return json(401, { code: 'missing_authorization', message: 'Missing authorization' })
 
   const admin = createClient(supabaseUrl, serviceKey)
   const { data: userData, error: userError } = await admin.auth.getUser(jwt)
-  if (userError || !userData.user) return json(401, { message: 'Invalid token' })
-  const userId = userData.user.id
+
+  // ── Durable-account gate (server-authoritative) ────────────
+  // Anonymous Supabase users carry the 'authenticated' role, so
+  // the gate checks the server-trusted is_anonymous flag on the
+  // VERIFIED user record. Runs BEFORE body parsing, quota
+  // reservation, scan-record insertion, and the Anthropic call:
+  // an anonymous rejection consumes zero quota and creates no
+  // billable activity.
+  const gate = evaluateScanUser(userData?.user ?? null, userError)
+  if (!gate.ok) return json(gate.status, { code: gate.code, message: gate.message })
+
+  // Canonical user id comes exclusively from the verified token.
+  const userId = gate.userId
 
   // ── Validate request ───────────────────────────────────────
   let body: Record<string, unknown>

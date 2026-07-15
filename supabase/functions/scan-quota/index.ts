@@ -32,6 +32,25 @@ Deno.serve(async (req) => {
   const { data: userData, error: userError } = await admin.auth.getUser(jwt)
   if (userError || !userData.user) return json(401, { message: 'Invalid token' })
 
+  // ── Anonymous users: display-only snapshot ──────────────────
+  // resolve_quota creates/advances allowance rows, so anonymous
+  // callers must never reach it. They get the static free-plan
+  // display values with zero database writes and no allocation.
+  if (userData.user.is_anonymous === true) {
+    return json(200, {
+      quota: {
+        plan: 'free',
+        limit: 5,
+        used: 0,
+        remaining: 5,
+        periodStart: '',
+        periodEnd: '',
+        dailyLimit: null,
+        dailyUsed: null,
+      },
+    })
+  }
+
   const { data, error } = await admin.rpc('resolve_quota', { p_user_id: userData.user.id })
   if (error) {
     console.error('[scan-quota] resolve failed:', error.message)

@@ -8,8 +8,10 @@
 // ─────────────────────────────────────────────────────────────
 
 const mockIsDurableUser = jest.fn()
+const mockRefreshDurable = jest.fn()
 jest.mock('../../supabase/accountLink', () => ({
   isDurableUser: () => mockIsDurableUser(),
+  refreshSessionAndCheckDurable: () => mockRefreshDurable(),
 }))
 
 jest.mock('../../supabase/identity', () => ({
@@ -128,5 +130,75 @@ describe('durable-account scan gate', () => {
     await expect(
       analyzeScanOnServer('base64data', 'image/jpeg', 'req-6')
     ).rejects.toMatchObject({ code: 'unauthenticated' })
+  })
+})
+
+describe('stale-token session refresh (post email upgrade)', () => {
+  function reject403 () {
+    return {
+      ok: false,
+      status: 403,
+      json: async () => ({ code: 'account_required', message: 'Account required' }),
+    }
+  }
+
+  it('refreshes once and retries with the SAME requestId when the refreshed user is permanent', async () => {
+    mockIsDurableUser.mockResolvedValue(true)
+    mockRefreshDurable.mockResolvedValue(true)
+    ;(global.fetch as jest.Mock)
+      .mockResolvedValueOnce(reject403())
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ rawText: '[]', quota: null }),
+      })
+
+    const result = await analyzeScanOnServer('base64data', 'image/jpeg', 'req-stale-1')
+
+    expect(result.rawText).toBe('[]')
+    expect(mockRefreshDurable).toHaveBeenCalledTimes(1)
+    expect(global.fetch).toHaveBeenCalledTimes(2)
+    // Idempotent retry: identical requestId on both attempts — the
+    // server dedupes, so no duplicate charge is possible.
+    const firstBody = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body)
+    const secondBody = JSON.parse((global.fetch as jest.Mock).mock.calls[1][1].body)
+    expect(firstBody.requestId).toBe('req-stale-1')
+    expect(secondBody.requestId).toBe('req-stale-1')
+  })
+
+  it('does NOT retry when the refreshed user is still anonymous', async () => {
+    mockIsDurableUser.mockResolvedValue(true)
+    mockRefreshDurable.mockResolvedValue(false)
+    ;(global.fetch as jest.Mock).mockResolvedValue(reject403())
+
+    await expect(
+      analyzeScanOnServer('base64data', 'image/jpeg', 'req-stale-2')
+    ).rejects.toMatchObject({ code: 'account_required' })
+
+    expect(global.fetch).toHaveBeenCalledTimes(1)
+  })
+
+  it('retries at most once — a second 403 is surfaced, not looped', async () => {
+    mockIsDurableUser.mockResolvedValue(true)
+    mockRefreshDurable.mockResolvedValue(true)
+    ;(global.fetch as jest.Mock).mockResolvedValue(reject403())
+
+    await expect(
+      analyzeScanOnServer('base64data', 'image/jpeg', 'req-stale-3')
+    ).rejects.toMatchObject({ code: 'account_required' })
+
+    expect(global.fetch).toHaveBeenCalledTimes(2)
+    expect(mockRefreshDurable).toHaveBeenCalledTimes(1)
+  })
+
+  it('local anonymous gate never triggers a network call or refresh', async () => {
+    mockIsDurableUser.mockResolvedValue(false)
+
+    await expect(
+      analyzeScanOnServer('base64data', 'image/jpeg', 'req-stale-4')
+    ).rejects.toMatchObject({ code: 'account_required' })
+
+    expect(global.fetch).not.toHaveBeenCalled()
+    expect(mockRefreshDurable).not.toHaveBeenCalled()
   })
 })

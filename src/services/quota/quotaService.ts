@@ -10,7 +10,7 @@
 import { SUPABASE_URL } from '../subscriptions/subscriptionConfig'
 import { isSupabaseConfigured } from '../supabase/supabaseClient'
 import { getAccessToken } from '../supabase/identity'
-import { isDurableUser } from '../supabase/accountLink'
+import { isDurableUser, refreshSessionAndCheckDurable } from '../supabase/accountLink'
 import type { ScanQuotaErrorCode, ScanQuotaSnapshot } from '../subscriptions/subscriptionTypes'
 
 export class ScanQuotaError extends Error {
@@ -87,24 +87,12 @@ export interface ServerScanResponse {
   quota: ScanQuotaSnapshot | null
 }
 
-export async function analyzeScanOnServer (
+async function performServerScan (
   imageBase64: string,
   mediaType: string,
   requestId: string,
-  depthDataMm: number[] | null = null,
+  depthDataMm: number[] | null,
 ): Promise<ServerScanResponse> {
-  // Durable-account gate: funded scans require a permanent identity
-  // so the allowance can never be reset by reinstalling or clearing
-  // storage. Checked BEFORE any request — no scan is reserved or
-  // consumed until authentication succeeds.
-  const durable = await isDurableUser()
-  if (!durable) {
-    throw new ScanQuotaError(
-      'account_required',
-      'A free account is required before your first scan',
-    )
-  }
-
   const res = await authedFetch('analyze-scan', {
     method: 'POST',
     body: JSON.stringify({
@@ -126,6 +114,10 @@ export async function analyzeScanOnServer (
   if (res.status === 401) {
     throw new ScanQuotaError('unauthenticated', 'Authentication failed')
   }
+  if (res.status === 403 && body.code === 'account_required') {
+    // Server-side gate: the token belongs to an anonymous user.
+    throw new ScanQuotaError('account_required', body.message ?? 'Account required')
+  }
   if (!res.ok) {
     throw new ScanQuotaError('server_error', body.message ?? `Scan failed (${res.status})`, quota)
   }
@@ -133,5 +125,41 @@ export async function analyzeScanOnServer (
   return {
     rawText: String(body.rawText ?? '[]'),
     quota,
+  }
+}
+
+export async function analyzeScanOnServer (
+  imageBase64: string,
+  mediaType: string,
+  requestId: string,
+  depthDataMm: number[] | null = null,
+): Promise<ServerScanResponse> {
+  // Durable-account gate: funded scans require a permanent identity
+  // so the allowance can never be reset by reinstalling or clearing
+  // storage. Checked BEFORE any request — no scan is reserved or
+  // consumed until authentication succeeds.
+  const durable = await isDurableUser()
+  if (!durable) {
+    throw new ScanQuotaError(
+      'account_required',
+      'A free account is required before your first scan',
+    )
+  }
+
+  try {
+    return await performServerScan(imageBase64, mediaType, requestId, depthDataMm)
+  } catch (e) {
+    // Stale-token recovery: right after an email upgrade the client
+    // may still hold the pre-upgrade anonymous access token. Refresh
+    // the session ONCE and retry ONLY if the refreshed user is
+    // confirmed permanent. The same requestId makes the retry
+    // idempotent server-side — no duplicate charge is possible.
+    if (e instanceof ScanQuotaError && e.code === 'account_required') {
+      const nowDurable = await refreshSessionAndCheckDurable()
+      if (nowDurable) {
+        return await performServerScan(imageBase64, mediaType, requestId, depthDataMm)
+      }
+    }
+    throw e
   }
 }

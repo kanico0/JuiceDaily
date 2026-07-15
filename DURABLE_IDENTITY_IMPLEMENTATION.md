@@ -124,11 +124,10 @@ quota, or Supabase architecture was redesigned.
 
 ## 6. Security considerations
 
-- The gate is client-side UX; the **server remains authoritative** for quota.
-  Note: the `analyze-scan` Edge Function currently accepts any valid JWT,
-  including anonymous ones. Recommended hardening (human/server task): reject
-  `is_anonymous` JWT claims in `analyze-scan` so the gate cannot be bypassed
-  by a modified client. This is listed under remaining actions.
+- The client gate is UX; the **server is authoritative**. As of 2026-07-14 the
+  deployed `analyze-scan` function rejects anonymous users server-side (see
+  Section 9 below) — a modified client or direct HTTP request cannot bypass
+  the account gate.
 - OTP verification is required for ALL identity changes — no unverified merge.
 - `shouldCreateUser: false` prevents account creation via the sign-in path.
 - Sign-out is local-only; server data stays keyed to the UUID.
@@ -138,28 +137,89 @@ quota, or Supabase architecture was redesigned.
 
 ## 7. Remaining human actions
 
+- [x] ~~Server hardening: reject anonymous JWTs in `analyze-scan`~~ — **done and
+      deployed** (see Section 9).
 - [ ] Enable Email OTP provider + configure production SMTP (Section 2–3).
-- [ ] **Server hardening**: update `supabase/functions/analyze-scan` to reject
-      anonymous JWTs (defense-in-depth for the client gate) and redeploy.
 - [ ] Customize the OTP email template with RawLifeFlow branding.
+- [ ] Live smoke Tests B and C (email OTP upgrade + reinstall sign-in) — need a
+      real inbox and device; Test A passed live (Section 9).
 - [ ] Sandbox test the full reinstall → sign-in → entitlement flow (Section 5).
 - [ ] RevenueCat dashboard: no changes needed (App User ID strategy unchanged).
 
 ## 8. Is the reinstall quota-reset vulnerability closed?
 
-**Substantially closed at the product level; one server-side hardening step
-remains.**
+**Yes — closed at both the client and server layers** (verified live against
+production on 2026-07-14):
 
-- Honest users can no longer reset their allowance: funded scans require a
-  verified email identity, and signing back in restores the original UUID and
-  its usage. Creating a new allowance now requires a **new email address**,
-  not merely a reinstall.
-- A technically skilled attacker with a modified client could still call the
-  Edge Function with an anonymous JWT until the server-side anonymous-JWT
-  rejection (Section 7) is deployed. That change is small (check
-  `is_anonymous` claim in `analyze-scan`) and should ship before launch.
+- Funded scans require a verified email identity. Reinstalling or clearing
+  storage yields an anonymous user that is rejected **server-side** with
+  403 `account_required` before any reservation or Anthropic call.
+- Signing back in restores the original UUID and its existing usage.
+- Creating a new allowance now requires a **new email address**.
 - Disposable-email abuse is a residual, accepted risk typical of email-gated
   free tiers.
+
+## 9. Deployed server-side protection (2026-07-14)
+
+### JWT verification
+- `analyze-scan` and `scan-quota` validate every bearer token with
+  `admin.auth.getUser(jwt)` — the Supabase Auth server checks signature and
+  expiry and returns the canonical user record. Base64-decoded payloads are
+  never trusted; request-body identity fields do not exist in the API.
+
+### Where `is_anonymous` is checked
+1. **`supabase/functions/_shared/authGate.ts`** — `evaluateScanUser()` (shared,
+   unit-tested): requires `is_anonymous !== true` on the VERIFIED user record.
+   Used by `analyze-scan` before body parsing, quota reservation, scan-record
+   insertion, and the Anthropic call.
+2. **`scan-quota`** — anonymous users receive a static display-only free
+   snapshot; `resolve_quota` (which creates/renews allowance rows) is never
+   invoked for them.
+3. **Database (defense in depth)** — migration `0002_anonymous_scan_guard.sql`:
+   `reserve_scan()` first consults `public._is_anonymous_user()` (reads the
+   server-trusted `auth.users.is_anonymous` column — not JWT role, not user
+   metadata) and returns `account_required` with zero writes. All quota RPCs
+   remain revoked from `public/anon/authenticated` (clients cannot call them).
+
+### HTTP behavior
+| Condition | Status | Body code |
+|---|---|---|
+| Missing Authorization | 401 | `missing_authorization` |
+| Malformed / expired / forged token | 401 | `invalid_token` |
+| Valid anonymous user | 403 | `account_required` |
+| Valid permanent user | proceeds | — |
+
+### Session-refresh behavior (client)
+- `quotaService.analyzeScanOnServer()`: on server 403 `account_required`,
+  `refreshSessionAndCheckDurable()` refreshes the Supabase session **once**;
+  it retries **once** only if the refreshed user is confirmed permanent, using
+  the SAME `requestId` (server idempotency ⇒ no duplicate charge).
+
+### Deployment commands used
+```
+npx supabase db push --include-all        # applies 0002_anonymous_scan_guard.sql
+npx supabase functions deploy analyze-scan
+npx supabase functions deploy scan-quota
+```
+Project: `twnkxajnoeljgerqgqep`. No secrets were exposed or changed.
+
+### Live smoke-test results (Test A, production, 2026-07-14)
+```
+PASS  anonymous direct analyze-scan rejected — status=403 code=account_required
+PASS  anonymous rejection created no reservation — events=0
+PASS  anonymous quota display works without allocating a row — status=200 rows=0
+PASS  missing Authorization → 401
+PASS  malformed token → 401
+PASS  forged is_anonymous:false payload rejected → 401
+```
+Re-run anytime with `node scripts/smoke-scan-gate.mjs`. Tests B (email OTP
+upgrade) and C (reinstall sign-in) require a real inbox/device — see
+Section 5 manual steps.
+
+### Remaining launch blockers
+- Production SMTP + Email OTP provider configuration (Section 2–3).
+- Live Tests B and C on a device with a real email address.
+- RevenueCat store setup (unchanged from HUMAN_MONETIZATION_SETUP.md).
 
 ---
 
@@ -168,8 +228,9 @@ remains.**
 | Command | Result |
 |---|---|
 | `npx tsc --noEmit` | ✅ PASS |
-| `npm test` | ✅ 6 suites, 127/127 tests (28 new identity/gate tests) |
+| `npm test` | ✅ 7 suites, 142/142 tests (43 identity/gate tests incl. server authGate) |
 | `npx expo export` | ✅ PASS |
+| `node scripts/smoke-scan-gate.mjs` | ✅ 6/6 live checks against production |
 
 Unchanged as required: `com.juicingapp.app`, entitlement `pro`, offering
 `default`, Apple product IDs, Google subscription/base-plan IDs.

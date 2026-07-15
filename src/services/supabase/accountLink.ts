@@ -110,6 +110,24 @@ export async function isDurableUser (): Promise<boolean> {
   return status.isDurable
 }
 
+// Force-refresh the Supabase session and report whether the
+// refreshed user is permanent. Used when the server rejects a
+// token as anonymous right after an email upgrade (stale access
+// token): refresh once, then the caller may retry exactly once.
+export async function refreshSessionAndCheckDurable (): Promise<boolean> {
+  const supabase = getSupabase()
+  if (!supabase) return false
+  try {
+    const { data, error } = await supabase.auth.refreshSession()
+    if (error || !data.session?.user) return false
+    const user = data.session.user
+    const isAnonymous = Boolean((user as { is_anonymous?: boolean }).is_anonymous)
+    return !isAnonymous && Boolean(user.email)
+  } catch {
+    return false
+  }
+}
+
 // ── Error classification ─────────────────────────────────────
 
 function classifyStartError (message: string): LinkStartResult {

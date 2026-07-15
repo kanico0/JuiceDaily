@@ -1,0 +1,43 @@
+# Remote auth configuration for RawLifeFlow: Juicing Daily.
+# Pushed with: npx supabase config push
+#
+# WARNING: config push applies CLI DEFAULTS for undeclared [auth]
+# keys, so every production-critical auth setting must be declared
+# here explicitly. (A partial push once disabled anonymous
+# sign-ins because the key was omitted.)
+
+project_id = "JuicingApp"
+
+[auth]
+enabled = true
+site_url = "http://localhost:3000"
+additional_redirect_urls = []
+jwt_expiry = 3600
+enable_refresh_token_rotation = true
+refresh_token_reuse_interval = 10
+enable_manual_linking = false
+enable_signup = true
+# The app starts every user as a Supabase anonymous user — this
+# must stay enabled.
+enable_anonymous_sign_ins = true
+minimum_password_length = 6
+
+[auth.mfa]
+max_enrolled_factors = 10
+
+[auth.mfa.totp]
+enroll_enabled = true
+verify_enabled = true
+
+[auth.email]
+# Require email verification: updateUser({ email }) must send a
+# 6-digit OTP instead of instantly auto-confirming the address.
+# (Autoconfirm would let anyone claim an inbox they don't own and
+# bypass the durable-account scan gate.)
+enable_signup = true
+enable_confirmations = true
+# Anonymous users upgrading have no prior email, so only the NEW
+# address needs to confirm (single OTP, matches the in-app UX).
+double_confirm_changes = false
+otp_length = 6
+otp_expiry = 3600

@@ -74,18 +74,24 @@ quota, or Supabase architecture was redesigned.
 - Purchases cannot strand: RC is always configured/logged-in with a Supabase
   UUID, never a device-random ID.
 
-## 2. Supabase dashboard settings that MUST be enabled (human)
+## 2. Supabase auth settings (CONFIGURED 2026-07-15 via `config push`)
 
-1. **Authentication → Sign In / Up → Anonymous sign-ins**: ON (already in use).
-2. **Authentication → Sign In / Up → Email**: ON, with **Email OTP** enabled.
-3. **Authentication → Email → Secure email change**: recommend **OFF** for
-   anonymous upgrades (anonymous users have no old email to confirm; a single
-   OTP to the new address is the correct UX). If left ON, Supabase still sends
-   only one confirmation for users without an existing email.
-4. **Authentication → Rate limits**: review OTP send limits (default is fine).
-5. **Manual identity linking** (`Authentication → Settings`): NOT required for
-   this flow — `updateUser({ email })` upgrades in place. Only enable if you
-   later add OAuth providers via `linkIdentity()`.
+Managed in `supabase/config.toml` and applied with `npx supabase config push`:
+
+1. **Anonymous sign-ins**: ON (`enable_anonymous_sign_ins = true`).
+2. **Email confirmations**: ON (`enable_confirmations = true`) — **this was the
+   root cause of the "invalid code" error**: with confirmations OFF, Supabase
+   auto-confirmed `updateUser({ email })` instantly, never sent an OTP, and
+   let anyone claim an unowned inbox (bypassing the durable-account gate).
+3. **Secure email change**: OFF (`double_confirm_changes = false`) — anonymous
+   upgrades have no old email; a single OTP to the new address is correct.
+4. **OTP length**: 6 digits (`otp_length = 6`) to match the in-app entry UI.
+5. **Manual identity linking**: NOT required — `updateUser({ email })`
+   upgrades in place.
+
+⚠️ `config push` applies **CLI defaults for any undeclared [auth] key** —
+always edit `supabase/config.toml` (which declares every production-critical
+key) rather than pushing a partial file.
 
 ## 3. Email provider and redirect configuration (human)
 
@@ -139,8 +145,16 @@ quota, or Supabase architecture was redesigned.
 
 - [x] ~~Server hardening: reject anonymous JWTs in `analyze-scan`~~ — **done and
       deployed** (see Section 9).
-- [ ] Enable Email OTP provider + configure production SMTP (Section 2–3).
-- [ ] Customize the OTP email template with RawLifeFlow branding.
+- [x] ~~Enable email confirmations / OTP flow~~ — **done via `config push`
+      2026-07-15** (Section 2). Verified live: `updateUser` now returns a
+      pending `new_email` + `email_change_sent_at` instead of auto-confirming.
+- [ ] **Update the "Confirm email change" + "Magic Link" email templates to
+      show `{{ .Token }}`** (the default templates contain a link, not the
+      6-digit code the app expects) and brand them for RawLifeFlow.
+- [ ] Configure production SMTP (default SMTP only delivers to project team
+      members, ~2 emails/hour — test with the account-owner email until then).
+- [ ] Dashboard cleanup: delete the throwaway smoke-test users (anonymous +
+      `otp-smoke-*@example.com`).
 - [ ] Live smoke Tests B and C (email OTP upgrade + reinstall sign-in) — need a
       real inbox and device; Test A passed live (Section 9).
 - [ ] Sandbox test the full reinstall → sign-in → entitlement flow (Section 5).

@@ -14,7 +14,7 @@ import { useCamera } from '../hooks/useCamera'
 import { identifyProduce, isClaudeKeySet } from '../services/ClaudeVisionService'
 import colors from '../constants/colors'
 
-export default function CameraScreen({ onClose, onProduceIdentified, onManualEntry }) {
+export default function CameraScreen({ onClose, onProduceIdentified, onManualEntry, onAccountRequired }) {
   const {
     cameraRef,
     state: cameraState,
@@ -75,6 +75,13 @@ export default function CameraScreen({ onClose, onProduceIdentified, onManualEnt
       console.log('[SCAN] analysis success —', result.scannedIngredients.length, 'items')
       onProduceIdentified(result)
     } catch (err) {
+      // Durable-account gate: no scan was reserved or consumed.
+      if (err && err.name === 'ScanQuotaError' && err.code === 'account_required') {
+        console.log('[SCAN] account required before first funded scan')
+        setIsProcessing(false)
+        if (onAccountRequired) onAccountRequired()
+        return
+      }
       const message = err instanceof Error ? err.message : 'Something went wrong'
       console.log('[SCAN] analysis error:', message)
       setError(message)
@@ -82,7 +89,7 @@ export default function CameraScreen({ onClose, onProduceIdentified, onManualEnt
     } finally {
       setIsProcessing(false)
     }
-  }, [takePhoto, onProduceIdentified])
+  }, [takePhoto, onProduceIdentified, onAccountRequired])
 
   const handleManualEntry = useCallback(() => {
     if (onManualEntry) {

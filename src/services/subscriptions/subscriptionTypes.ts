@@ -89,4 +89,5 @@ export type ScanQuotaErrorCode =
   | 'monthly_limit_reached'
   | 'daily_limit_reached'
   | 'unauthenticated'
+  | 'account_required'
   | 'server_error'

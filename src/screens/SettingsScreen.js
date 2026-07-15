@@ -63,7 +63,9 @@ import {
   selectQuotaLabel,
   selectNextRefreshLabel,
 } from '../services/subscriptions/subscriptionSelectors'
-import { MONETIZATION_ENABLED, TERMS_URL, PRIVACY_URL } from '../services/subscriptions/subscriptionConfig'
+import { MONETIZATION_ENABLED, SUPABASE_CONFIGURED, TERMS_URL, PRIVACY_URL } from '../services/subscriptions/subscriptionConfig'
+import { getAccountStatus, signOutAccount } from '../services/supabase/accountLink'
+import AccountGateModal from '../components/AccountGateModal'
 import { advanceDevDay, getDevDayOffset, resetDevClock, getDevNow } from '../utils/DevClock'
 import { resetGlowStreak } from '../services/glowStreak'
 import { resetFocusForToday } from '../services/focusNutrient'
@@ -229,6 +231,121 @@ function SectionHeader({ icon, title, subtitle }) {
         {subtitle && <Text style={styles.sectionSubtitle}>{subtitle}</Text>}
       </View>
     </View>
+  )
+}
+
+// ── Account Section ──────────────────────────────────────────
+// Durable identity: shows the authenticated email, lets anonymous
+// users protect their account, and signs out with a clear warning.
+
+function AccountSection() {
+  const [account, setAccount] = useState({ userId: null, email: null, isDurable: false })
+  const [gateVisible, setGateVisible] = useState(false)
+  const [gateMode, setGateMode] = useState('protect')
+
+  const loadAccount = useCallback(async () => {
+    const status = await getAccountStatus()
+    setAccount(status)
+  }, [])
+
+  useEffect(() => {
+    loadAccount()
+  }, [loadAccount])
+
+  const openGate = (mode) => {
+    setGateMode(mode)
+    setGateVisible(true)
+  }
+
+  const handleSignOut = () => {
+    Alert.alert(
+      'Sign out?',
+      'You will need to sign in again with your email to recover your scan history, allowance, and plan on RawLifeFlow: Juicing Daily.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Sign Out',
+          style: 'destructive',
+          onPress: async () => {
+            await signOutAccount()
+            await loadAccount()
+          },
+        },
+      ]
+    )
+  }
+
+  return (
+    <>
+      <SectionHeader
+        icon={<Shield size={18} color="#81C784" />}
+        title="Account"
+        subtitle={account.isDurable ? account.email : 'Not protected yet'}
+      />
+      <View style={styles.settingsGroup}>
+        {account.isDurable ? (
+          <>
+            <View style={styles.helpRow}>
+              <View style={styles.helpInfo}>
+                <Text style={styles.helpLabel}>Signed in as</Text>
+                <Text style={styles.helpDesc}>{account.email}</Text>
+              </View>
+            </View>
+            <TouchableOpacity
+              style={styles.helpRow}
+              onPress={handleSignOut}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="Sign out"
+            >
+              <View style={styles.helpInfo}>
+                <Text style={styles.helpLabel}>Sign Out</Text>
+                <Text style={styles.helpDesc}>Your history and plan stay safe — sign back in anytime</Text>
+              </View>
+            </TouchableOpacity>
+          </>
+        ) : (
+          <>
+            <TouchableOpacity
+              style={styles.helpRow}
+              onPress={() => openGate('protect')}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="Protect your account"
+            >
+              <View style={styles.helpInfo}>
+                <Text style={styles.helpLabel}>Protect Your Account</Text>
+                <Text style={styles.helpDesc}>Add your email to save scan history and keep your monthly allowance</Text>
+              </View>
+              <Text style={styles.helpArrow}>→</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.helpRow}
+              onPress={() => openGate('signin')}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="Sign in to an existing account"
+            >
+              <View style={styles.helpInfo}>
+                <Text style={styles.helpLabel}>Sign In</Text>
+                <Text style={styles.helpDesc}>Already have an account? Restore your history and plan</Text>
+              </View>
+              <Text style={styles.helpArrow}>→</Text>
+            </TouchableOpacity>
+          </>
+        )}
+      </View>
+
+      <AccountGateModal
+        visible={gateVisible}
+        initialMode={gateMode}
+        onClose={() => setGateVisible(false)}
+        onAuthenticated={() => {
+          setGateVisible(false)
+          loadAccount()
+        }}
+      />
+    </>
   )
 }
 
@@ -942,6 +1059,8 @@ export default function SettingsScreen({ navigation }) {
         )}
 
         {/* ═══ HELP & SUPPORT ═════════════════════════════════ */}
+        {SUPABASE_CONFIGURED && <AccountSection />}
+
         {MONETIZATION_ENABLED && (
           <SubscriptionSection navigation={navigation} />
         )}

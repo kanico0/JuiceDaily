@@ -10,6 +10,7 @@
 import { SUPABASE_URL } from '../subscriptions/subscriptionConfig'
 import { isSupabaseConfigured } from '../supabase/supabaseClient'
 import { getAccessToken } from '../supabase/identity'
+import { isDurableUser } from '../supabase/accountLink'
 import type { ScanQuotaErrorCode, ScanQuotaSnapshot } from '../subscriptions/subscriptionTypes'
 
 export class ScanQuotaError extends Error {
@@ -92,6 +93,18 @@ export async function analyzeScanOnServer (
   requestId: string,
   depthDataMm: number[] | null = null,
 ): Promise<ServerScanResponse> {
+  // Durable-account gate: funded scans require a permanent identity
+  // so the allowance can never be reset by reinstalling or clearing
+  // storage. Checked BEFORE any request — no scan is reserved or
+  // consumed until authentication succeeds.
+  const durable = await isDurableUser()
+  if (!durable) {
+    throw new ScanQuotaError(
+      'account_required',
+      'A free account is required before your first scan',
+    )
+  }
+
   const res = await authedFetch('analyze-scan', {
     method: 'POST',
     body: JSON.stringify({

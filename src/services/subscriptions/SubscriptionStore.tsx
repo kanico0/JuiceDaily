@@ -32,6 +32,7 @@ import {
   restorePurchases as rcRestore,
 } from './revenueCatClient'
 import { ensureUser } from '../supabase/identity'
+import { addIdentityChangeListener } from '../supabase/accountLink'
 import { subscriptionAnalytics } from './subscriptionAnalytics'
 import {
   createInitialSubscriptionState,
@@ -133,9 +134,20 @@ export function SubscriptionProvider ({ children }: { children: React.ReactNode 
     }
 
     boot()
+
+    // When the canonical user changes (account linked or returning
+    // user signed in), accountLink already re-logged RevenueCat with
+    // the new UUID — re-derive entitlements from fresh CustomerInfo.
+    const removeIdentityListener = addIdentityChangeListener(async () => {
+      if (!MONETIZATION_ENABLED) return
+      const info = await getCustomerInfo()
+      if (info && !cancelled) applyCustomerInfo(deriveState(info))
+    })
+
     return () => {
       cancelled = true
       if (removeListener) removeListener()
+      removeIdentityListener()
     }
   }, [applyCustomerInfo, loadOffering])
 

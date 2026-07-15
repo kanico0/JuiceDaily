@@ -43,6 +43,7 @@ import { selectQuotaLabel, selectQuotaExhausted } from '../services/subscription
 import NutritionSummary from '../components/NutritionSummary'
 import BigSqueezeModal from '../components/BigSqueezeModal'
 import SnapGateModal from '../components/SnapGateModal'
+import AccountGateModal from '../components/AccountGateModal'
 import TrafficLightBadge from '../components/TrafficLightBadge'
 import CameraScreen from './CameraScreen'
 import { usePro } from '../services/ProStore'
@@ -409,6 +410,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
   const { addEntry: addLogEntry } = useJuiceLog()
   const { checkSnapEligibility, useSnap, snapInfo, isPro } = usePro()
   const [showSnapGate, setShowSnapGate] = useState(false)
+  const [showAccountGate, setShowAccountGate] = useState(false)
   const [showPaywall, setShowPaywall] = useState(false)
   const [isManualMode, setIsManualMode] = useState(false)
   const [manualSearch, setManualSearch] = useState('')
@@ -835,6 +837,13 @@ export default function JuiceSnapScreen({ navigation, route }) {
             setIsCameraOpen(false)
             setIsManualMode(true)
           }}
+          onAccountRequired={() => setShowAccountGate(true)}
+        />
+
+        <AccountGateModal
+          visible={showAccountGate}
+          onClose={() => setShowAccountGate(false)}
+          onAuthenticated={() => setShowAccountGate(false)}
         />
       </Modal>
 

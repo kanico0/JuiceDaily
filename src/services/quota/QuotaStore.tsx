@@ -21,6 +21,7 @@ import {
   SUPABASE_CONFIGURED,
 } from '../subscriptions/subscriptionConfig'
 import { fetchScanQuota } from './quotaService'
+import { addIdentityChangeListener } from '../supabase/accountLink'
 import type { ScanQuotaSnapshot } from '../subscriptions/subscriptionTypes'
 
 export type QuotaWarningLevel = 'none' | 'low' | 'critical' | 'exhausted'
@@ -68,6 +69,13 @@ export function QuotaProvider ({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     refresh()
+    // Re-fetch when the canonical user changes (account linked or a
+    // returning user signed back into their original identity).
+    const remove = addIdentityChangeListener(() => {
+      setQuota(null)
+      refresh()
+    })
+    return remove
   }, [refresh])
 
   const value = useMemo<QuotaContextValue>(() => ({

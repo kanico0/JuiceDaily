@@ -348,7 +348,7 @@ export default function MonthlyWrapScreen({ navigation }) {
 
               {/* Branding footer */}
               <View style={styles.brandFooter}>
-                <Text style={styles.brandText}>🧃 Juicing Daily</Text>
+                <Text style={styles.brandText}>🧃 RawLifeFlow: Juicing Daily</Text>
                 <Text style={styles.brandSub}>Start your 7-Day Rainbow</Text>
               </View>
             </LinearGradient>

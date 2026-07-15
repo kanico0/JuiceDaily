@@ -817,7 +817,7 @@ export default function SettingsScreen({ navigation }) {
               {nudgePermDenied && (
                 <View style={nudgeStyles.permDenied}>
                   <Text style={nudgeStyles.permDeniedText}>
-                    Notifications are blocked. Please enable them in your device's Settings → Apps → JuicingApp → Notifications.
+                    Notifications are blocked. Please enable them in your device's Settings → Apps → RawLifeFlow: Juicing Daily → Notifications.
                   </Text>
                 </View>
               )}

@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────
-// DashboardScreen.js — Juicing Daily high-engagement dashboard
+// DashboardScreen.js — RawLifeFlow: Juicing Daily high-engagement dashboard
 // Hero Card + Vitality Rings + Social Proof + Smart Action Dock
 // Glassmorphism dark-mode palette
 // ─────────────────────────────────────────────────────────────
@@ -302,7 +302,7 @@ export default function DashboardScreen({ navigation }) {
             <View style={styles.heroHeader}>
               <View style={styles.heroLeft}>
                 <Droplets size={20} color="#81C784" strokeWidth={2.5} />
-                <Text style={styles.heroAppName}>Juicing Daily</Text>
+                <Text style={styles.heroAppName}>RawLifeFlow: Juicing Daily</Text>
                 <TouchableOpacity
                   onPress={() => navigation.navigate('Settings')}
                   style={styles.settingsBtn}

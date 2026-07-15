@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────
-// PaywallScreen.js — Juicing Daily Pro upsell.
+// PaywallScreen.js — RawLifeFlow Pro upsell.
 //
 // Rules: localized prices only (no hardcoding), auto-renewal
 // disclosure, Restore Purchases, Terms + Privacy links, close
@@ -220,7 +220,7 @@ export default function PaywallScreen({ navigation, route }) {
             onPress={handlePurchase}
             disabled={purchasing}
             accessibilityRole="button"
-            accessibilityLabel="Subscribe to Juicing Daily Pro"
+            accessibilityLabel="Subscribe to RawLifeFlow Pro"
           >
             {purchasing ? (
               <ActivityIndicator color="#0D1117" />

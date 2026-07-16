@@ -13,6 +13,7 @@ import {
   Platform,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import { LinearGradient } from 'expo-linear-gradient'
 import * as Haptics from 'expo-haptics'
 import {
@@ -64,6 +65,8 @@ import { useFormatWeight } from '../utils/weightFormat'
 import { useOrganicPref, getDefaultOrganic } from '../utils/organicPreference'
 import { useNutritionScore } from '../services/NutritionScoreStore'
 import { useJuiceLog } from '../services/JuiceLogStore'
+
+const JUICE_METHOD_STORAGE_KEY = '@juicing_juice_method_v1'
 
 const PRODUCE_OPTIONS = Object.entries(PRODUCE_DATA).map(([id, entry]) => ({
   id,
@@ -417,6 +420,19 @@ export default function JuiceSnapScreen({ navigation, route }) {
   const [showUpsellNudge, setShowUpsellNudge] = useState(false)
   const [juiceMethod, setJuiceMethod] = useState('cold_pressed')
 
+  // Hydrate persisted juicer type (cold_pressed | centrifugal)
+  useEffect(() => {
+    AsyncStorage.getItem(JUICE_METHOD_STORAGE_KEY).then((val) => {
+      if (val === 'cold_pressed' || val === 'centrifugal') {
+        setJuiceMethod(val)
+        setBatch((prevBatch) => {
+          if ((prevBatch.scannedIngredients || []).length === 0) return prevBatch
+          return buildBatch(prevBatch.scannedIngredients, val)
+        })
+      }
+    }).catch(() => {})
+  }, [])
+
   const hasItems = (batch.scannedIngredients || []).length > 0
   const snapEligibility = checkSnapEligibility()
   const isSnapDepleted = !snapEligibility.eligible && !isPro
@@ -533,6 +549,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
     setJuiceMethod((prev) => {
       const next = prev === 'cold_pressed' ? 'centrifugal' : 'cold_pressed'
+      AsyncStorage.setItem(JUICE_METHOD_STORAGE_KEY, next).catch(() => {})
       setBatch((prevBatch) => {
         if ((prevBatch.scannedIngredients || []).length === 0) return prevBatch
         return buildBatch(prevBatch.scannedIngredients, next)

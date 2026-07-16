@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "RawLifeFlow: Juicing Daily",
-    "slug": "rawlifeflow-juicing-daily",
+    "slug": "JuicingApp",
     "version": "1.0.2",
     "scheme": "juicingapp",
     "orientation": "portrait",

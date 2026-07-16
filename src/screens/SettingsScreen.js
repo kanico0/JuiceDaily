@@ -37,6 +37,7 @@ import {
   FlaskConical,
   Sparkles,
   Crown,
+  ShoppingCart,
 } from 'lucide-react-native'
 import MeshGradientBg from '../components/MeshGradientBg'
 import {
@@ -1084,6 +1085,21 @@ export default function SettingsScreen({ navigation }) {
             <View style={styles.helpInfo}>
               <Text style={styles.helpLabel}>How to Juice</Text>
               <Text style={styles.helpDesc}>A beginner's guide to cold-pressed juicing</Text>
+            </View>
+            <Text style={styles.helpArrow}>→</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.helpRow}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+              navigation.navigate('JuicerGuide')
+            }}
+            activeOpacity={0.7}
+          >
+            <ShoppingCart size={16} color="#FFB74D" />
+            <View style={styles.helpInfo}>
+              <Text style={styles.helpLabel}>Juicer Buyer's Guide</Text>
+              <Text style={styles.helpDesc}>Top-rated cold-press & centrifugal models</Text>
             </View>
             <Text style={styles.helpArrow}>→</Text>
           </TouchableOpacity>

@@ -53,10 +53,10 @@ export function formatWeightLbs(grams, mode = 'both') {
 
 // ── Context ──────────────────────────────────────────────────
 
-const WeightUnitContext = createContext({ mode: 'both', setMode: () => {} })
+const WeightUnitContext = createContext({ mode: 'oz', setMode: () => {} })
 
 export function WeightUnitProvider({ children }) {
-  const [mode, setModeState] = useState('both')
+  const [mode, setModeState] = useState('oz')
 
   useEffect(() => {
     AsyncStorage.getItem(STORAGE_KEY).then((val) => {

@@ -418,7 +418,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
   const [isManualMode, setIsManualMode] = useState(false)
   const [manualSearch, setManualSearch] = useState('')
   const [showUpsellNudge, setShowUpsellNudge] = useState(false)
-  const [juiceMethod, setJuiceMethod] = useState('cold_pressed')
+  const [juiceMethod, setJuiceMethod] = useState('centrifugal')
 
   // Hydrate persisted juicer type (cold_pressed | centrifugal)
   // Re-hydrates on focus so changes made in Settings are picked up.

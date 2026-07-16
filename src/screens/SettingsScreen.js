@@ -571,7 +571,7 @@ export default function SettingsScreen({ navigation }) {
   const [devClockOffset, setDevClockOffset] = useState(getDevDayOffset())
   const [nudgeSettings, setNudgeSettingsLocal] = useState(null)
   const [nudgePermDenied, setNudgePermDenied] = useState(false)
-  const [juicerType, setJuicerType] = useState('cold_pressed')
+  const [juicerType, setJuicerType] = useState('centrifugal')
 
   const clearActivationStorage = useCallback(async () => {
     try {

@@ -4,7 +4,9 @@
 // Each recipe lists which daily pillars it fills (base/power/kick)
 // ─────────────────────────────────────────────────────────────
 
-export const RECIPES = [
+import { NEW_JUICE_IDEAS } from './juiceIdeas90'
+
+const BASE_RECIPES = [
   {
     id: 'emerald-uplift',
     title: 'The Emerald Uplift',
@@ -202,7 +204,7 @@ export const RECIPES = [
     cleanupScore: 3,
     gradientColors: ['#241334', '#120A1C', '#0D1117'],
     ingredients: [
-      { name: 'Blueberries', amount: '1½ cups', produceId: 'blueberries', color: '#9575CD', ratio: 0.35 },
+      { name: 'Blueberries', amount: '1½ cups', produceId: 'blueberry', color: '#9575CD', ratio: 0.35 },
       { name: 'Apple', amount: '1 medium', produceId: 'apple', color: '#F48FB1', ratio: 0.25 },
       { name: 'Spinach', amount: '1 cup packed', produceId: 'spinach', color: '#388E3C', ratio: 0.20 },
       { name: 'Lemon', amount: '½ peeled', produceId: 'lemon', color: '#FFF176', ratio: 0.20 },
@@ -249,8 +251,8 @@ export const RECIPES = [
     gradientColors: ['#3A2D0D', '#1A1207', '#0D1117'],
     ingredients: [
       { name: 'Pineapple', amount: '2 cups chunks', produceId: 'pineapple', color: '#FFD54F', ratio: 0.35 },
-      { name: 'Strawberries', amount: '1 cup', produceId: 'strawberries', color: '#F48FB1', ratio: 0.25 },
-      { name: 'Red Bell Pepper', amount: '½ seeded', produceId: 'pepper_red', color: '#EF5350', ratio: 0.20 },
+      { name: 'Strawberries', amount: '1 cup', produceId: 'strawberry', color: '#F48FB1', ratio: 0.25 },
+      { name: 'Red Bell Pepper', amount: '½ seeded', produceId: 'bell_pepper_red', color: '#EF5350', ratio: 0.20 },
       { name: 'Lemon', amount: '½ peeled', produceId: 'lemon', color: '#FFF176', ratio: 0.10 },
       { name: 'Ginger', amount: '1 inch knob', produceId: 'ginger', color: '#FFE082', ratio: 0.10 },
     ],
@@ -404,6 +406,8 @@ export const RECIPES = [
     ],
   },
 ]
+
+export const RECIPES = [...BASE_RECIPES, ...NEW_JUICE_IDEAS]
 
 export const TASTE_REACTIONS = [
   { emoji: '😋', label: 'Delicious', response: 'Saved to your \'Glow-Up\' favorites!' },

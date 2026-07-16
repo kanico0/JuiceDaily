@@ -6,7 +6,7 @@
 //   - Streak Protector
 //   - Weekly Glow Summary
 //
-// All settings are opt-in (nudges_enabled defaults to false).
+// All settings default ON (nudges_enabled defaults to true).
 // Uses AsyncStorage directly for simplicity.
 // ─────────────────────────────────────────────────────────────
 
@@ -15,7 +15,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 const STORAGE_KEY = '@nudge_settings'
 
 const DEFAULTS = {
-  nudges_enabled: false,
+  nudges_enabled: true,
   nudges_daily_enabled: true,
   nudges_daily_time: '08:30',
   nudges_streakRisk_enabled: true,

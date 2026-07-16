@@ -421,17 +421,24 @@ export default function JuiceSnapScreen({ navigation, route }) {
   const [juiceMethod, setJuiceMethod] = useState('cold_pressed')
 
   // Hydrate persisted juicer type (cold_pressed | centrifugal)
+  // Re-hydrates on focus so changes made in Settings are picked up.
   useEffect(() => {
-    AsyncStorage.getItem(JUICE_METHOD_STORAGE_KEY).then((val) => {
-      if (val === 'cold_pressed' || val === 'centrifugal') {
-        setJuiceMethod(val)
-        setBatch((prevBatch) => {
-          if ((prevBatch.scannedIngredients || []).length === 0) return prevBatch
-          return buildBatch(prevBatch.scannedIngredients, val)
-        })
-      }
-    }).catch(() => {})
-  }, [])
+    const hydrateJuiceMethod = () => {
+      AsyncStorage.getItem(JUICE_METHOD_STORAGE_KEY).then((val) => {
+        if (val === 'cold_pressed' || val === 'centrifugal') {
+          setJuiceMethod(val)
+          setBatch((prevBatch) => {
+            if ((prevBatch.scannedIngredients || []).length === 0) return prevBatch
+            if (prevBatch.juiceMethod === val) return prevBatch
+            return buildBatch(prevBatch.scannedIngredients, val)
+          })
+        }
+      }).catch(() => {})
+    }
+    hydrateJuiceMethod()
+    const unsubscribe = navigation?.addListener?.('focus', hydrateJuiceMethod)
+    return () => { if (typeof unsubscribe === 'function') unsubscribe() }
+  }, [navigation])
 
   const hasItems = (batch.scannedIngredients || []).length > 0
   const snapEligibility = checkSnapEligibility()

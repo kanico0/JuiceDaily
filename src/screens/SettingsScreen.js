@@ -19,6 +19,7 @@ import {
   Linking,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import * as Haptics from 'expo-haptics'
 import {
   ArrowLeft,
@@ -38,6 +39,7 @@ import {
   Sparkles,
   Crown,
   ShoppingCart,
+  Cog,
 } from 'lucide-react-native'
 import MeshGradientBg from '../components/MeshGradientBg'
 import {
@@ -542,6 +544,13 @@ const PHASE_COLORS = {
   Dev: '#FFD54F',
 }
 
+const JUICE_METHOD_STORAGE_KEY = '@juicing_juice_method_v1'
+
+const JUICER_TYPE_OPTIONS = [
+  { key: 'cold_pressed', label: 'Cold-Press' },
+  { key: 'centrifugal', label: 'Centrifugal' },
+]
+
 export default function SettingsScreen({ navigation }) {
   const [settings, setSettings] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -562,6 +571,7 @@ export default function SettingsScreen({ navigation }) {
   const [devClockOffset, setDevClockOffset] = useState(getDevDayOffset())
   const [nudgeSettings, setNudgeSettingsLocal] = useState(null)
   const [nudgePermDenied, setNudgePermDenied] = useState(false)
+  const [juicerType, setJuicerType] = useState('cold_pressed')
 
   const clearActivationStorage = useCallback(async () => {
     try {
@@ -579,6 +589,15 @@ export default function SettingsScreen({ navigation }) {
       setIsLoading(false)
     })
     getNudgeSettings().then(setNudgeSettingsLocal)
+    AsyncStorage.getItem(JUICE_METHOD_STORAGE_KEY).then((val) => {
+      if (val === 'cold_pressed' || val === 'centrifugal') setJuicerType(val)
+    }).catch(() => {})
+  }, [])
+
+  const handleSetJuicerType = useCallback((key) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    setJuicerType(key)
+    AsyncStorage.setItem(JUICE_METHOD_STORAGE_KEY, key).catch(() => {})
   }, [])
 
   const updateNudgeSetting = useCallback(async (partial) => {
@@ -727,6 +746,39 @@ export default function SettingsScreen({ navigation }) {
               )
             })}
           </View>
+        </View>
+
+        {/* ═══ MY JUICER TYPE ═══════════════════════════════ */}
+        <View style={styles.intensityCard}>
+          <Text style={styles.intensityTitle}>My Juicer Type</Text>
+          <View style={styles.intensityRow}>
+            {JUICER_TYPE_OPTIONS.map((jt) => {
+              const isActive = juicerType === jt.key
+              const color = jt.key === 'cold_pressed' ? '#81C784' : '#FFB74D'
+              return (
+                <TouchableOpacity
+                  key={jt.key}
+                  style={[
+                    styles.intensityStop,
+                    isActive && { borderColor: color, backgroundColor: `${color}15` },
+                  ]}
+                  onPress={() => handleSetJuicerType(jt.key)}
+                  activeOpacity={0.7}
+                >
+                  <Cog size={14} color={isActive ? color : '#484F58'} />
+                  <Text style={[
+                    styles.intensityLabel,
+                    isActive && { color },
+                  ]}>
+                    {jt.label}
+                  </Text>
+                </TouchableOpacity>
+              )
+            })}
+          </View>
+          <Text style={styles.intensityHint}>
+            Affects nutrient retention math in Juice Snap — centrifugal juicers lose more heat-sensitive vitamins.
+          </Text>
         </View>
 
         {/* ═══ NOTIFICATION INTENSITY ═══════════════════════ */}
@@ -1534,6 +1586,7 @@ const styles = StyleSheet.create({
   },
   intensityLabel: { fontSize: 14, fontWeight: '700', color: '#8B949E' },
   intensityDesc: { fontSize: 11, color: '#484F58', marginTop: 2 },
+  intensityHint: { fontSize: 11, color: '#8B949E', lineHeight: 16, marginTop: 10 },
 
   // Section Header
   sectionHeader: {

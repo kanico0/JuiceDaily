@@ -58,6 +58,7 @@ import { getFocusForToday, swapFocusToday } from '../services/focusNutrient'
 import { shouldShowWeeklySummary, dismissWeeklySummary, buildWeeklySummaryData } from '../services/weeklySummary'
 import { checkAchievements } from '../services/achievements'
 import AchievementOverlay from '../components/AchievementOverlay'
+import { RECIPES, getCleanupLabel } from '../constants/recipeData'
 
 const GOALS = [
   { id: 'energy', label: 'More Energy', emoji: '⚡' },
@@ -67,52 +68,7 @@ const GOALS = [
   { id: 'explore', label: 'Just Exploring', emoji: '🧭' },
 ]
 
-// ── Curated juice templates (offline-safe) ───────────────────
-
-const BROWSE_TEMPLATES = [
-  {
-    id: 'green_glow',
-    name: 'Green Glow',
-    ingredients: ['Kale', 'Spinach', 'Cucumber', 'Green Apple', 'Lemon'],
-    highlights: ['Vitamin C', 'Iron', 'Folate'],
-    color: '#81C784',
-  },
-  {
-    id: 'immunity_boost',
-    name: 'Immunity Boost',
-    ingredients: ['Orange', 'Carrot', 'Ginger', 'Turmeric'],
-    highlights: ['Vitamin C', 'Vitamin A', 'Potassium'],
-    color: '#FFB74D',
-  },
-  {
-    id: 'beet_revival',
-    name: 'Beet Revival',
-    ingredients: ['Beet', 'Carrot', 'Apple', 'Ginger'],
-    highlights: ['Folate', 'Potassium', 'Iron'],
-    color: '#EF5350',
-  },
-  {
-    id: 'tropical_detox',
-    name: 'Tropical Detox',
-    ingredients: ['Pineapple', 'Cucumber', 'Celery', 'Lime'],
-    highlights: ['Vitamin C', 'Magnesium'],
-    color: '#4DD0E1',
-  },
-  {
-    id: 'carrot_sunrise',
-    name: 'Carrot Sunrise',
-    ingredients: ['Carrot', 'Orange', 'Lemon', 'Ginger'],
-    highlights: ['Vitamin A', 'Vitamin C', 'Potassium'],
-    color: '#FF9800',
-  },
-  {
-    id: 'power_greens',
-    name: 'Power Greens',
-    ingredients: ['Kale', 'Celery', 'Cucumber', 'Lemon', 'Ginger'],
-    highlights: ['Iron', 'Magnesium', 'Folate'],
-    color: '#66BB6A',
-  },
-]
+// ── Browse Ideas source: curated RECIPES (offline-safe) ──────
 
 // ── Example scan mock data ───────────────────────────────────
 
@@ -282,9 +238,13 @@ const secStyles = StyleSheet.create({
 
 // ── Browse Ideas Modal ───────────────────────────────────────
 
-function BrowseIdeasModal({ visible, onDismiss, onScanReady, isReduced }) {
+function BrowseIdeasModal({ visible, onDismiss, onScanReady, isReduced, navigation }) {
   const fadeAnim = useRef(new Animated.Value(0)).current
-  const [selectedTemplate, setSelectedTemplate] = useState(null)
+  const coreRecipes = useMemo(() => {
+    return RECIPES
+      .filter((r) => r.collection === 'core' && r.tier === 'free')
+      .slice()
+  }, [])
 
   useEffect(() => {
     if (visible) {
@@ -294,7 +254,6 @@ function BrowseIdeasModal({ visible, onDismiss, onScanReady, isReduced }) {
       }
     } else {
       fadeAnim.setValue(0)
-      setSelectedTemplate(null)
     }
   }, [visible])
 
@@ -322,61 +281,30 @@ function BrowseIdeasModal({ visible, onDismiss, onScanReady, isReduced }) {
             contentContainerStyle={browseStyles.scrollContent}
             showsVerticalScrollIndicator={false}
           >
-            {selectedTemplate ? (
-              <View style={browseStyles.detailCard}>
-                <View style={[browseStyles.detailBadge, { backgroundColor: `${selectedTemplate.color}15` }]}>
-                  <Leaf size={16} color={selectedTemplate.color} />
-                  <Text style={[browseStyles.detailName, { color: selectedTemplate.color }]}>
-                    {selectedTemplate.name}
+            {coreRecipes.map((r) => (
+              <TouchableOpacity
+                key={r.id}
+                style={browseStyles.templateCard}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+                  trackEvent('browse_recipe_opened', { recipe_id: r.id })
+                  onDismiss()
+                  navigation.navigate('RecipeDetail', { recipeId: r.id })
+                }}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel={`${r.title}: ${r.ingredients.map((i) => i.name).join(', ')}`}
+              >
+                <View style={[browseStyles.templateDot, { backgroundColor: r.vibeColor }]} />
+                <View style={browseStyles.templateContent}>
+                  <Text style={browseStyles.templateName}>{r.title}</Text>
+                  <Text style={browseStyles.templateIng} numberOfLines={1}>
+                    {r.vibeTag} · {r.ingredients.length} ingredients · {getCleanupLabel(r.cleanupScore)}
                   </Text>
                 </View>
-                <Text style={browseStyles.detailLabel}>Ingredients</Text>
-                {selectedTemplate.ingredients.map((ing) => (
-                  <Text key={ing} style={browseStyles.detailIng}>• {ing}</Text>
-                ))}
-                <Text style={[browseStyles.detailLabel, { marginTop: 14 }]}>Top Nutrients</Text>
-                <View style={browseStyles.highlightRow}>
-                  {selectedTemplate.highlights.map((h) => (
-                    <View key={h} style={browseStyles.highlightChip}>
-                      <Text style={browseStyles.highlightText}>{h}</Text>
-                    </View>
-                  ))}
-                </View>
-                <TouchableOpacity
-                  style={browseStyles.backBtn}
-                  onPress={() => setSelectedTemplate(null)}
-                  activeOpacity={0.7}
-                  accessibilityRole="button"
-                  accessibilityLabel="Back to list"
-                >
-                  <Text style={browseStyles.backText}>← Back to ideas</Text>
-                </TouchableOpacity>
-              </View>
-            ) : (
-              BROWSE_TEMPLATES.map((t) => (
-                <TouchableOpacity
-                  key={t.id}
-                  style={browseStyles.templateCard}
-                  onPress={() => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-                    trackEvent('browse_template_opened', { template_id: t.id })
-                    setSelectedTemplate(t)
-                  }}
-                  activeOpacity={0.7}
-                  accessibilityRole="button"
-                  accessibilityLabel={`${t.name}: ${t.ingredients.join(', ')}`}
-                >
-                  <View style={[browseStyles.templateDot, { backgroundColor: t.color }]} />
-                  <View style={browseStyles.templateContent}>
-                    <Text style={browseStyles.templateName}>{t.name}</Text>
-                    <Text style={browseStyles.templateIng} numberOfLines={1}>
-                      {t.ingredients.join(', ')}
-                    </Text>
-                  </View>
-                  <ChevronRight size={14} color={DARK.textMuted} />
-                </TouchableOpacity>
-              ))
-            )}
+                <ChevronRight size={14} color={DARK.textMuted} />
+              </TouchableOpacity>
+            ))}
           </ScrollView>
 
           <View style={browseStyles.footer}>
@@ -2524,6 +2452,7 @@ export default function ScanScreen({ navigation }) {
         onDismiss={() => setShowBrowseModal(false)}
         onScanReady={handleBrowseScanReady}
         isReduced={isReduced}
+        navigation={navigation}
       />
 
       {/* Example Scan Modal */}

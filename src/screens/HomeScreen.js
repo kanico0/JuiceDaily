@@ -392,6 +392,19 @@ function QuotaMeter({ navigation }) {
 
 // ── Main Screen ──────────────────────────────────────────────
 
+function seedPreloadIngredients(preload, organicMode) {
+  return preload.map((item) => {
+    if (typeof item === 'string') {
+      return { produceId: item, weightG: 150, isOrganic: getDefaultOrganic(organicMode) }
+    }
+    return {
+      produceId: item.produceId,
+      weightG: item.weightG || 150,
+      isOrganic: typeof item.isOrganic === 'boolean' ? item.isOrganic : getDefaultOrganic(organicMode),
+    }
+  })
+}
+
 export default function JuiceSnapScreen({ navigation, route }) {
   const { mode: organicMode } = useOrganicPref()
   const shouldAutoOpenCamera = route?.params?.openCamera === true
@@ -399,8 +412,8 @@ export default function JuiceSnapScreen({ navigation, route }) {
   const source = route?.params?.source || 'camera'
   const [batch, setBatch] = useState(() => {
     if (preloadIngredients && preloadIngredients.length > 0) {
-      const seeded = preloadIngredients.map((id) => ({ produceId: id, weightG: 150, isOrganic: getDefaultOrganic(organicMode) }))
-      return buildBatch(seeded, 'cold_pressed')
+      const seeded = seedPreloadIngredients(preloadIngredients, organicMode)
+      return buildBatch(seeded, 'centrifugal')
     }
     return { ...EMPTY_BATCH, scannedIngredients: [] }
   })
@@ -450,6 +463,16 @@ export default function JuiceSnapScreen({ navigation, route }) {
       setIsManualMode(true)
     }
   }, [route?.params?.manualEntry])
+
+  // Reseed batch when navigated with new preloadIngredients (e.g. recipe hand-off)
+  useEffect(() => {
+    const preload = route?.params?.preloadIngredients
+    if (preload && preload.length > 0) {
+      const seeded = seedPreloadIngredients(preload, organicMode)
+      setBatch(buildBatch(seeded, juiceMethod))
+      setIsLogged(false)
+    }
+  }, [route?.params?.preloadIngredients]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-open camera when navigated with openCamera: true
   useEffect(() => {

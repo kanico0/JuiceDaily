@@ -44,7 +44,7 @@ import {
   Search,
 } from 'lucide-react-native'
 import { getRecipeById, getCleanupLabel, TASTE_REACTIONS } from '../constants/recipeData'
-import { useChallenge, classifyJuiceByColors, classifyProduceAllPillars, DAILY_PILLARS } from '../services/ChallengeStore'
+import { classifyProduceAllPillars, DAILY_PILLARS } from '../services/ChallengeStore'
 import { PRODUCE_DATA } from '../services/JuiceEngine'
 import MeshGradientBg from '../components/MeshGradientBg'
 import { useFormatWeight } from '../utils/weightFormat'
@@ -174,12 +174,27 @@ function CleanupScore({ score }) {
 
 // ── Taste Feedback Modal ─────────────────────────────────────
 
-function TasteFeedbackModal({ visible, onSelect }) {
+function TasteFeedbackModal({ visible, onSelect, onDismiss }) {
   return (
-    <Modal visible={visible} transparent animationType="fade" statusBarTranslucent>
+    <Modal visible={visible} transparent animationType="fade" statusBarTranslucent onRequestClose={onDismiss}>
       <View style={styles.tasteOverlay}>
         <View style={styles.tasteCard}>
-          <Text style={styles.tasteTitle}>How was the taste?</Text>
+          <View style={styles.tasteHeader}>
+            <Text style={styles.tasteTitle}>How was the taste?</Text>
+            <TouchableOpacity
+              style={styles.tasteCloseBtn}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+                onDismiss()
+              }}
+              activeOpacity={0.7}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              accessibilityRole="button"
+              accessibilityLabel="Close without answering"
+            >
+              <X size={18} color="#8B949E" />
+            </TouchableOpacity>
+          </View>
           <View style={styles.tasteOptions}>
             {TASTE_REACTIONS.map((r) => (
               <TouchableOpacity
@@ -196,6 +211,19 @@ function TasteFeedbackModal({ visible, onSelect }) {
               </TouchableOpacity>
             ))}
           </View>
+          <TouchableOpacity
+            style={styles.tasteSkipBtn}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+              onDismiss()
+            }}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="I didn't juice, exit without logging"
+          >
+            <Text style={styles.tasteSkipEmoji}>🚫</Text>
+            <Text style={styles.tasteSkipText}>I didn't juice</Text>
+          </TouchableOpacity>
         </View>
       </View>
     </Modal>
@@ -207,7 +235,6 @@ function TasteFeedbackModal({ visible, onSelect }) {
 export default function RecipeDetailScreen({ route, navigation }) {
   const { recipeId } = route.params || {}
   const recipe = useMemo(() => getRecipeById(recipeId), [recipeId])
-  const { logJuice } = useChallenge()
   const { fmtG } = useFormatWeight()
   const { mode: organicMode } = useOrganicPref()
 
@@ -227,8 +254,8 @@ export default function RecipeDetailScreen({ route, navigation }) {
   const [checkedItems, setCheckedItems] = useState({})
   const [showTaste, setShowTaste] = useState(false)
   const [tasteResponse, setTasteResponse] = useState(null)
-  const [isLogged, setIsLogged] = useState(false)
   const [isFavorite, setIsFavorite] = useState(false)
+  const pendingTasteRef = useRef(false)
   const [showAddModal, setShowAddModal] = useState(false)
   const [addSearch, setAddSearch] = useState('')
 
@@ -309,22 +336,35 @@ export default function RecipeDetailScreen({ route, navigation }) {
 
   const allChecked = ingredients.length > 0 && ingredients.every((_, i) => checkedItems[i])
 
+  // Show taste feedback when returning to this screen after Start Juicing
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      if (pendingTasteRef.current) {
+        pendingTasteRef.current = false
+        setShowTaste(true)
+      }
+    })
+    return unsubscribe
+  }, [navigation])
+
   const handleStartJuicing = useCallback(() => {
     if (!recipe || ingredients.length === 0) return
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
 
-    // Build scanned ingredients from editable list
-    const scannedIngredients = ingredients.map((ing) => ({
+    // Hand off to the log/ingredients screen with the (possibly edited)
+    // recipe preloaded, so the user can tweak and "Log to Today" with
+    // full nutrition computed by the juice engine.
+    const preload = ingredients.map((ing) => ({
       produceId: ing.produceId,
       weightG: ing.weightG || 150,
+      isOrganic: !!ing.isOrganic,
     }))
-    const colorsFilled = classifyJuiceByColors(scannedIngredients)
-    logJuice(scannedIngredients, {
-      totals: { calories: 80, vitaminC: 45, vitaminA: 300, potassium: 400 },
+    pendingTasteRef.current = true
+    navigation.navigate('ScanFlow', {
+      screen: 'ScanHome',
+      params: { preloadIngredients: preload, source: 'recipe' },
     })
-    setIsLogged(true)
-    setShowTaste(true)
-  }, [recipe, ingredients, logJuice])
+  }, [recipe, ingredients, navigation])
 
   const handleTasteSelect = useCallback((reaction) => {
     setTasteResponse(reaction)
@@ -332,10 +372,11 @@ export default function RecipeDetailScreen({ route, navigation }) {
     if (reaction.emoji === '😋') {
       setIsFavorite(true)
     }
-    setTimeout(() => {
-      navigation.navigate('Dashboard')
-    }, 2000)
-  }, [navigation])
+  }, [])
+
+  const handleTasteDismiss = useCallback(() => {
+    setShowTaste(false)
+  }, [])
 
   if (!recipe) {
     return (
@@ -576,7 +617,7 @@ export default function RecipeDetailScreen({ route, navigation }) {
       </SafeAreaView>
 
       {/* ── Sticky CTA ───────────────────────────────────────── */}
-      {!isLogged && (
+      {(
         <View style={styles.ctaOuter}>
           <BlurView intensity={60} tint="dark" style={styles.ctaBlur}>
             <TouchableOpacity
@@ -598,7 +639,7 @@ export default function RecipeDetailScreen({ route, navigation }) {
         </View>
       )}
 
-      <TasteFeedbackModal visible={showTaste} onSelect={handleTasteSelect} />
+      <TasteFeedbackModal visible={showTaste} onSelect={handleTasteSelect} onDismiss={handleTasteDismiss} />
 
       {/* ── Add Ingredient Modal ─────────────────────────── */}
       <Modal visible={showAddModal} transparent animationType="slide" statusBarTranslucent>
@@ -1095,15 +1136,51 @@ const styles = StyleSheet.create({
     borderWidth: 0.5,
     borderColor: 'rgba(255,255,255,0.08)',
   },
+  tasteHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    alignSelf: 'stretch',
+    marginBottom: 20,
+    gap: 12,
+  },
+  tasteCloseBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   tasteTitle: {
     fontSize: 20,
     fontWeight: '800',
     color: '#FFFFFF',
-    marginBottom: 20,
   },
   tasteOptions: {
     flexDirection: 'row',
     gap: 16,
+  },
+  tasteSkipBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    alignSelf: 'stretch',
+    marginTop: 18,
+    paddingVertical: 12,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderWidth: 0.5,
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+  tasteSkipEmoji: {
+    fontSize: 16,
+  },
+  tasteSkipText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#8B949E',
   },
   tasteBtn: {
     alignItems: 'center',

@@ -415,7 +415,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
   const [showSnapGate, setShowSnapGate] = useState(false)
   const [showAccountGate, setShowAccountGate] = useState(false)
   const [showPaywall, setShowPaywall] = useState(false)
-  const [isManualMode, setIsManualMode] = useState(false)
+  const [isManualMode, setIsManualMode] = useState(route?.params?.manualEntry === true)
   const [manualSearch, setManualSearch] = useState('')
   const [showUpsellNudge, setShowUpsellNudge] = useState(false)
   const [juiceMethod, setJuiceMethod] = useState('centrifugal')
@@ -443,6 +443,13 @@ export default function JuiceSnapScreen({ navigation, route }) {
   const hasItems = (batch.scannedIngredients || []).length > 0
   const snapEligibility = checkSnapEligibility()
   const isSnapDepleted = !snapEligibility.eligible && !isPro
+
+  // Open manual entry when navigated with manualEntry: true
+  useEffect(() => {
+    if (route?.params?.manualEntry === true) {
+      setIsManualMode(true)
+    }
+  }, [route?.params?.manualEntry])
 
   // Auto-open camera when navigated with openCamera: true
   useEffect(() => {

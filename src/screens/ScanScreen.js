@@ -1097,7 +1097,7 @@ function ScanHome({ onScan, onBrowse, onExample, onExplore, totalLogs, showSecon
 
 // ── Browse Home: Stable Dashboard ────────────────────────────
 
-function BrowseHome({ onScan, onBrowse, onExample, onExplore, onViewToday, onGlowLibrary, onSeasonalPacks, onBeginnerPath, isExpandedRecipes, dailySummary, totalLogs, savedGoalId, onDismissGoalBanner, isReduced }) {
+function BrowseHome({ onScan, onBrowse, onExample, onExplore, onViewToday, onGlowLibrary, onSeasonalPacks, onBeginnerPath, onLogIngredients, isExpandedRecipes, dailySummary, totalLogs, savedGoalId, onDismissGoalBanner, isReduced }) {
   const fadeAnim = useRef(new Animated.Value(0)).current
   const btnScale = useRef(new Animated.Value(1)).current
   const goalData = savedGoalId ? GOALS.find((g) => g.id === savedGoalId) : null
@@ -1372,6 +1372,24 @@ function BrowseHome({ onScan, onBrowse, onExample, onExplore, onViewToday, onGlo
 
         {checkedInToday && !checkInFeedback && (
           <Text style={glowStyles.feedback}>Checked in for today ✓</Text>
+        )}
+
+        {(checkedInToday || checkInFeedback === 'checked' || checkInFeedback === 'already') && (
+          <Pressable
+            style={({ pressed }) => [glowStyles.logIngredientsBtn, pressed && { opacity: 0.7 }]}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+              trackEvent('checkin_log_ingredients_tapped', { source: 'glow_streak_card' })
+              onLogIngredients()
+            }}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Log your ingredients for nutrition tracking"
+          >
+            <Leaf size={14} color="#81C784" />
+            <Text style={glowStyles.logIngredientsText}>Log your ingredients for nutrition</Text>
+            <ChevronRight size={14} color="#81C784" />
+          </Pressable>
         )}
       </View>
 
@@ -1947,6 +1965,23 @@ const glowStyles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 4,
   },
+  logIngredientsBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginTop: 10,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: 'rgba(129,199,132,0.08)',
+    borderWidth: 0.5,
+    borderColor: 'rgba(129,199,132,0.20)',
+  },
+  logIngredientsText: {
+    fontSize: FONT_SIZE.xs,
+    fontWeight: FONT_WEIGHT.semibold,
+    color: '#81C784',
+  },
 })
 
 const focusStyles = StyleSheet.create({
@@ -2417,6 +2452,7 @@ export default function ScanScreen({ navigation }) {
               onGlowLibrary={() => navigation.navigate('GlowLibrary')}
               onSeasonalPacks={() => navigation.navigate('SeasonalGlowPacks')}
               onBeginnerPath={() => navigation.navigate('BeginnerGlowPath')}
+              onLogIngredients={() => navigation.navigate('ScanFlow', { screen: 'ScanHome', params: { manualEntry: true, source: 'checkin' } })}
               isExpandedRecipes={isExpandedRecipes}
               onViewToday={() => navigation.navigate('PerformanceDashboard')}
               dailySummary={dailySummary}

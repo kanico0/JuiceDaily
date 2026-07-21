@@ -55,6 +55,7 @@ import JuicerGuideScreen from './src/screens/JuicerGuideScreen'
 import { NutritionScoreProvider } from './src/services/NutritionScoreStore'
 import { JuiceLogProvider, useJuiceLog } from './src/services/JuiceLogStore'
 import { refreshNudges } from './src/services/NotificationNudges'
+import { hydrateDevClock } from './src/utils/DevClock'
 
 // ── Load Anthropic API key (fallback chain) ──────────────────
 // 1) react-native-dotenv (@env) — reads from .env at build time
@@ -171,6 +172,10 @@ function RootNavigator() {
   const { activation, isHydrated: activationReady, recordIntroDismissed, setExperienceLevel } = useActivation()
   const { isHydrated: logReady, totalLogCount } = useJuiceLog()
   const appStateRef = useRef(AppState.currentState)
+
+  useEffect(() => {
+    hydrateDevClock().catch(() => {})
+  }, [])
 
   // Refresh nudge notifications on app foreground
   useEffect(() => {

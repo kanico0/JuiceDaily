@@ -1290,12 +1290,13 @@ export default function SettingsScreen({ navigation }) {
               {/* Advance Day Count */}
               <TouchableOpacity
                 style={devStyles.resetLaunchBtn}
-                onPress={() => {
+                onPress={async () => {
                   Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
                   devAdvanceDay()
                   if (streakCtx && streakCtx.devAdvanceDay) streakCtx.devAdvanceDay()
                   advanceDevDay(1)
                   setDevClockOffset(getDevDayOffset())
+                  await refreshNudges()
                 }}
                 activeOpacity={0.7}
               >

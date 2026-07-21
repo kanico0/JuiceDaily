@@ -6,8 +6,33 @@
 // Only affects dev builds — production should never call advance().
 // ─────────────────────────────────────────────────────────────
 
+import AsyncStorage from '@react-native-async-storage/async-storage'
+
+const STORAGE_KEY = '@juicing_dev_clock_offset_v1'
 let _dayOffset = 0
 const _listeners = new Set()
+
+function notifyListeners() {
+  _listeners.forEach((fn) => fn(_dayOffset))
+}
+
+function persistOffset() {
+  AsyncStorage.setItem(STORAGE_KEY, String(_dayOffset)).catch((error) => {
+    console.warn('[DevClock] failed to persist offset:', error)
+  })
+}
+
+export async function hydrateDevClock() {
+  try {
+    const storedOffset = await AsyncStorage.getItem(STORAGE_KEY)
+    const parsedOffset = Number.parseInt(storedOffset || '0', 10)
+    _dayOffset = Number.isFinite(parsedOffset) ? parsedOffset : 0
+  } catch (error) {
+    console.warn('[DevClock] failed to hydrate offset:', error)
+    _dayOffset = 0
+  }
+  notifyListeners()
+}
 
 export function getDevNow() {
   const d = new Date()
@@ -23,14 +48,16 @@ export function getDevDayOffset() {
 
 export function advanceDevDay(days = 1) {
   _dayOffset += days
+  persistOffset()
   console.log('[DevClock] offset now:', _dayOffset, 'days — perceived date:', getDevNow().toISOString())
-  _listeners.forEach((fn) => fn(_dayOffset))
+  notifyListeners()
 }
 
 export function resetDevClock() {
   _dayOffset = 0
+  persistOffset()
   console.log('[DevClock] reset to real time')
-  _listeners.forEach((fn) => fn(_dayOffset))
+  notifyListeners()
 }
 
 export function onDevClockChange(fn) {

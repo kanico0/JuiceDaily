@@ -15,6 +15,7 @@
 import * as Notifications from 'expo-notifications'
 import { Platform } from 'react-native'
 import { getGlowState } from './glowStreak'
+import { getDevNow } from '../utils/DevClock'
 import { getNudgeSettings } from './NudgeSettingsStore'
 
 // ── Notification IDs ─────────────────────────────────────────
@@ -139,7 +140,7 @@ function nextWeekdayOccurrence(dayOfWeek, hour, minute) {
 // ── Today key (YYYY-MM-DD) ──────────────────────────────────
 
 function getTodayKey() {
-  const d = new Date()
+  const d = getDevNow()
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 

@@ -65,6 +65,7 @@ import { useFormatWeight } from '../utils/weightFormat'
 import { useOrganicPref, getDefaultOrganic } from '../utils/organicPreference'
 import { useNutritionScore } from '../services/NutritionScoreStore'
 import { useJuiceLog } from '../services/JuiceLogStore'
+import { recordMeaningfulActivity } from '../services/DormantReminderService'
 
 const JUICE_METHOD_STORAGE_KEY = '@juicing_juice_method_v1'
 
@@ -632,6 +633,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
       ingredientIds: ingredientIds,
       nutrientSummary: totals,
     })
+    recordMeaningfulActivity().catch(() => {})
 
     setIsLogged(true)
 

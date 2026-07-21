@@ -46,6 +46,7 @@ import {
   loadNotificationSettings,
   saveNotificationSettings,
 } from '../services/NotificationService'
+import { setComebackRemindersEnabled } from '../services/DormantReminderService'
 import { useFlags, DEFAULT_FLAGS } from '../services/FeatureFlags'
 import { resetFirstLaunch } from '../components/FirstLaunchOrchestrator'
 import { usePro } from '../services/ProStore'
@@ -649,6 +650,11 @@ export default function SettingsScreen({ navigation }) {
     })
   }, [])
 
+  const handleComebackReminderToggle = useCallback((enabled) => {
+    updateSetting('comebackReminders', enabled)
+    setComebackRemindersEnabled(enabled).catch(() => {})
+  }, [updateSetting])
+
   const handleTooltipDismiss = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
     setShowTooltip(false)
@@ -909,6 +915,12 @@ export default function SettingsScreen({ navigation }) {
             description="What you need to complete your Weekly Rainbow"
             value={settings.shoppingReminders}
             onValueChange={(v) => updateSetting('shoppingReminders', v)}
+          />
+          <SettingRow
+            label="Comeback Reminders"
+            description="Gentle reminders after time away from juice logging"
+            value={settings.comebackReminders}
+            onValueChange={handleComebackReminderToggle}
           />
         </View>
 

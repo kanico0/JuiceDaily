@@ -12,6 +12,7 @@ import { CameraView } from 'expo-camera'
 import { X, Aperture, Keyboard, Eye, Home } from 'lucide-react-native'
 import { useCamera } from '../hooks/useCamera'
 import { identifyProduce, isClaudeKeySet } from '../services/ClaudeVisionService'
+import { recordMeaningfulActivity } from '../services/DormantReminderService'
 import colors from '../constants/colors'
 
 export default function CameraScreen({ onClose, onProduceIdentified, onManualEntry, onAccountRequired }) {
@@ -73,6 +74,7 @@ export default function CameraScreen({ onClose, onProduceIdentified, onManualEnt
       }
 
       console.log('[SCAN] analysis success —', result.scannedIngredients.length, 'items')
+      recordMeaningfulActivity().catch(() => {})
       onProduceIdentified(result)
     } catch (err) {
       // Durable-account gate: no scan was reserved or consumed.

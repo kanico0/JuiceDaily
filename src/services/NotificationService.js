@@ -21,6 +21,7 @@ import {
   getSurpriseForCount,
   getWeightMilestone,
 } from '../constants/NotificationLibrary'
+import { recordMeaningfulActivity } from './DormantReminderService'
 
 // Suppress the known Expo Go SDK 53+ Android push notification warning
 LogBox.ignoreLogs(['expo-notifications: Android push notification'])
@@ -60,6 +61,7 @@ const DEFAULT_SETTINGS = {
   privacyMode: false,
   inventoryAlerts: true,
   shoppingReminders: true,
+  comebackReminders: true,
   typicalJuiceHour: 7,
   typicalJuiceMinute: 30,
 }
@@ -639,6 +641,7 @@ export async function onJuiceLogged(totalJuiceCount, totalWeightG) {
   await safeCancel('streak-shield')
   await safeCancel('wilt-warning')
   await AsyncStorage.setItem(KEYS.LAST_JUICE_TS, new Date().toISOString())
+  await recordMeaningfulActivity()
 
   // Check for surprise & delight milestones
   if (totalJuiceCount !== undefined) {

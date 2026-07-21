@@ -149,7 +149,7 @@ function ClinkToast({ visible, userName }) {
 
 // ── Main Dashboard ───────────────────────────────────────────
 
-export default function DashboardScreen({ navigation }) {
+export default function DashboardScreen({ navigation, route }) {
   const { challenge, todayLog, vitalityScore, weeklyDiversity, weeklyStats, useFreezerPass, completeOnboarding, logJuice } = useChallenge()
   const { isPro, hasFeatureAccess, pro } = usePro()
   const { isEnabled } = useFlags()
@@ -244,6 +244,16 @@ export default function DashboardScreen({ navigation }) {
       navigation.navigate('ScanFlow')
     }
   }, [navigation, isEnabled])
+
+  useEffect(() => {
+    if (!route?.params?.openQuickLog) return
+    navigation.setParams({ openQuickLog: undefined })
+    if (isEnabled('ff_3step_logger')) {
+      setShowQuickLogger(true)
+      return
+    }
+    navigation.navigate('ScanFlow', { screen: 'ScanHome', params: { openCamera: true } })
+  }, [route?.params?.openQuickLog, navigation, isEnabled])
 
   const handleQuickLogComplete = useCallback((scannedIngredients, batchResult) => {
     logJuice(scannedIngredients, batchResult)

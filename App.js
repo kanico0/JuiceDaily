@@ -4,6 +4,7 @@ import './src/utils/suppressWarnings'
 import React, { useEffect, useRef } from 'react'
 import { View, Text, AppState } from 'react-native'
 import { StatusBar } from 'expo-status-bar'
+import * as Notifications from 'expo-notifications'
 import { NavigationContainer, CommonActions } from '@react-navigation/native'
 import { createNativeStackNavigator } from '@react-navigation/native-stack'
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'
@@ -56,6 +57,7 @@ import { NutritionScoreProvider } from './src/services/NutritionScoreStore'
 import { JuiceLogProvider, useJuiceLog } from './src/services/JuiceLogStore'
 import { refreshNudges } from './src/services/NotificationNudges'
 import { hydrateDevClock } from './src/utils/DevClock'
+import { reconcileDormantReminders } from './src/services/DormantReminderService'
 
 // ── Load Anthropic API key (fallback chain) ──────────────────
 // 1) react-native-dotenv (@env) — reads from .env at build time
@@ -70,6 +72,7 @@ if (_resolvedKey) setClaudeApiKey(_resolvedKey)
 
 const RootStack = createNativeStackNavigator()
 const Tab = createBottomTabNavigator()
+const navigationRef = React.createRef()
 
 const STACK_OPTS = {
   headerShown: false,
@@ -175,6 +178,21 @@ function RootNavigator() {
 
   useEffect(() => {
     hydrateDevClock().catch(() => {})
+    reconcileDormantReminders().catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    const handleDormantReminder = (response) => {
+      const data = response?.notification?.request?.content?.data
+      if (data?.type !== 'dormant_reminder' || !navigationRef.isReady()) return
+      navigationRef.navigate('Main', {
+        screen: 'TodayTab',
+        params: { screen: 'Dashboard', params: { openQuickLog: true } },
+      })
+    }
+    const subscription = Notifications.addNotificationResponseReceivedListener(handleDormantReminder)
+    Notifications.getLastNotificationResponseAsync().then(handleDormantReminder).catch(() => {})
+    return () => subscription.remove()
   }, [])
 
   // Refresh nudge notifications on app foreground
@@ -317,7 +335,7 @@ export default function App() {
       <ChallengeProvider>
       <NutritionScoreProvider>
       <JuiceLogProvider>
-        <NavigationContainer>
+        <NavigationContainer ref={navigationRef}>
           <StatusBar style="light" />
           <RootNavigator />
         </NavigationContainer>

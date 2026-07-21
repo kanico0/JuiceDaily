@@ -278,3 +278,18 @@ export async function sendTestNudge() {
     triggerDate,
   })
 }
+
+export async function sendThreeDayTestNudges() {
+  const baseTime = Date.now()
+  const testNudges = [
+    { id: 'nudge-test-day-1', title: 'Day 1 · Keep your glow going ✨', body: 'Ready for today\'s juice?' },
+    { id: 'nudge-test-day-2', title: 'Day 2 · Your streak is waiting', body: 'A quick check-in keeps your streak alive.' },
+    { id: 'nudge-test-day-3', title: 'Day 3 · Your glow week is building', body: 'See the progress you\'re creating.' },
+  ]
+  const results = await Promise.all(testNudges.map((nudge, index) => safeSchedule({
+    ...nudge,
+    data: { type: 'three_day_test', day: index + 1 },
+    triggerDate: new Date(baseTime + (index + 1) * 5000),
+  })))
+  return results.every(Boolean)
+}

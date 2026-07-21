@@ -82,6 +82,7 @@ import {
   refreshNudges,
   cancelAllNudges,
   sendTestNudge,
+  sendThreeDayTestNudges,
   setAndroidNotificationChannel,
 } from '../services/NotificationNudges'
 
@@ -1294,7 +1295,7 @@ export default function SettingsScreen({ navigation }) {
                   Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
                   devAdvanceDay()
                   if (streakCtx && streakCtx.devAdvanceDay) streakCtx.devAdvanceDay()
-                  advanceDevDay(1)
+                  await advanceDevDay(1)
                   setDevClockOffset(getDevDayOffset())
                   await refreshNudges()
                 }}
@@ -1315,9 +1316,9 @@ export default function SettingsScreen({ navigation }) {
               {devClockOffset > 0 && (
                 <TouchableOpacity
                   style={devStyles.resetLaunchBtn}
-                  onPress={() => {
+                  onPress={async () => {
                     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
-                    resetDevClock()
+                    await resetDevClock()
                     setDevClockOffset(0)
                   }}
                   activeOpacity={0.7}
@@ -1381,6 +1382,24 @@ export default function SettingsScreen({ navigation }) {
               >
                 <Text style={devStyles.resetLaunchText}>Reset Weekly Summary (dev)</Text>
                 <Text style={devStyles.resetLaunchHint}>Clears 7-day cycle + shown state</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={devStyles.resetLaunchBtn}
+                onPress={async () => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+                  const sent = await sendThreeDayTestNudges()
+                  Alert.alert(
+                    sent ? '3-Day Test Scheduled' : 'Test Failed',
+                    sent
+                      ? 'Day 1, Day 2, and Day 3 sample nudges will arrive at 5, 10, and 15 seconds.'
+                      : 'Could not schedule the test nudges. Check notification permission.',
+                  )
+                }}
+                activeOpacity={0.7}
+              >
+                <Text style={devStyles.resetLaunchText}>Test 3-Day Nudge Sequence</Text>
+                <Text style={devStyles.resetLaunchHint}>Sends Day 1, 2, and 3 samples at 5-second intervals</Text>
               </TouchableOpacity>
 
               {/* Reset Nudge Settings */}

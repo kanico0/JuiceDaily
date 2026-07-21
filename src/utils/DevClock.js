@@ -16,10 +16,12 @@ function notifyListeners() {
   _listeners.forEach((fn) => fn(_dayOffset))
 }
 
-function persistOffset() {
-  AsyncStorage.setItem(STORAGE_KEY, String(_dayOffset)).catch((error) => {
+async function persistOffset() {
+  try {
+    await AsyncStorage.setItem(STORAGE_KEY, String(_dayOffset))
+  } catch (error) {
     console.warn('[DevClock] failed to persist offset:', error)
-  })
+  }
 }
 
 export async function hydrateDevClock() {
@@ -46,16 +48,16 @@ export function getDevDayOffset() {
   return _dayOffset
 }
 
-export function advanceDevDay(days = 1) {
+export async function advanceDevDay(days = 1) {
   _dayOffset += days
-  persistOffset()
+  await persistOffset()
   console.log('[DevClock] offset now:', _dayOffset, 'days — perceived date:', getDevNow().toISOString())
   notifyListeners()
 }
 
-export function resetDevClock() {
+export async function resetDevClock() {
   _dayOffset = 0
-  persistOffset()
+  await persistOffset()
   console.log('[DevClock] reset to real time')
   notifyListeners()
 }

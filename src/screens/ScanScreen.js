@@ -45,6 +45,7 @@ import {
 } from 'lucide-react-native'
 import MeshGradientBg from '../components/MeshGradientBg'
 import LiquidNutrientOrb from '../components/LiquidNutrientOrb'
+import TodaysJuiceSpotlight, { JuiceSpotlightDetailsModal } from '../components/TodaysJuiceSpotlight'
 import { DARK, RADIUS, FONT_SIZE, FONT_WEIGHT } from '../constants/tokens'
 import { useReducedMotion, DURATION, EASING, LIQUID_SPRING, LIQUID_SPRING_SNAPPY } from '../utils/motion'
 import { trackEvent } from '../services/AnalyticsService'
@@ -53,12 +54,13 @@ import { useFlags } from '../services/FeatureFlags'
 import { useJuiceLog } from '../services/JuiceLogStore'
 import { useNutritionScore } from '../services/NutritionScoreStore'
 import { USDA_RDA } from '../constants/nutrition'
-import { getGlowState, checkInToday, skipToday } from '../services/glowStreak'
+import { getGlowState, getGlowTodayKey, skipToday } from '../services/glowStreak'
 import { getFocusForToday, swapFocusToday } from '../services/focusNutrient'
 import { shouldShowWeeklySummary, dismissWeeklySummary, buildWeeklySummaryData } from '../services/weeklySummary'
 import { checkAchievements } from '../services/achievements'
 import AchievementOverlay from '../components/AchievementOverlay'
 import { RECIPES, getCleanupLabel } from '../constants/recipeData'
+import { getSpotlightForDay, getSpotlightState, resolveSpotlightDestination } from '../data/juiceSpotlights'
 
 const GOALS = [
   { id: 'energy', label: 'More Energy', emoji: '⚡' },
@@ -1097,7 +1099,7 @@ function ScanHome({ onScan, onBrowse, onExample, onExplore, totalLogs, showSecon
 
 // ── Browse Home: Stable Dashboard ────────────────────────────
 
-function BrowseHome({ onScan, onBrowse, onExample, onExplore, onViewToday, onGlowLibrary, onSeasonalPacks, onBeginnerPath, onLogIngredients, isExpandedRecipes, dailySummary, totalLogs, savedGoalId, onDismissGoalBanner, isReduced }) {
+function BrowseHome({ onScan, onBrowse, onExample, onExplore, onViewToday, onGlowLibrary, onSeasonalPacks, onBeginnerPath, onLogIngredients, onUseSpotlightBlend, isExpandedRecipes, dailySummary, todayEntries, totalLogs, savedGoalId, onDismissGoalBanner, isReduced }) {
   const fadeAnim = useRef(new Animated.Value(0)).current
   const btnScale = useRef(new Animated.Value(1)).current
   const goalData = savedGoalId ? GOALS.find((g) => g.id === savedGoalId) : null
@@ -1107,7 +1109,8 @@ function BrowseHome({ onScan, onBrowse, onExample, onExplore, onViewToday, onGlo
   const [glowCount, setGlowCount] = useState(0)
   const [checkedInToday, setCheckedInToday] = useState(false)
   const [graceUsedToday, setGraceUsedToday] = useState(false)
-  const [checkInFeedback, setCheckInFeedback] = useState(null) // 'checked' | 'already' | 'grace' | 'reset'
+  const [checkInFeedback, setCheckInFeedback] = useState(null) // 'grace' | 'reset'
+  const [showSkipConfirm, setShowSkipConfirm] = useState(false)
   const streakScale = useRef(new Animated.Value(1)).current
 
   // Hydrate glow state on mount
@@ -1115,7 +1118,7 @@ function BrowseHome({ onScan, onBrowse, onExample, onExplore, onViewToday, onGlo
     ;(async () => {
       const s = await getGlowState()
       setGlowCount(s.count)
-      const today = new Date().toISOString().slice(0, 10)
+      const today = getGlowTodayKey()
       if (s.lastCheckInDate === today) setCheckedInToday(true)
       if (s.graceUsedDate === today) setGraceUsedToday(true)
     })()
@@ -1129,23 +1132,20 @@ function BrowseHome({ onScan, onBrowse, onExample, onExplore, onViewToday, onGlo
     ]).start()
   }, [isReduced, streakScale])
 
-  const handleCheckIn = useCallback(async () => {
+  const handleLogTodayJuice = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
-    const result = await checkInToday()
-    setGlowCount(result.count)
-    if (result.wasIncremented) {
-      setCheckedInToday(true)
-      setCheckInFeedback('checked')
-      pulseStreak()
-      trackEvent('glow_streak_checkin', { count: result.count })
-    } else {
-      setCheckInFeedback('already')
-    }
-    setTimeout(() => setCheckInFeedback(null), 2500)
-  }, [pulseStreak])
+    trackEvent('glow_log_today_juice_tapped', {})
+    onLogIngredients()
+  }, [onLogIngredients])
 
-  const handleSkip = useCallback(async () => {
+  const handleSkipPress = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    setShowSkipConfirm(true)
+  }, [])
+
+  const handleSkipConfirmYes = useCallback(async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    setShowSkipConfirm(false)
     const result = await skipToday()
     setGlowCount(result.count)
     if (result.streakReset) {
@@ -1159,10 +1159,16 @@ function BrowseHome({ onScan, onBrowse, onExample, onExplore, onViewToday, onGlo
     setTimeout(() => setCheckInFeedback(null), 2500)
   }, [])
 
+  const handleSkipConfirmNo = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    setShowSkipConfirm(false)
+  }, [])
+
   // ── Focus Nutrient state ──
   const [focusNutrient, setFocusNutrient] = useState(null)
   const [focusSwapped, setFocusSwapped] = useState(false)
   const [showFocusDetail, setShowFocusDetail] = useState(false)
+  const [showSpotlightDetails, setShowSpotlightDetails] = useState(false)
 
   // Hydrate focus nutrient on mount
   useEffect(() => {
@@ -1181,6 +1187,24 @@ function BrowseHome({ onScan, onBrowse, onExample, onExplore, onViewToday, onGlo
       trackEvent('focus_nutrient_swapped', { id: result.nutrient.id })
     }
   }, [])
+
+  const spotlightDayKey = getGlowTodayKey()
+  const spotlight = useMemo(() => getSpotlightForDay({
+    focusId: focusNutrient?.id,
+    dayKey: spotlightDayKey,
+  }), [focusNutrient?.id, spotlightDayKey])
+  const spotlightState = useMemo(() => getSpotlightState({ todayEntries, totalLogs }), [todayEntries, totalLogs])
+
+  const handleOpenSpotlight = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    setShowSpotlightDetails(true)
+    trackEvent('juice_spotlight_opened', { spotlight_id: spotlight.id })
+  }, [spotlight.id])
+
+  const handleUseSpotlightBlend = useCallback(() => {
+    setShowSpotlightDetails(false)
+    onUseSpotlightBlend(spotlight)
+  }, [onUseSpotlightBlend, spotlight])
 
   // ── Weekly Summary state ──
   const [weeklySummary, setWeeklySummary] = useState(null)
@@ -1266,14 +1290,28 @@ function BrowseHome({ onScan, onBrowse, onExample, onExplore, onViewToday, onGlo
 
   return (
     <Animated.View style={[obStyles.stepWrap, { opacity: fadeAnim }]}>
-      <View style={obStyles.orbWrap}>
-        <LiquidNutrientOrb isReduced={isReduced} />
-      </View>
-
-      <Text style={obStyles.heroHeadline}>Welcome to Juicing</Text>
+      <Text style={obStyles.heroHeadline}>What will you juice today?</Text>
       <Text style={obStyles.heroSub}>
-        {isReturning ? 'Here\'s your day at a glance.' : 'Explore at your own pace. Scan when you\'re ready.'}
+        Discover a blend, scan your ingredients, or revisit what works for you.
       </Text>
+
+      <TodaysJuiceSpotlight
+        spotlight={spotlight}
+        state={spotlightState}
+        focusNutrient={focusNutrient}
+        onViewBlend={handleOpenSpotlight}
+        onScan={onScan}
+        onViewToday={onViewToday}
+        onAddAnother={onLogIngredients}
+      />
+
+      <JuiceSpotlightDetailsModal
+        visible={showSpotlightDetails}
+        spotlight={spotlight}
+        focusNutrient={focusNutrient}
+        onClose={() => setShowSpotlightDetails(false)}
+        onUseBlend={handleUseSpotlightBlend}
+      />
 
       {/* ── Weekly Glow Summary ── */}
       {showWeekly && weeklySummary && (
@@ -1329,12 +1367,6 @@ function BrowseHome({ onScan, onBrowse, onExample, onExplore, onViewToday, onGlo
           <Text style={glowStyles.streakValue}>{glowCount} day{glowCount !== 1 ? 's' : ''}</Text>
         </Animated.View>
 
-        {checkInFeedback === 'checked' && (
-          <Text style={glowStyles.feedback}>Checked in for today ✓</Text>
-        )}
-        {checkInFeedback === 'already' && (
-          <Text style={glowStyles.feedback}>Already checked in today</Text>
-        )}
         {checkInFeedback === 'grace' && (
           <Text style={[glowStyles.feedback, { color: '#FFB74D' }]}>Grace used — streak protected</Text>
         )}
@@ -1342,23 +1374,24 @@ function BrowseHome({ onScan, onBrowse, onExample, onExplore, onViewToday, onGlo
           <Text style={[glowStyles.feedback, { color: '#FFB74D' }]}>New glow cycle begins.</Text>
         )}
 
-        {!checkedInToday && !checkInFeedback && (
+        {/* A. Not checked in: prompt to log today's juice */}
+        {!checkedInToday && !checkInFeedback && !showSkipConfirm && (
           <>
-            <Text style={glowStyles.prompt}>Did you juice today?</Text>
+            <Text style={glowStyles.prompt}>Log today's juice to keep your Glow Streak going.</Text>
             <View style={glowStyles.btnRow}>
               <Pressable
                 style={({ pressed }) => [glowStyles.btnPrimary, pressed && { opacity: 0.8 }]}
-                onPress={handleCheckIn}
+                onPress={handleLogTodayJuice}
                 hitSlop={8}
                 accessibilityRole="button"
-                accessibilityLabel="Yes, I juiced"
+                accessibilityLabel="Log today's juice"
               >
-                <Check size={16} color="#FFFFFF" />
-                <Text style={glowStyles.btnPrimaryText}>Yes, I juiced</Text>
+                <Leaf size={16} color="#FFFFFF" />
+                <Text style={glowStyles.btnPrimaryText}>Log today's juice</Text>
               </Pressable>
               <Pressable
                 style={({ pressed }) => [glowStyles.btnSecondary, graceUsedToday && { opacity: 0.4 }, pressed && { opacity: 0.6 }]}
-                onPress={handleSkip}
+                onPress={handleSkipPress}
                 disabled={graceUsedToday}
                 hitSlop={8}
                 accessibilityRole="button"
@@ -1370,11 +1403,42 @@ function BrowseHome({ onScan, onBrowse, onExample, onExplore, onViewToday, onGlo
           </>
         )}
 
-        {checkedInToday && !checkInFeedback && (
-          <Text style={glowStyles.feedback}>Checked in for today ✓</Text>
+        {/* C. Skip confirmation: explain consequence before mutation */}
+        {showSkipConfirm && !checkedInToday && (
+          <>
+            <Text style={glowStyles.followUpPrompt}>
+              Skipping today uses a grace day to protect your streak.
+              {graceUsedToday ? ' You have already used your grace for this cycle — skipping again will reset your streak.' : ' You get one grace day per cycle.'}
+            </Text>
+            <View style={glowStyles.btnRow}>
+              <Pressable
+                style={({ pressed }) => [glowStyles.btnPrimary, pressed && { opacity: 0.8 }]}
+                onPress={handleSkipConfirmYes}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel="Confirm skip today"
+              >
+                <Text style={glowStyles.btnPrimaryText}>Skip today</Text>
+              </Pressable>
+              <Pressable
+                style={({ pressed }) => [glowStyles.btnSecondary, pressed && { opacity: 0.6 }]}
+                onPress={handleSkipConfirmNo}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel="Go back"
+              >
+                <Text style={glowStyles.btnSecondaryText}>Go back</Text>
+              </Pressable>
+            </View>
+          </>
         )}
 
-        {(checkedInToday || checkInFeedback === 'checked' || checkInFeedback === 'already') && (
+        {/* B. Already checked in: show completed state */}
+        {checkedInToday && !checkInFeedback && (
+          <Text style={glowStyles.feedback}>You're checked in for today. ✓</Text>
+        )}
+
+        {checkedInToday && (
           <Pressable
             style={({ pressed }) => [glowStyles.logIngredientsBtn, pressed && { opacity: 0.7 }]}
             onPress={() => {
@@ -1924,6 +1988,13 @@ const glowStyles = StyleSheet.create({
     color: DARK.textPrimary,
     marginBottom: 10,
   },
+  followUpPrompt: {
+    fontSize: FONT_SIZE.sm,
+    fontWeight: FONT_WEIGHT.medium,
+    color: DARK.textPrimary,
+    marginBottom: 10,
+    lineHeight: 20,
+  },
   btnRow: {
     flexDirection: 'row',
     gap: 10,
@@ -2378,6 +2449,23 @@ export default function ScanScreen({ navigation }) {
     setShowBrowseModal(true)
   }, [obStep])
 
+  const handleSpotlightNavigation = useCallback((target) => {
+    const destination = resolveSpotlightDestination({ hasHistory: totalLogCount > 0, target })
+    navigation.navigate(destination.route, destination.params)
+  }, [navigation, totalLogCount])
+
+  const handleUseSpotlightBlend = useCallback((spotlight) => {
+    navigation.navigate('ScanFlow', {
+      screen: 'ScanHome',
+      params: {
+        manualEntry: true,
+        preloadIngredients: spotlight.ingredients,
+        source: 'spotlight',
+      },
+    })
+    trackEvent('juice_spotlight_used', { spotlight_id: spotlight.id })
+  }, [navigation])
+
   const handleExample = useCallback(() => {
     trackEvent('scan_secondary_example_tapped', { source: obStep })
     setShowExample(true)
@@ -2452,11 +2540,13 @@ export default function ScanScreen({ navigation }) {
               onGlowLibrary={() => navigation.navigate('GlowLibrary')}
               onSeasonalPacks={() => navigation.navigate('SeasonalGlowPacks')}
               onBeginnerPath={() => navigation.navigate('BeginnerGlowPath')}
-              onLogIngredients={() => navigation.navigate('ScanFlow', { screen: 'ScanHome', params: { manualEntry: true, source: 'checkin' } })}
+              onLogIngredients={() => handleSpotlightNavigation('add')}
+              onUseSpotlightBlend={handleUseSpotlightBlend}
               isExpandedRecipes={isExpandedRecipes}
-              onViewToday={() => navigation.navigate('PerformanceDashboard')}
+              onViewToday={() => handleSpotlightNavigation('today')}
               dailySummary={dailySummary}
-              totalLogs={unlocks.totalLogsCount}
+              todayEntries={todayEntries}
+              totalLogs={totalLogCount}
               savedGoalId={savedGoalId}
               onDismissGoalBanner={() => setSavedGoalId(null)}
               isReduced={isReduced}

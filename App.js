@@ -1,7 +1,7 @@
 // Suppress known warnings (must be imported before any module that emits them)
 import './src/utils/suppressWarnings'
 
-import React, { useEffect, useRef } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { View, Text, AppState } from 'react-native'
 import { StatusBar } from 'expo-status-bar'
 import * as Notifications from 'expo-notifications'
@@ -10,9 +10,6 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack'
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import ModernTabBar from './src/components/ModernTabBar'
-import { ANTHROPIC_API_KEY } from '@env'
-import Constants from 'expo-constants'
-import { setClaudeApiKey } from './src/services/ClaudeVisionService'
 import { ChallengeProvider } from './src/services/ChallengeStore'
 import { ProProvider } from './src/services/ProStore'
 import { SubscriptionProvider } from './src/services/subscriptions/SubscriptionStore'
@@ -36,7 +33,6 @@ import HallOfVitalityScreen from './src/screens/HallOfVitalityScreen'
 import SettingsScreen from './src/screens/SettingsScreen'
 import VitalityHistoryScreen from './src/screens/VitalityHistoryScreen'
 import MonthlyWrapScreen from './src/screens/MonthlyWrapScreen'
-import VaultScreen from './src/screens/VaultScreen'
 import NoviceJourneyScreen from './src/screens/NoviceJourneyScreen'
 import JuiceCalculatorScreen from './src/screens/JuiceCalculatorScreen'
 import ScanScreen from './src/screens/ScanScreen'
@@ -58,17 +54,8 @@ import { JuiceLogProvider, useJuiceLog } from './src/services/JuiceLogStore'
 import { refreshNudges } from './src/services/NotificationNudges'
 import { hydrateDevClock } from './src/utils/DevClock'
 import { reconcileDormantReminders } from './src/services/DormantReminderService'
-
-// ── Load Anthropic API key (fallback chain) ──────────────────
-// 1) react-native-dotenv (@env) — reads from .env at build time
-// 2) expo-constants — reads from app.config.js extra at runtime
-const _envKey = ANTHROPIC_API_KEY
-const _constantsKey = Constants.expoConfig?.extra?.ANTHROPIC_API_KEY
-const _resolvedKey = (_envKey && _envKey !== 'undefined') ? _envKey
-  : (_constantsKey && _constantsKey !== '') ? _constantsKey
-  : null
-console.log('[ClaudeKey] present:', !!_resolvedKey, 'len:', _resolvedKey?.length ?? 0, 'source:', _envKey ? '@env' : _constantsKey ? 'constants' : 'MISSING')
-if (_resolvedKey) setClaudeApiKey(_resolvedKey)
+import { getSupabase } from './src/services/supabase/supabaseClient'
+import NewPasswordModal from './src/components/NewPasswordModal'
 
 const RootStack = createNativeStackNavigator()
 const Tab = createBottomTabNavigator()
@@ -96,7 +83,6 @@ function addSharedScreens(StackNav) {
       <StackNav.Screen name="Settings" component={SettingsScreen} />
       <StackNav.Screen name="VitalityHistory" component={VitalityHistoryScreen} />
       <StackNav.Screen name="MonthlyWrap" component={MonthlyWrapScreen} />
-      <StackNav.Screen name="Vault" component={VaultScreen} />
       <StackNav.Screen name="NoviceJourney" component={NoviceJourneyScreen} />
       <StackNav.Screen name="JuiceCalculator" component={JuiceCalculatorScreen} />
       <StackNav.Screen name="Dashboard" component={DashboardScreen} />
@@ -175,10 +161,34 @@ function RootNavigator() {
   const { activation, isHydrated: activationReady, recordIntroDismissed, setExperienceLevel } = useActivation()
   const { isHydrated: logReady, totalLogCount } = useJuiceLog()
   const appStateRef = useRef(AppState.currentState)
+  const [recoveryVisible, setRecoveryVisible] = useState(false)
+  const [recoveryEmail, setRecoveryEmail] = useState('')
 
   useEffect(() => {
     hydrateDevClock().catch(() => {})
     reconcileDormantReminders().catch(() => {})
+  }, [])
+
+  // ── PASSWORD_RECOVERY listener ─────────────────────────────
+  // When Supabase reports a PASSWORD_RECOVERY event (user tapped
+  // the reset link in their email), open the NewPasswordModal so
+  // they can set a new password. The session is temporary and
+  // limited to password update only.
+  useEffect(() => {
+    const supabase = getSupabase()
+    if (!supabase) return
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        const email = session?.user?.email ?? ''
+        setRecoveryEmail(email)
+        setRecoveryVisible(true)
+      }
+    })
+
+    return () => {
+      subscription?.unsubscribe()
+    }
   }, [])
 
   useEffect(() => {
@@ -224,6 +234,7 @@ function RootNavigator() {
   console.log('[RootNavigator] hydrated — introDismissed:', activation.introDismissed, 'activationLogs:', activation.totalLogsCount, 'juiceLogs:', totalLogCount, '→ route:', initialRoute)
 
   return (
+    <>
     <RootStack.Navigator
       initialRouteName={initialRoute}
       screenOptions={{ headerShown: false, animation: 'fade' }}
@@ -310,7 +321,26 @@ function RootNavigator() {
         component={ScanFlow}
         options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
       />
+
     </RootStack.Navigator>
+
+      <NewPasswordModal
+        visible={recoveryVisible}
+        onClose={() => {
+          setRecoveryVisible(false)
+          const supabase = getSupabase()
+          if (supabase) supabase.auth.signOut().catch(() => {})
+        }}
+        onUpdated={() => {
+          setRecoveryVisible(false)
+          const supabase = getSupabase()
+          if (supabase) {
+            supabase.auth.signOut().catch(() => {})
+          }
+        }}
+        recoveryEmail={recoveryEmail}
+      />
+    </>
   )
 }
 

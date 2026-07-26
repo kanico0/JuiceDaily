@@ -71,12 +71,12 @@ describe('selectRenewalLabel', () => {
 
 describe('quota selectors', () => {
   it('renders free usage copy', () => {
-    expect(selectQuotaLabel(makeQuota())).toBe('3 of 5 free scans used this month')
+    expect(selectQuotaLabel(makeQuota())).toBe('3 of 5 AI scans used this month')
   })
 
   it('renders pro remaining copy', () => {
     expect(selectQuotaLabel(makeQuota({ plan: 'pro', limit: 60, used: 18, remaining: 42 })))
-      .toBe('42 of 60 Pro scans remaining')
+      .toBe('18 of 60 AI scans used this month')
   })
 
   it('null quota renders nothing', () => {

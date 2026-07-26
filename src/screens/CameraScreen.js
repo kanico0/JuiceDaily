@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, useEffect } from 'react'
 import {
   View,
   Text,
@@ -9,13 +9,23 @@ import {
   Platform,
 } from 'react-native'
 import { CameraView } from 'expo-camera'
-import { X, Aperture, Keyboard, Eye, Home } from 'lucide-react-native'
+import { useIsFocused } from '@react-navigation/native'
+import { X, Aperture, Keyboard, Eye, Home, Camera } from 'lucide-react-native'
 import { useCamera } from '../hooks/useCamera'
-import { identifyProduce, isClaudeKeySet } from '../services/ClaudeVisionService'
+import { identifyProduce } from '../services/ClaudeVisionService'
+import { ScanQuotaError, isServerScanAvailable } from '../services/quota/quotaService'
+import { useQuota } from '../services/quota/QuotaStore'
+import { useSubscription } from '../services/subscriptions/SubscriptionStore'
+import { getQuotaDisplay, formatCanonicalQuotaLabel } from '../services/subscriptions/subscriptionSelectors'
+import { trackEvent } from '../services/AnalyticsService'
+import ScanQuotaReachedModal from '../components/ScanQuotaReachedModal'
+import ScanPlanModal from '../components/ScanPlanModal'
+import AccountGateModal from '../components/AccountGateModal'
+import { getAccountStatus } from '../services/supabase/accountLink'
 import { recordMeaningfulActivity } from '../services/DormantReminderService'
 import colors from '../constants/colors'
 
-export default function CameraScreen({ onClose, onProduceIdentified, onManualEntry, onAccountRequired }) {
+export default function CameraScreen({ onClose, onProduceIdentified, onManualEntry, onAccountRequired, onQuotaUpgrade, onViewScanUsage, onPaywall }) {
   const {
     cameraRef,
     state: cameraState,
@@ -28,6 +38,31 @@ export default function CameraScreen({ onClose, onProduceIdentified, onManualEnt
   const [error, setError] = useState(null)
   // true when the error is an API/analysis failure (not camera failure)
   const [isApiError, setIsApiError] = useState(false)
+  const [quotaModal, setQuotaModal] = useState(null)
+  const [isOpeningPaywall, setIsOpeningPaywall] = useState(false)
+  const [showScanPlan, setShowScanPlan] = useState(false)
+  const [showAccountGate, setShowAccountGate] = useState(false)
+  const [isDurable, setIsDurable] = useState(false)
+  const { applySnapshot, refresh: refreshQuota, quota, loading: quotaLoading } = useQuota()
+  const { isPro, refresh: refreshSubscription } = useSubscription()
+  const isScreenFocused = useIsFocused()
+  const quotaDisplay = getQuotaDisplay(quota, isPro, quotaLoading)
+
+  useEffect(() => {
+    getAccountStatus().then((s) => setIsDurable(s.isDurable)).catch(() => {})
+    if (isScreenFocused) refreshQuota().catch(() => {})
+  }, [isScreenFocused, refreshQuota])
+
+  useEffect(() => {
+    if (isScreenFocused) setIsOpeningPaywall(false)
+  }, [isScreenFocused])
+
+  useEffect(() => {
+    if (!quotaModal || !isPro) return
+    setQuotaModal(null)
+    setIsOpeningPaywall(false)
+    refreshQuota()
+  }, [isPro, quotaModal, refreshQuota])
 
   // Request permission on mount if needed
   React.useEffect(() => {
@@ -51,9 +86,9 @@ export default function CameraScreen({ onClose, onProduceIdentified, onManualEnt
         return
       }
 
-      if (!isClaudeKeySet()) {
-        console.log('[SCAN] API key not configured')
-        setError('API key not configured — add ANTHROPIC_API_KEY to .env')
+      if (!isServerScanAvailable()) {
+        console.log('[SCAN] Server scan not available')
+        setError('Scan service is not configured. Install the latest preview build or use manual entry.')
         setIsApiError(true)
         setIsProcessing(false)
         return
@@ -74,14 +109,31 @@ export default function CameraScreen({ onClose, onProduceIdentified, onManualEnt
       }
 
       console.log('[SCAN] analysis success —', result.scannedIngredients.length, 'items')
+      if (result.quota) applySnapshot(result.quota)
       recordMeaningfulActivity().catch(() => {})
       onProduceIdentified(result)
     } catch (err) {
+      if (err instanceof ScanQuotaError && err.code === 'monthly_limit_reached' && err.quota) {
+        applySnapshot(err.quota)
+        await refreshSubscription()
+        trackEvent(err.quota.plan === 'pro' ? 'pro_scan_quota_modal_viewed' : 'scan_quota_modal_viewed', {
+          plan: err.quota.plan,
+          scans_used: err.quota.used,
+          scans_limit: err.quota.limit,
+          scans_remaining: err.quota.remaining,
+          reset_date_available: Boolean(err.quota.periodEnd),
+          platform: Platform.OS,
+          paywall_source: 'scan_quota_exhausted',
+        })
+        setQuotaModal(err.quota)
+        return
+      }
+
       // Durable-account gate: no scan was reserved or consumed.
       if (err && err.name === 'ScanQuotaError' && err.code === 'account_required') {
         console.log('[SCAN] account required before first funded scan')
         setIsProcessing(false)
-        if (onAccountRequired) onAccountRequired()
+        setShowAccountGate(true)
         return
       }
       const message = err instanceof Error ? err.message : 'Something went wrong'
@@ -91,7 +143,7 @@ export default function CameraScreen({ onClose, onProduceIdentified, onManualEnt
     } finally {
       setIsProcessing(false)
     }
-  }, [takePhoto, onProduceIdentified, onAccountRequired])
+  }, [takePhoto, onProduceIdentified, applySnapshot, refreshSubscription])
 
   const handleManualEntry = useCallback(() => {
     if (onManualEntry) {
@@ -100,6 +152,55 @@ export default function CameraScreen({ onClose, onProduceIdentified, onManualEnt
       onClose()
     }
   }, [onManualEntry, onClose])
+
+  const handleQuotaManualEntry = useCallback(() => {
+    if (!quotaModal) return
+    trackEvent('scan_quota_manual_entry_selected', {
+      plan: quotaModal.plan,
+      scans_used: quotaModal.used,
+      scans_limit: quotaModal.limit,
+      scans_remaining: quotaModal.remaining,
+      reset_date_available: Boolean(quotaModal.periodEnd),
+      platform: Platform.OS,
+    })
+    setQuotaModal(null)
+    handleManualEntry()
+  }, [handleManualEntry, quotaModal])
+
+  const handleQuotaDismiss = useCallback(() => {
+    if (quotaModal) {
+      trackEvent('scan_quota_modal_dismissed', {
+        plan: quotaModal.plan,
+        scans_used: quotaModal.used,
+        scans_limit: quotaModal.limit,
+        scans_remaining: quotaModal.remaining,
+        reset_date_available: Boolean(quotaModal.periodEnd),
+        platform: Platform.OS,
+      })
+    }
+    setQuotaModal(null)
+    setIsOpeningPaywall(false)
+  }, [quotaModal])
+
+  const handleQuotaUpgrade = useCallback(() => {
+    if (!quotaModal || isOpeningPaywall || quotaModal.plan === 'pro') return
+    setIsOpeningPaywall(true)
+    trackEvent('scan_quota_upgrade_selected', {
+      plan: quotaModal.plan,
+      scans_used: quotaModal.used,
+      scans_limit: quotaModal.limit,
+      scans_remaining: quotaModal.remaining,
+      reset_date_available: Boolean(quotaModal.periodEnd),
+      platform: Platform.OS,
+      paywall_source: 'scan_quota_exhausted',
+    })
+    onQuotaUpgrade?.()
+  }, [isOpeningPaywall, onQuotaUpgrade, quotaModal])
+
+  const handleQuotaUsage = useCallback(() => {
+    setQuotaModal(null)
+    onViewScanUsage?.()
+  }, [onViewScanUsage])
 
   // Permission not yet granted
   if (!cameraState.hasPermission) {
@@ -133,13 +234,78 @@ export default function CameraScreen({ onClose, onProduceIdentified, onManualEnt
 
       {/* Overlay UI */}
       <View style={styles.overlay}>
+        <ScanQuotaReachedModal
+          visible={Boolean(quotaModal)}
+          quota={quotaModal}
+          isOpeningPaywall={isOpeningPaywall}
+          onUpgrade={handleQuotaUpgrade}
+          onManualEntry={handleQuotaManualEntry}
+          onViewUsage={handleQuotaUsage}
+          onDismiss={handleQuotaDismiss}
+        />
         {/* Top bar */}
         <View style={styles.topBar}>
           <TouchableOpacity style={styles.closeButton} onPress={onClose}>
             <X size={24} color={colors.white} />
           </TouchableOpacity>
           <Text style={styles.topTitle}>Scan Produce</Text>
-          <View style={{ width: 40 }} />
+          <TouchableOpacity
+            style={styles.quotaBadge}
+            onPress={() => {
+              if (!isDurable) {
+                setShowAccountGate(true)
+                return
+              }
+              const exhausted = quotaDisplay.effectiveRemaining != null && quotaDisplay.effectiveRemaining <= 0
+              if (exhausted) {
+                setQuotaModal(quota)
+                return
+              }
+              setShowScanPlan(true)
+              refreshQuota().catch(() => {})
+            }}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel={(() => {
+              if (!isDurable) return 'Sign in to view your Juice Snap plan.'
+              if (quotaDisplay.loading) return 'Juice Snap plan loading.'
+              if (quotaDisplay.error || quotaDisplay.effectiveRemaining == null) return 'Juice Snap plan unavailable. Double tap to view plan details.'
+              const canonical = formatCanonicalQuotaLabel(quotaDisplay)
+              const planName = isPro ? 'RawLifeFlow Pro' : 'Juice Snap plan'
+              return `${planName}. ${canonical}. Double tap to view plan details.`
+            })()}
+            accessibilityHint={
+              isDurable
+                ? 'Opens your scan plan details and upgrade options.'
+                : 'Opens sign in to protect your juice history and access Juice Snap.'
+            }
+            accessibilityState={{ busy: quotaDisplay.loading }}
+            hitSlop={4}
+          >
+            {quotaDisplay.loading ? (
+              <>
+                <Camera size={12} color={colors.white} />
+                <Text style={styles.quotaBadgeText}>…</Text>
+              </>
+            ) : !isDurable ? (
+              <>
+                <Camera size={12} color={colors.white} />
+                <Text style={styles.quotaBadgeText}>Plan</Text>
+              </>
+            ) : quotaDisplay.error || quotaDisplay.effectiveRemaining == null ? (
+              <>
+                <Camera size={12} color={colors.white} />
+                <Text style={styles.quotaBadgeText}>View plan</Text>
+              </>
+            ) : (
+              <>
+                <Camera size={12} color={isPro ? '#FFD54F' : '#64B5F6'} />
+                <Text style={[styles.quotaBadgeText, { color: isPro ? '#FFD54F' : '#64B5F6' }]}>
+                  {quotaDisplay.effectiveRemaining} left
+                </Text>
+              </>
+            )}
+          </TouchableOpacity>
         </View>
 
         {/* Center guide */}
@@ -228,6 +394,37 @@ export default function CameraScreen({ onClose, onProduceIdentified, onManualEnt
           )}
         </View>
       </View>
+
+      <ScanPlanModal
+        visible={showScanPlan}
+        quota={quota}
+        isPro={isPro}
+        onUpgrade={() => {
+          setShowScanPlan(false)
+          onQuotaUpgrade?.()
+        }}
+        onContinue={() => setShowScanPlan(false)}
+        onManage={() => {
+          setShowScanPlan(false)
+          onViewScanUsage?.()
+        }}
+        onManualEntry={() => {
+          setShowScanPlan(false)
+          handleManualEntry()
+        }}
+        onDismiss={() => setShowScanPlan(false)}
+      />
+
+      <AccountGateModal
+        visible={showAccountGate}
+        initialMode="signin"
+        onClose={() => setShowAccountGate(false)}
+        onAuthenticated={() => {
+          setShowAccountGate(false)
+          refreshQuota().catch(() => {})
+          getAccountStatus().then((s) => setIsDurable(s.isDurable)).catch(() => {})
+        }}
+      />
     </View>
   )
 }
@@ -264,6 +461,23 @@ const styles = StyleSheet.create({
   topTitle: {
     color: colors.white,
     fontSize: 17,
+    fontWeight: '700',
+  },
+  quotaBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    minHeight: 44,
+    minWidth: 44,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+  },
+  quotaBadgeText: {
+    color: colors.white,
+    fontSize: 12,
     fontWeight: '700',
   },
   guideContainer: {

@@ -40,7 +40,11 @@ import {
   Crown,
   ShoppingCart,
   Cog,
+  ChevronDown,
+  ChevronUp,
+  Terminal,
 } from 'lucide-react-native'
+import { useIsFocused } from '@react-navigation/native'
 import MeshGradientBg from '../components/MeshGradientBg'
 import {
   loadNotificationSettings,
@@ -66,10 +70,13 @@ import {
   selectRenewalLabel,
   selectQuotaLabel,
   selectNextRefreshLabel,
+  getQuotaDisplay,
+  formatCanonicalQuotaLabel,
 } from '../services/subscriptions/subscriptionSelectors'
 import { MONETIZATION_ENABLED, SUPABASE_CONFIGURED, TERMS_URL, PRIVACY_URL } from '../services/subscriptions/subscriptionConfig'
 import { getAccountStatus, signOutAccount } from '../services/supabase/accountLink'
 import AccountGateModal from '../components/AccountGateModal'
+import DeleteAccountModal from '../components/DeleteAccountModal'
 import { advanceDevDay, getDevDayOffset, resetDevClock, getDevNow } from '../utils/DevClock'
 import { resetGlowStreak } from '../services/glowStreak'
 import { resetFocusForToday } from '../services/focusNutrient'
@@ -86,6 +93,9 @@ import {
   sendThreeDayTestNudges,
   setAndroidNotificationChannel,
 } from '../services/NotificationNudges'
+import Constants from 'expo-constants'
+import { useDeveloperAccess } from '../hooks/useDeveloperAccess'
+import DeveloperToolsPanel from '../components/DeveloperToolsPanel'
 
 // ── Intensity Stops ──────────────────────────────────────────
 
@@ -213,7 +223,7 @@ function SmartSetupTooltip({ visible, onDismiss }) {
         <Info size={16} color="#FFD54F" />
       </View>
       <View style={styles.tooltipContent}>
-        <Text style={styles.tooltipTitle}>Architect's Tip</Text>
+        <Text style={styles.tooltipTitle}>Pro Tip</Text>
         <Text style={styles.tooltipText}>
           We recommend 'Balanced' intensity to help you cement your 7-day habit. You can always change this later!
         </Text>
@@ -243,10 +253,17 @@ function SectionHeader({ icon, title, subtitle }) {
 // Durable identity: shows the authenticated email, lets anonymous
 // users protect their account, and signs out with a clear warning.
 
-function AccountSection() {
+function AccountSection({ navigation }) {
   const [account, setAccount] = useState({ userId: null, email: null, isDurable: false })
   const [gateVisible, setGateVisible] = useState(false)
   const [gateMode, setGateMode] = useState('protect')
+  const [deleteVisible, setDeleteVisible] = useState(false)
+  const [expanded, setExpanded] = useState(true)
+  const { state, isPro, refresh: refreshSubscription } = useSubscription()
+  const { quota, loading: quotaLoading, refresh: refreshQuota } = useQuota()
+  const planLabel = selectPlanLabel(state)
+  const quotaDisplay = getQuotaDisplay(quota, isPro, quotaLoading)
+  const isFocused = useIsFocused()
 
   const loadAccount = useCallback(async () => {
     const status = await getAccountStatus()
@@ -256,6 +273,15 @@ function AccountSection() {
   useEffect(() => {
     loadAccount()
   }, [loadAccount])
+
+  // Refresh quota when Settings regains focus
+  useEffect(() => {
+    if (isFocused) {
+      loadAccount()
+      refreshQuota().catch(() => {})
+      refreshSubscription().catch(() => {})
+    }
+  }, [isFocused, loadAccount, refreshQuota, refreshSubscription])
 
   const openGate = (mode) => {
     setGateMode(mode)
@@ -274,72 +300,135 @@ function AccountSection() {
           onPress: async () => {
             await signOutAccount()
             await loadAccount()
+            refreshQuota().catch(() => {})
+            refreshSubscription().catch(() => {})
           },
         },
       ]
     )
   }
 
+  const openDeleteAccount = () => {
+    setDeleteVisible(true)
+  }
+
+  const openManageSubscription = () => {
+    const url = 'https://play.google.com/store/account/subscriptions?package=com.juicingapp.app&sku=juicing_daily_pro'
+    Linking.openURL(url).catch(() => {
+      Linking.openURL('https://play.google.com/store/account/subscriptions')
+    })
+  }
+
+  // Build device-aware quota display text using canonical format
+  const quotaRemainingText = quotaDisplay.loading
+    ? 'Loading Juice Snap allowance…'
+    : quotaDisplay.error || quotaDisplay.effectiveRemaining == null
+      ? 'Allowance temporarily unavailable'
+      : formatCanonicalQuotaLabel(quotaDisplay) || 'Allowance temporarily unavailable'
+
+  const quotaUsedText = quotaDisplay.loading || quotaDisplay.error || quotaDisplay.effectiveUsed == null
+    ? ''
+    : formatCanonicalQuotaLabel(quotaDisplay) || ''
+
   return (
     <>
-      <SectionHeader
-        icon={<Shield size={18} color="#81C784" />}
-        title="Account"
-        subtitle={account.isDurable ? account.email : 'Not protected yet'}
-      />
-      <View style={styles.settingsGroup}>
-        {account.isDurable ? (
-          <>
-            <View style={styles.helpRow}>
-              <View style={styles.helpInfo}>
-                <Text style={styles.helpLabel}>Signed in as</Text>
-                <Text style={styles.helpDesc}>{account.email}</Text>
-              </View>
-            </View>
-            <TouchableOpacity
-              style={styles.helpRow}
-              onPress={handleSignOut}
-              activeOpacity={0.7}
-              accessibilityRole="button"
-              accessibilityLabel="Sign out"
-            >
-              <View style={styles.helpInfo}>
-                <Text style={styles.helpLabel}>Sign Out</Text>
-                <Text style={styles.helpDesc}>Your history and plan stay safe — sign back in anytime</Text>
-              </View>
-            </TouchableOpacity>
-          </>
+      <TouchableOpacity
+        style={styles.sectionHeader}
+        onPress={() => setExpanded((e) => !e)}
+        activeOpacity={0.7}
+        accessibilityRole="button"
+        accessibilityState={{ expanded }}
+        accessibilityLabel={`Account section, ${expanded ? 'expanded' : 'collapsed'}`}
+      >
+        <View style={styles.sectionIconWrap}>
+          <Shield size={18} color="#81C784" />
+        </View>
+        <View style={styles.sectionTitleWrap}>
+          <Text style={styles.sectionTitle}>Account</Text>
+          <Text style={styles.sectionSubtitle}>{account.isDurable ? account.email : 'Not protected yet'}</Text>
+        </View>
+        {expanded ? (
+          <ChevronUp size={18} color="#8B949E" />
         ) : (
-          <>
-            <TouchableOpacity
-              style={styles.helpRow}
-              onPress={() => openGate('protect')}
-              activeOpacity={0.7}
-              accessibilityRole="button"
-              accessibilityLabel="Protect your account"
-            >
-              <View style={styles.helpInfo}>
-                <Text style={styles.helpLabel}>Protect Your Account</Text>
-                <Text style={styles.helpDesc}>Add your email to save scan history and keep your monthly allowance</Text>
-              </View>
-              <Text style={styles.helpArrow}>→</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.helpRow}
-              onPress={() => openGate('signin')}
-              activeOpacity={0.7}
-              accessibilityRole="button"
-              accessibilityLabel="Sign in to an existing account"
-            >
-              <View style={styles.helpInfo}>
-                <Text style={styles.helpLabel}>Sign In</Text>
-                <Text style={styles.helpDesc}>Already have an account? Restore your history and plan</Text>
-              </View>
-              <Text style={styles.helpArrow}>→</Text>
-            </TouchableOpacity>
-          </>
+          <ChevronDown size={18} color="#8B949E" />
         )}
-      </View>
+      </TouchableOpacity>
+
+      {expanded && (
+        <View style={styles.settingsGroup}>
+          {account.isDurable ? (
+            <>
+              <View style={styles.helpRow}>
+                <View style={styles.helpInfo}>
+                  <Text style={styles.helpLabel}>Signed in as</Text>
+                  <Text style={styles.helpDesc}>{account.email}</Text>
+                </View>
+              </View>
+              <View style={styles.helpRow}>
+                <View style={styles.helpInfo}>
+                  <Text style={styles.helpLabel}>{isPro ? 'RawLifeFlow Pro' : 'Free Plan'}</Text>
+                  <Text style={styles.helpDesc}>{quotaRemainingText}</Text>
+                  <Text style={styles.helpDesc}>Manual ingredient entry is always unlimited.</Text>
+                </View>
+              </View>
+              <TouchableOpacity
+                style={styles.helpRow}
+                onPress={isPro ? openManageSubscription : () => navigation?.navigate?.('Paywall', { source: 'settings_account' })}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel={isPro ? 'Manage subscription' : 'Upgrade to RawLifeFlow Pro'}
+              >
+                <View style={styles.helpInfo}>
+                  <Text style={styles.helpLabel}>{isPro ? 'Manage Subscription' : 'Upgrade to Pro'}</Text>
+                  <Text style={styles.helpDesc}>{isPro ? 'View or cancel your Google Play subscription' : '60 successful Juice Snaps per month, unlimited manual entry'}</Text>
+                </View>
+                <Text style={styles.helpArrow}>→</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.helpRow}
+                onPress={handleSignOut}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel="Sign out"
+              >
+                <View style={styles.helpInfo}>
+                  <Text style={styles.helpLabel}>Sign Out</Text>
+                  <Text style={styles.helpDesc}>Your history and plan stay safe — sign back in anytime</Text>
+                </View>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.helpRow}
+                onPress={openDeleteAccount}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel="Delete Account"
+              >
+                <View style={styles.helpInfo}>
+                  <Text style={[styles.helpLabel, { color: '#F85149' }]}>Delete Account</Text>
+                  <Text style={styles.helpDesc}>Permanently delete your account and app data</Text>
+                </View>
+                <Text style={[styles.helpArrow, { color: '#F85149' }]}>→</Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <>
+              <TouchableOpacity
+                style={styles.helpRow}
+                onPress={() => openGate('protect')}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel="Sign in or create account"
+              >
+                <View style={styles.helpInfo}>
+                  <Text style={styles.helpLabel}>Sign In or Create Account</Text>
+                  <Text style={styles.helpDesc}>Sign in to protect your juice history, access your plan, and use Juice Snap.</Text>
+                </View>
+                <Text style={styles.helpArrow}>→</Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </View>
+      )}
 
       <AccountGateModal
         visible={gateVisible}
@@ -348,6 +437,18 @@ function AccountSection() {
         onAuthenticated={() => {
           setGateVisible(false)
           loadAccount()
+          refreshQuota().catch(() => {})
+          refreshSubscription().catch(() => {})
+        }}
+      />
+
+      <DeleteAccountModal
+        visible={deleteVisible}
+        onClose={() => setDeleteVisible(false)}
+        onDeleted={() => {
+          setDeleteVisible(false)
+          resetAllUserData()
+          if (navigation) navigation.navigate('Home')
         }}
       />
     </>
@@ -418,7 +519,7 @@ function SubscriptionSection({ navigation }) {
             <Sparkles size={16} color="#7EE787" />
             <View style={styles.helpInfo}>
               <Text style={styles.helpLabel}>Upgrade to Pro</Text>
-              <Text style={styles.helpDesc}>60 AI scans per month, advanced reports & more</Text>
+              <Text style={styles.helpDesc}>60 successful Juice Snaps per month, full nutrient analysis</Text>
             </View>
             <Text style={styles.helpArrow}>→</Text>
           </TouchableOpacity>
@@ -574,6 +675,7 @@ export default function SettingsScreen({ navigation }) {
   const [nudgeSettings, setNudgeSettingsLocal] = useState(null)
   const [nudgePermDenied, setNudgePermDenied] = useState(false)
   const [juicerType, setJuicerType] = useState('centrifugal')
+  const devAccess = useDeveloperAccess()
 
   const clearActivationStorage = useCallback(async () => {
     try {
@@ -690,6 +792,9 @@ export default function SettingsScreen({ navigation }) {
       >
         {/* ═══ ONBOARDING TOOLTIP ═══════════════════════════ */}
         <SmartSetupTooltip visible={showTooltip} onDismiss={handleTooltipDismiss} />
+
+        {/* ═══ ACCOUNT ═══════════════════════════════════════ */}
+        {SUPABASE_CONFIGURED && <AccountSection navigation={navigation} />}
 
         {/* ═══ WEIGHT DISPLAY UNITS ═════════════════════════ */}
         <View style={styles.intensityCard}>
@@ -835,7 +940,7 @@ export default function SettingsScreen({ navigation }) {
         <View style={styles.settingsGroup}>
           <SettingRow
             label="Daily Affirmations"
-            description="Morning 'Wellness Architect' identity quotes"
+            description="Morning identity and motivation quotes"
             value={settings.affirmations}
             onValueChange={(v) => updateSetting('affirmations', v)}
           />
@@ -844,13 +949,6 @@ export default function SettingsScreen({ navigation }) {
             description="Alerts when rings are empty late in the day"
             value={settings.vitalityReminders}
             onValueChange={(v) => updateSetting('vitalityReminders', v)}
-          />
-          <SettingRow
-            label="Freezer Pass Alerts"
-            description="High-priority alerts to save your streak"
-            value={settings.freezerAlerts}
-            onValueChange={(v) => updateSetting('freezerAlerts', v)}
-            emergency
           />
         </View>
 
@@ -953,7 +1051,6 @@ export default function SettingsScreen({ navigation }) {
             <Shield size={12} color="#90CAF9" />
             <Text style={styles.quietNoteText}>
               All non-emergency notifications are silenced during this window.
-              Freezer Pass alerts will bypass quiet hours if your streak is at risk.
             </Text>
           </View>
         </View>
@@ -1124,9 +1221,7 @@ export default function SettingsScreen({ navigation }) {
           </>
         )}
 
-        {/* ═══ HELP & SUPPORT ═════════════════════════════════ */}
-        {SUPABASE_CONFIGURED && <AccountSection />}
-
+        {/* ═══ SUBSCRIPTION ═══════════════════════════════════ */}
         {MONETIZATION_ENABLED && (
           <SubscriptionSection navigation={navigation} />
         )}
@@ -1172,11 +1267,45 @@ export default function SettingsScreen({ navigation }) {
             <MessageCircle size={16} color="#90CAF9" />
             <View style={styles.helpInfo}>
               <Text style={styles.helpLabel}>App FAQ</Text>
-              <Text style={styles.helpDesc}>Rings, streaks, Freezer Passes & more</Text>
+              <Text style={styles.helpDesc}>Rings, streaks & more</Text>
             </View>
             <Text style={styles.helpArrow}>→</Text>
           </TouchableOpacity>
         </View>
+
+        {/* ═══ ABOUT ═══════════════════════════════════════ */}
+        <SectionHeader
+          icon={<Info size={18} color="#8B949E" />}
+          title="About"
+          subtitle="App information"
+        />
+        <View style={styles.settingsGroup}>
+          <View style={styles.helpRow}>
+            <View style={styles.helpInfo}>
+              <Text style={styles.helpLabel}>RawLifeFlow: Juicing Daily</Text>
+              <Text style={styles.helpDesc}>Cold-pressed juicing companion</Text>
+            </View>
+          </View>
+          <TouchableOpacity
+            style={styles.helpRow}
+            onPress={devAccess.handleVersionTap}
+            activeOpacity={0.7}
+            accessibilityRole="text"
+            accessibilityLabel={`App version ${Constants.expoConfig?.version || 'unknown'}, build ${Constants.expoConfig?.extra?.eas?.buildVersion || 'unknown'}`}
+          >
+            <View style={styles.helpInfo}>
+              <Text style={styles.helpLabel}>Version {Constants.expoConfig?.version || 'unknown'} ({Constants.expoConfig?.extra?.eas?.buildVersion || 'unknown'})</Text>
+              {devAccess.feedbackMessage ? (
+                <Text style={styles.helpDesc}>{devAccess.feedbackMessage}</Text>
+              ) : null}
+            </View>
+          </TouchableOpacity>
+        </View>
+
+        {/* ═══ DEVELOPER TOOLS (hidden, authorized only) ══════ */}
+        {devAccess.devToolsVisible && (
+          <DeveloperToolsPanel authResult={devAccess.authResult} />
+        )}
 
         {/* ═══ DEVELOPER FLAGS ═════════════════════════════ */}
         <SectionHeader

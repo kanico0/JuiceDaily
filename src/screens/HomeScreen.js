@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react'
+import React, { useState, useCallback, useEffect, useRef } from 'react'
 import {
   View,
   Text,
@@ -11,6 +11,8 @@ import {
   LayoutAnimation,
   UIManager,
   Platform,
+  Keyboard,
+  KeyboardAvoidingView,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import AsyncStorage from '@react-native-async-storage/async-storage'
@@ -27,27 +29,27 @@ import {
   Droplets,
   Zap,
   Flame,
-  Film,
-  Keyboard,
   Search,
   Crown,
   Sparkles,
   Leaf,
-  Cog,
 } from 'lucide-react-native'
 import colors from '../constants/colors'
 import NUTRIENT_LIBRARY from '../constants/NutrientLibrary.json'
 import { EMPTY_BATCH, USDA_RDA } from '../constants/nutrition'
 import SnapButton from '../components/SnapButton'
 import { useQuota } from '../services/quota/QuotaStore'
-import { selectQuotaLabel, selectQuotaExhausted } from '../services/subscriptions/subscriptionSelectors'
+import { selectQuotaLabel, selectQuotaExhausted, getQuotaDisplay, formatCanonicalQuotaLabel } from '../services/subscriptions/subscriptionSelectors'
+import { useIsFocused } from '@react-navigation/native'
 import NutritionSummary from '../components/NutritionSummary'
 import BigSqueezeModal from '../components/BigSqueezeModal'
-import SnapGateModal from '../components/SnapGateModal'
+import ScanQuotaReachedModal from '../components/ScanQuotaReachedModal'
 import AccountGateModal from '../components/AccountGateModal'
 import TrafficLightBadge from '../components/TrafficLightBadge'
 import CameraScreen from './CameraScreen'
-import { usePro } from '../services/ProStore'
+import { useSubscription } from '../services/subscriptions/SubscriptionStore'
+import { trackEvent } from '../services/AnalyticsService'
+import ScanPlanModal from '../components/ScanPlanModal'
 import MeshGradientBg from '../components/MeshGradientBg'
 import { processJuiceBatch, PRODUCE_DATA } from '../services/JuiceEngine'
 
@@ -312,7 +314,7 @@ const CATEGORY_COLORS = {
 
 const SORTED_NUTRIENT_LIBRARY = [...NUTRIENT_LIBRARY].sort((a, b) => a.name.localeCompare(b.name))
 
-function IngredientCloud({ searchQuery, onAdd, addedIds }) {
+function IngredientCloud({ searchQuery, onAdd, addedIds, onResultsLayout }) {
   const filtered = searchQuery.length > 0
     ? SORTED_NUTRIENT_LIBRARY.filter((item) =>
         item.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -321,7 +323,7 @@ function IngredientCloud({ searchQuery, onAdd, addedIds }) {
 
   return (
     <View style={manualStyles.cloudWrap}>
-      <View style={manualStyles.cloudGrid}>
+      <View style={manualStyles.cloudGrid} onLayout={onResultsLayout}>
         {filtered.map((item) => {
           const isAdded = addedIds.includes(item.id)
           return (
@@ -350,9 +352,32 @@ function IngredientCloud({ searchQuery, onAdd, addedIds }) {
           )
         })}
       </View>
-      {filtered.length === 0 && (
-        <Text style={manualStyles.noResults}>No ingredients match "{searchQuery}"</Text>
+      {filtered.length === 0 && searchQuery.length > 0 && (
+        <Text style={manualStyles.noMatchStatus}>
+          No matching ingredient found.
+        </Text>
       )}
+      <View style={manualStyles.tipsWrap}>
+        <Text style={manualStyles.tipsHeading}>Ingredient Entry Tips</Text>
+        <Text style={manualStyles.tipsPara}>
+          Start typing the name of the fruit or vegetable you want to add.
+        </Text>
+        <Text style={manualStyles.tipsPara}>
+          You can enter a full ingredient name or begin with only the first few letters.
+        </Text>
+        <Text style={manualStyles.tipsPara}>
+          For example, typing 'carr' should help you find carrot.
+        </Text>
+        <Text style={manualStyles.tipsPara}>
+          If too many results appear, continue typing to narrow the list.
+        </Text>
+        <Text style={manualStyles.tipsPara}>
+          If no ingredient matches, check the spelling or try a shorter, more general name.
+        </Text>
+        <Text style={manualStyles.tipsPara}>
+          You can also try a familiar ingredient such as spinach, carrot, cucumber, apple, celery, or kale.
+        </Text>
+      </View>
     </View>
   )
 }
@@ -362,7 +387,26 @@ function IngredientCloud({ searchQuery, onAdd, addedIds }) {
 // Hidden when Supabase quota is not configured (rollback-safe).
 
 function QuotaMeter({ navigation }) {
-  const { quota } = useQuota()
+  const { quota, loading: quotaLoading } = useQuota()
+  const { isPro } = useSubscription()
+  const quotaDisplay = getQuotaDisplay(quota, isPro, quotaLoading)
+
+  if (quotaDisplay.loading) {
+    return (
+      <View style={{ alignItems: 'center', marginTop: 8 }}>
+        <Text style={{ color: '#6E7681', fontSize: 12 }}>Loading Juice Snap allowance…</Text>
+      </View>
+    )
+  }
+
+  if (quotaDisplay.error || quotaDisplay.effectiveRemaining == null) {
+    return (
+      <View style={{ alignItems: 'center', marginTop: 8 }}>
+        <Text style={{ color: '#6E7681', fontSize: 12 }}>Allowance temporarily unavailable</Text>
+      </View>
+    )
+  }
+
   const label = selectQuotaLabel(quota)
   if (!label) return null
 
@@ -425,14 +469,43 @@ export default function JuiceSnapScreen({ navigation, route }) {
   const { logJuice, vitalityScore } = useChallenge()
   const { recordNutritionLog, momentum: preMomentum } = useNutritionScore()
   const { addEntry: addLogEntry } = useJuiceLog()
-  const { checkSnapEligibility, useSnap, snapInfo, isPro } = usePro()
+  const { isPro } = useSubscription()
+  const { quota, loading: quotaLoading, refresh: refreshQuota } = useQuota()
+  const quotaDisplay = getQuotaDisplay(quota, isPro, quotaLoading)
+  const isScreenFocused = useIsFocused()
   const [showSnapGate, setShowSnapGate] = useState(false)
   const [showAccountGate, setShowAccountGate] = useState(false)
-  const [showPaywall, setShowPaywall] = useState(false)
+  const [showScanPlan, setShowScanPlan] = useState(false)
   const [isManualMode, setIsManualMode] = useState(route?.params?.manualEntry === true)
   const [manualSearch, setManualSearch] = useState('')
   const [showUpsellNudge, setShowUpsellNudge] = useState(false)
   const [juiceMethod, setJuiceMethod] = useState('centrifugal')
+  const manualSearchOffsetRef = useRef(0)
+  const scrollRef = useRef(null)
+  const manualSearchFocusedRef = useRef(false)
+  const [keyboardHeight, setKeyboardHeight] = useState(0)
+
+  useEffect(() => {
+    const showListener = Keyboard.addListener('keyboardDidShow', (e) => {
+      const kbHeight = e.endCoordinates.height
+      setKeyboardHeight(kbHeight)
+      if (manualSearchFocusedRef.current) {
+        const targetY = Math.max(0, manualSearchOffsetRef.current - kbHeight * 0.65)
+        scrollRef.current?.scrollTo({
+          y: targetY,
+          animated: true,
+        })
+      }
+    })
+    const hideListener = Keyboard.addListener('keyboardDidHide', () => {
+      setKeyboardHeight(0)
+      manualSearchFocusedRef.current = false
+    })
+    return () => {
+      showListener.remove()
+      hideListener.remove()
+    }
+  }, [])
 
   // Hydrate persisted juicer type (cold_pressed | centrifugal)
   // Re-hydrates on focus so changes made in Settings are picked up.
@@ -454,9 +527,14 @@ export default function JuiceSnapScreen({ navigation, route }) {
     return () => { if (typeof unsubscribe === 'function') unsubscribe() }
   }, [navigation])
 
+  // Refresh quota when screen regains focus (after camera, settings, paywall, etc.)
+  useEffect(() => {
+    if (isScreenFocused) refreshQuota().catch(() => {})
+  }, [isScreenFocused, refreshQuota])
+
   const hasItems = (batch.scannedIngredients || []).length > 0
-  const snapEligibility = checkSnapEligibility()
-  const isSnapDepleted = !snapEligibility.eligible && !isPro
+  const isQuotaExhausted = quotaDisplay.effectiveRemaining != null && quotaDisplay.effectiveRemaining <= 0
+  const canUseAuthoritativeQuota = quotaDisplay.effectiveRemaining != null
 
   // Open manual entry when navigated with manualEntry: true
   useEffect(() => {
@@ -478,27 +556,20 @@ export default function JuiceSnapScreen({ navigation, route }) {
   // Auto-open camera when navigated with openCamera: true
   useEffect(() => {
     if (shouldAutoOpenCamera && !isCameraOpen) {
-      const eligibility = checkSnapEligibility()
-      if (eligibility.eligible) {
-        useSnap()
-        setIsCameraOpen(true)
-      }
+      setIsCameraOpen(true)
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Auto-expand manual mode when snaps are depleted
-  const effectiveManualMode = isManualMode || isSnapDepleted
+  const effectiveManualMode = isManualMode
 
   const handleSnap = useCallback(() => {
-    const eligibility = checkSnapEligibility()
-    if (!eligibility.eligible) {
+    if (canUseAuthoritativeQuota && isQuotaExhausted) {
       setShowSnapGate(true)
       return
     }
-    useSnap()
     setIsCameraOpen(true)
     setIsLogged(false)
-  }, [checkSnapEligibility, useSnap])
+  }, [canUseAuthoritativeQuota, isQuotaExhausted])
 
   // Manual entry: add from NutrientLibrary (no credit consumed)
   const handleManualAdd = useCallback((item) => {
@@ -519,11 +590,96 @@ export default function JuiceSnapScreen({ navigation, route }) {
     setIsLogged(false)
   }, [isPro])
 
+  const handleManualSearchFocus = useCallback(() => {
+    manualSearchFocusedRef.current = true
+    const effectiveKbHeight = keyboardHeight || 0
+    const targetY = Math.max(0, manualSearchOffsetRef.current - effectiveKbHeight * 0.65)
+    scrollRef.current?.scrollTo({
+      y: targetY,
+      animated: true,
+    })
+  }, [keyboardHeight])
+
+  const handleManualSearchBlur = useCallback(() => {
+    manualSearchFocusedRef.current = false
+  }, [])
+
+  const handleResultsLayout = useCallback(() => {
+    if (!manualSearchFocusedRef.current || keyboardHeight === 0) return
+    requestAnimationFrame(() => {
+      if (!manualSearchFocusedRef.current) return
+      const targetY = Math.max(0, manualSearchOffsetRef.current - keyboardHeight * 0.65)
+      scrollRef.current?.scrollTo({
+        y: targetY,
+        animated: true,
+      })
+    })
+  }, [keyboardHeight])
+
+  const handleManualSearchSubmit = useCallback(() => {
+    const normalizedQuery = manualSearch.trim().toLowerCase()
+    if (!normalizedQuery) return
+
+    const existingIds = batch.scannedIngredients.map((item) => item.produceId)
+    const matchingIngredient = SORTED_NUTRIENT_LIBRARY.find((item) => {
+      return !existingIds.includes(item.id) && item.name.toLowerCase().includes(normalizedQuery)
+    })
+    if (!matchingIngredient) return
+
+    handleManualAdd(matchingIngredient)
+    setManualSearch('')
+  }, [batch.scannedIngredients, handleManualAdd, manualSearch])
+
   const handleCameraClose = useCallback(() => {
     setIsCameraOpen(false)
-    // Stay on JuiceSnap showing manual entry fallback — do NOT goBack()
-    // User can type ingredients manually or navigate away via tabs/back
+    refreshQuota().catch(() => {})
+  }, [refreshQuota])
+
+  const handleCameraHeaderPress = useCallback(() => {
+    const plan = quotaDisplay.isPro ? 'pro' : (quota?.plan || 'free')
+    const used = quotaDisplay.effectiveUsed ?? 0
+    const limit = quotaDisplay.displayLimit ?? (isPro ? 60 : 5)
+    const exhausted = isQuotaExhausted
+    trackEvent('scan_plan_icon_tapped', {
+      plan,
+      scans_used: used,
+      scans_limit: limit,
+      quota_exhausted: exhausted,
+      placement: 'camera_header_icon',
+    }).catch(() => {})
+
+    if (exhausted) {
+      setShowSnapGate(true)
+      return
+    }
+
+    setShowScanPlan(true)
+    refreshQuota().catch(() => {})
+  }, [isPro, quota, quotaDisplay, isQuotaExhausted, refreshQuota])
+
+  const handleScanPlanUpgrade = useCallback(() => {
+    setShowScanPlan(false)
+    navigation.navigate('Paywall', { source: 'camera_header_icon' })
+  }, [navigation])
+
+  const handleScanPlanManage = useCallback(() => {
+    setShowScanPlan(false)
+    navigation.navigate('Settings')
+  }, [navigation])
+
+  const handleScanPlanContinue = useCallback(() => {
+    setShowScanPlan(false)
   }, [])
+
+  const handleQuotaManualEntry = useCallback(() => {
+    setShowSnapGate(false)
+    setIsManualMode(true)
+  }, [])
+
+  const handleQuotaUpgrade = useCallback(() => {
+    setShowSnapGate(false)
+    navigation.navigate('Paywall', { source: 'scan_quota_exhausted' })
+  }, [navigation])
 
   const handleProduceIdentified = useCallback((visionResult) => {
     console.log('[SCAN] handleProduceIdentified —', visionResult.scannedIngredients.length, 'items')
@@ -582,20 +738,6 @@ export default function JuiceSnapScreen({ navigation, route }) {
     })
     setIsLogged(false)
   }, [juiceMethod])
-
-  const handleToggleJuiceMethod = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
-    setJuiceMethod((prev) => {
-      const next = prev === 'cold_pressed' ? 'centrifugal' : 'cold_pressed'
-      AsyncStorage.setItem(JUICE_METHOD_STORAGE_KEY, next).catch(() => {})
-      setBatch((prevBatch) => {
-        if ((prevBatch.scannedIngredients || []).length === 0) return prevBatch
-        return buildBatch(prevBatch.scannedIngredients, next)
-      })
-      return next
-    })
-    setIsLogged(false)
-  }, [])
 
   const handleAddProduce = useCallback((produceId) => {
     LayoutAnimation.configureNext(LayoutAnimation.create(
@@ -676,18 +818,56 @@ export default function JuiceSnapScreen({ navigation, route }) {
           <ArrowLeft size={22} color={colors.white} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Juice Snap</Text>
-        <View style={styles.filmRoll}>
-          <Film size={14} color={isPro ? '#FFD54F' : '#64B5F6'} />
-          <Text style={[styles.filmRollText, isPro && { color: '#FFD54F' }]}>
-            {snapInfo.label}
-          </Text>
-        </View>
+        <TouchableOpacity
+          style={styles.filmRoll}
+          onPress={handleCameraHeaderPress}
+          activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel={(() => {
+            if (quotaDisplay.loading) return 'Juice Snap plan loading.'
+            if (quotaDisplay.error || quotaDisplay.effectiveRemaining == null) return 'Juice Snap plan unavailable. Double tap to view plan details.'
+            const canonical = formatCanonicalQuotaLabel(quotaDisplay)
+            const planName = isPro ? 'RawLifeFlow Pro' : 'Juice Snap plan'
+            return `${planName}. ${canonical}. Double tap to view plan details.`
+          })()}
+          accessibilityHint="Shows your current scan allowance and RawLifeFlow Pro options."
+          accessibilityState={{ busy: quotaDisplay.loading }}
+          hitSlop={4}
+        >
+          {quotaDisplay.loading ? (
+            <>
+              <Camera size={14} color={colors.white} />
+              <Text style={styles.quotaBadgeText}>…</Text>
+            </>
+          ) : quotaDisplay.error || quotaDisplay.effectiveRemaining == null ? (
+            <>
+              <Camera size={14} color={colors.white} />
+              <Text style={styles.quotaBadgeText}>Plan</Text>
+            </>
+          ) : (
+            <>
+              <Camera size={12} color={isPro ? '#FFD54F' : '#64B5F6'} />
+              <Text style={[styles.quotaBadgeText, { color: isPro ? '#FFD54F' : '#64B5F6' }]}>
+                {quotaDisplay.effectiveRemaining}
+              </Text>
+            </>
+          )}
+        </TouchableOpacity>
       </View>
 
+      <KeyboardAvoidingView
+        style={styles.keyboardAvoiding}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}
+        enabled
+      >
       <ScrollView
+        ref={scrollRef}
         style={styles.scroll}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
+        keyboardDismissMode="on-drag"
+        keyboardShouldPersistTaps="handled"
       >
         {/* Pillar preview badges */}
         {hasItems && (
@@ -716,38 +896,6 @@ export default function JuiceSnapScreen({ navigation, route }) {
             })}
           </View>
         )}
-
-        {/* Juice Method Toggle */}
-        <View style={styles.juiceMethodRow}>
-          <TouchableOpacity
-            style={[
-              styles.juiceMethodBtn,
-              juiceMethod === 'cold_pressed' && styles.juiceMethodBtnActive,
-            ]}
-            onPress={() => juiceMethod !== 'cold_pressed' && handleToggleJuiceMethod()}
-            activeOpacity={0.7}
-          >
-            <Cog size={14} color={juiceMethod === 'cold_pressed' ? '#81C784' : '#484F58'} />
-            <Text style={[
-              styles.juiceMethodText,
-              juiceMethod === 'cold_pressed' && styles.juiceMethodTextActive,
-            ]}>Cold Pressed</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.juiceMethodBtn,
-              juiceMethod === 'centrifugal' && styles.juiceMethodBtnActive,
-            ]}
-            onPress={() => juiceMethod !== 'centrifugal' && handleToggleJuiceMethod()}
-            activeOpacity={0.7}
-          >
-            <Cog size={14} color={juiceMethod === 'centrifugal' ? '#FFB74D' : '#484F58'} />
-            <Text style={[
-              styles.juiceMethodText,
-              juiceMethod === 'centrifugal' && styles.juiceMethodTextActive,
-            ]}>Centrifugal</Text>
-          </TouchableOpacity>
-        </View>
 
         {/* Editable produce list */}
         {hasItems && (
@@ -784,15 +932,18 @@ export default function JuiceSnapScreen({ navigation, route }) {
         </View>
 
         {/* ── Snap Produce (camera) ─────────────────────────── */}
-        {!isSnapDepleted && (
-          <View style={styles.buttonSection}>
-            <SnapButton onPress={handleSnap} />
-            <QuotaMeter navigation={navigation} />
-          </View>
-        )}
+        <View style={styles.buttonSection}>
+          <SnapButton onPress={handleSnap} />
+          <QuotaMeter navigation={navigation} />
+        </View>
 
         {/* ── Manual Entry: Search + Ingredient Cloud ─────────── */}
-        <View style={manualStyles.manualSection}>
+        <View
+          style={manualStyles.manualSection}
+          onLayout={(event) => {
+            manualSearchOffsetRef.current = event.nativeEvent.layout.y
+          }}
+        >
           <Text style={manualStyles.manualLabel}>Or type it in</Text>
           <View style={manualStyles.searchBar}>
             <Search size={16} color="#484F58" />
@@ -802,6 +953,11 @@ export default function JuiceSnapScreen({ navigation, route }) {
               placeholderTextColor="#484F58"
               value={manualSearch}
               onChangeText={setManualSearch}
+              onFocus={handleManualSearchFocus}
+              onBlur={handleManualSearchBlur}
+              onSubmitEditing={handleManualSearchSubmit}
+              returnKeyType="done"
+              blurOnSubmit={false}
               autoCapitalize="none"
               autoCorrect={false}
             />
@@ -815,6 +971,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
             searchQuery={manualSearch}
             onAdd={handleManualAdd}
             addedIds={batch.scannedIngredients.map((i) => i.produceId)}
+            onResultsLayout={handleResultsLayout}
           />
         </View>
 
@@ -824,7 +981,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
             style={manualStyles.upsellCard}
             onPress={() => {
               setShowUpsellNudge(false)
-              navigation.navigate('Vault')
+              navigation.navigate('Paywall', { source: 'manual_entry_upsell' })
             }}
             activeOpacity={0.8}
           >
@@ -834,7 +991,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
             <View style={manualStyles.upsellContent}>
               <Text style={manualStyles.upsellTitle}>That's a lot of typing!</Text>
               <Text style={manualStyles.upsellDesc}>
-                Architect Pro members just snap a photo and let the AI do the heavy lifting.
+                RawLifeFlow Pro members just snap a photo and let the AI do the heavy lifting.
               </Text>
             </View>
             <Crown size={16} color="#FFD54F" />
@@ -880,6 +1037,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
           </TouchableOpacity>
         )}
       </ScrollView>
+      </KeyboardAvoidingView>
 
       <Modal
         visible={isCameraOpen}
@@ -894,12 +1052,17 @@ export default function JuiceSnapScreen({ navigation, route }) {
             setIsManualMode(true)
           }}
           onAccountRequired={() => setShowAccountGate(true)}
+          onQuotaUpgrade={() => navigation.navigate('Paywall', { source: 'scan_quota_exhausted' })}
+          onViewScanUsage={() => setIsCameraOpen(false)}
         />
 
         <AccountGateModal
           visible={showAccountGate}
           onClose={() => setShowAccountGate(false)}
-          onAuthenticated={() => setShowAccountGate(false)}
+          onAuthenticated={() => {
+            setShowAccountGate(false)
+            refreshQuota().catch(() => {})
+          }}
         />
       </Modal>
 
@@ -914,11 +1077,24 @@ export default function JuiceSnapScreen({ navigation, route }) {
         vitalityScore={vitalityScore}
       />
 
-      <SnapGateModal
+      <ScanPlanModal
+        visible={showScanPlan}
+        quota={quota}
+        isPro={isPro}
+        onUpgrade={handleScanPlanUpgrade}
+        onContinue={handleScanPlanContinue}
+        onManage={handleScanPlanManage}
+        onDismiss={handleScanPlanContinue}
+      />
+
+      <ScanQuotaReachedModal
         visible={showSnapGate}
+        quota={quota}
+        isOpeningPaywall={false}
+        onUpgrade={handleQuotaUpgrade}
+        onManualEntry={handleQuotaManualEntry}
+        onViewUsage={handleQuotaManualEntry}
         onDismiss={() => setShowSnapGate(false)}
-        onUpgrade={() => navigation.navigate('Vault')}
-        onBuyPack={() => navigation.navigate('Vault')}
       />
     </SafeAreaView>
     </View>
@@ -956,20 +1132,25 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   filmRoll: {
+    minWidth: 44,
+    height: 44,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
+    justifyContent: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
     backgroundColor: 'rgba(100,181,246,0.06)',
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 24,
+    borderRadius: 22,
     borderWidth: 0.5,
     borderColor: 'rgba(100,181,246,0.12)',
   },
-  filmRollText: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: '#64B5F6',
+  quotaBadgeText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  keyboardAvoiding: {
+    flex: 1,
   },
   scroll: {
     flex: 1,
@@ -1002,37 +1183,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     color: '#484F58',
-  },
-
-  // ── Juice Method Toggle ───────────────────────────────────
-  juiceMethodRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 12,
-  },
-  juiceMethodBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 10,
-    borderRadius: 24,
-    backgroundColor: 'rgba(255,255,255,0.04)',
-    borderWidth: 0.5,
-    borderColor: 'rgba(255,255,255,0.06)',
-  },
-  juiceMethodBtnActive: {
-    backgroundColor: 'rgba(129,199,132,0.08)',
-    borderColor: 'rgba(129,199,132,0.2)',
-  },
-  juiceMethodText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#484F58',
-  },
-  juiceMethodTextActive: {
-    color: '#81C784',
   },
 
   // ── Editable Produce Card ──────────────────────────────────
@@ -1392,11 +1542,32 @@ const manualStyles = StyleSheet.create({
     color: '#81C784',
     marginLeft: 2,
   },
-  noResults: {
+  noMatchStatus: {
     fontSize: 14,
     color: '#484F58',
     textAlign: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    lineHeight: 20,
+  },
+  tipsWrap: {
     paddingVertical: 20,
+    paddingHorizontal: 16,
+    marginBottom: 24,
+  },
+  tipsHeading: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#484F58',
+    textAlign: 'center',
+    marginBottom: 14,
+  },
+  tipsPara: {
+    fontSize: 14,
+    color: '#484F58',
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 12,
   },
   upsellCard: {
     flexDirection: 'row',

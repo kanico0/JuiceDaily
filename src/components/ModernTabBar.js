@@ -7,7 +7,7 @@
 import React, { useRef } from 'react'
 import { View, Text, TouchableOpacity, Pressable, Animated, StyleSheet, Platform } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { CalendarDays, History, Compass, Scan } from 'lucide-react-native'
+import { CalendarDays, History, Compass, Camera } from 'lucide-react-native'
 import { useNavigation } from '@react-navigation/native'
 import { SEMANTIC_FAB } from '../constants/tokens'
 import { useReducedMotion } from '../utils/motion'
@@ -104,7 +104,7 @@ export default function ModernTabBar({ state, descriptors, navigation }) {
                       { transform: [{ scale: isReduced ? 1 : scaleAnim }] },
                     ]}
                   >
-                    <Scan size={26} color={SEMANTIC_FAB.fabIcon} />
+                    <Camera size={26} color={SEMANTIC_FAB.fabIcon} />
                   </Animated.View>
                 </Pressable>
               </View>

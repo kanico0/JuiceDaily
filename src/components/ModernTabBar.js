@@ -4,11 +4,13 @@
 // FAB triggers Scan flow as a modal (not a tab).
 // ─────────────────────────────────────────────────────────────
 
-import React from 'react'
-import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native'
+import React, { useRef } from 'react'
+import { View, Text, TouchableOpacity, Pressable, Animated, StyleSheet, Platform } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { CalendarDays, History, Compass, Scan } from 'lucide-react-native'
 import { useNavigation } from '@react-navigation/native'
+import { SEMANTIC_FAB } from '../constants/tokens'
+import { useReducedMotion } from '../utils/motion'
 
 const TAB_ICONS = {
   TodayTab: CalendarDays,
@@ -25,12 +27,14 @@ const TAB_LABELS = {
 const ACTIVE_COLOR = '#81C784'
 const INACTIVE_COLOR = '#484F58'
 const BAR_BG = '#0D1117'
-const FAB_SIZE = 56
-const FAB_COLOR = '#4CAF50'
+const FAB_VISIBLE = 64
+const FAB_TOUCH = 68
 
 export default function ModernTabBar({ state, descriptors, navigation }) {
   const insets = useSafeAreaInsets()
   const rootNav = useNavigation()
+  const isReduced = useReducedMotion()
+  const scaleAnim = useRef(new Animated.Value(1)).current
   const bottomPad = Math.max(insets.bottom, 8)
   const barHeight = 56 + bottomPad
 
@@ -39,6 +43,24 @@ export default function ModernTabBar({ state, descriptors, navigation }) {
 
   const handleFAB = () => {
     rootNav.navigate('ScanFlow')
+  }
+
+  const handlePressIn = () => {
+    if (isReduced) return
+    Animated.timing(scaleAnim, {
+      toValue: 0.92,
+      duration: 120,
+      useNativeDriver: true,
+    }).start()
+  }
+
+  const handlePressOut = () => {
+    if (isReduced) return
+    Animated.timing(scaleAnim, {
+      toValue: 1,
+      duration: 120,
+      useNativeDriver: true,
+    }).start()
   }
 
   return (
@@ -67,15 +89,24 @@ export default function ModernTabBar({ state, descriptors, navigation }) {
             {/* Insert FAB after the middle tab */}
             {index === midIndex && (
               <View style={styles.fabSlot}>
-                <TouchableOpacity
-                  style={styles.fab}
+                <Pressable
                   onPress={handleFAB}
-                  activeOpacity={0.8}
+                  onPressIn={handlePressIn}
+                  onPressOut={handlePressOut}
+                  style={styles.fabTouch}
                   accessibilityRole="button"
                   accessibilityLabel="Scan produce"
+                  accessibilityHint="Opens the camera to scan your produce"
                 >
-                  <Scan size={26} color="#FFFFFF" />
-                </TouchableOpacity>
+                  <Animated.View
+                    style={[
+                      styles.fab,
+                      { transform: [{ scale: isReduced ? 1 : scaleAnim }] },
+                    ]}
+                  >
+                    <Scan size={26} color={SEMANTIC_FAB.fabIcon} />
+                  </Animated.View>
+                </Pressable>
               </View>
             )}
             <TouchableOpacity
@@ -126,25 +157,33 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   fabSlot: {
-    width: FAB_SIZE + 16,
+    width: FAB_TOUCH + 8,
     alignItems: 'center',
     justifyContent: 'flex-start',
   },
-  fab: {
-    width: FAB_SIZE,
-    height: FAB_SIZE,
-    borderRadius: FAB_SIZE / 2,
-    backgroundColor: FAB_COLOR,
+  fabTouch: {
+    width: FAB_TOUCH,
+    height: FAB_TOUCH,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: -28,
+    marginTop: -34,
+  },
+  fab: {
+    width: FAB_VISIBLE,
+    height: FAB_VISIBLE,
+    borderRadius: FAB_VISIBLE / 2,
+    backgroundColor: SEMANTIC_FAB.fabSurface,
+    borderWidth: 1,
+    borderColor: SEMANTIC_FAB.fabBorder,
+    alignItems: 'center',
+    justifyContent: 'center',
     ...Platform.select({
-      android: { elevation: 12 },
+      android: { elevation: SEMANTIC_FAB.fabShadow.elevation },
       ios: {
-        shadowColor: '#4CAF50',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.4,
-        shadowRadius: 8,
+        shadowColor: SEMANTIC_FAB.fabShadow.shadowColor,
+        shadowOffset: SEMANTIC_FAB.fabShadow.shadowOffset,
+        shadowOpacity: SEMANTIC_FAB.fabShadow.shadowOpacity,
+        shadowRadius: SEMANTIC_FAB.fabShadow.shadowRadius,
       },
     }),
   },

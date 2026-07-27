@@ -345,3 +345,43 @@ export const SEMANTIC_MOTION = {
   normal: 300,
   slow: 450,
 }
+
+// ─────────────────────────────────────────────────────────────
+// Phase 0C2 — Atmospheric Background & FAB Tokens
+// Narrowly scoped roles for the shared background and center
+// camera/FAB visual treatment. Calm Premium Vitality direction.
+// ─────────────────────────────────────────────────────────────
+
+// ── Atmospheric Background Colors ─────────────────────────────
+// Deep forest base with soft sage depth and restrained warm amber.
+// Dark enough to preserve card readability and text contrast.
+
+export const SEMANTIC_ATMOSPHERIC = {
+  backgroundBase: '#060D0A',
+  backgroundDepth: '#0A1410',
+  atmosphericSage: 'rgba(30,80,60,0.18)',
+  atmosphericWarm: 'rgba(120,90,50,0.08)',
+  atmosphericCool: 'rgba(20,60,50,0.10)',
+  atmosphericHighlight: 'rgba(200,220,200,0.04)',
+  backgroundVignette: 'rgba(3,7,5,0.45)',
+  backgroundNoiseTint: 'rgba(255,255,255,0.015)',
+}
+
+// ── FAB Visual Tokens ─────────────────────────────────────────
+// Restrained deep-green surface with sage border and quiet shadow.
+// Not a bright gaming button — premium and calm.
+
+export const SEMANTIC_FAB = {
+  fabSurface: '#1A3A2A',
+  fabSurfacePressed: '#142D20',
+  fabBorder: 'rgba(129,199,132,0.25)',
+  fabIcon: '#E8EDE9',
+  fabGlow: 'rgba(129,199,132,0.12)',
+  fabShadow: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 10,
+  },
+}

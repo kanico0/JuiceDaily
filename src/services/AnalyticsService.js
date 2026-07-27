@@ -323,6 +323,18 @@ const EVENT_SCHEMAS = {
     required: ['session_id', 'ts'],
     optional: ['package_type'],
   },
+  history_guidance_shown: {
+    required: ['session_id', 'ts'],
+    optional: ['guidance_state'],
+  },
+  history_empty_scan_tapped: {
+    required: ['session_id', 'ts'],
+    optional: [],
+  },
+  history_empty_manual_entry_tapped: {
+    required: ['session_id', 'ts'],
+    optional: [],
+  },
 }
 
 // ── Prohibited field patterns (PII / sensitive) ──────────────

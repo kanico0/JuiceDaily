@@ -4,7 +4,7 @@
 // expands to show individual entries for that day.
 // ─────────────────────────────────────────────────────────────
 
-import React, { useState, useMemo, useCallback, useEffect } from 'react'
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import {
   View,
   Text,
@@ -25,6 +25,8 @@ import { PRODUCE_DATA } from '../services/JuiceEngine'
 import { USDA_RDA } from '../constants/nutrition'
 import { BRAND, FONT_SIZE, FONT_WEIGHT, SPACE, RADIUS } from '../constants/tokens'
 import { getDevNow, onDevClockChange } from '../utils/DevClock'
+import { getHistoryGuidance } from '../services/historyGuidance'
+import { trackEvent } from '../services/AnalyticsService'
 
 // ── Source icon helper ───────────────────────────────────────
 const SOURCE_ICON = { photo: Camera, manual: Keyboard, demo: Eye }
@@ -199,6 +201,7 @@ export default function HistoryScreen({ navigation }) {
   const { entries, deleteEntry } = useJuiceLog()
   const [selectedEntry, setSelectedEntry] = useState(null)
   const [devClockTick, setDevClockTick] = useState(0)
+  const guidanceFiredRef = useRef(false)
 
   useEffect(() => {
     return onDevClockChange(() => setDevClockTick((t) => t + 1))
@@ -223,6 +226,49 @@ export default function HistoryScreen({ navigation }) {
   const totalEntries = entries.length
   const totalDays = groupedDays.length
 
+  const distinctProduceCount = useMemo(() => {
+    const ids = new Set()
+    entries.forEach((e) => {
+      (e.ingredients || []).forEach((id) => ids.add(id))
+    })
+    return ids.size
+  }, [entries])
+
+  const sortedDateKeys = useMemo(() => {
+    return entries
+      .map((e) => e.dateKey)
+      .filter(Boolean)
+      .sort((a, b) => a.localeCompare(b))
+  }, [entries])
+
+  const guidance = useMemo(() => {
+    return getHistoryGuidance({
+      activeDayCount: totalDays,
+      totalJuiceCount: totalEntries,
+      distinctProduceCount,
+      firstLogDate: sortedDateKeys.length > 0 ? sortedDateKeys[0] : null,
+      lastLogDate: sortedDateKeys.length > 0 ? sortedDateKeys[sortedDateKeys.length - 1] : null,
+    })
+  }, [totalDays, totalEntries, distinctProduceCount, sortedDateKeys])
+
+  useEffect(() => {
+    if (guidanceFiredRef.current) return
+    guidanceFiredRef.current = true
+    trackEvent('history_guidance_shown', { guidance_state: guidance.state })
+  }, [guidance.state])
+
+  const handleScanPress = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    trackEvent('history_empty_scan_tapped', {})
+    navigation.navigate('ScanFlow', { screen: 'ScanHome', params: { openCamera: true, source: 'camera' } })
+  }, [navigation])
+
+  const handleManualEntryPress = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    trackEvent('history_empty_manual_entry_tapped', {})
+    navigation.navigate('ScanFlow', { screen: 'ScanHome', params: { manualEntry: true } })
+  }, [navigation])
+
   return (
     <View style={s.root}>
       <MeshGradientBg />
@@ -246,19 +292,47 @@ export default function HistoryScreen({ navigation }) {
           {groupedDays.length === 0 ? (
             <View style={s.emptyState}>
               <Clock size={32} color={BRAND.text.muted} />
-              <Text style={s.emptyTitle}>No history yet</Text>
-              <Text style={s.emptyDesc}>Your juice log entries will appear here.</Text>
+              <Text style={s.emptyTitle}>{guidance.title}</Text>
+              <Text style={s.emptyDesc}>{guidance.body}</Text>
+              {guidance.primaryAction && (
+                <Pressable
+                  style={({ pressed }) => [s.guidancePrimaryBtn, pressed && { opacity: 0.85 }]}
+                  onPress={handleScanPress}
+                  accessibilityRole="button"
+                  accessibilityLabel={guidance.primaryAction.label}
+                >
+                  <Camera size={18} color={BRAND.text.primary} />
+                  <Text style={s.guidancePrimaryBtnText}>{guidance.primaryAction.label}</Text>
+                </Pressable>
+              )}
+              {guidance.secondaryAction && (
+                <Pressable
+                  style={({ pressed }) => [s.guidanceSecondaryBtn, pressed && { opacity: 0.7 }]}
+                  onPress={handleManualEntryPress}
+                  accessibilityRole="button"
+                  accessibilityLabel={guidance.secondaryAction.label}
+                >
+                  <Keyboard size={18} color={BRAND.text.muted} />
+                  <Text style={s.guidanceSecondaryBtnText}>{guidance.secondaryAction.label}</Text>
+                </Pressable>
+              )}
             </View>
           ) : (
-            groupedDays.map((group) => (
-              <DaySection
-                key={group.dateKey}
-                dateKey={group.dateKey}
-                entries={group.entries}
-                onEntryPress={setSelectedEntry}
-                devClockTick={devClockTick}
-              />
-            ))
+            <>
+              {groupedDays.map((group) => (
+                <DaySection
+                  key={group.dateKey}
+                  dateKey={group.dateKey}
+                  entries={group.entries}
+                  onEntryPress={setSelectedEntry}
+                  devClockTick={devClockTick}
+                />
+              ))}
+              <View style={s.guidanceCard}>
+                <Text style={s.guidanceCardTitle}>{guidance.title}</Text>
+                <Text style={s.guidanceCardBody}>{guidance.body}</Text>
+              </View>
+            </>
           )}
         </ScrollView>
       </SafeAreaView>
@@ -497,6 +571,61 @@ const s = StyleSheet.create({
   emptyDesc: {
     fontSize: FONT_SIZE.sm,
     fontWeight: FONT_WEIGHT.medium,
+    color: BRAND.text.muted,
+  },
+  guidanceCard: {
+    backgroundColor: BRAND.glass.surfaceElevated,
+    borderRadius: RADIUS.lg,
+    borderWidth: 0.5,
+    borderColor: BRAND.glass.border,
+    padding: SPACE.lg,
+    marginTop: SPACE.sm,
+  },
+  guidanceCardTitle: {
+    fontSize: FONT_SIZE.md,
+    fontWeight: FONT_WEIGHT.bold,
+    color: BRAND.text.primary,
+    marginBottom: SPACE.xs,
+  },
+  guidanceCardBody: {
+    fontSize: FONT_SIZE.sm,
+    fontWeight: FONT_WEIGHT.medium,
+    color: BRAND.text.muted,
+    flexWrap: 'wrap',
+  },
+  guidancePrimaryBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: SPACE.xs,
+    minHeight: 48,
+    borderRadius: RADIUS.md,
+    backgroundColor: BRAND.accent.vitaminC,
+    paddingHorizontal: SPACE.lg,
+    paddingVertical: SPACE.md,
+    marginTop: SPACE.md,
+  },
+  guidancePrimaryBtnText: {
+    fontSize: FONT_SIZE.md,
+    fontWeight: FONT_WEIGHT.bold,
+    color: BRAND.text.primary,
+  },
+  guidanceSecondaryBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: SPACE.xs,
+    minHeight: 48,
+    borderRadius: RADIUS.md,
+    borderWidth: 1,
+    borderColor: BRAND.glass.border,
+    paddingHorizontal: SPACE.lg,
+    paddingVertical: SPACE.md,
+    marginTop: SPACE.xs,
+  },
+  guidanceSecondaryBtnText: {
+    fontSize: FONT_SIZE.md,
+    fontWeight: FONT_WEIGHT.semibold,
     color: BRAND.text.muted,
   },
 })

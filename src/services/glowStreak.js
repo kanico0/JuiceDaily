@@ -10,19 +10,25 @@
 // ─────────────────────────────────────────────────────────────
 
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import { useEffect, useState } from 'react'
 import { getDevNow } from '../utils/DevClock'
 
 const KEY_COUNT = 'glowStreak_count'
 const KEY_LAST_DATE = 'glowStreak_lastCheckInDate'
 const KEY_GRACE_DATE = 'glowStreak_graceUsedDate'
 const KEY_FIRST_DATE = 'glowStreak_firstCheckInDate'
+const listeners = new Set()
 
-function getTodayKey() {
+export function getGlowTodayKey() {
   const d = getDevNow()
   const y = d.getFullYear()
   const m = String(d.getMonth() + 1).padStart(2, '0')
   const day = String(d.getDate()).padStart(2, '0')
   return `${y}-${m}-${day}`
+}
+
+function notifyListeners() {
+  listeners.forEach((listener) => listener())
 }
 
 // Days between two YYYY-MM-DD strings
@@ -48,11 +54,41 @@ export async function getGlowState() {
   }
 }
 
+export function useGlowStreak() {
+  const [state, setState] = useState({
+    count: 0,
+    lastCheckInDate: undefined,
+    graceUsedDate: undefined,
+    firstCheckInDate: undefined,
+  })
+
+  useEffect(() => {
+    let isMounted = true
+    const refreshState = async () => {
+      const nextState = await getGlowState()
+      if (isMounted) setState(nextState)
+    }
+    refreshState()
+    listeners.add(refreshState)
+    return () => {
+      isMounted = false
+      listeners.delete(refreshState)
+    }
+  }, [])
+
+  const today = getGlowTodayKey()
+  return {
+    ...state,
+    checkedInToday: state.lastCheckInDate === today,
+    graceUsedToday: state.graceUsedDate === today,
+  }
+}
+
 // "Yes, I juiced" — increment streak once per day
 // Silent streak protection: if gap == 2 days, streak preserved.
 // If gap >= 3 days, streak resets to 1 (this new check-in).
 export async function checkInToday() {
-  const today = getTodayKey()
+  const today = getGlowTodayKey()
   const state = await getGlowState()
 
   // Already checked in today
@@ -70,6 +106,7 @@ export async function checkInToday() {
       [KEY_GRACE_DATE, ''],
       [KEY_FIRST_DATE, today],
     ])
+    notifyListeners()
     return { count: 1, wasIncremented: true, silentGrace: false, wasReset: true }
   }
 
@@ -86,13 +123,14 @@ export async function checkInToday() {
     sets.push([KEY_FIRST_DATE, today])
   }
   await AsyncStorage.multiSet(sets)
+  notifyListeners()
 
   return { count: newCount, wasIncremented: true, silentGrace, wasReset: false }
 }
 
 // "Not today" — manual grace: one free skip per streak cycle
 export async function skipToday() {
-  const today = getTodayKey()
+  const today = getGlowTodayKey()
   const state = await getGlowState()
 
   // Grace not yet used for this streak cycle
@@ -104,10 +142,12 @@ export async function skipToday() {
         [KEY_COUNT, '0'],
         [KEY_GRACE_DATE, ''],
       ])
+      notifyListeners()
       return { count: 0, usedGrace: false, streakReset: true }
     }
     // First grace use in this streak cycle
     await AsyncStorage.setItem(KEY_GRACE_DATE, today)
+    notifyListeners()
     return { count: state.count, usedGrace: true, streakReset: false }
   }
 
@@ -118,4 +158,5 @@ export async function skipToday() {
 // Dev/testing: clear all glow streak data
 export async function resetGlowStreak() {
   await AsyncStorage.multiRemove([KEY_COUNT, KEY_LAST_DATE, KEY_GRACE_DATE, KEY_FIRST_DATE])
+  notifyListeners()
 }

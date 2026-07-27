@@ -10,7 +10,7 @@ import {
 } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { ArrowRight, Check, Plus, ScanLine, Sparkles, X } from 'lucide-react-native'
-import { DARK, FONT_SIZE, FONT_WEIGHT, RADIUS } from '../constants/tokens'
+import { SEMANTIC_COLORS, SEMANTIC_SPACE, SEMANTIC_RADIUS, SEMANTIC_TYPOGRAPHY, FONT_WEIGHT, RADIUS } from '../constants/tokens'
 
 function ProduceVisual({ spotlight, isComplete }) {
   const [primaryColor, secondaryColor, darkColor] = spotlight.accentColors
@@ -107,7 +107,7 @@ export default function TodaysJuiceSpotlight({
             accessibilityRole="button"
             accessibilityLabel={secondaryLabel}
           >
-            {isComplete ? <Plus size={15} color="#E6EDF3" /> : <ScanLine size={15} color="#E6EDF3" />}
+            {isComplete ? <Plus size={15} color={SEMANTIC_COLORS.textPrimary} /> : <ScanLine size={15} color={SEMANTIC_COLORS.textPrimary} />}
             <Text style={styles.secondaryText}>{secondaryLabel}</Text>
           </Pressable>
         </View>
@@ -129,7 +129,7 @@ export function JuiceSpotlightDetailsModal({ visible, spotlight, focusNutrient, 
               <Text style={styles.modalTitle}>{spotlight.name}</Text>
             </View>
             <Pressable style={styles.closeButton} onPress={onClose} hitSlop={8} accessibilityRole="button" accessibilityLabel="Close blend details">
-              <X size={18} color={DARK.textPrimary} />
+              <X size={18} color={SEMANTIC_COLORS.textPrimary} />
             </Pressable>
           </View>
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.modalScroll}>
@@ -166,10 +166,10 @@ const styles = StyleSheet.create({
     minHeight: 210,
     borderRadius: RADIUS.xl,
     overflow: 'hidden',
-    backgroundColor: DARK.surfaceElevated,
+    backgroundColor: SEMANTIC_COLORS.surfaceRaised,
     borderWidth: 1,
     borderColor: 'rgba(184,242,199,0.22)',
-    marginBottom: 16,
+    marginBottom: SEMANTIC_SPACE.lg,
   },
   visualWrap: {
     height: 82,
@@ -242,12 +242,12 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 20,
     top: 20,
-    color: '#FFFFFF',
+    color: SEMANTIC_COLORS.textOnAccent,
     fontSize: 28,
     fontWeight: FONT_WEIGHT.heavy,
   },
   content: {
-    padding: 16,
+    padding: SEMANTIC_SPACE.lg,
   },
   labelRow: {
     flexDirection: 'row',
@@ -257,12 +257,12 @@ const styles = StyleSheet.create({
   },
   label: {
     color: '#DDFBE5',
-    fontSize: FONT_SIZE.xs,
-    fontWeight: FONT_WEIGHT.bold,
+    fontSize: SEMANTIC_TYPOGRAPHY.caption.fontSize,
+    fontWeight: SEMANTIC_TYPOGRAPHY.caption.fontWeight,
     letterSpacing: 0.7,
   },
   name: {
-    color: '#FFFFFF',
+    color: SEMANTIC_COLORS.textOnAccent,
     fontSize: 22,
     fontWeight: FONT_WEIGHT.heavy,
     letterSpacing: -0.5,
@@ -270,19 +270,19 @@ const styles = StyleSheet.create({
   },
   ingredients: {
     color: '#C9DCCF',
-    fontSize: FONT_SIZE.sm,
-    fontWeight: FONT_WEIGHT.medium,
+    fontSize: SEMANTIC_TYPOGRAPHY.body.fontSize,
+    fontWeight: SEMANTIC_TYPOGRAPHY.body.fontWeight,
     lineHeight: 18,
   },
   description: {
     color: '#AABCB0',
-    fontSize: FONT_SIZE.sm,
+    fontSize: SEMANTIC_TYPOGRAPHY.body.fontSize,
     lineHeight: 18,
-    marginTop: 8,
+    marginTop: SEMANTIC_SPACE.sm,
   },
   actions: {
     flexDirection: 'row',
-    gap: 8,
+    gap: SEMANTIC_SPACE.sm,
     marginTop: 14,
   },
   primaryButton: {
@@ -298,8 +298,8 @@ const styles = StyleSheet.create({
   },
   primaryText: {
     color: '#112817',
-    fontSize: FONT_SIZE.sm,
-    fontWeight: FONT_WEIGHT.bold,
+    fontSize: SEMANTIC_TYPOGRAPHY.body.fontSize,
+    fontWeight: SEMANTIC_TYPOGRAPHY.buttonLabel.fontWeight,
   },
   secondaryButton: {
     minHeight: 44,
@@ -314,8 +314,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
   },
   secondaryText: {
-    color: '#E6EDF3',
-    fontSize: FONT_SIZE.sm,
+    color: SEMANTIC_COLORS.textPrimary,
+    fontSize: SEMANTIC_TYPOGRAPHY.body.fontSize,
     fontWeight: FONT_WEIGHT.semibold,
   },
   buttonPressed: {
@@ -344,13 +344,13 @@ const styles = StyleSheet.create({
   },
   modalEyebrow: {
     color: '#B8F2C7',
-    fontSize: FONT_SIZE.xs,
-    fontWeight: FONT_WEIGHT.bold,
+    fontSize: SEMANTIC_TYPOGRAPHY.caption.fontSize,
+    fontWeight: SEMANTIC_TYPOGRAPHY.caption.fontWeight,
     letterSpacing: 0.8,
     marginBottom: 4,
   },
   modalTitle: {
-    color: '#FFFFFF',
+    color: SEMANTIC_COLORS.textOnAccent,
     fontSize: 28,
     fontWeight: FONT_WEIGHT.heavy,
     letterSpacing: -0.7,
@@ -368,20 +368,20 @@ const styles = StyleSheet.create({
   },
   modalDescription: {
     color: '#D0DED4',
-    fontSize: FONT_SIZE.md,
+    fontSize: SEMANTIC_TYPOGRAPHY.body.fontSize,
     lineHeight: 21,
     marginTop: 14,
   },
   focusConnection: {
     color: '#B8F2C7',
-    fontSize: FONT_SIZE.sm,
+    fontSize: SEMANTIC_TYPOGRAPHY.body.fontSize,
     fontWeight: FONT_WEIGHT.semibold,
     marginTop: 10,
   },
   sectionTitle: {
-    color: '#FFFFFF',
-    fontSize: FONT_SIZE.md,
-    fontWeight: FONT_WEIGHT.bold,
+    color: SEMANTIC_COLORS.textOnAccent,
+    fontSize: SEMANTIC_TYPOGRAPHY.cardTitle.fontSize,
+    fontWeight: SEMANTIC_TYPOGRAPHY.cardTitle.fontWeight,
     marginTop: 18,
     marginBottom: 7,
   },
@@ -398,26 +398,26 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     color: '#112817',
     backgroundColor: '#B8F2C7',
-    fontSize: FONT_SIZE.xs,
-    fontWeight: FONT_WEIGHT.bold,
+    fontSize: SEMANTIC_TYPOGRAPHY.caption.fontSize,
+    fontWeight: SEMANTIC_TYPOGRAPHY.caption.fontWeight,
     lineHeight: 20,
   },
   stepText: {
     flex: 1,
     color: '#CBD7CE',
-    fontSize: FONT_SIZE.sm,
+    fontSize: SEMANTIC_TYPOGRAPHY.body.fontSize,
     lineHeight: 19,
   },
   note: {
-    color: '#E6EDF3',
-    fontSize: FONT_SIZE.sm,
+    color: SEMANTIC_COLORS.textPrimary,
+    fontSize: SEMANTIC_TYPOGRAPHY.body.fontSize,
     fontStyle: 'italic',
     lineHeight: 19,
-    marginTop: 8,
+    marginTop: SEMANTIC_SPACE.sm,
   },
   reminder: {
     color: '#95A69B',
-    fontSize: FONT_SIZE.sm,
+    fontSize: SEMANTIC_TYPOGRAPHY.body.fontSize,
     lineHeight: 19,
     marginTop: 12,
   },
@@ -432,7 +432,7 @@ const styles = StyleSheet.create({
   },
   useButtonText: {
     color: '#112817',
-    fontSize: FONT_SIZE.md,
-    fontWeight: FONT_WEIGHT.bold,
+    fontSize: SEMANTIC_TYPOGRAPHY.cardTitle.fontSize,
+    fontWeight: SEMANTIC_TYPOGRAPHY.cardTitle.fontWeight,
   },
 })

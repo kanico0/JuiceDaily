@@ -34,52 +34,38 @@ import {
   Crown,
   Zap,
   Shield,
-  Droplets as DropIcon,
   BookOpen,
   Home,
-  BarChart3,
-  Flame,
-  TrendingUp,
-  AlertCircle,
   Settings,
 } from 'lucide-react-native'
 import MeshGradientBg from '../components/MeshGradientBg'
 import LiquidNutrientOrb from '../components/LiquidNutrientOrb'
-import TodaysJuiceSpotlight, { JuiceSpotlightDetailsModal } from '../components/TodaysJuiceSpotlight'
 import { DARK, RADIUS, FONT_SIZE, FONT_WEIGHT } from '../constants/tokens'
 import { useReducedMotion, DURATION, EASING, LIQUID_SPRING, LIQUID_SPRING_SNAPPY } from '../utils/motion'
 import { trackEvent } from '../services/AnalyticsService'
 import { useActivation } from '../services/ActivationStore'
 import { useFlags } from '../services/FeatureFlags'
 import { useJuiceLog } from '../services/JuiceLogStore'
-import { useNutritionScore } from '../services/NutritionScoreStore'
-import { USDA_RDA } from '../constants/nutrition'
-import { getGlowState, getGlowTodayKey, skipToday } from '../services/glowStreak'
-import { getFocusForToday, swapFocusToday } from '../services/focusNutrient'
-import { shouldShowWeeklySummary, dismissWeeklySummary, buildWeeklySummaryData } from '../services/weeklySummary'
-import { checkAchievements } from '../services/achievements'
-import AchievementOverlay from '../components/AchievementOverlay'
 import { RECIPES, getCleanupLabel } from '../constants/recipeData'
-import { getSpotlightForDay, getSpotlightState, resolveSpotlightDestination } from '../data/juiceSpotlights'
 
 const GOALS = [
-  { id: 'energy', label: 'More Energy', emoji: '⚡' },
-  { id: 'glow', label: 'Better Skin', emoji: '✨' },
-  { id: 'immunity', label: 'Stronger Immunity', emoji: '🛡️' },
-  { id: 'detox', label: 'Daily Detox', emoji: '🌿' },
-  { id: 'explore', label: 'Just Exploring', emoji: '🧭' },
+  { id: 'energy', label: 'More Energy', emoji: 'âš¡' },
+  { id: 'glow', label: 'Better Skin', emoji: 'âœ¨' },
+  { id: 'immunity', label: 'Stronger Immunity', emoji: 'ðŸ›¡ï¸' },
+  { id: 'detox', label: 'Daily Detox', emoji: 'ðŸŒ¿' },
+  { id: 'explore', label: 'Just Exploring', emoji: 'ðŸ§­' },
 ]
 
-// ── Browse Ideas source: curated RECIPES (offline-safe) ──────
+// â”€â”€ Browse Ideas source: curated RECIPES (offline-safe) â”€â”€â”€â”€â”€â”€
 
-// ── Example scan mock data ───────────────────────────────────
+// â”€â”€ Example scan mock data â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const EXAMPLE_SCAN = {
   produce: [
     { name: 'Kale', amount: '2 large leaves (~80g)' },
     { name: 'Green Apple', amount: '1 medium (~180g)' },
-    { name: 'Cucumber', amount: '½ cucumber (~150g)' },
-    { name: 'Lemon', amount: '½ lemon (~40g)' },
+    { name: 'Cucumber', amount: 'Â½ cucumber (~150g)' },
+    { name: 'Lemon', amount: 'Â½ lemon (~40g)' },
     { name: 'Ginger', amount: '1 thumb (~10g)' },
   ],
   nutrients: [
@@ -109,16 +95,25 @@ function NutrientTeaser({ isReduced }) {
   const timerRef = useRef(null)
 
   useEffect(() => {
+    let mounted = true
+
     trackEvent('scan_teaser_visible', { teaser_index: 0 })
     if (isReduced) return
 
+    if (timerRef.current) {
+      clearInterval(timerRef.current)
+      timerRef.current = null
+    }
+
     timerRef.current = setInterval(() => {
+      if (!mounted) return
       Animated.timing(fadeAnim, {
         toValue: 0,
         duration: 200,
         easing: EASING.linear,
         useNativeDriver: true,
       }).start(() => {
+        if (!mounted) return
         setIndex((prev) => {
           const next = (prev + 1) % TEASER_LINES.length
           trackEvent('scan_teaser_visible', { teaser_index: next })
@@ -134,9 +129,14 @@ function NutrientTeaser({ isReduced }) {
     }, 3500)
 
     return () => {
-      if (timerRef.current) clearInterval(timerRef.current)
+      mounted = false
+      if (timerRef.current) {
+        clearInterval(timerRef.current)
+        timerRef.current = null
+      }
+      Animated.timing(fadeAnim, { toValue: 1, duration: 0, useNativeDriver: true }).stop()
     }
-  }, [isReduced])
+  }, [isReduced, fadeAnim])
 
   return (
     <View style={teaserStyles.wrap} accessibilityRole="text" accessibilityLabel={`Nutrient fact: ${TEASER_LINES[index]}`}>
@@ -1097,178 +1097,15 @@ function ScanHome({ onScan, onBrowse, onExample, onExplore, totalLogs, showSecon
   )
 }
 
-// ── Browse Home: Stable Dashboard ────────────────────────────
+// -- Browse Home: Discovery Hub --
 
-function BrowseHome({ onScan, onBrowse, onExample, onExplore, onViewToday, onGlowLibrary, onSeasonalPacks, onBeginnerPath, onLogIngredients, onUseSpotlightBlend, isExpandedRecipes, dailySummary, todayEntries, totalLogs, savedGoalId, onDismissGoalBanner, isReduced }) {
+function BrowseHome({ onScan, onBrowse, onExample, onExplore, onGlowLibrary, onSeasonalPacks, onBeginnerPath, isExpandedRecipes, totalLogs, isReduced }) {
   const fadeAnim = useRef(new Animated.Value(0)).current
   const btnScale = useRef(new Animated.Value(1)).current
-  const goalData = savedGoalId ? GOALS.find((g) => g.id === savedGoalId) : null
-  const isReturning = totalLogs > 0 && dailySummary
-
-  // ── Glow Streak state ──
-  const [glowCount, setGlowCount] = useState(0)
-  const [checkedInToday, setCheckedInToday] = useState(false)
-  const [graceUsedToday, setGraceUsedToday] = useState(false)
-  const [checkInFeedback, setCheckInFeedback] = useState(null) // 'grace' | 'reset'
-  const [showSkipConfirm, setShowSkipConfirm] = useState(false)
-  const streakScale = useRef(new Animated.Value(1)).current
-
-  // Hydrate glow state on mount
-  useEffect(() => {
-    ;(async () => {
-      const s = await getGlowState()
-      setGlowCount(s.count)
-      const today = getGlowTodayKey()
-      if (s.lastCheckInDate === today) setCheckedInToday(true)
-      if (s.graceUsedDate === today) setGraceUsedToday(true)
-    })()
-  }, [])
-
-  const pulseStreak = useCallback(() => {
-    if (isReduced) return
-    Animated.sequence([
-      Animated.timing(streakScale, { toValue: 1.06, duration: 180, useNativeDriver: true }),
-      Animated.timing(streakScale, { toValue: 1, duration: 220, useNativeDriver: true }),
-    ]).start()
-  }, [isReduced, streakScale])
-
-  const handleLogTodayJuice = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
-    trackEvent('glow_log_today_juice_tapped', {})
-    onLogIngredients()
-  }, [onLogIngredients])
-
-  const handleSkipPress = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-    setShowSkipConfirm(true)
-  }, [])
-
-  const handleSkipConfirmYes = useCallback(async () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-    setShowSkipConfirm(false)
-    const result = await skipToday()
-    setGlowCount(result.count)
-    if (result.streakReset) {
-      setCheckInFeedback('reset')
-      trackEvent('glow_streak_reset', { reason: 'double_skip' })
-    } else if (result.usedGrace) {
-      setGraceUsedToday(true)
-      setCheckInFeedback('grace')
-      trackEvent('glow_streak_grace', { count: result.count })
-    }
-    setTimeout(() => setCheckInFeedback(null), 2500)
-  }, [])
-
-  const handleSkipConfirmNo = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-    setShowSkipConfirm(false)
-  }, [])
-
-  // ── Focus Nutrient state ──
-  const [focusNutrient, setFocusNutrient] = useState(null)
-  const [focusSwapped, setFocusSwapped] = useState(false)
-  const [showFocusDetail, setShowFocusDetail] = useState(false)
-  const [showSpotlightDetails, setShowSpotlightDetails] = useState(false)
-
-  // Hydrate focus nutrient on mount
-  useEffect(() => {
-    ;(async () => {
-      const n = await getFocusForToday()
-      if (n) setFocusNutrient(n)
-    })()
-  }, [])
-
-  const handleSwapFocus = useCallback(async () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-    const result = await swapFocusToday()
-    if (result.swapped) {
-      setFocusNutrient(result.nutrient)
-      setFocusSwapped(true)
-      trackEvent('focus_nutrient_swapped', { id: result.nutrient.id })
-    }
-  }, [])
-
-  const spotlightDayKey = getGlowTodayKey()
-  const spotlight = useMemo(() => getSpotlightForDay({
-    focusId: focusNutrient?.id,
-    dayKey: spotlightDayKey,
-  }), [focusNutrient?.id, spotlightDayKey])
-  const spotlightState = useMemo(() => getSpotlightState({ todayEntries, totalLogs }), [todayEntries, totalLogs])
-
-  const handleOpenSpotlight = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-    setShowSpotlightDetails(true)
-    trackEvent('juice_spotlight_opened', { spotlight_id: spotlight.id })
-  }, [spotlight.id])
-
-  const handleUseSpotlightBlend = useCallback(() => {
-    setShowSpotlightDetails(false)
-    onUseSpotlightBlend(spotlight)
-  }, [onUseSpotlightBlend, spotlight])
-
-  // ── Weekly Summary state ──
-  const [weeklySummary, setWeeklySummary] = useState(null)
-  const [showWeekly, setShowWeekly] = useState(false)
-  const weeklyFade = useRef(new Animated.Value(0)).current
-  const weeklySlide = useRef(new Animated.Value(-20)).current
+  const isReturning = totalLogs > 0
 
   useEffect(() => {
-    ;(async () => {
-      const result = await shouldShowWeeklySummary()
-      if (result.show) {
-        const data = buildWeeklySummaryData({
-          juicesThisWeek: dailySummary?.todayCount || 0,
-          glowStreak: glowCount,
-          recentNutrients: [],
-        })
-        setWeeklySummary(data)
-        setShowWeekly(true)
-        if (!isReduced) {
-          Animated.parallel([
-            Animated.timing(weeklyFade, { toValue: 1, duration: 400, useNativeDriver: true }),
-            Animated.timing(weeklySlide, { toValue: 0, duration: 400, useNativeDriver: true }),
-          ]).start()
-        } else {
-          weeklyFade.setValue(1)
-          weeklySlide.setValue(0)
-        }
-      }
-    })()
-  }, [glowCount])
-
-  const handleDismissWeekly = useCallback(async () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-    await dismissWeeklySummary()
-    if (!isReduced) {
-      Animated.timing(weeklyFade, { toValue: 0, duration: 200, useNativeDriver: true }).start(() => {
-        setShowWeekly(false)
-      })
-    } else {
-      setShowWeekly(false)
-    }
-    trackEvent('weekly_summary_dismissed')
-  }, [isReduced, weeklyFade])
-
-  // ── Achievement state ──
-  const [pendingAchievement, setPendingAchievement] = useState(null)
-
-  // Check achievements after glow state hydrates
-  useEffect(() => {
-    if (glowCount === 0 && totalLogs === 0) return
-    ;(async () => {
-      const newlyUnlocked = await checkAchievements({
-        totalLogs,
-        streakCount: glowCount,
-      })
-      if (newlyUnlocked.length > 0) {
-        setPendingAchievement(newlyUnlocked[0])
-        trackEvent('achievement_unlocked', { id: newlyUnlocked[0].id })
-      }
-    })()
-  }, [glowCount, totalLogs])
-
-  useEffect(() => {
-    trackEvent('browse_home_viewed', { total_logs: totalLogs, saved_goal: savedGoalId || 'none' })
+    trackEvent('explore_home_viewed', { total_logs: totalLogs })
     if (isReduced) {
       fadeAnim.setValue(1)
     } else {
@@ -1295,334 +1132,14 @@ function BrowseHome({ onScan, onBrowse, onExample, onExplore, onViewToday, onGlo
         Discover a blend, scan your ingredients, or revisit what works for you.
       </Text>
 
-      <TodaysJuiceSpotlight
-        spotlight={spotlight}
-        state={spotlightState}
-        focusNutrient={focusNutrient}
-        onViewBlend={handleOpenSpotlight}
-        onScan={onScan}
-        onViewToday={onViewToday}
-        onAddAnother={onLogIngredients}
-      />
-
-      <JuiceSpotlightDetailsModal
-        visible={showSpotlightDetails}
-        spotlight={spotlight}
-        focusNutrient={focusNutrient}
-        onClose={() => setShowSpotlightDetails(false)}
-        onUseBlend={handleUseSpotlightBlend}
-      />
-
-      {/* ── Weekly Glow Summary ── */}
-      {showWeekly && weeklySummary && (
-        <Animated.View style={[weeklyStyles.card, { opacity: weeklyFade, transform: [{ translateY: weeklySlide }] }]}>
-          <View style={weeklyStyles.headerRow}>
-            <Text style={weeklyStyles.emoji}>🌟</Text>
-            <Text style={weeklyStyles.title}>Your Glow Week</Text>
-          </View>
-          <View style={weeklyStyles.statsRow}>
-            <View style={weeklyStyles.stat}>
-              <Text style={weeklyStyles.statValue}>{weeklySummary.juicesThisWeek}</Text>
-              <Text style={weeklyStyles.statLabel}>juices</Text>
-            </View>
-            <View style={weeklyStyles.statDivider} />
-            <View style={weeklyStyles.stat}>
-              <Text style={weeklyStyles.statValue}>{weeklySummary.glowStreak}d</Text>
-              <Text style={weeklyStyles.statLabel}>streak</Text>
-            </View>
-            <View style={weeklyStyles.statDivider} />
-            <View style={weeklyStyles.stat}>
-              <Text style={weeklyStyles.statValue}>{weeklySummary.highlightNutrient}</Text>
-              <Text style={weeklyStyles.statLabel}>top nutrient</Text>
-            </View>
-          </View>
-          <View style={weeklyStyles.btnRow}>
-            <Pressable
-              style={({ pressed }) => [weeklyStyles.primaryBtn, pressed && { opacity: 0.8 }]}
-              onPress={handleDismissWeekly}
-              hitSlop={8}
-              accessibilityRole="button"
-              accessibilityLabel="Keep the glow going"
-            >
-              <Text style={weeklyStyles.primaryBtnText}>Keep the glow going</Text>
-            </Pressable>
-            <Pressable
-              style={({ pressed }) => [weeklyStyles.secondaryBtn, pressed && { opacity: 0.6 }]}
-              onPress={handleDismissWeekly}
-              hitSlop={8}
-              accessibilityRole="button"
-              accessibilityLabel="Share glow"
-            >
-              <Text style={weeklyStyles.secondaryBtnText}>Share glow</Text>
-            </Pressable>
-          </View>
-        </Animated.View>
-      )}
-
-      {/* ── Glow Streak + Daily Check-In ── */}
-      <View style={glowStyles.card}>
-        <Animated.View style={[glowStyles.streakRow, { transform: [{ scale: streakScale }] }]}>
-          <Flame size={20} color="#FFB74D" />
-          <Text style={glowStyles.streakLabel}>Glow Streak</Text>
-          <Text style={glowStyles.streakValue}>{glowCount} day{glowCount !== 1 ? 's' : ''}</Text>
-        </Animated.View>
-
-        {checkInFeedback === 'grace' && (
-          <Text style={[glowStyles.feedback, { color: '#FFB74D' }]}>Grace used — streak protected</Text>
-        )}
-        {checkInFeedback === 'reset' && (
-          <Text style={[glowStyles.feedback, { color: '#FFB74D' }]}>New glow cycle begins.</Text>
-        )}
-
-        {/* A. Not checked in: prompt to log today's juice */}
-        {!checkedInToday && !checkInFeedback && !showSkipConfirm && (
-          <>
-            <Text style={glowStyles.prompt}>Log today's juice to keep your Glow Streak going.</Text>
-            <View style={glowStyles.btnRow}>
-              <Pressable
-                style={({ pressed }) => [glowStyles.btnPrimary, pressed && { opacity: 0.8 }]}
-                onPress={handleLogTodayJuice}
-                hitSlop={8}
-                accessibilityRole="button"
-                accessibilityLabel="Log today's juice"
-              >
-                <Leaf size={16} color="#FFFFFF" />
-                <Text style={glowStyles.btnPrimaryText}>Log today's juice</Text>
-              </Pressable>
-              <Pressable
-                style={({ pressed }) => [glowStyles.btnSecondary, graceUsedToday && { opacity: 0.4 }, pressed && { opacity: 0.6 }]}
-                onPress={handleSkipPress}
-                disabled={graceUsedToday}
-                hitSlop={8}
-                accessibilityRole="button"
-                accessibilityLabel="Not today"
-              >
-                <Text style={glowStyles.btnSecondaryText}>Not today</Text>
-              </Pressable>
-            </View>
-          </>
-        )}
-
-        {/* C. Skip confirmation: explain consequence before mutation */}
-        {showSkipConfirm && !checkedInToday && (
-          <>
-            <Text style={glowStyles.followUpPrompt}>
-              Skipping today uses a grace day to protect your streak.
-              {graceUsedToday ? ' You have already used your grace for this cycle — skipping again will reset your streak.' : ' You get one grace day per cycle.'}
-            </Text>
-            <View style={glowStyles.btnRow}>
-              <Pressable
-                style={({ pressed }) => [glowStyles.btnPrimary, pressed && { opacity: 0.8 }]}
-                onPress={handleSkipConfirmYes}
-                hitSlop={8}
-                accessibilityRole="button"
-                accessibilityLabel="Confirm skip today"
-              >
-                <Text style={glowStyles.btnPrimaryText}>Skip today</Text>
-              </Pressable>
-              <Pressable
-                style={({ pressed }) => [glowStyles.btnSecondary, pressed && { opacity: 0.6 }]}
-                onPress={handleSkipConfirmNo}
-                hitSlop={8}
-                accessibilityRole="button"
-                accessibilityLabel="Go back"
-              >
-                <Text style={glowStyles.btnSecondaryText}>Go back</Text>
-              </Pressable>
-            </View>
-          </>
-        )}
-
-        {/* B. Already checked in: show completed state */}
-        {checkedInToday && !checkInFeedback && (
-          <Text style={glowStyles.feedback}>You're checked in for today. ✓</Text>
-        )}
-
-        {checkedInToday && (
-          <Pressable
-            style={({ pressed }) => [glowStyles.logIngredientsBtn, pressed && { opacity: 0.7 }]}
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-              trackEvent('checkin_log_ingredients_tapped', { source: 'glow_streak_card' })
-              onLogIngredients()
-            }}
-            hitSlop={8}
-            accessibilityRole="button"
-            accessibilityLabel="Log your ingredients for nutrition tracking"
-          >
-            <Leaf size={14} color="#81C784" />
-            <Text style={glowStyles.logIngredientsText}>Log your ingredients for nutrition</Text>
-            <ChevronRight size={14} color="#81C784" />
-          </Pressable>
-        )}
-      </View>
-
-      {/* ── Today's Focus Nutrient ── */}
-      {focusNutrient && (
-        <View style={focusStyles.card}>
-          <View style={focusStyles.headerRow}>
-            <Text style={focusStyles.emoji}>{focusNutrient.emoji}</Text>
-            <View style={{ flex: 1 }}>
-              <Text style={focusStyles.label}>Today's Focus</Text>
-              <Text style={focusStyles.name}>{focusNutrient.name}</Text>
-            </View>
-            {!focusSwapped && (
-              <Pressable
-                onPress={handleSwapFocus}
-                hitSlop={10}
-                style={({ pressed }) => [focusStyles.swapBtn, pressed && { opacity: 0.6 }]}
-                accessibilityRole="button"
-                accessibilityLabel="Swap nutrient"
-              >
-                <Text style={focusStyles.swapText}>Swap</Text>
-              </Pressable>
-            )}
-          </View>
-          <Text style={focusStyles.benefit}>{focusNutrient.benefit}</Text>
-          <View style={focusStyles.comboRow}>
-            <Leaf size={13} color="#81C784" />
-            <Text style={focusStyles.comboText}>Try: {focusNutrient.combos[0]}</Text>
-          </View>
-          <Pressable
-            style={({ pressed }) => [focusStyles.tipsBtn, pressed && { opacity: 0.7 }]}
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-              setShowFocusDetail(true)
-              trackEvent('focus_nutrient_tips_opened', { id: focusNutrient.id })
-            }}
-            hitSlop={6}
-            accessibilityRole="button"
-            accessibilityLabel="See tips"
-          >
-            <Sparkles size={14} color="#64B5F6" />
-            <Text style={focusStyles.tipsBtnText}>See tips</Text>
-          </Pressable>
-        </View>
-      )}
-
-      {/* Focus Detail Modal */}
-      {focusNutrient && (
-        <Modal
-          visible={showFocusDetail}
-          transparent
-          animationType="slide"
-          onRequestClose={() => setShowFocusDetail(false)}
-        >
-          <View style={focusStyles.modalOverlay}>
-            <View style={focusStyles.modalContent}>
-              <View style={focusStyles.modalHeader}>
-                <Text style={focusStyles.modalEmoji}>{focusNutrient.emoji}</Text>
-                <Text style={focusStyles.modalTitle}>{focusNutrient.name}</Text>
-                <Pressable
-                  onPress={() => setShowFocusDetail(false)}
-                  hitSlop={12}
-                  style={focusStyles.modalClose}
-                  accessibilityRole="button"
-                  accessibilityLabel="Close"
-                >
-                  <X size={18} color={DARK.textMuted} />
-                </Pressable>
-              </View>
-              <Text style={focusStyles.modalBenefit}>{focusNutrient.benefit}</Text>
-
-              <Text style={focusStyles.modalSection}>Tips</Text>
-              {focusNutrient.tips.map((tip, i) => (
-                <View key={i} style={focusStyles.tipRow}>
-                  <View style={focusStyles.tipBullet} />
-                  <Text style={focusStyles.tipText}>{tip}</Text>
-                </View>
-              ))}
-
-              <Text style={focusStyles.modalSection}>Suggested Combos</Text>
-              {focusNutrient.combos.map((combo, i) => (
-                <View key={i} style={focusStyles.comboItem}>
-                  <Leaf size={14} color="#81C784" />
-                  <Text style={focusStyles.comboItemText}>{combo}</Text>
-                </View>
-              ))}
-
-              <Pressable
-                style={({ pressed }) => [focusStyles.modalCta, pressed && { opacity: 0.8 }]}
-                onPress={() => {
-                  setShowFocusDetail(false)
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
-                  onScan()
-                }}
-                hitSlop={6}
-                accessibilityRole="button"
-                accessibilityLabel="Try a scan"
-              >
-                <Camera size={18} color="#FFFFFF" />
-                <Text style={focusStyles.modalCtaText}>Try a Scan</Text>
-              </Pressable>
-            </View>
-          </View>
-        </Modal>
-      )}
-
-      {/* Today Summary Card — returning users only */}
-      {isReturning && (
-        <View style={browseHomeStyles.summaryCard}>
-          <Text style={browseHomeStyles.summaryTitle}>Today</Text>
-          <View style={browseHomeStyles.summaryRow}>
-            <View style={browseHomeStyles.summaryItem}>
-              <DropIcon size={16} color="#64B5F6" />
-              <Text style={browseHomeStyles.summaryValue}>{dailySummary.todayCount}</Text>
-              <Text style={browseHomeStyles.summaryLabel}>juices</Text>
-            </View>
-            <View style={browseHomeStyles.summaryDivider} />
-            <View style={browseHomeStyles.summaryItem}>
-              <TrendingUp size={16} color="#81C784" />
-              <Text style={browseHomeStyles.summaryValue}>{dailySummary.todayScore}</Text>
-              <Text style={browseHomeStyles.summaryLabel}>score</Text>
-            </View>
-            <View style={browseHomeStyles.summaryDivider} />
-            <View style={browseHomeStyles.summaryItem}>
-              <Flame size={16} color="#FFB74D" />
-              <Text style={browseHomeStyles.summaryValue}>{dailySummary.currentStreak}d</Text>
-              <Text style={browseHomeStyles.summaryLabel}>streak</Text>
-            </View>
-          </View>
-        </View>
-      )}
-
-      {/* Dynamic suggestion */}
-      {isReturning && dailySummary.suggestion ? (
-        <View style={browseHomeStyles.suggestionRow}>
-          <AlertCircle size={14} color={DARK.textMuted} />
-          <Text style={browseHomeStyles.suggestionText}>{dailySummary.suggestion}</Text>
-        </View>
-      ) : null}
-
-      {/* Goal saved banner — dismissible */}
-      {goalData && (
-        <View style={browseHomeStyles.goalBanner}>
-          <View style={browseHomeStyles.goalBannerContent}>
-            <Text style={browseHomeStyles.goalBannerEmoji}>{goalData.emoji}</Text>
-            <View style={{ flex: 1 }}>
-              <Text style={browseHomeStyles.goalBannerTitle}>Goal saved: {goalData.label}</Text>
-              <Text style={browseHomeStyles.goalBannerDesc}>We'll tailor your experience</Text>
-            </View>
-            <Pressable
-              onPress={onDismissGoalBanner}
-              hitSlop={12}
-              accessibilityRole="button"
-              accessibilityLabel="Dismiss goal banner"
-            >
-              <X size={16} color={DARK.textMuted} />
-            </Pressable>
-          </View>
-        </View>
-      )}
-
-      {totalLogs > 0 && !isReturning && (
+      {totalLogs > 0 && (
         <View style={obStyles.logsBadge}>
           <Check size={14} color="#81C784" />
           <Text style={obStyles.logsBadgeText}>{totalLogs} juice{totalLogs !== 1 ? 's' : ''} logged</Text>
         </View>
       )}
 
-      {/* Primary CTA — Scan Produce */}
+      {/* Primary CTA â€” Scan Produce */}
       <Animated.View style={[obStyles.primaryBtnWrap, { transform: [{ scale: btnScale }], marginTop: isReturning ? 12 : 20 }]}>
         <Pressable
           style={obStyles.primaryBtn}
@@ -1630,7 +1147,7 @@ function BrowseHome({ onScan, onBrowse, onExample, onExplore, onViewToday, onGlo
           onPressOut={handlePressOut}
           onPress={() => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
-            trackEvent('scan_cta_tapped', { source: 'browse_home' })
+            trackEvent('scan_cta_tapped', { source: 'explore_home' })
             onScan()
           }}
           hitSlop={8}
@@ -1650,24 +1167,7 @@ function BrowseHome({ onScan, onBrowse, onExample, onExplore, onViewToday, onGlo
         </Pressable>
       </Animated.View>
 
-      {/* Secondary CTA — View Today (returning users) */}
-      {isReturning && (
-        <Pressable
-          style={({ pressed }) => [browseHomeStyles.secondaryCta, pressed && { opacity: 0.7 }]}
-          onPress={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-            onViewToday()
-          }}
-          hitSlop={8}
-          accessibilityRole="button"
-          accessibilityLabel="View Today"
-        >
-          <BarChart3 size={18} color="#81C784" />
-          <Text style={browseHomeStyles.secondaryCtaText}>View Today</Text>
-        </Pressable>
-      )}
-
-      {/* Low-friction browse actions */}
+      {/* Discovery action cards */}
       <View style={browseHomeStyles.actions}>
         {isExpandedRecipes && (
           <>
@@ -1780,36 +1280,9 @@ function BrowseHome({ onScan, onBrowse, onExample, onExplore, onViewToday, onGlo
           </View>
           <ChevronRight size={16} color={DARK.textMuted} />
         </Pressable>
-
-        {totalLogs > 0 && !isReturning && (
-          <Pressable
-            style={({ pressed }) => [browseHomeStyles.actionCard, browseHomeStyles.actionCardHighlight, pressed && { opacity: 0.7 }]}
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-              onViewToday()
-            }}
-            hitSlop={4}
-            accessibilityRole="button"
-            accessibilityLabel="View Today"
-          >
-            <BarChart3 size={20} color="#81C784" />
-            <View style={browseHomeStyles.actionContent}>
-              <Text style={browseHomeStyles.actionTitle}>View Today</Text>
-              <Text style={browseHomeStyles.actionDesc}>Your daily dashboard</Text>
-            </View>
-            <ChevronRight size={16} color={DARK.textMuted} />
-          </Pressable>
-        )}
       </View>
 
       <Text style={obStyles.reassurance}>{isReturning ? 'Your daily journey continues.' : 'Ready when you are.'}</Text>
-
-      {/* Achievement Overlay */}
-      <AchievementOverlay
-        achievement={pendingAchievement}
-        visible={!!pendingAchievement}
-        onDismiss={() => setPendingAchievement(null)}
-      />
     </Animated.View>
   )
 }
@@ -1831,10 +1304,6 @@ const browseHomeStyles = StyleSheet.create({
     borderWidth: 0.5,
     borderColor: 'rgba(255,255,255,0.06)',
   },
-  actionCardHighlight: {
-    borderColor: 'rgba(76,175,80,0.2)',
-    backgroundColor: 'rgba(76,175,80,0.06)',
-  },
   actionContent: {
     flex: 1,
   },
@@ -1849,489 +1318,7 @@ const browseHomeStyles = StyleSheet.create({
     fontWeight: FONT_WEIGHT.medium,
     color: DARK.textMuted,
   },
-  goalBanner: {
-    width: '100%',
-    marginBottom: 12,
-  },
-  goalBannerContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    backgroundColor: 'rgba(76, 175, 80, 0.08)',
-    borderRadius: 14,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    borderWidth: 0.5,
-    borderColor: 'rgba(76, 175, 80, 0.15)',
-  },
-  goalBannerEmoji: {
-    fontSize: 20,
-    width: 28,
-    textAlign: 'center',
-  },
-  goalBannerTitle: {
-    fontSize: FONT_SIZE.sm,
-    fontWeight: FONT_WEIGHT.semibold,
-    color: '#81C784',
-  },
-  goalBannerDesc: {
-    fontSize: FONT_SIZE.xs,
-    fontWeight: FONT_WEIGHT.medium,
-    color: DARK.textMuted,
-    marginTop: 1,
-  },
-  summaryCard: {
-    width: '100%',
-    backgroundColor: 'rgba(255,255,255,0.04)',
-    borderRadius: 16,
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    borderWidth: 0.5,
-    borderColor: 'rgba(255,255,255,0.08)',
-    marginBottom: 10,
-  },
-  summaryTitle: {
-    fontSize: FONT_SIZE.xs,
-    fontWeight: FONT_WEIGHT.bold,
-    color: DARK.textMuted,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 12,
-  },
-  summaryRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-around',
-  },
-  summaryItem: {
-    alignItems: 'center',
-    gap: 4,
-  },
-  summaryValue: {
-    fontSize: 20,
-    fontWeight: FONT_WEIGHT.bold,
-    color: DARK.textPrimary,
-  },
-  summaryLabel: {
-    fontSize: FONT_SIZE.xs,
-    fontWeight: FONT_WEIGHT.medium,
-    color: DARK.textMuted,
-  },
-  summaryDivider: {
-    width: 1,
-    height: 32,
-    backgroundColor: 'rgba(255,255,255,0.06)',
-  },
-  suggestionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    width: '100%',
-    paddingHorizontal: 4,
-    marginBottom: 8,
-  },
-  suggestionText: {
-    flex: 1,
-    fontSize: FONT_SIZE.xs,
-    fontWeight: FONT_WEIGHT.medium,
-    color: DARK.textMuted,
-    fontStyle: 'italic',
-  },
-  secondaryCta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 12,
-    marginTop: 4,
-    marginBottom: 8,
-  },
-  secondaryCtaText: {
-    fontSize: FONT_SIZE.sm,
-    fontWeight: FONT_WEIGHT.semibold,
-    color: '#81C784',
-  },
 })
-
-const glowStyles = StyleSheet.create({
-  card: {
-    width: '100%',
-    backgroundColor: 'rgba(255,255,255,0.04)',
-    borderRadius: 16,
-    paddingVertical: 16,
-    paddingHorizontal: 18,
-    borderWidth: 0.5,
-    borderColor: 'rgba(255,179,0,0.12)',
-    marginBottom: 12,
-    marginTop: 4,
-  },
-  streakRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 8,
-  },
-  streakLabel: {
-    fontSize: FONT_SIZE.sm,
-    fontWeight: FONT_WEIGHT.semibold,
-    color: DARK.textMuted,
-    flex: 1,
-  },
-  streakValue: {
-    fontSize: 18,
-    fontWeight: FONT_WEIGHT.bold,
-    color: '#FFB74D',
-  },
-  prompt: {
-    fontSize: FONT_SIZE.sm,
-    fontWeight: FONT_WEIGHT.medium,
-    color: DARK.textPrimary,
-    marginBottom: 10,
-  },
-  followUpPrompt: {
-    fontSize: FONT_SIZE.sm,
-    fontWeight: FONT_WEIGHT.medium,
-    color: DARK.textPrimary,
-    marginBottom: 10,
-    lineHeight: 20,
-  },
-  btnRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  btnPrimary: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    backgroundColor: '#2E7D32',
-    borderRadius: 12,
-    paddingVertical: 11,
-  },
-  btnPrimaryText: {
-    fontSize: FONT_SIZE.sm,
-    fontWeight: FONT_WEIGHT.semibold,
-    color: '#FFFFFF',
-  },
-  btnSecondary: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    borderRadius: 12,
-    paddingVertical: 11,
-    borderWidth: 0.5,
-    borderColor: 'rgba(255,255,255,0.08)',
-  },
-  btnSecondaryText: {
-    fontSize: FONT_SIZE.sm,
-    fontWeight: FONT_WEIGHT.medium,
-    color: DARK.textMuted,
-  },
-  feedback: {
-    fontSize: FONT_SIZE.xs,
-    fontWeight: FONT_WEIGHT.semibold,
-    color: '#81C784',
-    textAlign: 'center',
-    marginTop: 4,
-  },
-  logIngredientsBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    marginTop: 10,
-    paddingVertical: 10,
-    borderRadius: 12,
-    backgroundColor: 'rgba(129,199,132,0.08)',
-    borderWidth: 0.5,
-    borderColor: 'rgba(129,199,132,0.20)',
-  },
-  logIngredientsText: {
-    fontSize: FONT_SIZE.xs,
-    fontWeight: FONT_WEIGHT.semibold,
-    color: '#81C784',
-  },
-})
-
-const focusStyles = StyleSheet.create({
-  card: {
-    width: '100%',
-    backgroundColor: 'rgba(255,255,255,0.04)',
-    borderRadius: 16,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderWidth: 0.5,
-    borderColor: 'rgba(100,181,246,0.12)',
-    marginBottom: 12,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginBottom: 6,
-  },
-  emoji: {
-    fontSize: 24,
-    width: 32,
-    textAlign: 'center',
-  },
-  label: {
-    fontSize: FONT_SIZE.xs,
-    fontWeight: FONT_WEIGHT.bold,
-    color: DARK.textMuted,
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
-  },
-  name: {
-    fontSize: FONT_SIZE.md,
-    fontWeight: FONT_WEIGHT.bold,
-    color: DARK.textPrimary,
-    marginTop: 1,
-  },
-  swapBtn: {
-    paddingVertical: 4,
-    paddingHorizontal: 10,
-    borderRadius: 8,
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    borderWidth: 0.5,
-    borderColor: 'rgba(255,255,255,0.08)',
-  },
-  swapText: {
-    fontSize: FONT_SIZE.xs,
-    fontWeight: FONT_WEIGHT.semibold,
-    color: DARK.textMuted,
-  },
-  benefit: {
-    fontSize: FONT_SIZE.sm,
-    fontWeight: FONT_WEIGHT.medium,
-    color: DARK.textMuted,
-    marginBottom: 8,
-    lineHeight: 18,
-  },
-  comboRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 10,
-  },
-  comboText: {
-    fontSize: FONT_SIZE.xs,
-    fontWeight: FONT_WEIGHT.medium,
-    color: '#81C784',
-    flex: 1,
-  },
-  tipsBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 9,
-    borderRadius: 10,
-    backgroundColor: 'rgba(100,181,246,0.08)',
-    borderWidth: 0.5,
-    borderColor: 'rgba(100,181,246,0.15)',
-  },
-  tipsBtnText: {
-    fontSize: FONT_SIZE.sm,
-    fontWeight: FONT_WEIGHT.semibold,
-    color: '#64B5F6',
-  },
-  // ── Modal ──
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.7)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    backgroundColor: '#0D1A14',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingHorizontal: 24,
-    paddingTop: 24,
-    paddingBottom: 40,
-    maxHeight: '80%',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginBottom: 12,
-  },
-  modalEmoji: {
-    fontSize: 28,
-  },
-  modalTitle: {
-    flex: 1,
-    fontSize: FONT_SIZE.xl || 22,
-    fontWeight: FONT_WEIGHT.bold,
-    color: DARK.textPrimary,
-  },
-  modalClose: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalBenefit: {
-    fontSize: FONT_SIZE.sm,
-    fontWeight: FONT_WEIGHT.medium,
-    color: DARK.textMuted,
-    marginBottom: 16,
-    lineHeight: 20,
-  },
-  modalSection: {
-    fontSize: FONT_SIZE.xs,
-    fontWeight: FONT_WEIGHT.bold,
-    color: DARK.textMuted,
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
-    marginBottom: 10,
-    marginTop: 4,
-  },
-  tipRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 8,
-    marginBottom: 8,
-  },
-  tipBullet: {
-    width: 5,
-    height: 5,
-    borderRadius: 3,
-    backgroundColor: '#64B5F6',
-    marginTop: 6,
-  },
-  tipText: {
-    flex: 1,
-    fontSize: FONT_SIZE.sm,
-    fontWeight: FONT_WEIGHT.medium,
-    color: DARK.textPrimary,
-    lineHeight: 20,
-  },
-  comboItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 8,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    backgroundColor: 'rgba(76,175,80,0.06)',
-    borderRadius: 10,
-    borderWidth: 0.5,
-    borderColor: 'rgba(76,175,80,0.12)',
-  },
-  comboItemText: {
-    flex: 1,
-    fontSize: FONT_SIZE.sm,
-    fontWeight: FONT_WEIGHT.medium,
-    color: '#81C784',
-  },
-  modalCta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    marginTop: 16,
-    paddingVertical: 14,
-    borderRadius: 14,
-    backgroundColor: '#2E7D32',
-  },
-  modalCtaText: {
-    fontSize: FONT_SIZE.md,
-    fontWeight: FONT_WEIGHT.bold,
-    color: '#FFFFFF',
-  },
-})
-
-const weeklyStyles = StyleSheet.create({
-  card: {
-    width: '100%',
-    backgroundColor: 'rgba(255,255,255,0.04)',
-    borderRadius: 16,
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-    borderWidth: 0.5,
-    borderColor: 'rgba(255,179,0,0.15)',
-    marginBottom: 12,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 12,
-  },
-  emoji: {
-    fontSize: 22,
-  },
-  title: {
-    fontSize: FONT_SIZE.md,
-    fontWeight: FONT_WEIGHT.bold,
-    color: DARK.textPrimary,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-around',
-    marginBottom: 14,
-  },
-  stat: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  statValue: {
-    fontSize: FONT_SIZE.md,
-    fontWeight: FONT_WEIGHT.bold,
-    color: DARK.textPrimary,
-    marginBottom: 2,
-  },
-  statLabel: {
-    fontSize: FONT_SIZE.xs,
-    fontWeight: FONT_WEIGHT.medium,
-    color: DARK.textMuted,
-  },
-  statDivider: {
-    width: 1,
-    height: 28,
-    backgroundColor: 'rgba(255,255,255,0.06)',
-  },
-  btnRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  primaryBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 10,
-    borderRadius: 10,
-    backgroundColor: '#2E7D32',
-  },
-  primaryBtnText: {
-    fontSize: FONT_SIZE.sm,
-    fontWeight: FONT_WEIGHT.bold,
-    color: '#FFFFFF',
-  },
-  secondaryBtn: {
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderRadius: 10,
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    borderWidth: 0.5,
-    borderColor: 'rgba(255,255,255,0.08)',
-  },
-  secondaryBtnText: {
-    fontSize: FONT_SIZE.sm,
-    fontWeight: FONT_WEIGHT.medium,
-    color: DARK.textMuted,
-  },
-})
-
-// ── Main Screen ──────────────────────────────────────────────
 
 export default function ScanScreen({ navigation }) {
   const isReduced = useReducedMotion()
@@ -2346,41 +1333,7 @@ export default function ScanScreen({ navigation }) {
     recordIntroDismissed,
   } = useActivation()
 
-  // Daily summary data for returning users
-  const { todayEntries, totalLogCount, diversityStats } = useJuiceLog()
-  const { momentum, streak } = useNutritionScore()
-
-  const dailySummary = useMemo(() => {
-    const todayCount = todayEntries.length
-    const todayScore = typeof momentum === 'number' ? momentum : 0
-    const currentStreak = streak?.currentCycleStreak || 0
-    // Find missing nutrients (< 5% DV) for suggestion
-    const todayTotals = {}
-    todayEntries.forEach((e) => {
-      const ns = e.nutrientSummary || {}
-      Object.keys(USDA_RDA).forEach((k) => { todayTotals[k] = (todayTotals[k] || 0) + (ns[k] || 0) })
-    })
-    const missingNutrients = Object.entries(USDA_RDA)
-      .filter(([k, rda]) => rda > 0 && ((todayTotals[k] || 0) / rda) < 0.05)
-      .map(([k]) => k === 'vitaminC' ? 'Vitamin C' : k === 'vitaminA' ? 'Vitamin A'
-        : k === 'potassium' ? 'Potassium' : k === 'iron' ? 'Iron'
-        : k === 'magnesium' ? 'Magnesium' : k === 'folate' ? 'Folate' : k)
-
-    let suggestion = ''
-    if (todayCount === 0 && currentStreak > 0) {
-      suggestion = `Keep your ${currentStreak}-day streak alive — scan your first juice today!`
-    } else if (todayCount === 0) {
-      suggestion = 'Start your day with a fresh juice scan!'
-    } else if (missingNutrients.length > 0 && missingNutrients.length <= 3) {
-      suggestion = `Try adding ${missingNutrients.join(', ')} to boost coverage.`
-    } else if (missingNutrients.length > 3) {
-      suggestion = `${missingNutrients.length} nutrients still below 5% — add variety!`
-    } else {
-      suggestion = 'Great coverage today! Keep it up.'
-    }
-
-    return { todayCount, todayScore, currentStreak, suggestion }
-  }, [todayEntries, momentum, streak])
+  const { totalLogCount } = useJuiceLog()
 
   const showSecondary = isEnabled('ff_scan_secondary_actions')
   const forceOnboarding = isEnabled('ff_force_onboarding')
@@ -2399,7 +1352,6 @@ export default function ScanScreen({ navigation }) {
   // Session-only flag: suppress tracking prompt after dismissal (resets on app restart)
   const [trackingDismissedThisSession, setTrackingDismissedThisSession] = useState(false)
   // Goal saved banner: show on browse after goal selection, dismissible
-  const [savedGoalId, setSavedGoalId] = useState(null)
   // Ref: pending tracking prompt (deferred until user returns from camera with items)
   const pendingTrackingRef = useRef(false)
 
@@ -2416,7 +1368,7 @@ export default function ScanScreen({ navigation }) {
       if (pendingTrackingRef.current) {
         pendingTrackingRef.current = false
         // Only show tracking if user actually logged items (came back with data)
-        // If they cancelled (camera X → goBack), they land on browse — no prompt
+        // If they cancelled (camera X â†’ goBack), they land on browse â€” no prompt
         if (unlocks.totalLogsCount > 0 && !trackingDismissedThisSession) {
           setObStep('tracking')
         }
@@ -2426,18 +1378,18 @@ export default function ScanScreen({ navigation }) {
     return unsubscribe
   }, [navigation, unlocks.totalLogsCount, trackingDismissedThisSession])
 
-  // ── Navigation handlers ──────────────────────────────────────
+  // â”€â”€ Navigation handlers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   const handleScan = useCallback(() => {
     navigation.navigate('ScanFlow', { screen: 'ScanHome', params: { openCamera: true, source: 'camera' } })
     trackEvent('scan_cta_tapped', { source: obStep })
   }, [navigation, obStep])
 
-  // Scan from browse — navigate to camera, then return to browse
+  // Scan from browse â€” navigate to camera, then return to browse
   const handleScanFromBrowse = useCallback(() => {
     navigation.navigate('ScanFlow', { screen: 'ScanHome', params: { openCamera: true, source: 'camera' } })
     trackEvent('scan_cta_tapped', { source: 'browse_home' })
-    // obStep stays 'browse' — camera close returns here
+    // obStep stays 'browse' â€” camera close returns here
   }, [navigation])
 
   const handleNotReady = useCallback(() => {
@@ -2448,23 +1400,6 @@ export default function ScanScreen({ navigation }) {
     trackEvent('scan_secondary_browse_tapped', { source: obStep })
     setShowBrowseModal(true)
   }, [obStep])
-
-  const handleSpotlightNavigation = useCallback((target) => {
-    const destination = resolveSpotlightDestination({ hasHistory: totalLogCount > 0, target })
-    navigation.navigate(destination.route, destination.params)
-  }, [navigation, totalLogCount])
-
-  const handleUseSpotlightBlend = useCallback((spotlight) => {
-    navigation.navigate('ScanFlow', {
-      screen: 'ScanHome',
-      params: {
-        manualEntry: true,
-        preloadIngredients: spotlight.ingredients,
-        source: 'spotlight',
-      },
-    })
-    trackEvent('juice_spotlight_used', { spotlight_id: spotlight.id })
-  }, [navigation])
 
   const handleExample = useCallback(() => {
     trackEvent('scan_secondary_example_tapped', { source: obStep })
@@ -2491,29 +1426,28 @@ export default function ScanScreen({ navigation }) {
     setObStep('goal')
   }, [recordTrackingOptIn])
 
-  // "Maybe later" → go to browse (stable Home), NOT back to hero loop
+  // "Maybe later" â†’ go to browse (stable Home), NOT back to hero loop
   const handleTrackingSkip = useCallback(() => {
     trackEvent('tracking_maybe_later', { source: 'onboarding' })
     setTrackingDismissedThisSession(true)
     setObStep('browse')
   }, [])
 
-  // Goal selected → save goal, mark onboarding complete, go to browse (NOT forced scan)
+  // Goal selected â†’ save goal, mark onboarding complete, go to browse (NOT forced scan)
   const handleGoalSelect = useCallback((goalId) => {
     setGoal(goalId)
     recordOnboardingComplete()
     trackEvent('goal_completed_to_browse', { goal: goalId })
-    setSavedGoalId(goalId)
     setObStep('browse')
   }, [setGoal, recordOnboardingComplete])
 
-  // ── Render ───────────────────────────────────────────────────
+  // â”€â”€ Render â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   return (
     <View style={styles.root}>
       <MeshGradientBg />
       <SafeAreaView style={styles.safe} edges={['top']}>
-        {/* Settings gear — top right */}
+        {/* Settings gear â€” top right */}
         <View style={styles.headerRow}>
           <View style={{ flex: 1 }} />
           <TouchableOpacity
@@ -2540,15 +1474,8 @@ export default function ScanScreen({ navigation }) {
               onGlowLibrary={() => navigation.navigate('GlowLibrary')}
               onSeasonalPacks={() => navigation.navigate('SeasonalGlowPacks')}
               onBeginnerPath={() => navigation.navigate('BeginnerGlowPath')}
-              onLogIngredients={() => handleSpotlightNavigation('add')}
-              onUseSpotlightBlend={handleUseSpotlightBlend}
               isExpandedRecipes={isExpandedRecipes}
-              onViewToday={() => handleSpotlightNavigation('today')}
-              dailySummary={dailySummary}
-              todayEntries={todayEntries}
               totalLogs={totalLogCount}
-              savedGoalId={savedGoalId}
-              onDismissGoalBanner={() => setSavedGoalId(null)}
               isReduced={isReduced}
             />
           )}

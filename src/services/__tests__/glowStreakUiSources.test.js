@@ -44,12 +44,12 @@ describe('Glow Streak UI sources', () => {
     expect(scanSource).not.toContain('await refreshNudges()')
   })
 
-  test('ScanScreen Glow Streak card prompts log-driven action instead of direct check-in', () => {
+  test('ScanScreen no longer contains Glow Streak card UI (moved to Today in Phase 0B1)', () => {
     const scanSource = readSource('screens', 'ScanScreen.js')
 
-    expect(scanSource).toContain('handleLogTodayJuice')
-    expect(scanSource).toContain("Log today's juice to keep your Glow Streak going.")
-    expect(scanSource).toContain("Log today's juice")
+    expect(scanSource).not.toContain('handleLogTodayJuice')
+    expect(scanSource).not.toContain("Log today's juice to keep your Glow Streak going.")
+    expect(scanSource).not.toContain("Log today's juice")
     expect(scanSource).not.toContain('handleJuicedYes')
     expect(scanSource).not.toContain('showJuicedFollowUp')
     expect(scanSource).not.toContain('Have you just juiced today?')
@@ -87,31 +87,37 @@ describe('Glow Streak UI sources', () => {
     expect(scanSource).not.toContain('Have you just juiced today?')
   })
 
-  test('checked-in state shows completed message', () => {
+  test('checked-in state message moved to TodayScreen via useGlowStreak, not on ScanScreen', () => {
     const scanSource = readSource('screens', 'ScanScreen.js')
+    const todaySource = readSource('screens', 'TodayScreen.js')
 
-    expect(scanSource).toContain("You're checked in for today")
+    expect(scanSource).not.toContain("You're checked in for today")
+    expect(todaySource).toContain('useGlowStreak')
+    expect(todaySource).toContain('glowStreak.count')
   })
 
-  test('Not today skip shows confirmation before mutation', () => {
+  test('Skip confirmation UI removed from ScanScreen in Phase 0B1 (check-in via ScanSuccessScreen)', () => {
     const scanSource = readSource('screens', 'ScanScreen.js')
+    const scanSuccessSource = readSource('screens', 'ScanSuccessScreen.js')
 
-    expect(scanSource).toContain('showSkipConfirm')
-    expect(scanSource).toContain('handleSkipPress')
-    expect(scanSource).toContain('handleSkipConfirmYes')
-    expect(scanSource).toContain('handleSkipConfirmNo')
-    expect(scanSource).toContain('Skipping today uses a grace day')
-    expect(scanSource).toContain('Go back')
+    expect(scanSource).not.toContain('showSkipConfirm')
+    expect(scanSource).not.toContain('handleSkipPress')
+    expect(scanSource).not.toContain('handleSkipConfirmYes')
+    expect(scanSource).not.toContain('handleSkipConfirmNo')
+    expect(scanSource).not.toContain('Skipping today uses a grace day')
+    expect(scanSource).not.toContain('Go back')
+    expect(scanSuccessSource).toContain('checkInToday')
   })
 
-  test('Explore BrowseHome uses the functional Spotlight while IntroLaunch retains the orb', () => {
+  test('TodayScreen uses the functional Spotlight while IntroLaunch retains the orb', () => {
+    const todaySource = readSource('screens', 'TodayScreen.js')
     const scanSource = readSource('screens', 'ScanScreen.js')
     const introSource = readSource('screens', 'IntroLaunchScreen.js')
-    const browseHomeSource = scanSource.slice(scanSource.indexOf('function BrowseHome'), scanSource.indexOf('const browseHomeStyles'))
 
-    expect(browseHomeSource).toContain('<TodaysJuiceSpotlight')
-    expect(browseHomeSource).not.toContain('<LiquidNutrientOrb')
-    expect(browseHomeSource).toContain('<JuiceSpotlightDetailsModal')
+    expect(todaySource).toContain('<TodaysJuiceSpotlight')
+    expect(todaySource).toContain('<JuiceSpotlightDetailsModal')
+    expect(scanSource).not.toContain('<TodaysJuiceSpotlight')
+    expect(scanSource).not.toContain('<JuiceSpotlightDetailsModal')
     expect(introSource).toContain('<LiquidNutrientOrb isReduced={isReduced} />')
   })
 

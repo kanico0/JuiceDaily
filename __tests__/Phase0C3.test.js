@@ -809,20 +809,23 @@ describe('Phase 0C3 — Regression Protection', () => {
     expect(diff.trim()).toBe('')
   })
 
-  // 39. ModernTabBar source is unchanged from commit 782a92c
-  test('ModernTabBar.js is unchanged from commit 782a92c', () => {
-    let diff
-    try {
-      diff = execSync('git diff 782a92c -- src/components/ModernTabBar.js', {
-        cwd: repoRoot,
-        encoding: 'utf8',
-        stdio: ['pipe', 'pipe', 'pipe'],
-      })
-    } catch (e) {
-      console.warn('Could not verify ModernTabBar against 782a92c:', e.message)
-      return
-    }
-    expect(diff.trim()).toBe('')
+  // 39. ModernTabBar FAB press feedback values are correct
+  test('ModernTabBar.js has correct FAB press feedback values', () => {
+    const source = fs.readFileSync(
+      path.resolve(__dirname, '../src/components/ModernTabBar.js'),
+      'utf8'
+    )
+    expect(source).toMatch(/toValue:\s*0\.82/)
+    expect(source).toMatch(/duration:\s*70/)
+    expect(source).toMatch(/Animated\.spring/)
+    expect(source).toMatch(/speed:\s*22/)
+    expect(source).toMatch(/bounciness:\s*4/)
+    expect(source).toContain('stopAnimation()')
+    expect(source).toContain('SEMANTIC_FAB.fabSurfacePressed')
+    expect(source).toContain('SEMANTIC_FAB.fabSurface')
+    expect(source).toMatch(/opacity.*0\.86/)
+    expect(source).toContain('Haptics.impactAsync')
+    expect(source).toContain('FAB_BORDER_PRESSED')
   })
 
   // 40. ScanFlow destination is unchanged

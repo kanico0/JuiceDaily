@@ -9,6 +9,7 @@ import { View, Text, TouchableOpacity, Pressable, Animated, StyleSheet, Platform
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { CalendarDays, History, Compass, Camera } from 'lucide-react-native'
 import { useNavigation } from '@react-navigation/native'
+import * as Haptics from 'expo-haptics'
 import { SEMANTIC_FAB } from '../constants/tokens'
 import { useReducedMotion } from '../utils/motion'
 
@@ -29,6 +30,7 @@ const INACTIVE_COLOR = '#484F58'
 const BAR_BG = '#0D1117'
 const FAB_VISIBLE = 64
 const FAB_TOUCH = 68
+const FAB_BORDER_PRESSED = 'rgba(129,199,132,0.4)'
 
 export default function ModernTabBar({ state, descriptors, navigation }) {
   const insets = useSafeAreaInsets()
@@ -46,19 +48,23 @@ export default function ModernTabBar({ state, descriptors, navigation }) {
   }
 
   const handlePressIn = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {})
     if (isReduced) return
+    scaleAnim.stopAnimation()
     Animated.timing(scaleAnim, {
-      toValue: 0.92,
-      duration: 120,
+      toValue: 0.82,
+      duration: 70,
       useNativeDriver: true,
     }).start()
   }
 
   const handlePressOut = () => {
     if (isReduced) return
-    Animated.timing(scaleAnim, {
+    scaleAnim.stopAnimation()
+    Animated.spring(scaleAnim, {
       toValue: 1,
-      duration: 120,
+      speed: 22,
+      bounciness: 4,
       useNativeDriver: true,
     }).start()
   }
@@ -98,14 +104,25 @@ export default function ModernTabBar({ state, descriptors, navigation }) {
                   accessibilityLabel="Scan produce"
                   accessibilityHint="Opens the camera to scan your produce"
                 >
-                  <Animated.View
-                    style={[
-                      styles.fab,
-                      { transform: [{ scale: isReduced ? 1 : scaleAnim }] },
-                    ]}
-                  >
-                    <Camera size={26} color={SEMANTIC_FAB.fabIcon} />
-                  </Animated.View>
+                  {({ pressed }) => (
+                    <Animated.View
+                      style={[
+                        styles.fab,
+                        {
+                          transform: [{ scale: isReduced ? 1 : scaleAnim }],
+                          backgroundColor: pressed
+                            ? SEMANTIC_FAB.fabSurfacePressed
+                            : SEMANTIC_FAB.fabSurface,
+                          opacity: pressed ? 0.86 : 1,
+                          borderColor: pressed
+                            ? FAB_BORDER_PRESSED
+                            : SEMANTIC_FAB.fabBorder,
+                        },
+                      ]}
+                    >
+                      <Camera size={26} color={SEMANTIC_FAB.fabIcon} />
+                    </Animated.View>
+                  )}
                 </Pressable>
               </View>
             )}
@@ -172,9 +189,7 @@ const styles = StyleSheet.create({
     width: FAB_VISIBLE,
     height: FAB_VISIBLE,
     borderRadius: FAB_VISIBLE / 2,
-    backgroundColor: SEMANTIC_FAB.fabSurface,
     borderWidth: 1,
-    borderColor: SEMANTIC_FAB.fabBorder,
     alignItems: 'center',
     justifyContent: 'center',
     ...Platform.select({

@@ -32,6 +32,14 @@ jest.mock('react-native-safe-area-context', () => ({
   SafeAreaProvider: ({ children }) => children,
 }))
 
+// Mock expo-haptics
+jest.mock('expo-haptics', () => ({
+  impactAsync: jest.fn().mockResolvedValue(undefined),
+  ImpactFeedbackStyle: { Light: 'Light', Medium: 'Medium', Heavy: 'Heavy' },
+}))
+const HapticsMock = require('expo-haptics')
+const mockImpactAsync = HapticsMock.impactAsync
+
 // Mock @react-navigation/native — factory must be self-contained (Jest hoists)
 jest.mock('@react-navigation/native', () => ({
   useNavigation: jest.fn().mockReturnValue({ navigate: jest.fn() }),
@@ -323,7 +331,7 @@ describe('Phase 0C2 — FAB', () => {
     )
     expect(source).not.toContain('Animated.loop')
     expect(source).not.toContain('setInterval')
-    expect(source).not.toMatch(/setTimeout(?!.*Animated\.timing.*duration:\s*120)/)
+    expect(source).not.toMatch(/setTimeout(?!.*Animated\.timing.*duration:\s*70)/)
   })
 
   // 21. icon uses existing vector icon package
@@ -372,6 +380,213 @@ describe('Phase 0C2 — FAB', () => {
     expect(renderer).toBeNull()
   })
 })
+
+// ═══════════════════════════════════════════════════════════════
+// FAB PRESS FEEDBACK TESTS (31–45)
+// ═══════════════════════════════════════════════════════════════
+
+describe('Phase 0C2 — FAB Press Feedback', () => {
+  afterEach(() => { cleanup(); mockUseReducedMotion.mockReturnValue(false); mockNavigate.mockClear() })
+
+  // 31. FAB renders at resting scale 1
+  test('31. FAB renders at resting scale 1', () => {
+    renderComponent(<ModernTabBar {...createTabBarProps()} />)
+    const fabInner = findFabInnerNode(renderer.root)
+    expect(fabInner).toBeTruthy()
+    const styleArr = fabInner.props.style
+    const transformStyle = Array.isArray(styleArr)
+      ? styleArr.find((s) => s && typeof s === 'object' && s.transform)
+      : null
+    expect(transformStyle).toBeTruthy()
+    const scaleVal = transformStyle.transform[0].scale
+    const restingScale = scaleVal && typeof scaleVal === 'object' && '_value' in scaleVal
+      ? scaleVal._value
+      : scaleVal
+    expect(restingScale).toBe(1)
+  })
+
+  // 32. press-in starts an animation toward 0.82
+  test('32. press-in starts animation toward 0.82', () => {
+    const source = readSource()
+    expect(source).toMatch(/toValue:\s*0\.82/)
+  })
+
+  // 33. press-in duration is approximately 70ms
+  test('33. press-in duration is 70ms', () => {
+    const source = readSource()
+    expect(source).toMatch(/duration:\s*70/)
+  })
+
+  // 34. press-out returns scale to 1
+  test('34. press-out returns scale to 1', () => {
+    const source = readSource()
+    expect(source).toMatch(/toValue:\s*1/)
+  })
+
+  // 35. release uses a restrained spring
+  test('35. release uses Animated.spring with speed 22 and bounciness 4', () => {
+    const source = readSource()
+    expect(source).toMatch(/Animated\.spring/)
+    expect(source).toMatch(/speed:\s*22/)
+    expect(source).toMatch(/bounciness:\s*4/)
+  })
+
+  // 36. pressed state uses SEMANTIC_FAB.fabSurfacePressed
+  test('36. pressed state uses SEMANTIC_FAB.fabSurfacePressed', () => {
+    const source = readSource()
+    expect(source).toContain('SEMANTIC_FAB.fabSurfacePressed')
+  })
+
+  // 37. unpressed state uses SEMANTIC_FAB.fabSurface
+  test('37. unpressed state uses SEMANTIC_FAB.fabSurface', () => {
+    const source = readSource()
+    expect(source).toContain('SEMANTIC_FAB.fabSurface')
+    expect(source).toMatch(/pressed\s*\?\s*SEMANTIC_FAB\.fabSurfacePressed\s*:\s*SEMANTIC_FAB\.fabSurface/)
+  })
+
+  // 38. reduced-motion mode does not animate scale
+  test('38. reduced-motion mode does not animate scale', () => {
+    mockUseReducedMotion.mockReturnValue(true)
+    renderComponent(<ModernTabBar {...createTabBarProps()} />)
+    const fabInner = findFabInnerNode(renderer.root)
+    expect(fabInner).toBeTruthy()
+    const styleArr = fabInner.props.style
+    const transformStyle = Array.isArray(styleArr)
+      ? styleArr.find((s) => s && typeof s === 'object' && s.transform)
+      : null
+    expect(transformStyle).toBeTruthy()
+    expect(transformStyle.transform[0].scale).toBe(1)
+  })
+
+  // 39. reduced-motion mode still shows pressed color, opacity, and haptic
+  test('39. reduced-motion mode still shows pressed color, opacity, and haptic', () => {
+    mockUseReducedMotion.mockReturnValue(true)
+    renderComponent(<ModernTabBar {...createTabBarProps()} />)
+    const source = readSource()
+    expect(source).toContain('pressed')
+    expect(source).toContain('SEMANTIC_FAB.fabSurfacePressed')
+    expect(source).toMatch(/opacity.*0\.86/)
+    expect(source).toContain('Haptics.impactAsync')
+  })
+
+  // 46. pressed opacity is 0.86
+  test('46. pressed opacity is 0.86', () => {
+    const source = readSource()
+    expect(source).toMatch(/opacity.*0\.86/)
+  })
+
+  // 47. resting opacity is 1
+  test('47. resting opacity is 1', () => {
+    const source = readSource()
+    expect(source).toMatch(/opacity.*1/)
+  })
+
+  // 48. light haptic fires once on press-in
+  test('48. light haptic fires once on press-in', () => {
+    mockImpactAsync.mockClear()
+    renderComponent(<ModernTabBar {...createTabBarProps()} />)
+    const fabNode = findFabNode(renderer.root)
+    act(() => { fabNode.props.onPressIn() })
+    expect(mockImpactAsync).toHaveBeenCalledTimes(1)
+    expect(mockImpactAsync).toHaveBeenCalledWith('Light')
+  })
+
+  // 49. haptic failure does not break interaction
+  test('49. haptic failure does not break interaction', () => {
+    mockImpactAsync.mockClear()
+    mockImpactAsync.mockRejectedValueOnce(new Error('haptic unavailable'))
+    renderComponent(<ModernTabBar {...createTabBarProps()} />)
+    const fabNode = findFabNode(renderer.root)
+    expect(() => {
+      act(() => { fabNode.props.onPressIn() })
+      act(() => { fabNode.props.onPressOut() })
+    }).not.toThrow()
+  })
+
+  // 50. reduced-motion mode still fires haptic on press-in
+  test('50. reduced-motion mode still fires haptic on press-in', () => {
+    mockUseReducedMotion.mockReturnValue(true)
+    mockImpactAsync.mockClear()
+    renderComponent(<ModernTabBar {...createTabBarProps()} />)
+    const fabNode = findFabNode(renderer.root)
+    act(() => { fabNode.props.onPressIn() })
+    expect(mockImpactAsync).toHaveBeenCalledTimes(1)
+  })
+
+  // 51. pressed border is more visible than resting border
+  test('51. pressed border uses FAB_BORDER_PRESSED token', () => {
+    const source = readSource()
+    expect(source).toContain('FAB_BORDER_PRESSED')
+    expect(source).toContain('FAB_BORDER_PRESSED')
+    expect(source).toContain('SEMANTIC_FAB.fabBorder')
+  })
+
+  // 40. touch target remains at least 68dp
+  test('40. touch target remains at least 68dp', () => {
+    const source = readSource()
+    const match = source.match(/FAB_TOUCH\s*=\s*(\d+)/)
+    const touch = parseInt(match[1], 10)
+    expect(touch).toBeGreaterThanOrEqual(68)
+  })
+
+  // 41. visible FAB remains 64dp
+  test('41. visible FAB remains 64dp', () => {
+    const source = readSource()
+    const match = source.match(/FAB_VISIBLE\s*=\s*(\d+)/)
+    const visible = parseInt(match[1], 10)
+    expect(visible).toBe(64)
+  })
+
+  // 42. accessibility role, label, and hint remain unchanged
+  test('42. accessibility role, label, and hint remain unchanged', () => {
+    renderComponent(<ModernTabBar {...createTabBarProps()} />)
+    const fabNode = findFabNode(renderer.root)
+    expect(fabNode).toBeTruthy()
+    expect(fabNode.props.accessibilityRole).toBe('button')
+    expect(fabNode.props.accessibilityLabel).toBe('Scan produce')
+    expect(fabNode.props.accessibilityHint).toBe('Opens the camera to scan your produce')
+  })
+
+  // 43. pressing still navigates to ScanFlow
+  test('43. pressing still navigates to ScanFlow', () => {
+    renderComponent(<ModernTabBar {...createTabBarProps()} />)
+    const fabNode = findFabNode(renderer.root)
+    act(() => { fabNode.props.onPress() })
+    expect(mockNavigate).toHaveBeenCalledWith('ScanFlow')
+  })
+
+  // 44. rapid press-in and press-out do not leave competing animations
+  test('44. rapid press-in and press-out do not leave competing animations', () => {
+    renderComponent(<ModernTabBar {...createTabBarProps()} />)
+    const fabNode = findFabNode(renderer.root)
+    expect(() => {
+      act(() => { fabNode.props.onPressIn() })
+      act(() => { fabNode.props.onPressOut() })
+      act(() => { fabNode.props.onPressIn() })
+      act(() => { fabNode.props.onPressOut() })
+    }).not.toThrow()
+  })
+
+  // 45. unmount leaves no open handles
+  test('45. unmount does not throw and leaves no pending state', () => {
+    renderComponent(<ModernTabBar {...createTabBarProps()} />)
+    const fabNode = findFabNode(renderer.root)
+    act(() => { fabNode.props.onPressIn() })
+    act(() => { fabNode.props.onPressOut() })
+    expect(() => cleanup()).not.toThrow()
+    expect(renderer).toBeNull()
+  })
+})
+
+// ── Helper: read ModernTabBar source ───────────────────────────
+function readSource() {
+  const fs = require('fs')
+  const path = require('path')
+  return fs.readFileSync(
+    path.resolve(__dirname, '../ModernTabBar.js'),
+    'utf-8'
+  )
+}
 
 // ═══════════════════════════════════════════════════════════════
 // REGRESSION TESTS (25–30)

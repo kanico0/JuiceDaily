@@ -12,6 +12,7 @@ const mockAuth = {
   updateUser: jest.fn(),
   verifyOtp: jest.fn(),
   signInWithOtp: jest.fn(),
+  signInWithPassword: jest.fn(),
   signOut: jest.fn(),
 }
 
@@ -32,6 +33,7 @@ import {
   getAccountStatus,
   isDurableUser,
   isValidEmail,
+  signInWithPassword,
   signOutAccount,
   verifyEmailLink,
   verifySignIn,
@@ -240,5 +242,114 @@ describe('signOutAccount', () => {
   it('reports failure', async () => {
     mockAuth.signOut.mockResolvedValue({ error: { message: 'network' } })
     expect(await signOutAccount()).toBe(false)
+  })
+})
+
+// ── Password sign-in ─────────────────────────────────────────
+
+describe('signInWithPassword', () => {
+  beforeEach(() => {
+    jest.clearAllMocks()
+    mockAuth.getSession.mockResolvedValue({ data: { session: null } })
+  })
+
+  it('signs in with password and preserves the canonical UUID', async () => {
+    mockAuth.signInWithPassword.mockResolvedValue({
+      data: {
+        session: { user: { id: EXISTING_UUID }, access_token: 'token' },
+        user: { id: EXISTING_UUID },
+      },
+      error: null,
+    })
+
+    const listener = jest.fn()
+    const remove = addIdentityChangeListener(listener)
+
+    const result = await signInWithPassword('user@example.com', 'SecurePassword123!')
+
+    expect(result).toEqual({ status: 'verified', userId: EXISTING_UUID })
+    expect(mockAuth.signInWithPassword).toHaveBeenCalledWith({
+      email: 'user@example.com',
+      password: 'SecurePassword123!',
+    })
+    expect(mockRcLogIn).toHaveBeenCalledWith(EXISTING_UUID)
+    expect(listener).toHaveBeenCalledWith(EXISTING_UUID)
+    remove()
+  })
+
+  it('returns invalid_credentials for wrong password (no identity change)', async () => {
+    mockAuth.signInWithPassword.mockResolvedValue({
+      data: {},
+      error: { message: 'Invalid login credentials' },
+    })
+
+    const result = await signInWithPassword('user@example.com', 'WrongPassword!')
+
+    expect(result.status).toBe('invalid_credentials')
+    expect(mockRcLogIn).not.toHaveBeenCalled()
+  })
+
+  it('returns generic error for network failures (no identity change)', async () => {
+    mockAuth.signInWithPassword.mockResolvedValue({
+      data: {},
+      error: { message: 'Network timeout' },
+    })
+
+    const result = await signInWithPassword('user@example.com', 'SomePassword!')
+
+    expect(result.status).toBe('error')
+    expect((result as { message?: string }).message).toBe('Sign-in failed. Please try again.')
+    expect(mockRcLogIn).not.toHaveBeenCalled()
+  })
+
+  it('returns generic error for thrown exceptions (no identity change)', async () => {
+    mockAuth.signInWithPassword.mockRejectedValue(new Error('Network error'))
+
+    const result = await signInWithPassword('user@example.com', 'SomePassword!')
+
+    expect(result.status).toBe('error')
+    expect((result as { message?: string }).message).toBe('Sign-in failed. Please try again.')
+    expect(mockRcLogIn).not.toHaveBeenCalled()
+  })
+
+  it('rejects empty password', async () => {
+    const result = await signInWithPassword('user@example.com', '')
+
+    expect(result.status).toBe('error')
+    expect(mockAuth.signInWithPassword).not.toHaveBeenCalled()
+  })
+
+  it('rejects invalid email format', async () => {
+    const result = await signInWithPassword('not-an-email', 'password123')
+
+    expect(result.status).toBe('error')
+    expect(mockAuth.signInWithPassword).not.toHaveBeenCalled()
+  })
+
+  it('normalizes email to lowercase before calling Supabase', async () => {
+    mockAuth.signInWithPassword.mockResolvedValue({
+      data: {
+        session: { user: { id: EXISTING_UUID }, access_token: 'token' },
+        user: { id: EXISTING_UUID },
+      },
+      error: null,
+    })
+
+    await signInWithPassword('USER@EXAMPLE.COM', 'SecurePassword123!')
+
+    expect(mockAuth.signInWithPassword).toHaveBeenCalledWith({
+      email: 'user@example.com',
+      password: 'SecurePassword123!',
+    })
+  })
+
+  it('returns error when supabase client is unavailable', async () => {
+    const { getSupabase } = require('../supabaseClient')
+    getSupabase.mockReturnValueOnce(null)
+
+    const result = await signInWithPassword('user@example.com', 'password123')
+
+    expect(result.status).toBe('error')
+    expect((result as { message?: string }).message).toBe('Service unavailable')
   })
 })

@@ -41,3 +41,16 @@ enable_confirmations = true
 double_confirm_changes = false
 otp_length = 6
 otp_expiry = 3600
+
+# ── Edge Function JWT verification ────────────────────────────
+# delete-account: called by authenticated app users — must have
+#   a valid Supabase user JWT. Platform-level verification is
+#   defense in depth; the handler also validates the token.
+# request-account-deletion: called from the public website by
+#   users who may not be signed in. JWT verification is disabled;
+#   the handler applies its own CORS, rate limiting, and validation.
+[functions.delete-account]
+verify_jwt = true
+
+[functions.request-account-deletion]
+verify_jwt = false

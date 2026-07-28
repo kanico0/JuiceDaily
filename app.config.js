@@ -1,6 +1,6 @@
 // app.config.js — Dynamic Expo config
-// Injects environment variables into expo.extra for reliable runtime access
-// via expo-constants: Constants.expoConfig?.extra?.ANTHROPIC_API_KEY
+// Injects public environment variables into expo.extra for runtime access
+// via expo-constants. Server-only secrets are never included here.
 
 module.exports = ({ config }) => {
   const buildTarget = process.env.EXPO_PUBLIC_BUILD_TARGET || 'go'
@@ -13,9 +13,6 @@ module.exports = ({ config }) => {
     },
     extra: {
       ...config.extra,
-      // Anthropic key only ships in Expo Go dev builds; production scans
-      // are routed through the Supabase analyze-scan Edge Function.
-      ANTHROPIC_API_KEY: buildTarget === 'go' ? process.env.ANTHROPIC_API_KEY || '' : '',
       BUILD_TARGET: buildTarget,
       EXPO_PUBLIC_SUPABASE_URL: process.env.EXPO_PUBLIC_SUPABASE_URL || '',
       EXPO_PUBLIC_SUPABASE_ANON_KEY: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '',
@@ -24,6 +21,8 @@ module.exports = ({ config }) => {
       EXPO_PUBLIC_TERMS_URL: process.env.EXPO_PUBLIC_TERMS_URL || '',
       EXPO_PUBLIC_PRIVACY_URL: process.env.EXPO_PUBLIC_PRIVACY_URL || '',
       EXPO_PUBLIC_MONETIZATION_ENABLED: process.env.EXPO_PUBLIC_MONETIZATION_ENABLED || '',
+      EXPO_PUBLIC_DEVICE_FREE_POOL_MODE: process.env.EXPO_PUBLIC_DEVICE_FREE_POOL_MODE || 'off',
+      EXPO_PUBLIC_PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER: process.env.EXPO_PUBLIC_PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER || '',
     },
   }
 }

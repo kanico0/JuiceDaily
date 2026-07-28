@@ -15,4 +15,13 @@ module.exports = {
       version: 'detect',
     },
   },
+  overrides: [
+    {
+      files: ['**/__tests__/**/*.js', '**/__tests__/**/*.ts'],
+      env: {
+        jest: true,
+        node: true,
+      },
+    },
+  ],
 }

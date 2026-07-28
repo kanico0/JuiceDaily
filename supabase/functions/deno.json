@@ -1,0 +1,23 @@
+{
+  "compilerOptions": {
+    "strict": true,
+    "noImplicitAny": true,
+    "lib": ["deno.window", "deno.unstable"],
+    "types": []
+  },
+  "lint": {
+    "rules": {
+      "tags": ["recommended"]
+    }
+  },
+  "fmt": {
+    "semiColons": false,
+    "singleQuote": true,
+    "indentWidth": 2,
+    "lineWidth": 100
+  },
+  "imports": {
+    "supabase-js": "npm:@supabase/supabase-js@2"
+  },
+  "scopes": {}
+}

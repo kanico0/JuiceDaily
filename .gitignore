@@ -33,6 +33,7 @@ yarn-error.*
 # local env files
 .env
 .env*.local
+.env.txt
 
 # typescript
 *.tsbuildinfo
@@ -43,3 +44,14 @@ yarn-error.*
 
 # Local Netlify folder
 .netlify
+
+# Google Play reviewer credentials (never commit)
+RawLifeFlow-Google-Play-Review-Credentials.txt
+
+# Stale expo config output (may contain old secrets)
+expo-config-public.txt
+
+# Reviewer account scripts (never commit)
+scripts/createReviewerAccount.ps1
+scripts/createReviewerGrant.ts
+scripts/createPlayReviewAccount.ts

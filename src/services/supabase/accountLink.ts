@@ -254,6 +254,49 @@ export async function verifySignIn (rawEmail: string, token: string): Promise<Ve
   }
 }
 
+// ── Password sign-in (existing accounts) ─────────────────────
+// Uses Supabase signInWithPassword. The session switches to the
+// existing account's ORIGINAL UUID — restoring quota usage and
+// entitlements. RevenueCat is logged in with the canonical UUID
+// and stores are notified. No OTP is required.
+
+export type PasswordSignInResult =
+  | { status: 'verified'; userId: string }
+  | { status: 'invalid_credentials' }
+  | { status: 'error'; message: string }
+
+export async function signInWithPassword (
+  rawEmail: string,
+  password: string,
+): Promise<PasswordSignInResult> {
+  const email = normalizeEmail(rawEmail)
+  if (!isValidEmail(email)) return { status: 'error', message: 'Invalid email' }
+  if (!password || password.length === 0) return { status: 'error', message: 'Password required' }
+
+  const supabase = getSupabase()
+  if (!supabase) return { status: 'error', message: 'Service unavailable' }
+
+  try {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    })
+    if (error) {
+      const msg = error.message.toLowerCase()
+      if (msg.includes('invalid') || msg.includes('incorrect') || msg.includes('credentials')) {
+        return { status: 'invalid_credentials' }
+      }
+      return { status: 'error', message: 'Sign-in failed. Please try again.' }
+    }
+    const userId = data.session?.user?.id ?? data.user?.id
+    if (!userId) return { status: 'error', message: 'Sign-in returned no user' }
+    await notifyIdentityChanged(userId)
+    return { status: 'verified', userId }
+  } catch {
+    return { status: 'error', message: 'Sign-in failed. Please try again.' }
+  }
+}
+
 // ── Sign out ─────────────────────────────────────────────────
 // Clears the local session only. Server-side data (quota usage,
 // subscription record, history) stays attached to the UUID and is
@@ -267,5 +310,75 @@ export async function signOutAccount (): Promise<boolean> {
     return !error
   } catch {
     return false
+  }
+}
+
+// ── Password reset (recovery) ────────────────────────────────
+// Sends a password-reset email via Supabase Auth. The redirect URL
+// must be on the Supabase Auth redirect allowlist. Uses only the
+// public anon key — no service-role key is ever in the client.
+
+export type ResetRequestResult =
+  | { status: 'sent' }
+  | { status: 'rate_limited' }
+  | { status: 'error'; message: string }
+
+const RESET_REDIRECT_URL = 'juicingapp://reset-password'
+
+export function getResetRedirectUrl (): string {
+  return RESET_REDIRECT_URL
+}
+
+export async function sendPasswordResetEmail (rawEmail: string): Promise<ResetRequestResult> {
+  const email = normalizeEmail(rawEmail)
+  if (!isValidEmail(email)) return { status: 'error', message: 'Invalid email' }
+
+  const supabase = getSupabase()
+  if (!supabase) return { status: 'error', message: 'Service unavailable' }
+
+  try {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: RESET_REDIRECT_URL,
+    })
+    if (error) {
+      const msg = error.message.toLowerCase()
+      if (msg.includes('rate') || msg.includes('too many')) {
+        return { status: 'rate_limited' }
+      }
+      return { status: 'error', message: 'Unable to send reset link. Please try again.' }
+    }
+    return { status: 'sent' }
+  } catch {
+    return { status: 'error', message: 'Unable to send reset link. Please try again.' }
+  }
+}
+
+// Updates the user's password during a PASSWORD_RECOVERY session.
+// The caller must verify that the Supabase session is a recovery
+// session before calling this. Does NOT create a new user or change
+// the UUID. The existing session's UUID is preserved.
+
+export type UpdatePasswordResult =
+  | { status: 'updated'; userId: string }
+  | { status: 'error'; message: string }
+
+export async function updateRecoveredPassword (newPassword: string): Promise<UpdatePasswordResult> {
+  if (!newPassword || newPassword.length < 6) {
+    return { status: 'error', message: 'Password must be at least 6 characters.' }
+  }
+
+  const supabase = getSupabase()
+  if (!supabase) return { status: 'error', message: 'Service unavailable' }
+
+  try {
+    const { data, error } = await supabase.auth.updateUser({ password: newPassword })
+    if (error) {
+      return { status: 'error', message: 'Unable to update password. Please try again.' }
+    }
+    const userId = data.user?.id
+    if (!userId) return { status: 'error', message: 'Update returned no user.' }
+    return { status: 'updated', userId }
+  } catch {
+    return { status: 'error', message: 'Unable to update password. Please try again.' }
   }
 }

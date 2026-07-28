@@ -14,21 +14,26 @@ import {
   KeyboardAvoidingView,
   Modal,
   Platform,
+  ScrollView,
+  StatusBar,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from 'react-native'
-import { ShieldCheck, Mail, X } from 'lucide-react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { ShieldCheck, Mail, X, Lock, Eye, EyeOff } from 'lucide-react-native'
 
 import {
   beginEmailLink,
   beginSignIn,
   isValidEmail,
+  signInWithPassword,
   verifyEmailLink,
   verifySignIn,
 } from '../services/supabase/accountLink'
+import ResetPasswordModal from './ResetPasswordModal'
 
 const RESEND_COOLDOWN_SECONDS = 60
 
@@ -50,14 +55,19 @@ const COPY = {
 export default function AccountGateModal ({ visible, onClose, onAuthenticated, initialMode = 'protect' }) {
   // mode: 'protect' (anonymous upgrade) | 'signin' (returning user)
   const [mode, setMode] = useState(initialMode)
-  // step: 'email' | 'code'
+  // step: 'email' | 'code' | 'password'
   const [step, setStep] = useState('email')
   const [email, setEmail] = useState('')
   const [code, setCode] = useState('')
+  const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
   const [cooldown, setCooldown] = useState(0)
   const busyRef = useRef(false)
+  const passwordRef = useRef(null)
+  const insets = useSafeAreaInsets()
+  const [showReset, setShowReset] = useState(false)
 
   // Reset state whenever the modal opens.
   useEffect(() => {
@@ -66,6 +76,8 @@ export default function AccountGateModal ({ visible, onClose, onAuthenticated, i
       setStep('email')
       setEmail('')
       setCode('')
+      setPassword('')
+      setShowPassword(false)
       setError(null)
       setCooldown(0)
       busyRef.current = false
@@ -86,7 +98,9 @@ export default function AccountGateModal ({ visible, onClose, onAuthenticated, i
     if (busyRef.current) return
     setError(null)
 
-    if (!isValidEmail(email)) {
+    const normalizedEmail = email.trim().toLowerCase()
+
+    if (!isValidEmail(normalizedEmail)) {
       setError('Please enter a valid email address.')
       return
     }
@@ -95,8 +109,8 @@ export default function AccountGateModal ({ visible, onClose, onAuthenticated, i
     setBusy(true)
     try {
       const result = mode === 'signin'
-        ? await beginSignIn(email)
-        : await beginEmailLink(email)
+        ? await beginSignIn(normalizedEmail)
+        : await beginEmailLink(normalizedEmail)
 
       if (result.status === 'otp_sent') {
         setStep('code')
@@ -127,7 +141,9 @@ export default function AccountGateModal ({ visible, onClose, onAuthenticated, i
     if (busyRef.current) return
     setError(null)
 
-    if (code.trim().length < 6) {
+    const normalizedCode = code.trim()
+
+    if (normalizedCode.length < 6) {
       setError('Enter the 6-digit code from your email.')
       return
     }
@@ -136,8 +152,8 @@ export default function AccountGateModal ({ visible, onClose, onAuthenticated, i
     setBusy(true)
     try {
       const result = mode === 'signin'
-        ? await verifySignIn(email, code)
-        : await verifyEmailLink(email, code)
+        ? await verifySignIn(email, normalizedCode)
+        : await verifyEmailLink(email, normalizedCode)
 
       if (result.status === 'verified') {
         if (onAuthenticated) onAuthenticated(result.userId)
@@ -159,15 +175,71 @@ export default function AccountGateModal ({ visible, onClose, onAuthenticated, i
     setMode((m) => (m === 'protect' ? 'signin' : 'protect'))
     setStep('email')
     setCode('')
+    setPassword('')
     setError(null)
   }, [])
+
+  const switchToPassword = useCallback(() => {
+    setStep('password')
+    setPassword('')
+    setError(null)
+  }, [])
+
+  const switchToOtp = useCallback(() => {
+    setStep('email')
+    setPassword('')
+    setError(null)
+  }, [])
+
+  const submitPassword = useCallback(async () => {
+    if (busyRef.current) return
+    setError(null)
+
+    if (!isValidEmail(email)) {
+      setError('Please enter a valid email address.')
+      return
+    }
+    if (!password || password.length === 0) {
+      setError('Please enter your password.')
+      return
+    }
+
+    busyRef.current = true
+    setBusy(true)
+    try {
+      const result = await signInWithPassword(email, password)
+
+      if (result.status === 'verified') {
+        if (onAuthenticated) onAuthenticated(result.userId)
+        if (onClose) onClose()
+      } else if (result.status === 'invalid_credentials') {
+        setError('Email or password is incorrect.')
+      } else {
+        setError('Sign-in failed. Please try again.')
+      }
+    } finally {
+      busyRef.current = false
+      setBusy(false)
+    }
+  }, [email, password, onAuthenticated, onClose])
 
   const copy = COPY[mode]
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <View style={styles.backdrop}>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <View style={[styles.backdrop, { paddingTop: insets.top + 16 }]}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.kav}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : StatusBar.currentHeight ?? 0}
+        >
+          <ScrollView
+            style={styles.scroll}
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="always"
+            keyboardDismissMode="on-drag"
+            showsVerticalScrollIndicator={false}
+          >
           <View style={styles.card}>
             <TouchableOpacity
               style={styles.closeBtn}
@@ -201,6 +273,7 @@ export default function AccountGateModal ({ visible, onClose, onAuthenticated, i
                     autoComplete="email"
                     editable={!busy}
                     accessibilityLabel="Email address"
+                    returnKeyType="done"
                   />
                 </View>
 
@@ -216,6 +289,83 @@ export default function AccountGateModal ({ visible, onClose, onAuthenticated, i
                   ) : (
                     <Text style={styles.ctaText}>{copy.cta}</Text>
                   )}
+                </TouchableOpacity>
+
+                {mode === 'signin' && (
+                  <TouchableOpacity onPress={switchToPassword} disabled={busy} accessibilityRole="button">
+                    <Text style={styles.link}>Use Password Instead</Text>
+                  </TouchableOpacity>
+                )}
+              </>
+            ) : step === 'password' ? (
+              <>
+                <View style={styles.inputRow}>
+                  <Mail size={16} color="#8B949E" />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="you@example.com"
+                    placeholderTextColor="#484F58"
+                    value={email}
+                    onChangeText={setEmail}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    keyboardType="email-address"
+                    autoComplete="email"
+                    editable={!busy}
+                    accessibilityLabel="Email address"
+                    returnKeyType="next"
+                    onSubmitEditing={() => passwordRef.current?.focus()}
+                  />
+                </View>
+
+                <View style={styles.inputRow}>
+                  <Lock size={16} color="#8B949E" />
+                  <TextInput
+                    ref={passwordRef}
+                    style={styles.input}
+                    placeholder="Password"
+                    placeholderTextColor="#484F58"
+                    value={password}
+                    onChangeText={setPassword}
+                    secureTextEntry={!showPassword}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    autoComplete="password"
+                    editable={!busy}
+                    accessibilityLabel="Password"
+                    returnKeyType="go"
+                    onSubmitEditing={() => { if (!busy && isValidEmail(email) && password.length > 0) submitPassword() }}
+                  />
+                  <TouchableOpacity
+                    onPress={() => setShowPassword((s) => !s)}
+                    disabled={busy}
+                    accessibilityRole="button"
+                    accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showPassword ? <EyeOff size={16} color="#8B949E" /> : <Eye size={16} color="#8B949E" />}
+                  </TouchableOpacity>
+                </View>
+
+                <TouchableOpacity
+                  style={[styles.cta, busy && styles.ctaDisabled]}
+                  onPress={submitPassword}
+                  disabled={busy}
+                  accessibilityRole="button"
+                  accessibilityLabel="Sign In"
+                >
+                  {busy ? (
+                    <ActivityIndicator color="#0D1117" />
+                  ) : (
+                    <Text style={styles.ctaText}>Sign In</Text>
+                  )}
+                </TouchableOpacity>
+
+                <TouchableOpacity onPress={() => setShowReset(true)} disabled={busy} accessibilityRole="link" accessibilityLabel="Forgot your password?" style={styles.linkBtn}>
+                  <Text style={styles.link}>Forgot your password?</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity onPress={switchToOtp} disabled={busy} accessibilityRole="button">
+                  <Text style={styles.link}>Use Email Code Instead</Text>
                 </TouchableOpacity>
               </>
             ) : (
@@ -272,8 +422,15 @@ export default function AccountGateModal ({ visible, onClose, onAuthenticated, i
               </Text>
             </TouchableOpacity>
           </View>
+          </ScrollView>
         </KeyboardAvoidingView>
       </View>
+      <ResetPasswordModal
+        visible={showReset}
+        onClose={() => setShowReset(false)}
+        onBackToSignIn={() => setShowReset(false)}
+        initialEmail={email}
+      />
     </Modal>
   )
 }
@@ -282,8 +439,17 @@ const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.75)',
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
     paddingHorizontal: 24,
+  },
+  kav: {
+    flex: 1,
+  },
+  scroll: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 40,
   },
   card: {
     backgroundColor: '#161B22',
@@ -384,6 +550,10 @@ const styles = StyleSheet.create({
   },
   linkDisabled: {
     color: '#484F58',
+  },
+  linkBtn: {
+    minHeight: 44,
+    justifyContent: 'center',
   },
   error: {
     color: '#F97583',

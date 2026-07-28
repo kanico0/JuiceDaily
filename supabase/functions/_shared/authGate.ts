@@ -26,14 +26,14 @@ export interface VerifiedUser {
 export type GateResult =
   | { ok: true; userId: string }
   | {
-      ok: false
-      status: 401 | 403
-      code: 'missing_authorization' | 'invalid_token' | 'account_required'
-      message: string
-    }
+    ok: false
+    status: 401 | 403
+    code: 'missing_authorization' | 'invalid_token' | 'account_required'
+    message: string
+  }
 
 // Extract the bearer token from an Authorization header value.
-export function extractBearerToken (authHeader: string | null): string | null {
+export function extractBearerToken(authHeader: string | null): string | null {
   if (!authHeader) return null
   const token = authHeader.replace(/^Bearer\s+/i, '').trim()
   return token.length > 0 ? token : null
@@ -43,7 +43,7 @@ export function extractBearerToken (authHeader: string | null): string | null {
 // verifyError is the error returned by auth.getUser(jwt): any
 // verification failure (expired, malformed, forged signature)
 // yields 401 regardless of what the token payload claims.
-export function evaluateScanUser (
+export function evaluateScanUser(
   user: VerifiedUser | null,
   verifyError: { message: string } | null,
 ): GateResult {

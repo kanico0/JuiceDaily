@@ -1,0 +1,12 @@
+{
+  "platforms": ["android"],
+  "ios": {
+    "modules": []
+  },
+  "android": {
+    "modules": ["ExpoPlayIntegrityModule"],
+    "publish": {
+      "imports": ["expo.modules.playintegrity.*"]
+    }
+  }
+}

@@ -26,9 +26,6 @@ function sanitizeChallengeState(raw) {
     weeklyColors: (raw.weeklyColors && typeof raw.weeklyColors === 'object') ? raw.weeklyColors : {},
     isActive: typeof raw.isActive === 'boolean' ? raw.isActive : true,
     isComplete: typeof raw.isComplete === 'boolean' ? raw.isComplete : false,
-    freezerPasses: typeof raw.freezerPasses === 'number' ? raw.freezerPasses : INITIAL_FREEZER_PASSES,
-    frozenDays: Array.isArray(raw.frozenDays) ? raw.frozenDays : [],
-    isFrozen: typeof raw.isFrozen === 'boolean' ? raw.isFrozen : false,
     uniqueIngredients: Array.isArray(raw.uniqueIngredients) ? raw.uniqueIngredients : [],
     totalProduceWeightG: typeof raw.totalProduceWeightG === 'number' ? raw.totalProduceWeightG : 0,
     completedRainbows: typeof raw.completedRainbows === 'number' ? raw.completedRainbows : 0,
@@ -202,9 +199,6 @@ function getWeekStartKey(dateStr) {
   return `${my}-${mm}-${md}`
 }
 
-const MAX_FREEZER_PASSES = 3
-const INITIAL_FREEZER_PASSES = 2
-
 function createEmptyChallenge() {
   const startDate = getTodayKey()
   return {
@@ -215,9 +209,6 @@ function createEmptyChallenge() {
     weeklyColors: {},
     isActive: true,
     isComplete: false,
-    freezerPasses: INITIAL_FREEZER_PASSES,
-    frozenDays: [],
-    isFrozen: false,
     uniqueIngredients: [],
     totalProduceWeightG: 0,
     completedRainbows: 0,
@@ -251,8 +242,6 @@ function computeStreak(challenge) {
   const today = getTodayKey()
   let streak = 0
   const [sy, sm, sd] = (challenge.startDate || getTodayKey()).split('-').map(Number)
-  const frozenSet = new Set(challenge.frozenDays || [])
-
   for (let i = 0; i < CHALLENGE_DAYS; i++) {
     const d = new Date(sy, sm - 1, sd + i)
     const ky = d.getFullYear()
@@ -264,8 +253,6 @@ function computeStreak(challenge) {
     const dayLog = challenge.days[key]
     if (dayLog && (dayLog.base || dayLog.power || dayLog.kick)) {
       streak++
-    } else if (frozenSet.has(key)) {
-      // Frozen day preserves streak but doesn't increment
     } else if (key <= today) {
       streak = 0
     }
@@ -367,7 +354,7 @@ const COLOR_AFFIRMATIONS = {
   yellow: 'Citrus Surge — your immunity is fortified',
   green: 'Chlorophyll Champion — deep cellular detox activated',
   purple: 'Anthocyanin Authority — antioxidant defense maximized',
-  white: 'Allicin Architect — anti-inflammatory pathways engaged',
+  white: 'Allicin Advocate — anti-inflammatory pathways engaged',
 }
 
 export function getColorAffirmation(topColor) {
@@ -391,7 +378,7 @@ const INGREDIENT_ARCHETYPES = {
   ginger: 'The Ginger Firestarter',
   beet: 'The Crimson Engine',
   carrot: 'The Beta-Carotene Baron',
-  cucumber: 'The Hydration Architect',
+  cucumber: 'The Hydration Hero',
   celery: 'The Alkaline Alchemist',
   turmeric: 'The Golden Healer',
   lemon: 'The Citrus Commander',
@@ -468,11 +455,11 @@ export function computeMonthlyStats(challenge, year, month) {
     ? INGREDIENT_ARCHETYPES[topIngredient]
     : topColor && ARCHETYPES[topColor]
       ? ARCHETYPES[topColor].title
-      : 'The Wellness Architect'
+      : 'The Wellness Pioneer'
 
   const archetypeEmoji = topColor && ARCHETYPES[topColor]
     ? ARCHETYPES[topColor].emoji
-    : '🏗️'
+    : '�'
 
   const vitalityPercent = maxRings > 0 ? Math.round((totalRings / maxRings) * 100) : 0
 
@@ -577,11 +564,6 @@ function challengeReducer(state, action) {
       updated.isComplete = updated.currentDay >= CHALLENGE_DAYS
       updated.longestStreak = Math.max(updated.longestStreak || 0, updated.streak)
 
-      // Thaw frozen state if user logs today
-      if (state.isFrozen) {
-        updated.isFrozen = false
-      }
-
       // Update weekly colors
       const wc = { ...(updated.weeklyColors || {}) }
       for (const c of weeklyColors) {
@@ -589,11 +571,10 @@ function challengeReducer(state, action) {
       }
       updated.weeklyColors = wc
 
-      // Check if weekly rainbow is complete → earn a freezer pass
+      // Check if weekly rainbow is complete
       const filledColors = Object.keys(wc).filter((k) => wc[k])
       if (filledColors.length === 6 && state.completedRainbows === (updated.completedRainbows || 0)) {
         updated.completedRainbows = (state.completedRainbows || 0) + 1
-        updated.freezerPasses = Math.min((state.freezerPasses || 0) + 1, MAX_FREEZER_PASSES)
       }
 
       // Track unique ingredients and total weight
@@ -607,17 +588,6 @@ function challengeReducer(state, action) {
       updated.totalProduceWeightG = (state.totalProduceWeightG || 0) + addedWeight
 
       return updated
-    }
-    case 'USE_FREEZER_PASS': {
-      const { dateKey } = action.payload
-      if ((state.freezerPasses || 0) <= 0) return state
-      return {
-        ...state,
-        freezerPasses: state.freezerPasses - 1,
-        frozenDays: [...(state.frozenDays || []), dateKey],
-        isFrozen: true,
-        streak: computeStreak({ ...state, frozenDays: [...(state.frozenDays || []), dateKey] }),
-      }
     }
     case 'COMPLETE_ONBOARDING': {
       return {
@@ -662,14 +632,7 @@ function challengeReducer(state, action) {
         }
       }
 
-      // Also shift frozen days
-      const newFrozenDays = (state.frozenDays || []).map((fk) => {
-        const fd = new Date(fk + 'T00:00:00')
-        fd.setDate(fd.getDate() - 1)
-        return fd.toISOString().split('T')[0]
-      })
-
-      const updated = { ...state, startDate: newStartDate, days: newDays, frozenDays: newFrozenDays }
+      const updated = { ...state, startDate: newStartDate, days: newDays }
       updated.currentDay = computeCurrentDay(updated)
       updated.streak = computeStreak(updated)
       return updated
@@ -730,10 +693,6 @@ export function ChallengeProvider({ children }) {
     })
   }, [])
 
-  const useFreezerPass = useCallback((dateKey) => {
-    dispatch({ type: 'USE_FREEZER_PASS', payload: { dateKey: dateKey || getTodayKey() } })
-  }, [])
-
   const resetChallenge = useCallback(() => {
     dispatch({ type: 'RESET' })
   }, [])
@@ -776,12 +735,10 @@ export function ChallengeProvider({ children }) {
       weeklyDiversity,
       todayLog,
       streak: state.streak,
-      freezerPasses: state.freezerPasses || 0,
-      isFrozen: state.isFrozen || false,
       totalWeightG: state.totalProduceWeightG || 0,
       lastIngredients,
     })
-  }, [weeklyDiversity, todayLog, state.streak, state.freezerPasses, state.isFrozen, lastIngredients])
+  }, [weeklyDiversity, todayLog, state.streak, lastIngredients])
 
   // Track juice logs for surprise & delight + wilt warning timestamp
   const prevJuiceCountRef = useRef(totalJuiceCount)
@@ -799,11 +756,10 @@ export function ChallengeProvider({ children }) {
     weeklyDiversity,
     weeklyStats,
     logJuice,
-    useFreezerPass,
     resetChallenge,
     completeOnboarding,
     devAdvanceDay,
-  }), [state, todayLog, vitalityScore, weeklyDiversity, weeklyStats, logJuice, useFreezerPass, resetChallenge, completeOnboarding, devAdvanceDay])
+  }), [state, todayLog, vitalityScore, weeklyDiversity, weeklyStats, logJuice, resetChallenge, completeOnboarding, devAdvanceDay])
 
   return (
     <ChallengeContext.Provider value={value}>

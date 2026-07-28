@@ -43,7 +43,7 @@ export default function ScanSuccessScreen({ route, navigation }) {
     ingredientNames = [],
   } = route.params || {}
 
-  const { momentum, streak, diversity, coverage } = useNutritionScore()
+  const { momentum, streak: nutritionCycle, diversity, coverage } = useNutritionScore()
   const { activation } = useActivation()
 
   // Compute live score increase from pre-log snapshot
@@ -58,6 +58,7 @@ export default function ScanSuccessScreen({ route, navigation }) {
       try {
         const result = await checkInToday()
         if (result.wasIncremented) {
+          await refreshNudges()
           setGlowToast(`Glow streak: ${result.count} day${result.count !== 1 ? 's' : ''}`)
         }
         // Check achievements after log + streak update
@@ -223,11 +224,11 @@ export default function ScanSuccessScreen({ route, navigation }) {
       icon: Flame,
       iconColor: BRAND.accent.vitaminA,
       dimColor: BRAND.accentDim.vitaminA,
-      value: `${streak.currentCycleStreak}d`,
-      label: 'Streak',
+      value: `${nutritionCycle.currentCycleStreak}d`,
+      label: 'Cycle Progress',
       sub: null,
     },
-  ], [ingredientCount, nutrientsFound, scoreIncrease, diversity, coverage, streak])
+  ], [ingredientCount, nutrientsFound, scoreIncrease, diversity, coverage, nutritionCycle])
 
   return (
     <View style={s.root}>

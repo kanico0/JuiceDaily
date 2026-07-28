@@ -14,8 +14,7 @@
 
 import * as Notifications from 'expo-notifications'
 import { Platform } from 'react-native'
-import { getGlowState } from './glowStreak'
-import { getDevNow } from '../utils/DevClock'
+import { getGlowState, getGlowTodayKey } from './glowStreak'
 import { getNudgeSettings } from './NudgeSettingsStore'
 
 // ── Notification IDs ─────────────────────────────────────────
@@ -137,13 +136,6 @@ function nextWeekdayOccurrence(dayOfWeek, hour, minute) {
   return target
 }
 
-// ── Today key (YYYY-MM-DD) ──────────────────────────────────
-
-function getTodayKey() {
-  const d = getDevNow()
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-}
-
 // ═══════════════════════════════════════════════════════════════
 // Schedule Individual Nudges
 // ═══════════════════════════════════════════════════════════════
@@ -236,7 +228,7 @@ export async function refreshNudges() {
     // Only schedule if user has a streak AND hasn't checked in today
     if (settings.nudges_streakRisk_enabled) {
       const glowState = await getGlowState()
-      const today = getTodayKey()
+      const today = getGlowTodayKey()
       const hasCheckedInToday = glowState.lastCheckInDate === today
       const hasStreak = glowState.count > 0
 

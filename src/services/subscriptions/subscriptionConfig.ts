@@ -50,6 +50,13 @@ export const PRO_DAILY_SCAN_SAFETY_LIMIT = 10
 export const FREE_WARNING_THRESHOLDS = [2, 1]
 export const PRO_WARNING_THRESHOLDS = [10, 5]
 
+// ── Fallback display prices (dev / no-store fallback only) ────
+// When RevenueCat packages are available, their localized price
+// strings override these values. These exist only so the paywall
+// can render meaningful copy when the store is not configured.
+export const MONTHLY_FALLBACK_PRICE = '$7.99'
+export const ANNUAL_FALLBACK_PRICE = '$59.99'
+
 // ── Public keys from environment ─────────────────────────────
 
 export const REVENUECAT_PUBLIC_API_KEY: string | null = Platform.select({

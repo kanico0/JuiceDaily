@@ -291,6 +291,10 @@ const EVENT_SCHEMAS = {
     required: ['session_id', 'ts'],
     optional: ['platform'],
   },
+  scan_plan_icon_tapped: {
+    required: ['session_id', 'ts'],
+    optional: ['plan', 'scans_used', 'scans_limit', 'quota_exhausted', 'placement'],
+  },
   scan_quota_viewed: {
     required: ['session_id', 'ts'],
     optional: ['plan', 'scans_used', 'scans_remaining'],

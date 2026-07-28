@@ -1,34 +1,18 @@
 // ─────────────────────────────────────────────────────────────
 // EducationStore.js — Persistent education state
-// Tracks: screen completion, Knowledge XP, badges, cumulative
-// metrics (Total Lbs Juiced), Reboot Recipe unlock
+// Tracks: cumulative metrics (Total Lbs Juiced), safety acknowledgement
 // Uses Context + useReducer (matches ChallengeStore pattern)
 // ─────────────────────────────────────────────────────────────
 
 import { createContext, useContext, useReducer, useCallback, useMemo, useEffect } from 'react'
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import {
-  NOVICE_SCREENS,
-  XP_PER_SCREEN,
-  TOTAL_JOURNEY_XP,
-  BEGINNER_BADGE,
-} from '../constants/educationContent'
+// educationContent imports removed — read-status tracking no longer needed
 
 const STORAGE_KEY = '@juicing_education_v1'
 
 // ── Initial State ────────────────────────────────────────────
 
 const initialState = {
-  // Which screens have been completed: { [screenId]: true }
-  completedScreens: {},
-  // Current highest unlocked screen index (progressive disclosure)
-  highestUnlocked: 0,
-  // Knowledge XP earned
-  knowledgeXP: 0,
-  // Earned badge IDs
-  earnedBadges: [],
-  // Whether Reboot Recipe library is unlocked
-  rebootRecipesUnlocked: false,
   // Cumulative metrics
   metrics: {
     totalJuices: 0,
@@ -49,35 +33,6 @@ function educationReducer(state, action) {
   switch (action.type) {
     case 'HYDRATE':
       return { ...state, ...action.payload, isHydrated: true }
-
-    case 'COMPLETE_SCREEN': {
-      const { screenId, screenIndex } = action.payload
-      if (state.completedScreens[screenId]) return state
-
-      const xp = XP_PER_SCREEN[screenId] || 0
-      const newCompleted = { ...state.completedScreens, [screenId]: true }
-      const newXP = state.knowledgeXP + xp
-      const newHighest = Math.max(state.highestUnlocked, screenIndex + 1)
-
-      // Check if all 5 screens are now done
-      const allDone = NOVICE_SCREENS.every((s) => newCompleted[s.id])
-      const newBadges = [...state.earnedBadges]
-      let rebootUnlocked = state.rebootRecipesUnlocked
-
-      if (allDone && !newBadges.includes(BEGINNER_BADGE.id)) {
-        newBadges.push(BEGINNER_BADGE.id)
-        rebootUnlocked = true
-      }
-
-      return {
-        ...state,
-        completedScreens: newCompleted,
-        highestUnlocked: newHighest,
-        knowledgeXP: newXP,
-        earnedBadges: newBadges,
-        rebootRecipesUnlocked: rebootUnlocked,
-      }
-    }
 
     case 'INCREMENT_METRIC': {
       const { metric, amount } = action.payload
@@ -131,10 +86,6 @@ export function EducationProvider({ children }) {
 
   // ── Actions ──────────────────────────────────────────────
 
-  const completeScreen = useCallback((screenId, screenIndex) => {
-    dispatch({ type: 'COMPLETE_SCREEN', payload: { screenId, screenIndex } })
-  }, [])
-
   const incrementMetric = useCallback((metric, amount = 1) => {
     dispatch({ type: 'INCREMENT_METRIC', payload: { metric, amount } })
   }, [])
@@ -143,43 +94,14 @@ export function EducationProvider({ children }) {
     dispatch({ type: 'ACKNOWLEDGE_SAFETY' })
   }, [])
 
-  // ── Derived ──────────────────────────────────────────────
-
-  const isScreenUnlocked = useCallback((screenIndex) => {
-    return screenIndex <= state.highestUnlocked
-  }, [state.highestUnlocked])
-
-  const isScreenCompleted = useCallback((screenId) => {
-    return !!state.completedScreens[screenId]
-  }, [state.completedScreens])
-
-  const journeyComplete = useMemo(() => {
-    return NOVICE_SCREENS.every((s) => state.completedScreens[s.id])
-  }, [state.completedScreens])
-
-  const journeyProgress = useMemo(() => {
-    const done = NOVICE_SCREENS.filter((s) => state.completedScreens[s.id]).length
-    return done / NOVICE_SCREENS.length
-  }, [state.completedScreens])
-
   const value = useMemo(() => ({
     ...state,
-    completeScreen,
     incrementMetric,
     acknowledgeSafety,
-    isScreenUnlocked,
-    isScreenCompleted,
-    journeyComplete,
-    journeyProgress,
   }), [
     state,
-    completeScreen,
     incrementMetric,
     acknowledgeSafety,
-    isScreenUnlocked,
-    isScreenCompleted,
-    journeyComplete,
-    journeyProgress,
   ])
 
   return (

@@ -29,24 +29,21 @@ import {
 } from '../services/subscriptions/subscriptionConfig'
 import { formatSavingsBadge } from '../services/subscriptions/subscriptionSelectors'
 import { subscriptionAnalytics } from '../services/subscriptions/subscriptionAnalytics'
+import { trackEvent } from '../services/AnalyticsService'
 
 const FREE_FEATURES = [
-  `${FREE_MONTHLY_SCAN_LIMIT} AI scans per quota month`,
-  'Unlimited manual logging',
-  'Basic Glow Streak',
-  'Weekly Momentum',
-  'Basic progress history',
+  `${FREE_MONTHLY_SCAN_LIMIT} AI Juice Snaps per month`,
+  'Unlimited manual ingredient entry',
+  'Save and revisit your juice history',
+  'Basic progress tracking',
 ]
 
 const PRO_FEATURES = [
-  `${PRO_MONTHLY_SCAN_LIMIT} AI scans per quota month`,
-  'Advanced Glow Reports',
-  'Ingredient and consistency trends',
-  'Personalized challenges',
-  'Custom goals',
-  'Photo recaps',
-  'Advanced reminders',
-  'Premium achievements',
+  `${PRO_MONTHLY_SCAN_LIMIT} successful AI Juice Snaps per month`,
+  'Full ingredient and estimated-nutrition analysis',
+  'Unlimited manual ingredient entry',
+  'Save and revisit your juice history and progress',
+  'Restore Pro access when signed into the same account',
 ]
 
 export default function PaywallScreen({ navigation, route }) {
@@ -80,11 +77,17 @@ export default function PaywallScreen({ navigation, route }) {
     switch (outcome.status) {
       case 'success':
         await refreshQuota()
-        Alert.alert('Welcome to Pro!', 'Your Pro features are now active.', [
+        if (source === 'scan_quota_exhausted') {
+          trackEvent('scan_quota_upgrade_completed', { paywall_source: source })
+        }
+        Alert.alert('Welcome to Pro!', 'RawLifeFlow Pro is active. You now have up to 60 successful Juice Snaps per month.', [
           { text: 'Continue', onPress: () => navigation.goBack() },
         ])
         break
       case 'cancelled':
+        if (source === 'scan_quota_exhausted') {
+          trackEvent('scan_quota_upgrade_cancelled', { paywall_source: source })
+        }
         break
       case 'pending':
         Alert.alert('Purchase Pending', 'Your purchase is being processed. Pro will activate automatically once it completes.')
@@ -96,11 +99,17 @@ export default function PaywallScreen({ navigation, route }) {
         Alert.alert('Store Unavailable', 'Subscriptions are not available right now. Please try again later.')
         break
       default:
+        if (source === 'scan_quota_exhausted') {
+          trackEvent('scan_quota_upgrade_failed', { paywall_source: source })
+        }
         Alert.alert('Purchase Failed', 'Something went wrong. You have not been charged. Please try again.')
     }
   }
 
   const handleRestore = async () => {
+    if (source === 'scan_quota_exhausted') {
+      trackEvent('scan_quota_restore_selected', { paywall_source: source })
+    }
     setRestoring(true)
     try {
       const outcome = await restore()
@@ -139,10 +148,9 @@ export default function PaywallScreen({ navigation, route }) {
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <Sparkles size={28} color="#7EE787" />
-          <Text style={styles.title}>Build Your Juicing Habit with Pro</Text>
+          <Text style={styles.title}>RawLifeFlow Pro</Text>
           <Text style={styles.subtitle}>
-            Scan your juices faster, understand your progress, and stay motivated with deeper
-            reports, personalized challenges, and monthly insights.
+            Get more Juice Snaps each month and keep building your RawLifeFlow routine.
           </Text>
         </View>
 
@@ -231,8 +239,8 @@ export default function PaywallScreen({ navigation, route }) {
         )}
 
         <Text style={styles.disclosure}>
-          {PRO_MONTHLY_SCAN_LIMIT} image-recognition scans per quota month. Unused scans do not
-          roll over. Manual logging remains unlimited.{'\n\n'}
+          {PRO_MONTHLY_SCAN_LIMIT} successful AI Juice Snaps per month. Unused scans do not
+          roll over. Manual ingredient entry remains unlimited.{'\n\n'}
           Subscriptions auto-renew until cancelled. Payment is charged to your Apple or Google
           account. Cancel anytime in your store subscription settings.
         </Text>

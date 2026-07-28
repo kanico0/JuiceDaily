@@ -11,13 +11,6 @@ import type { SubscriptionState } from './subscriptionTypes'
 
 export type FeatureKey =
   | 'ai_scan'
-  | 'advanced_weekly_report'
-  | 'advanced_trends'
-  | 'personalized_challenges'
-  | 'custom_weekly_goals'
-  | 'photo_recaps'
-  | 'advanced_reminders'
-  | 'premium_achievements'
 
 // Features every user has, regardless of plan. AI scan is "free"
 // in the sense that Free users get a monthly quota — the server
@@ -40,13 +33,6 @@ export function accessibleFeatures (
 ): FeatureKey[] {
   const all: FeatureKey[] = [
     'ai_scan',
-    'advanced_weekly_report',
-    'advanced_trends',
-    'personalized_challenges',
-    'custom_weekly_goals',
-    'photo_recaps',
-    'advanced_reminders',
-    'premium_achievements',
   ]
   return all.filter((f) => canAccessFeature(state, f))
 }

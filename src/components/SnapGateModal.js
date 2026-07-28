@@ -24,7 +24,7 @@ import {
   Zap,
   ShoppingBag,
 } from 'lucide-react-native'
-import { SUBSCRIPTION_PLANS, IAP_PACKS, usePro } from '../services/ProStore'
+import { SUBSCRIPTION_PLANS, usePro } from '../services/ProStore'
 
 export default function SnapGateModal({ visible, onDismiss, onUpgrade, onBuyPack }) {
   const { snapInfo } = usePro()
@@ -71,25 +71,25 @@ export default function SnapGateModal({ visible, onDismiss, onUpgrade, onBuyPack
           {/* Headline */}
           <Text style={styles.headline}>Snaps Exhausted</Text>
           <Text style={styles.body}>
-            You've used your 3 Free Snaps for {monthName}.{' '}
-            <Text style={styles.proHighlight}>Wellness Architects</Text> get unlimited AI scanning,
-            instant nutrient breakdown, and Fridge Forager integration.
+            You've used your 5 free Juice Snaps for {monthName}.{' '}
+            <Text style={styles.proHighlight}>RawLifeFlow Pro</Text> includes 60 successful AI Juice Snaps each month,
+            full ingredient analysis, and unlimited manual entry.
           </Text>
 
           {/* What you're missing preview */}
           <View style={styles.previewCard}>
             <Text style={styles.previewTitle}>What you're missing</Text>
             <View style={styles.previewRow}>
-              <Sparkles size={14} color="#FFD54F" />
+              <Sparkles size={14} color="#7EE787" />
               <Text style={styles.previewText}>Instant produce identification</Text>
             </View>
             <View style={styles.previewRow}>
-              <Zap size={14} color="#81C784" />
-              <Text style={styles.previewText}>Nutrient breakdown per juice</Text>
+              <Zap size={14} color="#7EE787" />
+              <Text style={styles.previewText}>Full nutrient breakdown per juice</Text>
             </View>
             <View style={styles.previewRow}>
-              <ShoppingBag size={14} color="#CE93D8" />
-              <Text style={styles.previewText}>Fridge Forager recipe matching</Text>
+              <Camera size={14} color="#7EE787" />
+              <Text style={styles.previewText}>60 successful Juice Snaps each month</Text>
             </View>
           </View>
 
@@ -102,21 +102,23 @@ export default function SnapGateModal({ visible, onDismiss, onUpgrade, onBuyPack
               if (onUpgrade) onUpgrade()
             }}
             activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel="Upgrade to RawLifeFlow Pro"
           >
             <LinearGradient
-              colors={['#4CAF50', '#2E7D32']}
+              colors={['#7EE787', '#2EA043']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={styles.upgradeBtnGradient}
             >
               <Crown size={18} color="#FFFFFF" />
               <Text style={styles.upgradeBtnText}>
-                Upgrade to Pro — {SUBSCRIPTION_PLANS.monthly.price}/mo
+                Upgrade to RawLifeFlow Pro — {SUBSCRIPTION_PLANS.monthly.price}/mo
               </Text>
             </LinearGradient>
           </TouchableOpacity>
 
-          {/* Option 2: Buy Snap Pack */}
+          {/* Option 2: Manual entry */}
           <TouchableOpacity
             style={styles.packBtn}
             onPress={() => {
@@ -125,10 +127,12 @@ export default function SnapGateModal({ visible, onDismiss, onUpgrade, onBuyPack
               if (onBuyPack) onBuyPack()
             }}
             activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="Enter ingredients manually"
           >
-            <Camera size={16} color="#64B5F6" />
+            <Camera size={16} color="#7EE787" />
             <Text style={styles.packBtnText}>
-              Buy {IAP_PACKS.snap_10.label} — {IAP_PACKS.snap_10.price}
+              Enter Ingredients Manually
             </Text>
           </TouchableOpacity>
         </Animated.View>

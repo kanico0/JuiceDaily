@@ -252,7 +252,7 @@ export default function TodayHubCard({ todayLog, vitalityScore, streak, onLogJui
         {streak > 0 && (
           <View style={hubStyles.streakRow}>
             <Text style={hubStyles.streakEmoji}>🔥</Text>
-            <Text style={hubStyles.streakText}>{streak} day streak</Text>
+            <Text style={hubStyles.streakText}>{streak} day Glow Streak</Text>
           </View>
         )}
 

@@ -19,11 +19,10 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { LinearGradient } from 'expo-linear-gradient'
 import { BlurView } from 'expo-blur'
 import * as Haptics from 'expo-haptics'
-import { Search, Wine, Droplets, Lightbulb, Award, Snowflake, Settings, Clock, Lock, Crown, BookOpen } from 'lucide-react-native'
+import { Search, Wine, Droplets, Lightbulb, Award, Settings, Clock, Lock, Crown, BookOpen } from 'lucide-react-native'
 import SpectrumRings from '../components/SpectrumRings'
 import WeeklySpectrumBar from '../components/WeeklySpectrumBar'
 import MeshGradientBg from '../components/MeshGradientBg'
-import { MercyModal, ThawRecipeSuggestion } from '../components/FreezerPassModal'
 import WelcomeModal from '../components/WelcomeModal'
 import PaywallModal from '../components/PaywallModal'
 import { useChallenge, DAILY_PILLARS, WEEKLY_COLORS } from '../services/ChallengeStore'
@@ -35,7 +34,7 @@ import RewardSplash from '../components/RewardSplash'
 import UseSoonCards from '../components/UseSoonCards'
 import WeeklyInsightsCard from '../components/WeeklyInsightsCard'
 import { usePantry } from '../services/PantryStore'
-import { useStreak } from '../services/StreakEngine'
+import { useGlowStreak } from '../services/glowStreak'
 import FirstLaunchOrchestrator, { hasCompletedFirstLaunch, markFirstLaunchDone } from '../components/FirstLaunchOrchestrator'
 import StreakVisualCard from '../components/StreakVisualCard'
 import NutrientHaloCard from '../components/NutrientHaloCard'
@@ -150,7 +149,7 @@ function ClinkToast({ visible, userName }) {
 // ── Main Dashboard ───────────────────────────────────────────
 
 export default function DashboardScreen({ navigation, route }) {
-  const { challenge, todayLog, vitalityScore, weeklyDiversity, weeklyStats, useFreezerPass, completeOnboarding, logJuice } = useChallenge()
+  const { challenge, todayLog, vitalityScore, weeklyDiversity, weeklyStats, completeOnboarding, logJuice } = useChallenge()
   const { isPro, hasFeatureAccess, pro } = usePro()
   const { isEnabled } = useFlags()
   const { useSoonItems } = usePantry()
@@ -158,15 +157,11 @@ export default function DashboardScreen({ navigation, route }) {
   const [showPaywall, setShowPaywall] = useState(false)
   const paywallShownRef = useRef(false)
   const [clinkUser, setClinkUser] = React.useState(null)
-  const [showMercy, setShowMercy] = useState(false)
   const toastTimer = useRef(null)
-  const isFrozen = challenge.isFrozen || false
-  const freezerPasses = challenge.freezerPasses || 0
   const [showQuickLogger, setShowQuickLogger] = useState(false)
   const [showRewardSplash, setShowRewardSplash] = useState(false)
   const [showFirstLaunch, setShowFirstLaunch] = useState(false)
-  const streakCtx = useStreak()
-  const streak = isEnabled('ff_streaks_grace') ? streakCtx : null
+  const glowStreak = useGlowStreak()
   const { profile, updateSession } = useUserProfile()
 
   // Update session timestamp on mount
@@ -277,10 +272,6 @@ export default function DashboardScreen({ navigation, route }) {
     if (isEnabled('ff_reward_splash')) setShowRewardSplash(true)
   }, [isEnabled])
 
-  const handleFirstLaunchStreak = useCallback(() => {
-    if (streak && streak.recordLog) streak.recordLog()
-  }, [streak])
-
   const handleFirstLaunchComplete = useCallback(() => {
     setShowFirstLaunch(false)
   }, [])
@@ -327,15 +318,9 @@ export default function DashboardScreen({ navigation, route }) {
                 </View>
                 <Text style={styles.streakText}>
                   {emotionalCopy
-                    ? `🔥 ${challenge.streak} day streak`
-                    : `🔥 ${challenge.streak}`}
+                    ? `🔥 ${glowStreak.count} day Glow Streak`
+                    : `🔥 ${glowStreak.count}`}
                 </Text>
-                {freezerPasses > 0 && (
-                  <View style={styles.freezerPill}>
-                    <Snowflake size={10} color="#90CAF9" />
-                    <Text style={styles.freezerPillText}>×{freezerPasses}</Text>
-                  </View>
-                )}
               </View>
             </View>
 
@@ -387,7 +372,7 @@ export default function DashboardScreen({ navigation, route }) {
             <TodayHubCard
               todayLog={todayLog}
               vitalityScore={vitalityScore}
-              streak={challenge.streak}
+              streak={glowStreak.count}
               onLogJuice={(target) => {
                 if (target === 'recipes') navigation.navigate('FridgeForager')
                 else handleQuickLog()
@@ -396,8 +381,22 @@ export default function DashboardScreen({ navigation, route }) {
           )}
 
           {/* ═══ STREAK VISUAL (behind ff_streak_visual) ════ */}
-          {isEnabled('ff_streak_visual') && streakCtx && (
-            <StreakVisualCard streakData={streakCtx} />
+          {isEnabled('ff_streak_visual') && (
+            <StreakVisualCard
+              streakData={{
+                currentStreak: glowStreak.count,
+                longestStreak: glowStreak.count,
+                graceDaysAllowed: 1,
+                graceDaysRemaining: glowStreak.graceUsedToday ? 0 : 1,
+                isPaused: false,
+                streakStatus: glowStreak.checkedInToday ? 'logged_today' : 'active',
+                message: {
+                  text: glowStreak.checkedInToday
+                    ? 'Checked in for today.'
+                    : 'Ready for today\'s juice?',
+                },
+              }}
+            />
           )}
 
           {/* ═══ USE-SOON CARDS (behind ff_use_soon_cards) ═══ */}
@@ -488,13 +487,6 @@ export default function DashboardScreen({ navigation, route }) {
             </View>
           </TouchableOpacity>
 
-          {/* ═══ FROZEN STATE: Thaw recipe suggestion ═══════════ */}
-          {isFrozen && (
-            <ThawRecipeSuggestion
-              onPress={() => navigation.navigate('ScanFlow')}
-            />
-          )}
-
           {/* ═══ LEARN — NOVICE JOURNEY ═══════════════════════ */}
           <TouchableOpacity
             style={styles.hallLink}
@@ -564,12 +556,12 @@ export default function DashboardScreen({ navigation, route }) {
               style={styles.vaultLink}
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-                navigation.navigate('Vault')
+                navigation.navigate('Paywall', { source: 'dashboard' })
               }}
               activeOpacity={0.7}
             >
-              <Crown size={16} color="#FFD54F" />
-              <Text style={styles.vaultLinkText}>Unlock Architect Pro</Text>
+              <Crown size={16} color="#7EE787" />
+              <Text style={styles.vaultLinkText}>Upgrade to RawLifeFlow Pro</Text>
               <Text style={styles.vaultLinkArrow}>→</Text>
             </TouchableOpacity>
           )}
@@ -653,7 +645,7 @@ export default function DashboardScreen({ navigation, route }) {
                 <Wine size={22} color="#FFFFFF" />
                 <Text style={styles.dockBtnPrimaryText}>
                   {emotionalCopy
-                    ? (challenge.streak > 0 ? 'Keep My Streak Alive' : 'Build My First Juice')
+                    ? (glowStreak.count > 0 ? 'Keep My Glow Going' : 'Build My First Juice')
                     : 'I Just Juiced!'}
                 </Text>
               </LinearGradient>
@@ -664,14 +656,6 @@ export default function DashboardScreen({ navigation, route }) {
 
       {/* Clink toast */}
       <ClinkToast visible={!!clinkUser} userName={clinkUser?.name || ''} />
-
-      {/* Mercy modal (Freezer Pass used) */}
-      <MercyModal
-        visible={showMercy}
-        onDismiss={() => setShowMercy(false)}
-        streak={challenge.streak}
-        passesRemaining={freezerPasses}
-      />
 
       {/* Onboarding Welcome Modal */}
       <WelcomeModal
@@ -686,7 +670,6 @@ export default function DashboardScreen({ navigation, route }) {
           onComplete={handleFirstLaunchComplete}
           onLogJuice={handleFirstLaunchLog}
           onTriggerReward={handleFirstLaunchReward}
-          onRecordStreak={handleFirstLaunchStreak}
           onQuickLog={handleQuickLog}
         />
       )}
@@ -797,22 +780,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: '#FF9800',
-  },
-  freezerPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    backgroundColor: 'rgba(100,181,246,0.08)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 24,
-    borderWidth: 0.5,
-    borderColor: 'rgba(100,181,246,0.15)',
-  },
-  freezerPillText: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#90CAF9',
   },
   heroBody: {
     alignItems: 'center',

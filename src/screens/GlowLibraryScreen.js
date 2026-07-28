@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react'
+import React, { useCallback, useMemo } from 'react'
 import {
   View,
   Text,
@@ -9,14 +9,11 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { LinearGradient } from 'expo-linear-gradient'
 import * as Haptics from 'expo-haptics'
-import { ArrowLeft, ChevronRight, Crown, Lock } from 'lucide-react-native'
+import { ArrowLeft, ChevronRight, Crown } from 'lucide-react-native'
 import MeshGradientBg from '../components/MeshGradientBg'
-import PaywallModal from '../components/PaywallModal'
 import { RECIPES, getCleanupLabel } from '../constants/recipeData'
-import { usePro } from '../services/ProStore'
-import { useFlags } from '../services/FeatureFlags'
 
-function RecipeRow({ recipe, isLocked, onPress }) {
+function RecipeRow({ recipe, onPress }) {
   return (
     <TouchableOpacity
       style={styles.recipeCard}
@@ -49,26 +46,12 @@ function RecipeRow({ recipe, isLocked, onPress }) {
         </View>
 
         <Text style={styles.recipeTitle}>{recipe.title}</Text>
-
-        {isLocked && (
-          <View style={styles.lockOverlay} pointerEvents="none">
-            <Lock size={14} color="#FFD54F" />
-            <Text style={styles.lockText}>Pro</Text>
-          </View>
-        )}
       </LinearGradient>
     </TouchableOpacity>
   )
 }
 
 export default function GlowLibraryScreen({ navigation }) {
-  const { hasFeatureAccess } = usePro()
-  const { isEnabled } = useFlags()
-  const [showPaywall, setShowPaywall] = useState(false)
-
-  const isPaywallDisabled = isEnabled('ff_dev_disable_paywalls')
-  const isPaywallForced = isEnabled('ff_dev_force_paywalls')
-
   const recipes = useMemo(() => {
     return RECIPES
       .filter((r) => r.collection === 'glow_library')
@@ -80,19 +63,9 @@ export default function GlowLibraryScreen({ navigation }) {
     navigation.goBack()
   }, [navigation])
 
-  const handleOpenRecipe = useCallback((recipeId, isLocked) => {
-    if (isPaywallDisabled) {
-      navigation.navigate('RecipeDetail', { recipeId })
-      return
-    }
-
-    if (isPaywallForced || isLocked) {
-      setShowPaywall(true)
-      return
-    }
-
+  const handleOpenRecipe = useCallback((recipeId) => {
     navigation.navigate('RecipeDetail', { recipeId })
-  }, [navigation, isPaywallDisabled, isPaywallForced])
+  }, [navigation])
 
   return (
     <View style={styles.rootWrap}>
@@ -114,19 +87,16 @@ export default function GlowLibraryScreen({ navigation }) {
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}
         >
-          <Text style={styles.subTitle}>Pro-only collections built for glow, consistency, and variety.</Text>
+          <Text style={styles.subTitle}>Collections built for glow, consistency, and variety.</Text>
 
           {recipes.map((r) => {
-            const shouldLock = r.tier === 'pro' && !hasFeatureAccess('proRecipes')
-
             return (
               <RecipeRow
                 key={r.id}
                 recipe={r}
-                isLocked={shouldLock}
                 onPress={() => {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-                  handleOpenRecipe(r.id, shouldLock)
+                  handleOpenRecipe(r.id)
                 }}
               />
             )
@@ -135,12 +105,6 @@ export default function GlowLibraryScreen({ navigation }) {
           <View style={{ height: 24 }} />
         </ScrollView>
       </SafeAreaView>
-
-      <PaywallModal
-        visible={!isPaywallDisabled && showPaywall}
-        onDismiss={() => setShowPaywall(false)}
-        trigger="pro_recipes"
-      />
     </View>
   )
 }
@@ -236,25 +200,5 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#FFFFFF',
     letterSpacing: -0.2,
-  },
-  lockOverlay: {
-    position: 'absolute',
-    top: 12,
-    right: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: 'rgba(6,13,10,0.85)',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 999,
-    borderWidth: 0.5,
-    borderColor: 'rgba(255,213,79,0.15)',
-  },
-  lockText: {
-    fontSize: 10,
-    fontWeight: '900',
-    color: '#FFD54F',
-    letterSpacing: 0.4,
   },
 })

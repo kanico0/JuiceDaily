@@ -154,7 +154,7 @@ export default function MonthlyWrapScreen({ navigation }) {
     [challenge, viewYear, viewMonth]
   )
 
-  const userName = challenge.userName || 'Architect'
+  const userName = challenge.userName || 'RawLifeFlow Member'
 
   // Navigate months
   const goToPrevMonth = useCallback(() => {
@@ -261,7 +261,7 @@ export default function MonthlyWrapScreen({ navigation }) {
             >
               {/* Identity Badge */}
               <View style={styles.identityBadge}>
-                <Text style={styles.identityLabel}>WELLNESS ARCHITECT</Text>
+                <Text style={styles.identityLabel}>RAWLIFEFLOW</Text>
                 <Text style={styles.identityName}>{userName}</Text>
               </View>
 

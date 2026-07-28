@@ -9,7 +9,7 @@ export const IDENTITY_TITLES = [
   'Rainbow Warrior',
   'Chlorophyll Champion',
   'Juice Alchemist',
-  'Wellness Architect',
+  'Wellness Pioneer',
   'Nutrient Hunter',
   'Green Machine',
   'Spectrum Master',
@@ -49,7 +49,7 @@ export const DAILY_WISDOM = [
   'Your immune system has a wish list. It\'s mostly green.',
   'Turmeric: 4,000 years of medicine in a single root.',
   'The difference between surviving and thriving is one glass.',
-  'Celery juice at dawn. That\'s the architect\'s blueprint.',
+  'Celery juice at dawn. That\'s the daily foundation.',
   'Your future self will thank today\'s juice.',
   'Vitamins don\'t work in isolation. They work in color.',
 ]
@@ -134,7 +134,7 @@ export const LEVEL_UP_MESSAGES = [
   { threshold: 25, title: 'Green Apprentice', message: 'Your cells are waking up.' },
   { threshold: 40, title: 'Spectrum Seeker', message: 'The colors are calling you.' },
   { threshold: 55, title: 'Vitality Builder', message: 'Your body is transforming.' },
-  { threshold: 70, title: 'Wellness Architect', message: 'You\'re designing your health.' },
+  { threshold: 70, title: 'Wellness Pioneer', message: 'You\'re designing your health.' },
   { threshold: 85, title: 'Rainbow Master', message: 'Almost legendary status!' },
   { threshold: 100, title: 'Prism Legend', message: 'Peak vitality achieved.' },
 ]

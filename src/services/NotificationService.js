@@ -11,7 +11,6 @@ import {
   AFFIRMATIONS,
   EDUCATIONAL,
   WILT_WARNINGS,
-  FREEZER_PASS_MORNING,
   STREAK_SHIELD,
   ONBOARDING_SEQUENCE,
   NOTIFICATION_CATEGORIES,
@@ -55,7 +54,6 @@ const DEFAULT_SETTINGS = {
   quietEnd: { hour: 6, minute: 30 },
   affirmations: true,
   vitalityReminders: true,
-  freezerAlerts: true,
   glassClinks: true,
   weeklyLeaderboard: true,
   privacyMode: false,
@@ -97,7 +95,6 @@ async function registerCategories() {
     ])
     await Notifications.setNotificationCategoryAsync('STREAK_ALERT', [
       { identifier: 'LOG_NOW', buttonTitle: 'Log Now', options: { opensAppToForeground: true } },
-      { identifier: 'USE_FREEZER', buttonTitle: 'Use Freezer Pass 🧊', options: { opensAppToForeground: true } },
     ])
     await Notifications.setNotificationCategoryAsync('WILT_WARNING', [
       { identifier: 'VIEW_RECIPE', buttonTitle: 'View Recipe', options: { opensAppToForeground: true } },
@@ -106,10 +103,6 @@ async function registerCategories() {
     await Notifications.setNotificationCategoryAsync('SOCIAL', [
       { identifier: 'CLINK_BACK', buttonTitle: 'Clink Back 🥂', options: { opensAppToForeground: true } },
       { identifier: 'LOG_NOW', buttonTitle: 'Log Now', options: { opensAppToForeground: true } },
-    ])
-    await Notifications.setNotificationCategoryAsync('FREEZER_MORNING', [
-      { identifier: 'LOG_NOW', buttonTitle: 'Log Now', options: { opensAppToForeground: true } },
-      { identifier: 'VIEW_RECIPE', buttonTitle: 'View Recipe', options: { opensAppToForeground: true } },
     ])
     await Notifications.setNotificationCategoryAsync('SURPRISE', [
       { identifier: 'LOG_NOW', buttonTitle: 'Log Now', options: { opensAppToForeground: true } },
@@ -191,7 +184,7 @@ async function canSendNotification(settings, isEmergency = false) {
   const cap = INTENSITY_CAPS[settings.intensity] || 3
   if (sent >= cap && !isEmergency) return false
 
-  // Quiet hours check (Freezer Pass alerts bypass quiet hours)
+  // Quiet hours check
   if (!isEmergency) {
     const now = new Date()
     const hour = now.getHours()
@@ -366,7 +359,7 @@ export async function scheduleWiltWarning(lastIngredients) {
 // If Vitality Rings at 0% at 8:00 PM
 // ═══════════════════════════════════════════════════════════════
 
-export async function scheduleStreakShield(streak, freezerPasses) {
+export async function scheduleStreakShield(streak) {
   await safeCancel('streak-shield')
   const settings = await loadNotificationSettings()
   if (!settings.vitalityReminders) return
@@ -380,17 +373,13 @@ export async function scheduleStreakShield(streak, freezerPasses) {
 
   const template = pickRandom(STREAK_SHIELD)
 
-  // This is an emergency if freezer passes exist (bypasses quiet hours)
-  const isEmergency = settings.freezerAlerts && freezerPasses > 0
-
   await scheduleNotif({
     id: 'streak-shield',
     title: template.title,
     body: fillTemplate(template.body, { streak: String(streak) }),
-    data: { type: 'streak_shield', action: 'open_dashboard', freezerPasses },
+    data: { type: 'streak_shield', action: 'open_dashboard' },
     triggerDate: evening,
     categoryId: 'STREAK_ALERT',
-    isEmergency,
   })
 }
 
@@ -424,7 +413,7 @@ export async function scheduleSaturdayNudge(weeklyDiversity) {
   }
   const suggestText = missing.slice(0, 2).map((c) => suggestions[c]).join(' or ')
 
-  const body = `Almost there, Architect! ${emojis} Your ${colorNames.join(' and ')} ring${missing.length > 1 ? 's are' : ' is'} still ghosted. Grab some ${suggestText} today to secure your Weekend Warrior Badge.`
+  const body = `Almost there! ${emojis} Your ${colorNames.join(' and ')} ring${missing.length > 1 ? 's are' : ' is'} still ghosted. Grab some ${suggestText} today to secure your Weekend Warrior Badge.`
 
   const now = new Date()
   const dayOfWeek = now.getDay()
@@ -441,33 +430,6 @@ export async function scheduleSaturdayNudge(weeklyDiversity) {
     data: { type: 'saturday_nudge', action: 'open_weekly_report' },
     triggerDate: saturday,
     categoryId: 'WILT_WARNING',
-  })
-}
-
-// ═══════════════════════════════════════════════════════════════
-// Freezer Pass Morning-After
-// ═══════════════════════════════════════════════════════════════
-
-export async function scheduleFreezerMorning(streak) {
-  await safeCancel('freezer-morning')
-  const settings = await loadNotificationSettings()
-  if (!settings.freezerAlerts) return
-
-  const template = pickRandom(FREEZER_PASS_MORNING)
-
-  const now = new Date()
-  const morning = new Date(now)
-  morning.setDate(morning.getDate() + 1)
-  morning.setHours(7, 30, 0, 0)
-
-  await scheduleNotif({
-    id: 'freezer-morning',
-    title: template.title,
-    body: fillTemplate(template.body, { streak: String(streak) }),
-    data: { type: 'freezer_morning', action: 'open_dashboard' },
-    triggerDate: morning,
-    categoryId: 'FREEZER_MORNING',
-    isEmergency: true,
   })
 }
 
@@ -594,8 +556,6 @@ export async function orchestrateNotifications({
   weeklyDiversity,
   todayLog,
   streak,
-  freezerPasses,
-  isFrozen,
   totalWeightG,
   lastIngredients,
 }) {
@@ -617,17 +577,12 @@ export async function orchestrateNotifications({
   // 5. Streak Shield (if rings at 0% today)
   const hasJuicedToday = todayLog.base || todayLog.power || todayLog.kick
   if (!hasJuicedToday && streak > 0) {
-    await scheduleStreakShield(streak, freezerPasses)
+    await scheduleStreakShield(streak)
   } else {
     await safeCancel('streak-shield')
   }
 
-  // 6. Freezer Pass morning-after
-  if (isFrozen) {
-    await scheduleFreezerMorning(streak)
-  }
-
-  // 7. Wilt warning (inactivity)
+  // 6. Wilt warning (inactivity)
   if (lastIngredients && lastIngredients.length > 0) {
     await scheduleWiltWarning(lastIngredients)
   }
@@ -647,16 +602,6 @@ export async function onJuiceLogged(totalJuiceCount, totalWeightG) {
   if (totalJuiceCount !== undefined) {
     await checkSurpriseAndDelight(totalJuiceCount, totalWeightG || 0)
   }
-}
-
-// ── Legacy compat exports ────────────────────────────────────
-
-export async function scheduleMercyAlert(streak, freezerPasses) {
-  await scheduleStreakShield(streak, freezerPasses)
-}
-
-export async function cancelMercyAlert() {
-  await safeCancel('streak-shield')
 }
 
 export async function cancelSaturdayNudge() {

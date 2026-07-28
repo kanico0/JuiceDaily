@@ -7,7 +7,7 @@
 export const RANK_TIERS = [
   { minLevel: 1, maxLevel: 5, title: 'Seed Sower', color: '#8D6E63', icon: '🌱' },
   { minLevel: 6, maxLevel: 15, title: 'Sprout Guardian', color: '#81C784', icon: '🌿' },
-  { minLevel: 16, maxLevel: 30, title: 'Wellness Architect', color: '#64B5F6', icon: '🏛️' },
+  { minLevel: 16, maxLevel: 30, title: 'Wellness Pioneer', color: '#64B5F6', icon: '�' },
   { minLevel: 31, maxLevel: 999, title: 'Master Juicer', color: '#FFD54F', icon: '👑' },
 ]
 
@@ -84,7 +84,7 @@ export const BADGES = [
     id: 'iron_press',
     category: 'consistency',
     name: 'The Iron Press',
-    description: 'Juice 14 days in a row without using a Freezer Pass.',
+    description: 'Juice 14 days in a row. Pure consistency.',
     flavorText: 'No safety net needed. Pure discipline.',
     icon: '🏋️',
     check: (c) => {

@@ -183,7 +183,7 @@ export default function StreakVisualCard({ streakData }) {
     <Animated.View
       style={[cardStyles.container, { opacity: fadeAnim }]}
       accessibilityRole="summary"
-      accessibilityLabel={`Streak: Day ${cycleDay} of 7. ${streakData.message.text}`}
+      accessibilityLabel={`Glow Streak: Day ${cycleDay} of 7. ${streakData.message.text}`}
     >
       {/* Header */}
       <View style={cardStyles.header}>
@@ -191,8 +191,8 @@ export default function StreakVisualCard({ streakData }) {
           <Flame size={16} color={DARK.orange} />
           <Text style={cardStyles.title}>
             {streakData.currentStreak > 0
-              ? `Day ${cycleDay} of 7`
-              : 'Start Your Streak'}
+              ? `Glow Streak · Day ${cycleDay} of 7`
+              : 'Start Your Glow Streak'}
           </Text>
         </View>
         {streakData.currentStreak > 0 && (

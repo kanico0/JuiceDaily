@@ -1,7 +1,7 @@
 // ─────────────────────────────────────────────────────────────
-// VaultScreen.js — IAP Store ("The Vault")
-// Subscription tiers, Freezer Pass Packs, Snap Packs,
-// Boutique Recipe Packs
+// VaultScreen.js — RawLifeFlow Pro subscription screen
+// Two plans only: Monthly ($7.99/mo) and Annual ($59.99/yr)
+// 60 successful AI Juice Snaps per month, unlimited manual entry
 // ─────────────────────────────────────────────────────────────
 
 import React, { useState, useRef, useEffect } from 'react'
@@ -19,36 +19,28 @@ import { LinearGradient } from 'expo-linear-gradient'
 import * as Haptics from 'expo-haptics'
 import {
   ArrowLeft,
-  Crown,
-  Snowflake,
-  Camera,
-  ChefHat,
   Check,
-  Zap,
-  BarChart3,
-  Infinity,
-  Star,
-  Lock,
+  Camera,
+  Sparkles,
 } from 'lucide-react-native'
+import { usePro, SUBSCRIPTION_PLANS } from '../services/ProStore'
 import {
-  SUBSCRIPTION_PLANS,
-  IAP_PACKS,
-  PRO_FEATURES,
-  usePro,
-} from '../services/ProStore'
+  PRO_MONTHLY_SCAN_LIMIT,
+  FREE_MONTHLY_SCAN_LIMIT,
+  MONTHLY_FALLBACK_PRICE,
+  ANNUAL_FALLBACK_PRICE,
+} from '../services/subscriptions/subscriptionConfig'
 import MeshGradientBg from '../components/MeshGradientBg'
 
-const PLAN_KEYS = ['monthly', 'annual', 'lifetime']
+const PLAN_KEYS = ['monthly', 'annual']
 
-const PRO_PERKS = [
-  { icon: <Camera size={16} color="#64B5F6" />, text: 'Unlimited AI Snaps' },
-  { icon: <BarChart3 size={16} color="#81C784" />, text: 'Weekly Vitality Reports' },
-  { icon: <ChefHat size={16} color="#FFB74D" />, text: 'Pro Recipe Categories' },
-  { icon: <Zap size={16} color="#FFD54F" />, text: 'Advanced Nutrient Data' },
-  { icon: <Infinity size={16} color="#CE93D8" />, text: 'Monthly Vitality Wraps' },
+const PRO_BENEFITS = [
+  { icon: <Camera size={16} color="#7EE787" />, text: `${PRO_MONTHLY_SCAN_LIMIT} successful AI Juice Snaps each month` },
+  { icon: <Check size={16} color="#7EE787" />, text: 'Full ingredient and estimated-nutrition analysis' },
+  { icon: <Check size={16} color="#7EE787" />, text: 'Unlimited manual ingredient entry' },
+  { icon: <Check size={16} color="#7EE787" />, text: 'Save and revisit your juice history and progress' },
+  { icon: <Check size={16} color="#7EE787" />, text: 'Restore Pro access when signed into the same account' },
 ]
-
-// ── Section Header ──────────────────────────────────────────
 
 function SectionHeader({ icon, title, subtitle }) {
   return (
@@ -62,46 +54,8 @@ function SectionHeader({ icon, title, subtitle }) {
   )
 }
 
-// ── Pack Card ───────────────────────────────────────────────
-
-function PackCard({ pack, onBuy, isPurchased }) {
-  return (
-    <TouchableOpacity
-      style={[styles.packCard, isPurchased && styles.packCardPurchased]}
-      onPress={() => {
-        if (!isPurchased) {
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
-          onBuy(pack)
-        }
-      }}
-      activeOpacity={isPurchased ? 1 : 0.7}
-    >
-      <Text style={styles.packEmoji}>{pack.emoji}</Text>
-      <View style={styles.packInfo}>
-        <Text style={styles.packLabel}>{pack.label}</Text>
-        <Text style={styles.packDesc}>{pack.description}</Text>
-      </View>
-      {isPurchased ? (
-        <View style={styles.purchasedBadge}>
-          <Check size={14} color="#81C784" />
-          <Text style={styles.purchasedText}>Owned</Text>
-        </View>
-      ) : (
-        <View style={styles.priceTag}>
-          <Text style={styles.priceText}>{pack.price}</Text>
-        </View>
-      )}
-    </TouchableOpacity>
-  )
-}
-
-// ── Main Screen ──────────────────────────────────────────────
-
 export default function VaultScreen({ navigation }) {
-  const {
-    pro, isPro, subscribe, buySnapPack, buyFreezerPack,
-    buyRecipePack, hasRecipePack, snapInfo,
-  } = usePro()
+  const { pro, isPro, subscribe, snapInfo } = usePro()
   const [selectedPlan, setSelectedPlan] = useState('annual')
   const fadeAnim = useRef(new Animated.Value(0)).current
 
@@ -119,23 +73,20 @@ export default function VaultScreen({ navigation }) {
     subscribe(selectedPlan)
   }
 
-  const handleBuyPack = (pack) => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
-    if (pack.type === 'freezer') buyFreezerPack(pack.quantity)
-    else if (pack.type === 'snap') buySnapPack()
-    else if (pack.type === 'recipe_pack') buyRecipePack(pack.id)
-  }
+  const ctaPrice = selectedPlan === 'monthly' ? MONTHLY_FALLBACK_PRICE : ANNUAL_FALLBACK_PRICE
+  const ctaLabel = selectedPlan === 'monthly'
+    ? `Start RawLifeFlow Pro Monthly — ${ctaPrice}/month`
+    : `Start RawLifeFlow Pro Annual — ${ctaPrice}/year`
 
   return (
     <View style={styles.root}>
       <MeshGradientBg />
       <SafeAreaView style={styles.safe} edges={['top']}>
-        {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} accessibilityRole="button" accessibilityLabel="Go back">
             <ArrowLeft size={22} color="#FFFFFF" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>The Vault</Text>
+          <Text style={styles.headerTitle}>RawLifeFlow Pro</Text>
           <View style={{ width: 36 }} />
         </View>
 
@@ -149,50 +100,49 @@ export default function VaultScreen({ navigation }) {
             {isPro && (
               <View style={styles.proStatusCard}>
                 <LinearGradient
-                  colors={['rgba(255,213,79,0.12)', 'rgba(129,199,132,0.08)']}
+                  colors={['rgba(126,231,135,0.12)', 'rgba(46,160,67,0.08)']}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                   style={styles.proStatusGradient}
                 >
-                  <Crown size={24} color="#FFD54F" />
+                  <Check size={24} color="#7EE787" />
                   <View style={styles.proStatusInfo}>
-                    <Text style={styles.proStatusTitle}>Architect Pro</Text>
+                    <Text style={styles.proStatusTitle}>RawLifeFlow Pro Active</Text>
                     <Text style={styles.proStatusDesc}>
-                      {pro.subscriptionPlan === 'lifetime'
-                        ? 'Lifetime access — yours forever'
-                        : `${pro.subscriptionPlan === 'annual' ? 'Annual' : 'Monthly'} plan active`}
+                      {pro.subscriptionPlan === 'annual' ? 'Annual plan' : 'Monthly plan'} — {PRO_MONTHLY_SCAN_LIMIT} successful Juice Snaps per month
                     </Text>
                   </View>
-                  <Check size={20} color="#81C784" />
                 </LinearGradient>
               </View>
             )}
 
-            {/* ═══ SUBSCRIPTION TIERS ═══════════════════════════ */}
+            {/* ═══ SUBSCRIPTION PLANS ═══════════════════════════ */}
             {!isPro && (
               <>
                 <SectionHeader
-                  icon={<Crown size={20} color="#FFD54F" />}
-                  title="Architect Pro"
-                  subtitle="Unlock the full experience"
+                  icon={<Sparkles size={20} color="#7EE787" />}
+                  title="RawLifeFlow Pro"
+                  subtitle="Unlock more Juice Snaps each month"
                 />
 
-                {/* Perks list */}
                 <View style={styles.perksCard}>
-                  {PRO_PERKS.map((perk, i) => (
+                  {PRO_BENEFITS.map((perk, i) => (
                     <View key={i} style={styles.perkRow}>
                       {perk.icon}
                       <Text style={styles.perkText}>{perk.text}</Text>
-                      <Check size={14} color="#81C784" />
+                      <Check size={14} color="#7EE787" />
                     </View>
                   ))}
                 </View>
 
-                {/* Plan cards */}
+                {/* Plan cards — exactly 2 */}
                 <View style={styles.planRow}>
                   {PLAN_KEYS.map((key) => {
                     const plan = SUBSCRIPTION_PLANS[key]
                     const isSelected = selectedPlan === key
+                    const displayPrice = key === 'monthly' ? MONTHLY_FALLBACK_PRICE : ANNUAL_FALLBACK_PRICE
+                    const periodLabel = key === 'monthly' ? 'per month' : 'per year'
+                    const planName = key === 'monthly' ? 'RawLifeFlow Pro Monthly' : 'RawLifeFlow Pro Annual'
                     return (
                       <TouchableOpacity
                         key={key}
@@ -202,6 +152,9 @@ export default function VaultScreen({ navigation }) {
                           setSelectedPlan(key)
                         }}
                         activeOpacity={0.7}
+                        accessibilityRole="button"
+                        accessibilityLabel={`${planName}, ${displayPrice} ${periodLabel}, ${PRO_MONTHLY_SCAN_LIMIT} successful Juice Snaps each month`}
+                        accessibilityState={{ selected: isSelected }}
                       >
                         {plan.badge && (
                           <View style={styles.planBadge}>
@@ -209,96 +162,48 @@ export default function VaultScreen({ navigation }) {
                           </View>
                         )}
                         <Text style={[styles.planLabel, isSelected && styles.planLabelSelected]}>
-                          {plan.label}
+                          {key === 'monthly' ? 'Monthly' : 'Annual'}
                         </Text>
                         <Text style={[styles.planPrice, isSelected && styles.planPriceSelected]}>
-                          {plan.price}
+                          {displayPrice}
                         </Text>
-                        <Text style={styles.planPeriod}>{plan.period}</Text>
-                        {plan.savings && (
-                          <Text style={styles.planSavings}>{plan.savings}</Text>
-                        )}
+                        <Text style={styles.planPeriod}>{periodLabel}</Text>
+                        <Text style={styles.planScans}>{PRO_MONTHLY_SCAN_LIMIT} scans monthly</Text>
                       </TouchableOpacity>
                     )
                   })}
                 </View>
 
-                {/* Subscribe CTA */}
                 <TouchableOpacity
                   style={styles.subscribeCta}
                   onPress={handleSubscribe}
                   activeOpacity={0.8}
+                  accessibilityRole="button"
+                  accessibilityLabel={ctaLabel}
                 >
                   <LinearGradient
-                    colors={['#4CAF50', '#2E7D32']}
+                    colors={['#7EE787', '#2EA043']}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
                     style={styles.subscribeCtaGradient}
                   >
-                    <Crown size={18} color="#FFFFFF" />
-                    <Text style={styles.subscribeCtaText}>
-                      Unlock Pro — {SUBSCRIPTION_PLANS[selectedPlan].price}
-                    </Text>
+                    <Text style={styles.subscribeCtaText}>{ctaLabel}</Text>
                   </LinearGradient>
                 </TouchableOpacity>
 
                 <Text style={styles.legalText}>
-                  Cancel anytime. Restore purchases available in Settings.
+                  Cancel anytime. Restore purchases available in Settings.{'\n'}
+                  Manual ingredient entry always remains unlimited.
                 </Text>
               </>
             )}
 
-            {/* ═══ CONSUMABLE PACKS ════════════════════════════ */}
-            <SectionHeader
-              icon={<Snowflake size={20} color="#64B5F6" />}
-              title="Power-Ups"
-              subtitle="One-time purchases"
-            />
-
-            <View style={styles.packsGrid}>
-              <PackCard
-                pack={IAP_PACKS.freezer_3}
-                onBuy={handleBuyPack}
-                isPurchased={false}
-              />
-              <PackCard
-                pack={IAP_PACKS.snap_10}
-                onBuy={handleBuyPack}
-                isPurchased={false}
-              />
-            </View>
-
-            {/* Snap balance indicator */}
+            {/* ═══ SCAN BALANCE ══════════════════════════════════ */}
             <View style={styles.snapBalanceCard}>
-              <Camera size={16} color="#64B5F6" />
+              <Camera size={16} color="#7EE787" />
               <Text style={styles.snapBalanceText}>
-                AI Snaps: <Text style={styles.snapBalanceValue}>{snapInfo.label}</Text>
+                Juice Snaps: <Text style={styles.snapBalanceValue}>{snapInfo.label}</Text>
               </Text>
-            </View>
-
-            {/* ═══ BOUTIQUE RECIPE PACKS ═══════════════════════ */}
-            <SectionHeader
-              icon={<ChefHat size={20} color="#FFB74D" />}
-              title="Boutique Recipes"
-              subtitle="Curated juice protocols"
-            />
-
-            <View style={styles.packsGrid}>
-              <PackCard
-                pack={IAP_PACKS.recipe_reset}
-                onBuy={handleBuyPack}
-                isPurchased={hasRecipePack(IAP_PACKS.recipe_reset.id)}
-              />
-              <PackCard
-                pack={IAP_PACKS.recipe_glow}
-                onBuy={handleBuyPack}
-                isPurchased={hasRecipePack(IAP_PACKS.recipe_glow.id)}
-              />
-              <PackCard
-                pack={IAP_PACKS.recipe_energy}
-                onBuy={handleBuyPack}
-                isPurchased={hasRecipePack(IAP_PACKS.recipe_energy.id)}
-              />
             </View>
 
             <View style={{ height: 40 }} />
@@ -308,8 +213,6 @@ export default function VaultScreen({ navigation }) {
     </View>
   )
 }
-
-// ── Styles ───────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#060D0A' },
@@ -331,7 +234,6 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
   content: { paddingHorizontal: 16, paddingTop: 8 },
 
-  // Pro Status
   proStatusCard: {
     marginBottom: 20,
     borderRadius: 28,
@@ -344,13 +246,12 @@ const styles = StyleSheet.create({
     gap: 14,
     borderRadius: 28,
     borderWidth: 0.5,
-    borderColor: 'rgba(255,213,79,0.15)',
+    borderColor: 'rgba(126,231,135,0.15)',
   },
   proStatusInfo: { flex: 1 },
-  proStatusTitle: { fontSize: 18, fontWeight: '900', color: '#FFD54F' },
+  proStatusTitle: { fontSize: 18, fontWeight: '900', color: '#7EE787' },
   proStatusDesc: { fontSize: 12, color: '#8B949E', marginTop: 2 },
 
-  // Section Header
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -361,7 +262,6 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 18, fontWeight: '800', color: '#FFFFFF' },
   sectionSubtitle: { fontSize: 12, color: '#484F58', marginTop: 1 },
 
-  // Perks
   perksCard: {
     backgroundColor: 'rgba(255,255,255,0.04)',
     borderRadius: 24,
@@ -383,30 +283,29 @@ const styles = StyleSheet.create({
     color: '#C9D1D9',
   },
 
-  // Plan cards
   planRow: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 10,
     marginBottom: 16,
   },
   planCard: {
     flex: 1,
     backgroundColor: 'rgba(255,255,255,0.04)',
     borderRadius: 24,
-    padding: 14,
+    padding: 16,
     alignItems: 'center',
-    borderWidth: 0.5,
+    borderWidth: 1.5,
     borderColor: 'rgba(255,255,255,0.06)',
     position: 'relative',
   },
   planCardSelected: {
-    borderColor: 'rgba(129,199,132,0.3)',
-    backgroundColor: 'rgba(129,199,132,0.06)',
+    borderColor: 'rgba(126,231,135,0.4)',
+    backgroundColor: 'rgba(126,231,135,0.06)',
   },
   planBadge: {
     position: 'absolute',
     top: -8,
-    backgroundColor: '#FFD54F',
+    backgroundColor: '#7EE787',
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 24,
@@ -418,37 +317,36 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   planLabel: {
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: '700',
     color: '#8B949E',
     marginTop: 4,
   },
   planLabelSelected: { color: '#FFFFFF' },
   planPrice: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '900',
     color: '#C9D1D9',
     marginTop: 4,
   },
   planPriceSelected: { color: '#FFFFFF' },
   planPeriod: {
-    fontSize: 10,
+    fontSize: 11,
     color: '#484F58',
     marginTop: 2,
   },
-  planSavings: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#81C784',
-    marginTop: 4,
+  planScans: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#7EE787',
+    marginTop: 6,
   },
 
-  // Subscribe CTA
   subscribeCta: {
     borderRadius: 28,
     overflow: 'hidden',
     marginBottom: 8,
-    shadowColor: '#2D6A4F',
+    shadowColor: '#2EA043',
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.3,
     shadowRadius: 16,
@@ -464,81 +362,29 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.1)',
   },
   subscribeCtaText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '800',
     color: '#FFFFFF',
+    textAlign: 'center',
   },
   legalText: {
     fontSize: 11,
     color: '#484F58',
     textAlign: 'center',
     marginBottom: 24,
+    lineHeight: 16,
   },
 
-  // Pack cards
-  packsGrid: {
-    gap: 10,
-    marginBottom: 16,
-  },
-  packCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.04)',
-    borderRadius: 24,
-    padding: 18,
-    gap: 14,
-    borderWidth: 0.5,
-    borderColor: 'rgba(255,255,255,0.08)',
-  },
-  packCardPurchased: {
-    borderColor: 'rgba(129,199,132,0.2)',
-    backgroundColor: 'rgba(129,199,132,0.04)',
-  },
-  packEmoji: { fontSize: 28 },
-  packInfo: { flex: 1 },
-  packLabel: { fontSize: 15, fontWeight: '700', color: '#FFFFFF' },
-  packDesc: { fontSize: 12, color: '#8B949E', marginTop: 2 },
-  priceTag: {
-    backgroundColor: 'rgba(129,199,132,0.08)',
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 24,
-    borderWidth: 0.5,
-    borderColor: 'rgba(129,199,132,0.2)',
-  },
-  priceText: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: '#81C784',
-  },
-  purchasedBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 24,
-    backgroundColor: 'rgba(129,199,132,0.06)',
-    borderWidth: 0.5,
-    borderColor: 'rgba(129,199,132,0.12)',
-  },
-  purchasedText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#81C784',
-  },
-
-  // Snap balance
   snapBalanceCard: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    backgroundColor: 'rgba(100,181,246,0.04)',
+    backgroundColor: 'rgba(126,231,135,0.04)',
     borderRadius: 24,
     padding: 14,
     marginBottom: 20,
     borderWidth: 0.5,
-    borderColor: 'rgba(100,181,246,0.1)',
+    borderColor: 'rgba(126,231,135,0.1)',
   },
   snapBalanceText: {
     fontSize: 13,
@@ -546,7 +392,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   snapBalanceValue: {
-    color: '#64B5F6',
+    color: '#7EE787',
     fontWeight: '800',
   },
 })

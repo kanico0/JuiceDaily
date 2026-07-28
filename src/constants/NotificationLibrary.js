@@ -1,7 +1,7 @@
 // ─────────────────────────────────────────────────────────────
 // NotificationLibrary.js — Psychology-driven notification content
 // Categories: Affirmations, Social Proof, Educational,
-// Onboarding, Surprise & Delight, Wilt Warnings, Freezer Pass
+// Onboarding, Surprise & Delight, Wilt Warnings, Streak Shield
 // Golden Rules: No negative reinforcement, strategic emoji,
 // variable rewards
 // ─────────────────────────────────────────────────────────────
@@ -25,20 +25,12 @@ export const COLOR_EMOJI = {
 
 export const AFFIRMATIONS = [
   {
-    title: '🏗️ Wellness Architect',
-    body: 'I am building my body one glass at a time. Today\'s blueprint: close all three rings.',
-  },
-  {
-    title: '🌱 Morning Intention',
+    title: ' Morning Intention',
     body: 'I am someone who nourishes their body with intention. Your vitamins are waiting.',
   },
   {
     title: '✨ Daily Affirmation',
     body: 'I am choosing vitality over convenience. One juice changes the trajectory of your whole day.',
-  },
-  {
-    title: '🌿 Architect\'s Creed',
-    body: 'I am the architect of my wellness. Every ingredient is a brick in my foundation.',
   },
   {
     title: '💎 Crystal Clear',
@@ -53,11 +45,7 @@ export const AFFIRMATIONS = [
     body: 'I am hydrated, grounded, and ready. Your Base ring is calling — answer with cucumber.',
   },
   {
-    title: '🏛️ The Blueprint',
-    body: 'I am designing a body that thrives. Architects don\'t skip the foundation.',
-  },
-  {
-    title: '🌈 Spectrum Builder',
+    title: ' Spectrum Builder',
     body: 'I am painting my week in every color. Which hue will you add today?',
   },
   {
@@ -83,7 +71,7 @@ export const SOCIAL_PROOF_TEMPLATES = [
     body: '{friend_name} just toasted their {juice_color} ring! Clink them back? 🥂',
   },
   {
-    title: '🥂 Cheers, Architect!',
+    title: '🥂 Cheers!',
     body: '{friend_name} closed their {juice_color} ring {color_emoji}. Your turn to shine!',
   },
   {
@@ -168,7 +156,7 @@ export const ONBOARDING_SEQUENCE = [
   {
     id: 'onboard-1',
     delayHours: 1,
-    title: '🏗️ Welcome, Wellness Architect',
+    title: '� Welcome to RawLifeFlow',
     body: 'Have you checked your rings today? Tap to see your Day 1 Rainbow goal.',
     data: { type: 'onboarding', step: 1, action: 'open_dashboard' },
   },
@@ -213,38 +201,20 @@ export const WILT_WARNINGS = [
   },
 ]
 
-// ── Freezer Pass Morning-After ───────────────────────────────
-// No guilt trips — positive framing only
-
-export const FREEZER_PASS_MORNING = [
-  {
-    title: '🧊 Streak Saved!',
-    body: 'Phew! We used a Freezer Pass to save your {streak}-day streak. Ready to thaw out with a quick morning squeeze?',
-  },
-  {
-    title: '🧊 You\'re Still in the Game',
-    body: 'Your {streak}-day streak is frozen solid. One juice today melts the ice and keeps you rolling.',
-  },
-  {
-    title: '🧊 The Ice Held',
-    body: 'Life happens, Architect. Your {streak}-day streak survived thanks to your Freezer Pass. Time to thaw?',
-  },
-]
-
 // ── Streak Shield (8 PM Loss Aversion) ───────────────────────
 
 export const STREAK_SHIELD = [
   {
-    title: '🛡️ Streak Shield Active',
-    body: 'Your rings are at 0% today. You have a Freezer Pass ready, but a 2-minute Ginger Shot would be even better.',
+    title: '🛡️ Challenge Streak Shield Active',
+    body: 'Your rings are at 0% today. A 2-minute Ginger Shot would keep your {streak}-day Challenge streak going.',
   },
   {
     title: '⏰ Evening Check-In',
-    body: 'Your {streak}-day streak needs one juice before midnight. Your Freezer Pass is standing by as backup.',
+    body: 'Your {streak}-day Challenge streak needs one juice before midnight. Don\'t let it cool down!',
   },
   {
     title: '🔥 Don\'t Let It Cool Down',
-    body: 'Your vitamins are waiting, Architect. One quick squeeze keeps your {streak}-day fire burning.',
+    body: 'Your vitamins are waiting. One quick squeeze keeps your {streak}-day Challenge streak going.',
   },
 ]
 
@@ -280,7 +250,7 @@ export const SURPRISE_DELIGHT = [
   {
     threshold: 50,
     title: '👑 The Fifty Club',
-    body: '50 juices. You\'re not just juicing — you\'re a Wellness Architect in full blueprint mode.',
+    body: '50 juices. You\'re not just juicing — you\'re running on liquid gold.',
   },
 ]
 
@@ -360,11 +330,6 @@ export const ACTION_BUTTONS = {
     buttonTitle: 'View Recipe',
     options: { opensAppToForeground: true },
   },
-  use_freezer: {
-    identifier: 'USE_FREEZER',
-    buttonTitle: 'Use Freezer Pass 🧊',
-    options: { opensAppToForeground: true },
-  },
   snooze: {
     identifier: 'SNOOZE',
     buttonTitle: 'Remind Later',
@@ -385,7 +350,7 @@ export const NOTIFICATION_CATEGORIES = [
   },
   {
     identifier: 'STREAK_ALERT',
-    actions: [ACTION_BUTTONS.log_now, ACTION_BUTTONS.use_freezer],
+    actions: [ACTION_BUTTONS.log_now],
   },
   {
     identifier: 'WILT_WARNING',
@@ -398,9 +363,5 @@ export const NOTIFICATION_CATEGORIES = [
   {
     identifier: 'SURPRISE',
     actions: [ACTION_BUTTONS.log_now],
-  },
-  {
-    identifier: 'FREEZER_MORNING',
-    actions: [ACTION_BUTTONS.log_now, ACTION_BUTTONS.view_recipe],
   },
 ]

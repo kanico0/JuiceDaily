@@ -269,14 +269,16 @@ describe('Phase 0C1 — Pilot component migration', () => {
   // ── 9. FocusNutrientCard renders after migration ─────────
 
   test('9. FocusNutrientCard renders without crashing', async () => {
-    await act(async () => {
+    act(() => {
       renderer = TestRenderer.create(
         <FocusNutrientCard onScan={() => {}} isReduced={true} />
       )
-      await Promise.resolve()
+    })
+    await act(async () => {
+      await new Promise(resolve => setImmediate(resolve))
     })
     expect(renderer.toJSON()).toBeTruthy()
-  })
+  }, 10000)
 
   // ── 10. TodaySummaryStats renders after migration ────────
 
@@ -295,14 +297,16 @@ describe('Phase 0C1 — Pilot component migration', () => {
   // ── 11. WeeklySummaryTeaser renders after migration ──────
 
   test('11. WeeklySummaryTeaser renders without crashing', async () => {
-    await act(async () => {
+    act(() => {
       renderer = TestRenderer.create(
         <WeeklySummaryTeaser juicesThisWeek={3} glowStreakCount={7} isReduced={true} />
       )
-      await Promise.resolve()
+    })
+    await act(async () => {
+      await new Promise(resolve => setImmediate(resolve))
     })
     expect(renderer.toJSON()).toBeTruthy()
-  })
+  }, 10000)
 
   // ── 12. TodaysJuiceSpotlight renders after migration ─────
 
@@ -339,14 +343,16 @@ describe('Phase 0C1 — Pilot component migration', () => {
 
   test('13. FocusNutrientCard preserves onScan callback', async () => {
     let scanCalled = false
-    await act(async () => {
+    act(() => {
       renderer = TestRenderer.create(
         <FocusNutrientCard onScan={() => { scanCalled = true }} isReduced={true} />
       )
-      await Promise.resolve()
+    })
+    await act(async () => {
+      await new Promise(resolve => setImmediate(resolve))
     })
     expect(typeof renderer.root.props.onScan).toBe('function')
-  })
+  }, 10000)
 
   test('13b. TodaySummaryStats renders suggestion when provided', () => {
     act(() => {
@@ -361,11 +367,13 @@ describe('Phase 0C1 — Pilot component migration', () => {
   // ── 14. Accessibility labels and roles remain present ────
 
   test('14. FocusNutrientCard has accessibility roles on buttons', async () => {
-    await act(async () => {
+    act(() => {
       renderer = TestRenderer.create(
         <FocusNutrientCard onScan={() => {}} isReduced={true} />
       )
-      await Promise.resolve()
+    })
+    await act(async () => {
+      await new Promise(resolve => setImmediate(resolve))
     })
     const tree = renderer.toJSON()
     const buttons = findAllByRole(tree, 'button')

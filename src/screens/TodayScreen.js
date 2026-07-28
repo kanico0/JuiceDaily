@@ -40,7 +40,8 @@ import { useJuiceLog } from '../services/JuiceLogStore'
 import { useNutritionScore } from '../services/NutritionScoreStore'
 import { USDA_RDA } from '../constants/nutrition'
 import { getGreeting } from '../constants/motivationData'
-import { DARK, FONT_SIZE, FONT_WEIGHT, RADIUS } from '../constants/tokens'
+import { SEMANTIC_COLORS, SEMANTIC_SPACE, SEMANTIC_RADIUS, SEMANTIC_TYPOGRAPHY, BRAND } from '../constants/tokens'
+import { screenHeader, screenTitle, greeting, eyebrow, standardCard, compactSupportingCard, primaryActionLabel, iconOnlyAction, scrollContentPadding } from '../constants/styleRecipes'
 import { useReducedMotion, DURATION, EASING } from '../utils/motion'
 import { trackEvent } from '../services/AnalyticsService'
 import { getSpotlightForDay, getSpotlightState } from '../data/juiceSpotlights'
@@ -233,7 +234,7 @@ export default function TodayScreen({ navigation }) {
           {/* Header */}
           <View style={styles.header}>
             <View style={styles.headerLeft}>
-              <Droplets size={18} color="#81C784" strokeWidth={2.5} />
+              <Droplets size={18} color={SEMANTIC_COLORS.success} strokeWidth={2.5} />
               <Text style={styles.headerTitle}>Today</Text>
             </View>
             <TouchableOpacity
@@ -243,7 +244,7 @@ export default function TodayScreen({ navigation }) {
               accessibilityRole="button"
               accessibilityLabel="Settings"
             >
-              <Settings size={16} color="#484F58" />
+              <Settings size={18} color={SEMANTIC_COLORS.textMuted} />
             </TouchableOpacity>
           </View>
 
@@ -304,12 +305,12 @@ export default function TodayScreen({ navigation }) {
                       accessibilityLabel="Scan again"
                     >
                       <LinearGradient
-                        colors={['#4CAF50', '#2E7D32']}
+                        colors={BRAND.cta.gradient}
                         start={{ x: 0, y: 0 }}
                         end={{ x: 1, y: 1 }}
                         style={styles.scanAgainGradient}
                       >
-                        <Camera size={18} color="#FFFFFF" />
+                        <Camera size={18} color={SEMANTIC_COLORS.textOnAccent} />
                         <Text style={styles.scanAgainText}>Scan Again</Text>
                       </LinearGradient>
                     </TouchableOpacity>
@@ -379,9 +380,9 @@ export default function TodayScreen({ navigation }) {
                     accessibilityRole="button"
                     accessibilityLabel="Browse juice ideas"
                   >
-                    <Compass size={16} color="#64B5F6" />
+                    <Compass size={16} color={SEMANTIC_COLORS.accentSecondary} />
                     <Text style={styles.exploreBtnText}>Browse Juice Ideas</Text>
-                    <ChevronRight size={14} color={DARK.textMuted} />
+                    <ChevronRight size={14} color={SEMANTIC_COLORS.textMuted} />
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={styles.exploreBtn}
@@ -395,7 +396,7 @@ export default function TodayScreen({ navigation }) {
                   >
                     <Target size={16} color="#CE93D8" />
                     <Text style={styles.exploreBtnText}>Set Nutrient Goal</Text>
-                    <ChevronRight size={14} color={DARK.textMuted} />
+                    <ChevronRight size={14} color={SEMANTIC_COLORS.textMuted} />
                   </TouchableOpacity>
                 </View>
               </>
@@ -417,12 +418,12 @@ export default function TodayScreen({ navigation }) {
                     accessibilityLabel="Scan my produce"
                   >
                     <LinearGradient
-                      colors={['#4CAF50', '#2E7D32']}
+                      colors={BRAND.cta.gradient}
                       start={{ x: 0, y: 0 }}
                       end={{ x: 1, y: 1 }}
                       style={styles.scanCtaGradient}
                     >
-                      <Camera size={22} color="#FFFFFF" />
+                      <Camera size={22} color={SEMANTIC_COLORS.textOnAccent} />
                       <Text style={styles.scanCtaText}>Scan My Produce</Text>
                     </LinearGradient>
                   </TouchableOpacity>
@@ -470,7 +471,7 @@ export default function TodayScreen({ navigation }) {
               </>
             )}
 
-            <View style={{ height: 40 }} />
+            <View style={{ height: SEMANTIC_SPACE.xxl }} />
           </ScrollView>
         </Animated.View>
       </SafeAreaView>
@@ -510,7 +511,7 @@ export default function TodayScreen({ navigation }) {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: '#060D0A',
+    backgroundColor: SEMANTIC_COLORS.canvas,
   },
   safe: {
     flex: 1,
@@ -519,78 +520,73 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
+    ...screenHeader,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
   },
   headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: SEMANTIC_SPACE.sm,
   },
   headerTitle: {
-    fontSize: 20,
-    fontWeight: '900',
-    color: '#FFFFFF',
+    ...screenTitle,
+    fontSize: SEMANTIC_TYPOGRAPHY.screenTitle.fontSize,
+    fontWeight: SEMANTIC_TYPOGRAPHY.screenTitle.fontWeight,
+    color: SEMANTIC_COLORS.textPrimary,
     letterSpacing: -0.3,
   },
   settingsBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    ...iconOnlyAction,
   },
   scroll: {
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: 16,
+    ...scrollContentPadding,
   },
 
-  // ── Post-Log: Section 1 — Today Hero Card ──────────────────
+  // ── Post-Log: Section 1 — Today Hero Card (Level 1) ────────
   heroCard: {
-    borderRadius: 24,
+    borderRadius: SEMANTIC_RADIUS.large,
     overflow: 'hidden',
-    marginBottom: 12,
+    marginBottom: SEMANTIC_SPACE.md,
   },
   heroGradient: {
-    padding: 22,
-    borderRadius: 24,
+    padding: SEMANTIC_SPACE.lg,
+    borderRadius: SEMANTIC_RADIUS.large,
     borderWidth: 0.5,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: SEMANTIC_COLORS.borderStrong,
   },
   heroTitle: {
-    fontSize: 20,
-    fontWeight: '900',
-    color: '#FFFFFF',
-    marginBottom: 10,
+    fontSize: SEMANTIC_TYPOGRAPHY.screenTitle.fontSize,
+    fontWeight: SEMANTIC_TYPOGRAPHY.screenTitle.fontWeight,
+    color: SEMANTIC_COLORS.textPrimary,
+    marginBottom: SEMANTIC_SPACE.sm + 2,
     letterSpacing: -0.3,
   },
   heroProduceList: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: DARK.textSecondary,
-    marginBottom: 10,
+    fontSize: SEMANTIC_TYPOGRAPHY.bodyStrong.fontSize,
+    fontWeight: SEMANTIC_TYPOGRAPHY.body.fontWeight,
+    color: SEMANTIC_COLORS.textSecondary,
+    marginBottom: SEMANTIC_SPACE.sm + 2,
     lineHeight: 20,
   },
   heroPillars: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 6,
-    marginBottom: 12,
+    marginBottom: SEMANTIC_SPACE.md,
   },
   heroPillarChip: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: SEMANTIC_COLORS.surfaceInteractive,
     paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 12,
+    borderRadius: SEMANTIC_RADIUS.medium,
   },
   heroPillarDot: {
     width: 8,
@@ -598,157 +594,146 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   heroPillarText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#C9D1D9',
+    fontSize: SEMANTIC_TYPOGRAPHY.bodyStrong.fontSize,
+    fontWeight: SEMANTIC_TYPOGRAPHY.metadata.fontWeight,
+    color: SEMANTIC_COLORS.textSecondary,
   },
   heroStreakRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    marginBottom: 10,
+    marginBottom: SEMANTIC_SPACE.sm + 2,
   },
   heroDay: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#8B949E',
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    fontSize: SEMANTIC_TYPOGRAPHY.caption.fontSize,
+    fontWeight: SEMANTIC_TYPOGRAPHY.metadata.fontWeight,
+    color: SEMANTIC_COLORS.textMuted,
+    backgroundColor: SEMANTIC_COLORS.surfaceInteractive,
     paddingHorizontal: 10,
     paddingVertical: 3,
-    borderRadius: 12,
+    borderRadius: SEMANTIC_RADIUS.medium,
     overflow: 'hidden',
   },
   heroStreak: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#FF9800',
+    fontSize: SEMANTIC_TYPOGRAPHY.caption.fontSize,
+    fontWeight: SEMANTIC_TYPOGRAPHY.metadata.fontWeight,
+    color: SEMANTIC_COLORS.warning,
   },
   heroMessage: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: DARK.textMuted,
+    fontSize: SEMANTIC_TYPOGRAPHY.bodyStrong.fontSize,
+    fontWeight: SEMANTIC_TYPOGRAPHY.body.fontWeight,
+    color: SEMANTIC_COLORS.textMuted,
     fontStyle: 'italic',
-    marginBottom: 16,
+    marginBottom: SEMANTIC_SPACE.lg,
   },
   scanAgainBtn: {
-    borderRadius: RADIUS.xl,
+    borderRadius: SEMANTIC_RADIUS.large,
     overflow: 'hidden',
   },
   scanAgainGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 14,
-    borderRadius: RADIUS.xl,
+    gap: SEMANTIC_SPACE.sm,
+    paddingVertical: SEMANTIC_SPACE.md + 2,
+    borderRadius: SEMANTIC_RADIUS.large,
   },
   scanAgainText: {
-    fontSize: FONT_SIZE.md,
-    fontWeight: FONT_WEIGHT.heavy,
-    color: '#FFFFFF',
+    ...primaryActionLabel,
+    fontSize: SEMANTIC_TYPOGRAPHY.buttonLabel.fontSize,
+    fontWeight: SEMANTIC_TYPOGRAPHY.buttonLabel.fontWeight,
+    color: SEMANTIC_COLORS.textOnAccent,
   },
 
-  // ── Post-Log: Section 2 — Journey Progress ─────────────────
+  // ── Post-Log: Section 2 — Journey Progress (Level 2) ───────
   journeyCard: {
-    backgroundColor: 'rgba(255,255,255,0.03)',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
-    borderWidth: 0.5,
-    borderColor: 'rgba(255,255,255,0.06)',
+    ...standardCard,
+    marginBottom: SEMANTIC_SPACE.md,
   },
   journeyText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: DARK.textSecondary,
+    fontSize: SEMANTIC_TYPOGRAPHY.bodyStrong.fontSize,
+    fontWeight: SEMANTIC_TYPOGRAPHY.body.fontWeight,
+    color: SEMANTIC_COLORS.textSecondary,
     marginBottom: 4,
   },
   journeyDay: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#FFFFFF',
+    fontSize: SEMANTIC_TYPOGRAPHY.numericEmphasis.fontSize - 4,
+    fontWeight: SEMANTIC_TYPOGRAPHY.screenTitle.fontWeight,
+    color: SEMANTIC_COLORS.textPrimary,
   },
 
-  // ── Post-Log: Section 3 — Optional Explore ─────────────────
+  // ── Post-Log: Section 3 — Optional Explore (Level 3) ───────
   exploreSection: {
     marginTop: 4,
-    marginBottom: 12,
+    marginBottom: SEMANTIC_SPACE.md,
   },
   exploreHeader: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: DARK.textMuted,
-    marginBottom: 8,
+    ...eyebrow,
+    marginBottom: SEMANTIC_SPACE.sm,
   },
   exploreBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    backgroundColor: 'rgba(255,255,255,0.03)',
-    borderRadius: 14,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
+    ...compactSupportingCard,
+    paddingVertical: SEMANTIC_SPACE.md,
+    paddingHorizontal: SEMANTIC_SPACE.md + 2,
     marginBottom: 6,
-    borderWidth: 0.5,
-    borderColor: 'rgba(255,255,255,0.06)',
   },
   exploreBtnText: {
     flex: 1,
-    fontSize: FONT_SIZE.sm,
-    fontWeight: FONT_WEIGHT.semibold,
-    color: DARK.textPrimary,
+    fontSize: SEMANTIC_TYPOGRAPHY.bodyStrong.fontSize,
+    fontWeight: SEMANTIC_TYPOGRAPHY.bodyStrong.fontWeight,
+    color: SEMANTIC_COLORS.textPrimary,
   },
 
   // ── Pre-Log State ──────────────────────────────────────────
   preLogCard: {
-    marginTop: 24,
+    marginTop: SEMANTIC_SPACE.xl,
     alignItems: 'center',
   },
   preLogGreeting: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: DARK.textSecondary,
-    marginBottom: 8,
+    ...greeting,
+    marginBottom: SEMANTIC_SPACE.sm,
   },
   preLogHeadline: {
-    fontSize: 24,
-    fontWeight: '900',
-    color: '#FFFFFF',
+    ...screenTitle,
     textAlign: 'center',
-    marginBottom: 24,
+    marginBottom: SEMANTIC_SPACE.xl,
     letterSpacing: -0.3,
   },
   scanCta: {
     width: '100%',
-    borderRadius: RADIUS.xl,
+    borderRadius: SEMANTIC_RADIUS.large,
     overflow: 'hidden',
-    marginBottom: 16,
+    marginBottom: SEMANTIC_SPACE.lg,
   },
   scanCtaGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10,
-    paddingVertical: 16,
-    borderRadius: RADIUS.xl,
+    paddingVertical: SEMANTIC_SPACE.lg,
+    borderRadius: SEMANTIC_RADIUS.large,
   },
   scanCtaText: {
-    fontSize: FONT_SIZE.lg,
-    fontWeight: FONT_WEIGHT.heavy,
-    color: '#FFFFFF',
+    ...primaryActionLabel,
+    fontSize: SEMANTIC_TYPOGRAPHY.buttonLabel.fontSize + 4,
+    fontWeight: SEMANTIC_TYPOGRAPHY.buttonLabel.fontWeight,
+    color: SEMANTIC_COLORS.textOnAccent,
   },
   yesterdaySummary: {
-    backgroundColor: 'rgba(255,152,0,0.06)',
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+    backgroundColor: 'rgba(255,183,77,0.06)',
+    borderRadius: SEMANTIC_RADIUS.medium,
+    paddingHorizontal: SEMANTIC_SPACE.md + 2,
+    paddingVertical: SEMANTIC_SPACE.sm,
     borderWidth: 0.5,
-    borderColor: 'rgba(255,152,0,0.12)',
+    borderColor: 'rgba(255,183,77,0.12)',
   },
   yesterdayText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#FF9800',
+    fontSize: SEMANTIC_TYPOGRAPHY.caption.fontSize,
+    fontWeight: SEMANTIC_TYPOGRAPHY.bodyStrong.fontWeight,
+    color: SEMANTIC_COLORS.warning,
     textAlign: 'center',
   },
 })

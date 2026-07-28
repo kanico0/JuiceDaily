@@ -236,6 +236,10 @@ function findAllByLabel(instance, label) {
   return matches
 }
 
+// Pre-load TodayScreen at module level so module loading does not
+// count against per-test wall-clock timeout under parallel execution
+const TodayScreen = require('../src/screens/TodayScreen').default
+
 const rendererRegistry = []
 
 // ── Test Suite ───────────────────────────────────────────────
@@ -263,13 +267,21 @@ describe('TodayScreen Real Integration — Phase 0B1 Extracted Components', () =
   })
 
   // ── 1. TodayScreen renders all real extracted components together ──
+  // Per-test timeout: under default parallel Jest (12 workers on 24-core machine),
+  // CPU contention from heavy suites can cause the 5s default wall-clock timeout
+  // to be exceeded for tests rendering real React components with multiple async
+  // effects (FocusNutrientCard, WeeklySummaryTeaser, checkAchievements).
+  // The async work itself is immediate (all mocked), but React reconciler +
+  // effect flushing under contention needs headroom.
   test('TodayScreen renders real FocusNutrientCard, TodaySummaryStats, WeeklySummaryTeaser, TodaysJuiceSpotlight together', async () => {
-    const TodayScreen = require('../src/screens/TodayScreen').default
     let renderer
-    await act(async () => {
+    act(() => {
       renderer = TestRenderer.create(React.createElement(TodayScreen, { navigation: mockNavigation }))
     })
     rendererRegistry.push(renderer)
+    await act(async () => {
+      await new Promise(resolve => setImmediate(resolve))
+    })
     const root = renderer.root
 
     // Real FocusNutrientCard renders "Today's Focus" label
@@ -281,7 +293,7 @@ describe('TodayScreen Real Integration — Phase 0B1 Extracted Components', () =
     expect(findAllByText(root, 'TODAY’S JUICE SPOTLIGHT').length).toBeGreaterThan(0)
     // WeeklySummaryTeaser returns null when shouldShowWeeklySummary is false
     expect(findAllByText(root, 'Your Glow Week').length).toBe(0)
-  })
+  }, 10000)
 
   // ── 2. Brand-new-user state does not show every optional card ──
   test('new user with zero logs does not show Halo, WeeklyPillar, or WeeklySummaryTeaser', async () => {
@@ -289,12 +301,14 @@ describe('TodayScreen Real Integration — Phase 0B1 Extracted Components', () =
     mockVitalityScore = 0
     mockTotalLogCount = 0
     mockMomentum = 0
-    const TodayScreen = require('../src/screens/TodayScreen').default
     let renderer
-    await act(async () => {
+    act(() => {
       renderer = TestRenderer.create(React.createElement(TodayScreen, { navigation: mockNavigation }))
     })
     rendererRegistry.push(renderer)
+    await act(async () => {
+      await new Promise(resolve => setImmediate(resolve))
+    })
     const root = renderer.root
 
     // Pre-log state shows scan prompt
@@ -303,16 +317,18 @@ describe('TodayScreen Real Integration — Phase 0B1 Extracted Components', () =
     expect(findAllByText(root, "Today's Juice").length).toBe(0)
     // No WeeklySummaryTeaser
     expect(findAllByText(root, 'Your Glow Week').length).toBe(0)
-  })
+  }, 10000)
 
   // ── 3. Populated-user state renders real current-day modules ──
   test('populated user renders hero card, summary stats, spotlight, and focus nutrient', async () => {
-    const TodayScreen = require('../src/screens/TodayScreen').default
     let renderer
-    await act(async () => {
+    act(() => {
       renderer = TestRenderer.create(React.createElement(TodayScreen, { navigation: mockNavigation }))
     })
     rendererRegistry.push(renderer)
+    await act(async () => {
+      await new Promise(resolve => setImmediate(resolve))
+    })
     const root = renderer.root
 
     expect(findAllByText(root, "Today's Juice").length).toBeGreaterThan(0)
@@ -321,7 +337,7 @@ describe('TodayScreen Real Integration — Phase 0B1 Extracted Components', () =
     expect(findAllByText(root, 3).length).toBeGreaterThan(0)
     expect(findAllByText(root, "Today's Focus").length).toBeGreaterThan(0)
     expect(findAllByText(root, 'TODAY’S JUICE SPOTLIGHT').length).toBeGreaterThan(0)
-  })
+  }, 10000)
 
   // ── 4. Scan My Produce invokes navigation to ScanFlow ──
   test('Scan My Produce button calls navigation.navigate with ScanFlow', async () => {
@@ -329,12 +345,14 @@ describe('TodayScreen Real Integration — Phase 0B1 Extracted Components', () =
     mockVitalityScore = 0
     mockTotalLogCount = 0
     mockMomentum = 0
-    const TodayScreen = require('../src/screens/TodayScreen').default
     let renderer
-    await act(async () => {
+    act(() => {
       renderer = TestRenderer.create(React.createElement(TodayScreen, { navigation: mockNavigation }))
     })
     rendererRegistry.push(renderer)
+    await act(async () => {
+      await new Promise(resolve => setImmediate(resolve))
+    })
     const root = renderer.root
 
     const scanButtons = findAllByLabel(root, 'Scan my produce')
@@ -349,12 +367,14 @@ describe('TodayScreen Real Integration — Phase 0B1 Extracted Components', () =
 
   // ── 5. Focus Nutrient Swap invokes real handler/service ──
   test('FocusNutrientCard Swap button calls swapFocusToday and updates nutrient', async () => {
-    const TodayScreen = require('../src/screens/TodayScreen').default
     let renderer
-    await act(async () => {
+    act(() => {
       renderer = TestRenderer.create(React.createElement(TodayScreen, { navigation: mockNavigation }))
     })
     rendererRegistry.push(renderer)
+    await act(async () => {
+      await new Promise(resolve => setImmediate(resolve))
+    })
     const root = renderer.root
 
     const swapButtons = findAllByLabel(root, 'Swap nutrient')
@@ -376,12 +396,14 @@ describe('TodayScreen Real Integration — Phase 0B1 Extracted Components', () =
     mockVitalityScore = 0
     mockTotalLogCount = 0
     mockMomentum = 0
-    const TodayScreen = require('../src/screens/TodayScreen').default
     let renderer
-    await act(async () => {
+    act(() => {
       renderer = TestRenderer.create(React.createElement(TodayScreen, { navigation: mockNavigation }))
     })
     rendererRegistry.push(renderer)
+    await act(async () => {
+      await new Promise(resolve => setImmediate(resolve))
+    })
     const root = renderer.root
 
     // In pre-log state with no entries, state.kind='new' → primaryLabel='View This Blend'
@@ -403,12 +425,14 @@ describe('TodayScreen Real Integration — Phase 0B1 Extracted Components', () =
 
   // ── 7. Relevant buttons have accessibility roles and labels ──
   test('key interactive elements have accessibilityRole and accessibilityLabel', async () => {
-    const TodayScreen = require('../src/screens/TodayScreen').default
     let renderer
-    await act(async () => {
+    act(() => {
       renderer = TestRenderer.create(React.createElement(TodayScreen, { navigation: mockNavigation }))
     })
     rendererRegistry.push(renderer)
+    await act(async () => {
+      await new Promise(resolve => setImmediate(resolve))
+    })
     const root = renderer.root
 
     const buttons = findAllByRole(root, 'button')
@@ -427,10 +451,12 @@ describe('TodayScreen Real Integration — Phase 0B1 Extracted Components', () =
 
   // ── 8. No act warnings, open handles, or post-unmount updates ──
   test('unmount is clean with no pending state updates', async () => {
-    const TodayScreen = require('../src/screens/TodayScreen').default
     let renderer
-    await act(async () => {
+    act(() => {
       renderer = TestRenderer.create(React.createElement(TodayScreen, { navigation: mockNavigation }))
+    })
+    await act(async () => {
+      await new Promise(resolve => setImmediate(resolve))
     })
 
     // Unmount inside act — should not throw or warn

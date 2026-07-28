@@ -237,6 +237,10 @@ function findAllByText(instance, text) {
   return matches
 }
 
+// Pre-load real FocusNutrientCard at module level so module loading
+// does not count against per-test wall-clock timeout under parallel execution
+const RealFocusNutrientCard = jest.requireActual('../src/components/FocusNutrientCard').default
+
 const rendererRegistry = []
 
 function renderTree(component) {
@@ -272,27 +276,36 @@ describe('Phase 0B1 — Today/Explore Refactoring', () => {
   })
 
   // ── 1. FocusNutrientCard renders ──
+  // Per-test timeout: under default parallel Jest (12 workers on 24-core machine),
+  // CPU contention from heavy suites (e.g. Phase0C3 at 15s) can cause the 5s default
+  // wall-clock timeout to be exceeded for tests rendering real React components
+  // with async effects. The async work itself is immediate (mocked getFocusForToday),
+  // but React reconciler + effect flushing under contention needs headroom.
   test('FocusNutrientCard renders without crashing (returns null until async loads)', async () => {
-    const FocusNutrientCard = jest.requireActual('../src/components/FocusNutrientCard').default
     let renderer
-    await act(async () => {
-      renderer = TestRenderer.create(React.createElement(FocusNutrientCard, { onScan: jest.fn(), isReduced: false }))
+    act(() => {
+      renderer = TestRenderer.create(React.createElement(RealFocusNutrientCard, { onScan: jest.fn(), isReduced: false }))
     })
     rendererRegistry.push(renderer)
+    await act(async () => {
+      await new Promise(resolve => setImmediate(resolve))
+    })
     expect(renderer.root).toBeTruthy()
-  })
+  }, 10000)
 
   // ── 2. FocusNutrientCard shows swap button after async load ──
   test('FocusNutrientCard shows Swap button after focus nutrient loads', async () => {
-    const FocusNutrientCard = jest.requireActual('../src/components/FocusNutrientCard').default
     let renderer
-    await act(async () => {
-      renderer = TestRenderer.create(React.createElement(FocusNutrientCard, { onScan: jest.fn(), isReduced: false }))
+    act(() => {
+      renderer = TestRenderer.create(React.createElement(RealFocusNutrientCard, { onScan: jest.fn(), isReduced: false }))
     })
     rendererRegistry.push(renderer)
+    await act(async () => {
+      await new Promise(resolve => setImmediate(resolve))
+    })
     const swaps = findAllByText(renderer.root, 'Swap')
     expect(swaps.length).toBeGreaterThan(0)
-  })
+  }, 10000)
 
   // ── 3. TodaySummaryStats renders with correct values ──
   test('TodaySummaryStats renders today count, score, and streak', () => {

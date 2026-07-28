@@ -23,14 +23,15 @@ import MeshGradientBg from '../components/MeshGradientBg'
 import { useJuiceLog } from '../services/JuiceLogStore'
 import { PRODUCE_DATA } from '../services/JuiceEngine'
 import { USDA_RDA } from '../constants/nutrition'
-import { BRAND, FONT_SIZE, FONT_WEIGHT, SPACE, RADIUS } from '../constants/tokens'
+import { SEMANTIC_COLORS, SEMANTIC_SPACE, SEMANTIC_RADIUS, SEMANTIC_TYPOGRAPHY } from '../constants/tokens'
+import { screenHeader, screenTitle, eyebrow, standardCard, primaryAction, primaryActionLabel, secondaryAction, secondaryActionLabel, iconOnlyAction, scrollContentPadding } from '../constants/styleRecipes'
 import { getDevNow, onDevClockChange } from '../utils/DevClock'
 import { getHistoryGuidance } from '../services/historyGuidance'
 import { trackEvent } from '../services/AnalyticsService'
 
 // ── Source icon helper ───────────────────────────────────────
 const SOURCE_ICON = { photo: Camera, manual: Keyboard, demo: Eye }
-const SOURCE_COLOR = { photo: '#64B5F6', manual: '#CE93D8', demo: '#FFB74D' }
+const SOURCE_COLOR = { photo: SEMANTIC_COLORS.accentSecondary, manual: '#CE93D8', demo: SEMANTIC_COLORS.warning }
 
 function formatDate(dateKey) {
   const [y, m, d] = dateKey.split('-')
@@ -87,7 +88,7 @@ function EntryDetailsModal({ entry, visible, onClose, onDelete }) {
           <View style={ms.cardHeader}>
             <Text style={ms.cardTitle}>Entry Details</Text>
             <Pressable onPress={onClose} hitSlop={12}>
-              <X size={20} color={BRAND.text.muted} />
+              <X size={20} color={SEMANTIC_COLORS.textMuted} />
             </Pressable>
           </View>
           <ScrollView style={ms.cardBody} showsVerticalScrollIndicator={false}>
@@ -101,7 +102,7 @@ function EntryDetailsModal({ entry, visible, onClose, onDelete }) {
               const prod = PRODUCE_DATA[id]
               return (
                 <View key={`${id}-${i}`} style={ms.ingredientRow}>
-                  <View style={[ms.ingredientDot, { backgroundColor: prod?.category === 'fruit' ? '#FFB74D' : '#81C784' }]} />
+                  <View style={[ms.ingredientDot, { backgroundColor: prod?.category === 'fruit' ? SEMANTIC_COLORS.warning : SEMANTIC_COLORS.success }]} />
                   <Text style={ms.ingredientName}>{prod?.name || id}</Text>
                 </View>
               )
@@ -109,11 +110,11 @@ function EntryDetailsModal({ entry, visible, onClose, onDelete }) {
 
             {topNutrients.length > 0 && (
               <>
-                <Text style={[ms.sectionTitle, { marginTop: SPACE.lg }]}>Top Nutrients (% DV)</Text>
+                <Text style={[ms.sectionTitle, { marginTop: SEMANTIC_SPACE.lg }]}>Top Nutrients (% DV)</Text>
                 {topNutrients.map((n) => (
                   <View key={n.key} style={ms.statRow}>
                     <Text style={ms.statLabel}>{n.label}</Text>
-                    <Text style={[ms.statValue, n.pct >= 20 && { color: '#81C784' }]}>{n.pct}%</Text>
+                    <Text style={[ms.statValue, n.pct >= 20 && { color: SEMANTIC_COLORS.success }]}>{n.pct}%</Text>
                   </View>
                 ))}
               </>
@@ -124,7 +125,7 @@ function EntryDetailsModal({ entry, visible, onClose, onDelete }) {
               onPress={() => { onDelete(entry.id); onClose() }}
               hitSlop={8}
             >
-              <Trash2 size={16} color="#E91E63" />
+              <Trash2 size={16} color={SEMANTIC_COLORS.danger} />
               <Text style={ms.deleteBtnText}>Delete Entry</Text>
             </Pressable>
           </ScrollView>
@@ -162,8 +163,8 @@ function DaySection({ dateKey, entries, onEntryPress, devClockTick }) {
           </Text>
         </View>
         {expanded
-          ? <ChevronUp size={18} color={BRAND.text.muted} />
-          : <ChevronDown size={18} color={BRAND.text.muted} />
+          ? <ChevronUp size={18} color={SEMANTIC_COLORS.textMuted} />
+          : <ChevronDown size={18} color={SEMANTIC_COLORS.textMuted} />
         }
       </Pressable>
 
@@ -171,7 +172,7 @@ function DaySection({ dateKey, entries, onEntryPress, devClockTick }) {
         <View style={s.dayEntries}>
           {entries.map((entry) => {
             const SrcIcon = SOURCE_ICON[entry.source] || Camera
-            const srcColor = SOURCE_COLOR[entry.source] || '#64B5F6'
+            const srcColor = SOURCE_COLOR[entry.source] || SEMANTIC_COLORS.accentSecondary
             return (
               <Pressable
                 key={entry.id}
@@ -277,7 +278,7 @@ export default function HistoryScreen({ navigation }) {
         <View style={s.header}>
           <View style={s.headerRow}>
             <Pressable onPress={() => navigation.goBack()} style={s.backBtn} hitSlop={8}>
-              <ArrowLeft size={22} color={BRAND.text.primary} />
+              <ArrowLeft size={22} color={SEMANTIC_COLORS.textPrimary} />
             </Pressable>
             <View style={{ flex: 1 }}>
               <Text style={s.headerTitle}>History</Text>
@@ -291,7 +292,7 @@ export default function HistoryScreen({ navigation }) {
         <ScrollView style={s.scroll} contentContainerStyle={s.scrollContent} showsVerticalScrollIndicator={false}>
           {groupedDays.length === 0 ? (
             <View style={s.emptyState}>
-              <Clock size={32} color={BRAND.text.muted} />
+              <Clock size={32} color={SEMANTIC_COLORS.textMuted} />
               <Text style={s.emptyTitle}>{guidance.title}</Text>
               <Text style={s.emptyDesc}>{guidance.body}</Text>
               {guidance.primaryAction && (
@@ -301,7 +302,7 @@ export default function HistoryScreen({ navigation }) {
                   accessibilityRole="button"
                   accessibilityLabel={guidance.primaryAction.label}
                 >
-                  <Camera size={18} color={BRAND.text.primary} />
+                  <Camera size={18} color={SEMANTIC_COLORS.textOnAccent} />
                   <Text style={s.guidancePrimaryBtnText}>{guidance.primaryAction.label}</Text>
                 </Pressable>
               )}
@@ -312,7 +313,7 @@ export default function HistoryScreen({ navigation }) {
                   accessibilityRole="button"
                   accessibilityLabel={guidance.secondaryAction.label}
                 >
-                  <Keyboard size={18} color={BRAND.text.muted} />
+                  <Keyboard size={18} color={SEMANTIC_COLORS.textMuted} />
                   <Text style={s.guidanceSecondaryBtnText}>{guidance.secondaryAction.label}</Text>
                 </Pressable>
               )}
@@ -351,14 +352,14 @@ export default function HistoryScreen({ navigation }) {
 const ms = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
+    backgroundColor: SEMANTIC_COLORS.overlay,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: SPACE.xl,
+    padding: SEMANTIC_SPACE.xl,
   },
   card: {
-    backgroundColor: BRAND.background.elevated || '#161B22',
-    borderRadius: RADIUS.xl,
+    backgroundColor: SEMANTIC_COLORS.surfaceRaised,
+    borderRadius: SEMANTIC_RADIUS.large,
     width: '100%',
     maxHeight: '80%',
     overflow: 'hidden',
@@ -367,46 +368,42 @@ const ms = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: SPACE.xl,
-    paddingTop: SPACE.lg,
-    paddingBottom: SPACE.md,
+    paddingHorizontal: SEMANTIC_SPACE.xl,
+    paddingTop: SEMANTIC_SPACE.lg,
+    paddingBottom: SEMANTIC_SPACE.md,
     borderBottomWidth: 0.5,
-    borderBottomColor: 'rgba(255,255,255,0.06)',
+    borderBottomColor: SEMANTIC_COLORS.borderSubtle,
   },
   cardTitle: {
-    fontSize: FONT_SIZE.lg,
-    fontWeight: FONT_WEIGHT.bold,
-    color: BRAND.text.primary,
+    fontSize: SEMANTIC_TYPOGRAPHY.cardTitle.fontSize,
+    fontWeight: SEMANTIC_TYPOGRAPHY.cardTitle.fontWeight,
+    color: SEMANTIC_COLORS.textPrimary,
   },
   cardBody: {
-    paddingHorizontal: SPACE.xl,
-    paddingVertical: SPACE.lg,
+    paddingHorizontal: SEMANTIC_SPACE.xl,
+    paddingVertical: SEMANTIC_SPACE.lg,
   },
   entryTitle: {
-    fontSize: FONT_SIZE.lg,
-    fontWeight: FONT_WEIGHT.bold,
-    color: BRAND.text.primary,
+    fontSize: SEMANTIC_TYPOGRAPHY.cardTitle.fontSize,
+    fontWeight: SEMANTIC_TYPOGRAPHY.cardTitle.fontWeight,
+    color: SEMANTIC_COLORS.textPrimary,
     marginBottom: 4,
   },
   entryMeta: {
-    fontSize: FONT_SIZE.sm,
-    fontWeight: FONT_WEIGHT.medium,
-    color: BRAND.text.muted,
-    marginBottom: SPACE.lg,
+    fontSize: SEMANTIC_TYPOGRAPHY.body.fontSize,
+    fontWeight: SEMANTIC_TYPOGRAPHY.body.fontWeight,
+    color: SEMANTIC_COLORS.textMuted,
+    marginBottom: SEMANTIC_SPACE.lg,
   },
   sectionTitle: {
-    fontSize: FONT_SIZE.xs,
-    fontWeight: FONT_WEIGHT.bold,
-    color: BRAND.text.muted,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: SPACE.sm,
-    marginTop: SPACE.sm,
+    ...eyebrow,
+    marginBottom: SEMANTIC_SPACE.sm,
+    marginTop: SEMANTIC_SPACE.sm,
   },
   ingredientRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: SEMANTIC_SPACE.sm,
     paddingVertical: 6,
   },
   ingredientDot: {
@@ -415,9 +412,9 @@ const ms = StyleSheet.create({
     borderRadius: 4,
   },
   ingredientName: {
-    fontSize: FONT_SIZE.sm,
-    fontWeight: FONT_WEIGHT.medium,
-    color: BRAND.text.secondary,
+    fontSize: SEMANTIC_TYPOGRAPHY.body.fontSize,
+    fontWeight: SEMANTIC_TYPOGRAPHY.body.fontWeight,
+    color: SEMANTIC_COLORS.textSecondary,
   },
   statRow: {
     flexDirection: 'row',
@@ -425,32 +422,32 @@ const ms = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 10,
     borderBottomWidth: 0.5,
-    borderBottomColor: 'rgba(255,255,255,0.04)',
+    borderBottomColor: SEMANTIC_COLORS.borderSubtle,
   },
   statLabel: {
-    fontSize: FONT_SIZE.sm,
-    fontWeight: FONT_WEIGHT.medium,
-    color: BRAND.text.secondary,
+    fontSize: SEMANTIC_TYPOGRAPHY.body.fontSize,
+    fontWeight: SEMANTIC_TYPOGRAPHY.body.fontWeight,
+    color: SEMANTIC_COLORS.textSecondary,
   },
   statValue: {
-    fontSize: FONT_SIZE.sm,
-    fontWeight: FONT_WEIGHT.bold,
-    color: BRAND.text.primary,
+    fontSize: SEMANTIC_TYPOGRAPHY.body.fontSize,
+    fontWeight: SEMANTIC_TYPOGRAPHY.metadata.fontWeight,
+    color: SEMANTIC_COLORS.textPrimary,
   },
   deleteBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    marginTop: SPACE.xxl,
+    gap: SEMANTIC_SPACE.sm,
+    marginTop: SEMANTIC_SPACE.xxl,
     paddingVertical: 12,
-    borderRadius: RADIUS.md,
+    borderRadius: SEMANTIC_RADIUS.medium,
     backgroundColor: 'rgba(233,30,99,0.08)',
   },
   deleteBtnText: {
-    fontSize: FONT_SIZE.sm,
-    fontWeight: FONT_WEIGHT.semibold,
-    color: '#E91E63',
+    fontSize: SEMANTIC_TYPOGRAPHY.body.fontSize,
+    fontWeight: SEMANTIC_TYPOGRAPHY.bodyStrong.fontWeight,
+    color: SEMANTIC_COLORS.danger,
   },
 })
 
@@ -458,84 +455,77 @@ const ms = StyleSheet.create({
 const s = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: BRAND.background.primary,
+    backgroundColor: SEMANTIC_COLORS.canvas,
   },
   safe: {
     flex: 1,
   },
   header: {
-    paddingHorizontal: SPACE.xl,
-    paddingTop: SPACE.lg,
-    paddingBottom: SPACE.md,
+    ...screenHeader,
   },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: SPACE.sm,
+    gap: SEMANTIC_SPACE.sm,
   },
   backBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    ...iconOnlyAction,
+    width: 44,
+    height: 44,
+    borderRadius: SEMANTIC_RADIUS.circular,
     justifyContent: 'center',
     alignItems: 'center',
   },
   headerTitle: {
-    fontSize: FONT_SIZE.xxl,
-    fontWeight: FONT_WEIGHT.bold,
-    color: BRAND.text.primary,
+    ...screenTitle,
     letterSpacing: -0.5,
     marginBottom: 2,
   },
   headerSub: {
-    fontSize: FONT_SIZE.sm,
-    fontWeight: FONT_WEIGHT.medium,
-    color: BRAND.text.muted,
+    fontSize: SEMANTIC_TYPOGRAPHY.body.fontSize,
+    fontWeight: SEMANTIC_TYPOGRAPHY.body.fontWeight,
+    color: SEMANTIC_COLORS.textMuted,
   },
   scroll: {
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: SPACE.xl,
-    paddingBottom: SPACE.xxl,
-    gap: SPACE.sm,
+    ...scrollContentPadding,
+    gap: SEMANTIC_SPACE.sm,
   },
   daySection: {
-    backgroundColor: BRAND.glass.surfaceElevated,
-    borderRadius: RADIUS.lg,
-    borderWidth: 0.5,
-    borderColor: BRAND.glass.border,
+    ...standardCard,
     overflow: 'hidden',
   },
   dayHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 14,
-    paddingHorizontal: SPACE.md,
+    paddingHorizontal: SEMANTIC_SPACE.md,
   },
   dayTitle: {
-    fontSize: FONT_SIZE.md,
-    fontWeight: FONT_WEIGHT.bold,
-    color: BRAND.text.primary,
+    fontSize: SEMANTIC_TYPOGRAPHY.cardTitle.fontSize,
+    fontWeight: SEMANTIC_TYPOGRAPHY.cardTitle.fontWeight,
+    color: SEMANTIC_COLORS.textPrimary,
   },
   daySub: {
-    fontSize: FONT_SIZE.xs,
-    fontWeight: FONT_WEIGHT.medium,
-    color: BRAND.text.muted,
+    fontSize: SEMANTIC_TYPOGRAPHY.caption.fontSize,
+    fontWeight: SEMANTIC_TYPOGRAPHY.caption.fontWeight,
+    color: SEMANTIC_COLORS.textMuted,
     marginTop: 2,
   },
   dayEntries: {
     borderTopWidth: 0.5,
-    borderTopColor: 'rgba(255,255,255,0.04)',
+    borderTopColor: SEMANTIC_COLORS.borderSubtle,
   },
   entryRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: SPACE.sm,
+    gap: SEMANTIC_SPACE.sm,
     paddingVertical: 12,
-    paddingHorizontal: SPACE.md,
+    paddingHorizontal: SEMANTIC_SPACE.md,
     borderBottomWidth: 0.5,
-    borderBottomColor: 'rgba(255,255,255,0.04)',
+    borderBottomColor: SEMANTIC_COLORS.borderSubtle,
   },
   entrySrcIcon: {
     width: 28,
@@ -548,84 +538,60 @@ const s = StyleSheet.create({
     flex: 1,
   },
   entryTitle: {
-    fontSize: FONT_SIZE.sm,
-    fontWeight: FONT_WEIGHT.semibold,
-    color: BRAND.text.primary,
+    fontSize: SEMANTIC_TYPOGRAPHY.body.fontSize,
+    fontWeight: SEMANTIC_TYPOGRAPHY.bodyStrong.fontWeight,
+    color: SEMANTIC_COLORS.textPrimary,
   },
   entryMeta: {
-    fontSize: FONT_SIZE.xs,
-    fontWeight: FONT_WEIGHT.medium,
-    color: BRAND.text.muted,
+    fontSize: SEMANTIC_TYPOGRAPHY.caption.fontSize,
+    fontWeight: SEMANTIC_TYPOGRAPHY.caption.fontWeight,
+    color: SEMANTIC_COLORS.textMuted,
     marginTop: 2,
   },
   emptyState: {
     alignItems: 'center',
-    paddingVertical: SPACE.xxl * 2,
-    gap: SPACE.sm,
+    paddingVertical: SEMANTIC_SPACE.xxl * 2,
+    gap: SEMANTIC_SPACE.sm,
   },
   emptyTitle: {
-    fontSize: FONT_SIZE.lg,
-    fontWeight: FONT_WEIGHT.bold,
-    color: BRAND.text.primary,
+    fontSize: SEMANTIC_TYPOGRAPHY.cardTitle.fontSize,
+    fontWeight: SEMANTIC_TYPOGRAPHY.cardTitle.fontWeight,
+    color: SEMANTIC_COLORS.textPrimary,
   },
   emptyDesc: {
-    fontSize: FONT_SIZE.sm,
-    fontWeight: FONT_WEIGHT.medium,
-    color: BRAND.text.muted,
+    fontSize: SEMANTIC_TYPOGRAPHY.body.fontSize,
+    fontWeight: SEMANTIC_TYPOGRAPHY.body.fontWeight,
+    color: SEMANTIC_COLORS.textMuted,
   },
   guidanceCard: {
-    backgroundColor: BRAND.glass.surfaceElevated,
-    borderRadius: RADIUS.lg,
-    borderWidth: 0.5,
-    borderColor: BRAND.glass.border,
-    padding: SPACE.lg,
-    marginTop: SPACE.sm,
+    ...standardCard,
+    padding: SEMANTIC_SPACE.lg,
+    marginTop: SEMANTIC_SPACE.sm,
   },
   guidanceCardTitle: {
-    fontSize: FONT_SIZE.md,
-    fontWeight: FONT_WEIGHT.bold,
-    color: BRAND.text.primary,
-    marginBottom: SPACE.xs,
+    fontSize: SEMANTIC_TYPOGRAPHY.cardTitle.fontSize,
+    fontWeight: SEMANTIC_TYPOGRAPHY.cardTitle.fontWeight,
+    color: SEMANTIC_COLORS.textPrimary,
+    marginBottom: SEMANTIC_SPACE.xs,
   },
   guidanceCardBody: {
-    fontSize: FONT_SIZE.sm,
-    fontWeight: FONT_WEIGHT.medium,
-    color: BRAND.text.muted,
+    fontSize: SEMANTIC_TYPOGRAPHY.body.fontSize,
+    fontWeight: SEMANTIC_TYPOGRAPHY.body.fontWeight,
+    color: SEMANTIC_COLORS.textMuted,
     flexWrap: 'wrap',
   },
   guidancePrimaryBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: SPACE.xs,
-    minHeight: 48,
-    borderRadius: RADIUS.md,
-    backgroundColor: BRAND.accent.vitaminC,
-    paddingHorizontal: SPACE.lg,
-    paddingVertical: SPACE.md,
-    marginTop: SPACE.md,
+    ...primaryAction,
+    marginTop: SEMANTIC_SPACE.md,
   },
   guidancePrimaryBtnText: {
-    fontSize: FONT_SIZE.md,
-    fontWeight: FONT_WEIGHT.bold,
-    color: BRAND.text.primary,
+    ...primaryActionLabel,
   },
   guidanceSecondaryBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: SPACE.xs,
-    minHeight: 48,
-    borderRadius: RADIUS.md,
-    borderWidth: 1,
-    borderColor: BRAND.glass.border,
-    paddingHorizontal: SPACE.lg,
-    paddingVertical: SPACE.md,
-    marginTop: SPACE.xs,
+    ...secondaryAction,
+    marginTop: SEMANTIC_SPACE.xs,
   },
   guidanceSecondaryBtnText: {
-    fontSize: FONT_SIZE.md,
-    fontWeight: FONT_WEIGHT.semibold,
-    color: BRAND.text.muted,
+    ...secondaryActionLabel,
   },
 })

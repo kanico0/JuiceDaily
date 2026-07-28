@@ -1,10 +1,10 @@
-// ─────────────────────────────────────────────────────────────
-// ScanScreen.js — Scan-first hero entry point
-// Onboarding flow: Hero → Scan → Tracking Hook → Goal → Today
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ScanScreen.js â€” Scan-first hero entry point
+// Onboarding flow: Hero â†’ Scan â†’ Tracking Hook â†’ Goal â†’ Today
 // Post-onboarding: Quick scan CTA + secondary actions
 // Secondary actions (ff_scan_secondary_actions):
 //   Browse Juice Ideas, See an Example Scan, Explore without tracking
-// ─────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import {
@@ -40,7 +40,8 @@ import {
 } from 'lucide-react-native'
 import MeshGradientBg from '../components/MeshGradientBg'
 import LiquidNutrientOrb from '../components/LiquidNutrientOrb'
-import { DARK, RADIUS, FONT_SIZE, FONT_WEIGHT } from '../constants/tokens'
+import { SEMANTIC_COLORS, SEMANTIC_SPACE, SEMANTIC_RADIUS, SEMANTIC_TYPOGRAPHY, BRAND } from '../constants/tokens'
+import { screenHeader, screenTitle, eyebrow, standardCard, compactSupportingCard, primaryActionLabel, iconOnlyAction, scrollContentPadding } from '../constants/styleRecipes'
 import { useReducedMotion, DURATION, EASING, LIQUID_SPRING, LIQUID_SPRING_SNAPPY } from '../utils/motion'
 import { trackEvent } from '../services/AnalyticsService'
 import { useActivation } from '../services/ActivationStore'
@@ -78,15 +79,15 @@ const EXAMPLE_SCAN = {
   juiceOz: '~10 oz',
 }
 
-// ── Nutrient Teaser Lines ────────────────────────────────────
+// â”€â”€ Nutrient Teaser Lines â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const TEASER_LINES = [
-  'Carrots → Vitamin A',
-  'Ginger → Anti-inflammatory',
-  'Spinach → Iron boost',
-  'Beets → Nitric oxide support',
-  'Kale → Vitamin C powerhouse',
-  'Turmeric → Curcumin boost',
+  'Carrots â†’ Vitamin A',
+  'Ginger â†’ Anti-inflammatory',
+  'Spinach â†’ Iron boost',
+  'Beets â†’ Nitric oxide support',
+  'Kale â†’ Vitamin C powerhouse',
+  'Turmeric â†’ Curcumin boost',
 ]
 
 function NutrientTeaser({ isReduced }) {
@@ -156,14 +157,14 @@ const teaserStyles = StyleSheet.create({
   },
   text: {
     fontSize: 14,
-    fontWeight: FONT_WEIGHT.semibold,
-    color: '#B0BEC5',
+    fontWeight: SEMANTIC_TYPOGRAPHY.bodyStrong.fontWeight,
+    color: SEMANTIC_COLORS.textSecondary,
     opacity: 0.9,
     letterSpacing: 0.4,
   },
 })
 
-// ── Secondary Actions Row ────────────────────────────────────
+// â”€â”€ Secondary Actions Row â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function SecondaryActions({ onBrowse, onExample, onExplore, isReduced }) {
   return (
@@ -175,9 +176,9 @@ function SecondaryActions({ onBrowse, onExample, onExplore, isReduced }) {
         accessibilityRole="button"
         accessibilityLabel="Browse juice ideas"
       >
-        <Compass size={16} color="#64B5F6" />
+        <Compass size={16} color={SEMANTIC_COLORS.accentSecondary} />
         <Text style={secStyles.btnText}>Browse Juice Ideas</Text>
-        <ChevronRight size={14} color={DARK.textMuted} />
+        <ChevronRight size={14} color={SEMANTIC_COLORS.textMuted} />
       </TouchableOpacity>
       <TouchableOpacity
         style={secStyles.btn}
@@ -188,7 +189,7 @@ function SecondaryActions({ onBrowse, onExample, onExplore, isReduced }) {
       >
         <Eye size={16} color="#CE93D8" />
         <Text style={secStyles.btnText}>See an Example Scan</Text>
-        <ChevronRight size={14} color={DARK.textMuted} />
+        <ChevronRight size={14} color={SEMANTIC_COLORS.textMuted} />
       </TouchableOpacity>
       <TouchableOpacity
         style={secStyles.tertiaryBtn}
@@ -213,18 +214,15 @@ const secStyles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    backgroundColor: 'rgba(255,255,255,0.03)',
-    borderRadius: 14,
+    ...compactSupportingCard,
     paddingVertical: 12,
     paddingHorizontal: 14,
-    borderWidth: 0.5,
-    borderColor: 'rgba(255,255,255,0.06)',
   },
   btnText: {
     flex: 1,
-    fontSize: FONT_SIZE.sm,
-    fontWeight: FONT_WEIGHT.semibold,
-    color: DARK.textPrimary,
+    fontSize: SEMANTIC_TYPOGRAPHY.bodyStrong.fontSize,
+    fontWeight: SEMANTIC_TYPOGRAPHY.bodyStrong.fontWeight,
+    color: SEMANTIC_COLORS.textPrimary,
   },
   tertiaryBtn: {
     alignItems: 'center',
@@ -232,13 +230,13 @@ const secStyles = StyleSheet.create({
     marginTop: 4,
   },
   tertiaryText: {
-    fontSize: FONT_SIZE.xs,
-    fontWeight: FONT_WEIGHT.medium,
-    color: DARK.textMuted,
+    fontSize: SEMANTIC_TYPOGRAPHY.caption.fontSize,
+    fontWeight: SEMANTIC_TYPOGRAPHY.caption.fontWeight,
+    color: SEMANTIC_COLORS.textMuted,
   },
 })
 
-// ── Browse Ideas Modal ───────────────────────────────────────
+// â”€â”€ Browse Ideas Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function BrowseIdeasModal({ visible, onDismiss, onScanReady, isReduced, navigation }) {
   const fadeAnim = useRef(new Animated.Value(0)).current
@@ -274,7 +272,7 @@ function BrowseIdeasModal({ visible, onDismiss, onScanReady, isReduced, navigati
               accessibilityRole="button"
               accessibilityLabel="Close"
             >
-              <X size={20} color={DARK.textSecondary} />
+              <X size={20} color={SEMANTIC_COLORS.textSecondary} />
             </TouchableOpacity>
           </View>
 
@@ -301,10 +299,10 @@ function BrowseIdeasModal({ visible, onDismiss, onScanReady, isReduced, navigati
                 <View style={browseStyles.templateContent}>
                   <Text style={browseStyles.templateName}>{r.title}</Text>
                   <Text style={browseStyles.templateIng} numberOfLines={1}>
-                    {r.vibeTag} · {r.ingredients.length} ingredients · {getCleanupLabel(r.cleanupScore)}
+                    {r.vibeTag} Â· {r.ingredients.length} ingredients Â· {getCleanupLabel(r.cleanupScore)}
                   </Text>
                 </View>
-                <ChevronRight size={14} color={DARK.textMuted} />
+                <ChevronRight size={14} color={SEMANTIC_COLORS.textMuted} />
               </TouchableOpacity>
             ))}
           </ScrollView>
@@ -321,12 +319,12 @@ function BrowseIdeasModal({ visible, onDismiss, onScanReady, isReduced, navigati
               accessibilityLabel="Scan when ready"
             >
               <LinearGradient
-                colors={['#4CAF50', '#2E7D32']}
+                colors={BRAND.cta.gradient}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={browseStyles.scanReadyGradient}
               >
-                <Camera size={18} color="#FFFFFF" />
+                <Camera size={18} color={SEMANTIC_COLORS.textOnAccent} />
                 <Text style={browseStyles.scanReadyText}>Scan when ready</Text>
               </LinearGradient>
             </TouchableOpacity>
@@ -340,7 +338,7 @@ function BrowseIdeasModal({ visible, onDismiss, onScanReady, isReduced, navigati
 const browseStyles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: '#0D1117',
+    backgroundColor: SEMANTIC_COLORS.canvas,
   },
   safe: {
     flex: 1,
@@ -349,40 +347,36 @@ const browseStyles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
+    paddingHorizontal: SEMANTIC_SPACE.lg,
     paddingVertical: 12,
   },
   title: {
-    fontSize: 20,
-    fontWeight: '900',
-    color: '#FFFFFF',
+    fontSize: SEMANTIC_TYPOGRAPHY.screenTitle.fontSize,
+    fontWeight: SEMANTIC_TYPOGRAPHY.screenTitle.fontWeight,
+    color: SEMANTIC_COLORS.textPrimary,
     letterSpacing: -0.3,
   },
   closeBtn: {
+    ...iconOnlyAction,
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: SEMANTIC_COLORS.surfaceInteractive,
   },
   scroll: {
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: 16,
-    paddingBottom: 16,
+    paddingHorizontal: SEMANTIC_SPACE.lg,
+    paddingBottom: SEMANTIC_SPACE.lg,
   },
   templateCard: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    backgroundColor: 'rgba(255,255,255,0.03)',
-    borderRadius: 14,
+    ...compactSupportingCard,
     padding: 14,
     marginBottom: 6,
-    borderWidth: 0.5,
-    borderColor: 'rgba(255,255,255,0.06)',
   },
   templateDot: {
     width: 10,
@@ -393,49 +387,42 @@ const browseStyles = StyleSheet.create({
     flex: 1,
   },
   templateName: {
-    fontSize: FONT_SIZE.md,
-    fontWeight: FONT_WEIGHT.bold,
-    color: DARK.textPrimary,
+    fontSize: SEMANTIC_TYPOGRAPHY.cardTitle.fontSize,
+    fontWeight: SEMANTIC_TYPOGRAPHY.cardTitle.fontWeight,
+    color: SEMANTIC_COLORS.textPrimary,
     marginBottom: 2,
   },
   templateIng: {
-    fontSize: FONT_SIZE.xs,
-    fontWeight: FONT_WEIGHT.medium,
-    color: DARK.textSecondary,
+    fontSize: SEMANTIC_TYPOGRAPHY.caption.fontSize,
+    fontWeight: SEMANTIC_TYPOGRAPHY.caption.fontWeight,
+    color: SEMANTIC_COLORS.textSecondary,
   },
   detailCard: {
-    backgroundColor: 'rgba(255,255,255,0.03)',
-    borderRadius: 16,
+    ...standardCard,
     padding: 18,
-    borderWidth: 0.5,
-    borderColor: 'rgba(255,255,255,0.06)',
   },
   detailBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: SEMANTIC_SPACE.sm,
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 12,
+    borderRadius: SEMANTIC_RADIUS.medium,
     alignSelf: 'flex-start',
     marginBottom: 14,
   },
   detailName: {
-    fontSize: FONT_SIZE.md,
-    fontWeight: FONT_WEIGHT.heavy,
+    fontSize: SEMANTIC_TYPOGRAPHY.cardTitle.fontSize,
+    fontWeight: SEMANTIC_TYPOGRAPHY.screenTitle.fontWeight,
   },
   detailLabel: {
-    fontSize: FONT_SIZE.xs,
-    fontWeight: FONT_WEIGHT.bold,
-    color: DARK.textMuted,
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
+    ...eyebrow,
     marginBottom: 6,
   },
   detailIng: {
-    fontSize: FONT_SIZE.sm,
-    fontWeight: FONT_WEIGHT.medium,
-    color: DARK.textPrimary,
+    fontSize: SEMANTIC_TYPOGRAPHY.body.fontSize,
+    fontWeight: SEMANTIC_TYPOGRAPHY.body.fontWeight,
+    color: SEMANTIC_COLORS.textPrimary,
     paddingVertical: 3,
   },
   highlightRow: {
@@ -445,49 +432,50 @@ const browseStyles = StyleSheet.create({
     marginTop: 4,
   },
   highlightChip: {
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: SEMANTIC_COLORS.surfaceInteractive,
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 10,
   },
   highlightText: {
-    fontSize: FONT_SIZE.xs,
-    fontWeight: FONT_WEIGHT.semibold,
-    color: DARK.textSecondary,
+    fontSize: SEMANTIC_TYPOGRAPHY.caption.fontSize,
+    fontWeight: SEMANTIC_TYPOGRAPHY.bodyStrong.fontWeight,
+    color: SEMANTIC_COLORS.textSecondary,
   },
   backBtn: {
-    marginTop: 16,
-    paddingVertical: 8,
+    marginTop: SEMANTIC_SPACE.lg,
+    paddingVertical: SEMANTIC_SPACE.sm,
   },
   backText: {
-    fontSize: FONT_SIZE.sm,
-    fontWeight: FONT_WEIGHT.semibold,
-    color: '#64B5F6',
+    fontSize: SEMANTIC_TYPOGRAPHY.body.fontSize,
+    fontWeight: SEMANTIC_TYPOGRAPHY.bodyStrong.fontWeight,
+    color: SEMANTIC_COLORS.accentSecondary,
   },
   footer: {
-    paddingHorizontal: 16,
-    paddingBottom: 8,
+    paddingHorizontal: SEMANTIC_SPACE.lg,
+    paddingBottom: SEMANTIC_SPACE.sm,
   },
   scanReadyBtn: {
-    borderRadius: RADIUS.xl,
+    borderRadius: SEMANTIC_RADIUS.pill,
     overflow: 'hidden',
   },
   scanReadyGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
+    gap: SEMANTIC_SPACE.sm,
     paddingVertical: 14,
-    borderRadius: RADIUS.xl,
+    borderRadius: SEMANTIC_RADIUS.pill,
   },
   scanReadyText: {
-    fontSize: FONT_SIZE.md,
-    fontWeight: FONT_WEIGHT.heavy,
-    color: '#FFFFFF',
+    ...primaryActionLabel,
+    fontSize: SEMANTIC_TYPOGRAPHY.cardTitle.fontSize,
+    fontWeight: SEMANTIC_TYPOGRAPHY.screenTitle.fontWeight,
+    color: SEMANTIC_COLORS.textOnAccent,
   },
 })
 
-// ── Example Scan Modal ───────────────────────────────────────
+// â”€â”€ Example Scan Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function ExampleScanModal({ visible, onDismiss, onTryScan, isReduced }) {
   const fadeAnim = useRef(new Animated.Value(0)).current
@@ -518,7 +506,7 @@ function ExampleScanModal({ visible, onDismiss, onTryScan, isReduced }) {
               accessibilityRole="button"
               accessibilityLabel="Close example"
             >
-              <X size={20} color={DARK.textSecondary} />
+              <X size={20} color={SEMANTIC_COLORS.textSecondary} />
             </TouchableOpacity>
           </View>
 
@@ -530,12 +518,12 @@ function ExampleScanModal({ visible, onDismiss, onTryScan, isReduced }) {
             {/* Mock produce card */}
             <View style={exStyles.produceCard}>
               <View style={exStyles.produceHeader}>
-                <Scan size={18} color="#81C784" />
+                <Scan size={18} color={SEMANTIC_COLORS.success} />
                 <Text style={exStyles.produceTitle}>Scanned Produce</Text>
               </View>
               {EXAMPLE_SCAN.produce.map((p) => (
                 <View key={p.name} style={exStyles.produceRow}>
-                  <Leaf size={14} color="#81C784" />
+                  <Leaf size={14} color={SEMANTIC_COLORS.success} />
                   <Text style={exStyles.produceName}>{p.name}</Text>
                   <Text style={exStyles.produceAmt}>{p.amount}</Text>
                 </View>
@@ -577,12 +565,12 @@ function ExampleScanModal({ visible, onDismiss, onTryScan, isReduced }) {
               accessibilityLabel="Try scanning my produce"
             >
               <LinearGradient
-                colors={['#4CAF50', '#2E7D32']}
+                colors={BRAND.cta.gradient}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={exStyles.tryGradient}
               >
-                <Camera size={18} color="#FFFFFF" />
+                <Camera size={18} color={SEMANTIC_COLORS.textOnAccent} />
                 <Text style={exStyles.tryText}>Try scanning my produce</Text>
               </LinearGradient>
             </TouchableOpacity>
@@ -596,7 +584,7 @@ function ExampleScanModal({ visible, onDismiss, onTryScan, isReduced }) {
 const exStyles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: '#0D1117',
+    backgroundColor: SEMANTIC_COLORS.canvas,
   },
   safe: {
     flex: 1,
@@ -605,34 +593,33 @@ const exStyles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
+    paddingHorizontal: SEMANTIC_SPACE.lg,
     paddingVertical: 12,
   },
   title: {
-    fontSize: 20,
-    fontWeight: '900',
-    color: '#FFFFFF',
+    fontSize: SEMANTIC_TYPOGRAPHY.screenTitle.fontSize,
+    fontWeight: SEMANTIC_TYPOGRAPHY.screenTitle.fontWeight,
+    color: SEMANTIC_COLORS.textPrimary,
     letterSpacing: -0.3,
   },
   closeBtn: {
+    ...iconOnlyAction,
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: SEMANTIC_COLORS.surfaceInteractive,
   },
   scroll: {
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: 16,
-    paddingBottom: 16,
+    paddingHorizontal: SEMANTIC_SPACE.lg,
+    paddingBottom: SEMANTIC_SPACE.lg,
   },
   produceCard: {
     backgroundColor: 'rgba(129,199,132,0.04)',
-    borderRadius: 16,
-    padding: 16,
+    borderRadius: SEMANTIC_RADIUS.large,
+    padding: SEMANTIC_SPACE.lg,
     marginBottom: 12,
     borderWidth: 0.5,
     borderColor: 'rgba(129,199,132,0.12)',
@@ -640,62 +627,59 @@ const exStyles = StyleSheet.create({
   produceHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: SEMANTIC_SPACE.sm,
     marginBottom: 12,
   },
   produceTitle: {
-    fontSize: FONT_SIZE.md,
-    fontWeight: FONT_WEIGHT.bold,
-    color: '#FFFFFF',
+    fontSize: SEMANTIC_TYPOGRAPHY.cardTitle.fontSize,
+    fontWeight: SEMANTIC_TYPOGRAPHY.cardTitle.fontWeight,
+    color: SEMANTIC_COLORS.textPrimary,
   },
   produceRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: SEMANTIC_SPACE.sm,
     paddingVertical: 6,
   },
   produceName: {
     flex: 1,
-    fontSize: FONT_SIZE.sm,
-    fontWeight: FONT_WEIGHT.semibold,
-    color: DARK.textPrimary,
+    fontSize: SEMANTIC_TYPOGRAPHY.body.fontSize,
+    fontWeight: SEMANTIC_TYPOGRAPHY.bodyStrong.fontWeight,
+    color: SEMANTIC_COLORS.textPrimary,
   },
   produceAmt: {
-    fontSize: FONT_SIZE.xs,
-    fontWeight: FONT_WEIGHT.medium,
-    color: DARK.textSecondary,
+    fontSize: SEMANTIC_TYPOGRAPHY.caption.fontSize,
+    fontWeight: SEMANTIC_TYPOGRAPHY.caption.fontWeight,
+    color: SEMANTIC_COLORS.textSecondary,
   },
   nutrientCard: {
-    backgroundColor: 'rgba(255,255,255,0.03)',
-    borderRadius: 16,
-    padding: 16,
+    ...standardCard,
+    padding: SEMANTIC_SPACE.lg,
     marginBottom: 12,
-    borderWidth: 0.5,
-    borderColor: 'rgba(255,255,255,0.06)',
   },
   nutrientTitle: {
-    fontSize: FONT_SIZE.md,
-    fontWeight: FONT_WEIGHT.bold,
-    color: '#FFFFFF',
+    fontSize: SEMANTIC_TYPOGRAPHY.cardTitle.fontSize,
+    fontWeight: SEMANTIC_TYPOGRAPHY.cardTitle.fontWeight,
+    color: SEMANTIC_COLORS.textPrimary,
     marginBottom: 12,
   },
   nutrientRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 8,
+    gap: SEMANTIC_SPACE.sm,
+    marginBottom: SEMANTIC_SPACE.sm,
   },
   nutrientLabel: {
     width: 80,
-    fontSize: FONT_SIZE.xs,
-    fontWeight: FONT_WEIGHT.semibold,
-    color: DARK.textSecondary,
+    fontSize: SEMANTIC_TYPOGRAPHY.caption.fontSize,
+    fontWeight: SEMANTIC_TYPOGRAPHY.bodyStrong.fontWeight,
+    color: SEMANTIC_COLORS.textSecondary,
   },
   barTrack: {
     flex: 1,
     height: 6,
     borderRadius: 3,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: SEMANTIC_COLORS.surfaceInteractive,
     overflow: 'hidden',
   },
   barFill: {
@@ -704,9 +688,9 @@ const exStyles = StyleSheet.create({
   },
   nutrientValue: {
     width: 56,
-    fontSize: FONT_SIZE.xs,
-    fontWeight: FONT_WEIGHT.bold,
-    color: DARK.textPrimary,
+    fontSize: SEMANTIC_TYPOGRAPHY.caption.fontSize,
+    fontWeight: SEMANTIC_TYPOGRAPHY.metadata.fontWeight,
+    color: SEMANTIC_COLORS.textPrimary,
     textAlign: 'right',
   },
   summaryRow: {
@@ -715,45 +699,46 @@ const exStyles = StyleSheet.create({
     marginTop: 10,
     paddingTop: 10,
     borderTopWidth: 0.5,
-    borderTopColor: 'rgba(255,255,255,0.06)',
+    borderTopColor: SEMANTIC_COLORS.borderSubtle,
   },
   summaryText: {
-    fontSize: FONT_SIZE.sm,
-    fontWeight: FONT_WEIGHT.bold,
-    color: DARK.textSecondary,
+    fontSize: SEMANTIC_TYPOGRAPHY.body.fontSize,
+    fontWeight: SEMANTIC_TYPOGRAPHY.metadata.fontWeight,
+    color: SEMANTIC_COLORS.textSecondary,
   },
   disclaimer: {
-    fontSize: FONT_SIZE.xs,
-    fontWeight: FONT_WEIGHT.medium,
-    color: DARK.textMuted,
+    fontSize: SEMANTIC_TYPOGRAPHY.caption.fontSize,
+    fontWeight: SEMANTIC_TYPOGRAPHY.caption.fontWeight,
+    color: SEMANTIC_COLORS.textMuted,
     textAlign: 'center',
     fontStyle: 'italic',
     lineHeight: 18,
   },
   footer: {
-    paddingHorizontal: 16,
-    paddingBottom: 8,
+    paddingHorizontal: SEMANTIC_SPACE.lg,
+    paddingBottom: SEMANTIC_SPACE.sm,
   },
   tryBtn: {
-    borderRadius: RADIUS.xl,
+    borderRadius: SEMANTIC_RADIUS.pill,
     overflow: 'hidden',
   },
   tryGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
+    gap: SEMANTIC_SPACE.sm,
     paddingVertical: 14,
-    borderRadius: RADIUS.xl,
+    borderRadius: SEMANTIC_RADIUS.pill,
   },
   tryText: {
-    fontSize: FONT_SIZE.md,
-    fontWeight: FONT_WEIGHT.heavy,
-    color: '#FFFFFF',
+    ...primaryActionLabel,
+    fontSize: SEMANTIC_TYPOGRAPHY.cardTitle.fontSize,
+    fontWeight: SEMANTIC_TYPOGRAPHY.screenTitle.fontWeight,
+    color: SEMANTIC_COLORS.textOnAccent,
   },
 })
 
-// ── Onboarding Screen 1: Hero ────────────────────────────────
+// â”€â”€ Onboarding Screen 1: Hero â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function HeroStep({ onScan, onBrowse, onExample, onExplore, onNotReady, showSecondary, isReduced }) {
   const fadeAnim = useRef(new Animated.Value(0)).current
@@ -834,12 +819,12 @@ function HeroStep({ onScan, onBrowse, onExample, onExplore, onNotReady, showSeco
         >
           <View style={obStyles.primaryBtnHighlight} pointerEvents="none" />
           <LinearGradient
-            colors={['#43A047', '#2E7D32', '#1B5E20']}
+            colors={BRAND.cta.gradient}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0.8 }}
             style={obStyles.primaryBtnGradient}
           >
-            <Camera size={22} color="#FFFFFF" />
+            <Camera size={22} color={SEMANTIC_COLORS.textOnAccent} />
             <Text style={obStyles.primaryBtnText}>
               {isAnticipating ? 'Analyzing\u2026' : 'Reveal My Nutrients'}
             </Text>
@@ -890,7 +875,7 @@ function HeroStep({ onScan, onBrowse, onExample, onExplore, onNotReady, showSeco
   )
 }
 
-// ── Onboarding Screen 3: Tracking Hook ───────────────────────
+// â”€â”€ Onboarding Screen 3: Tracking Hook â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function TrackingHookStep({ onOptIn, onSkip, isReduced }) {
   const fadeAnim = useRef(new Animated.Value(0)).current
@@ -904,7 +889,7 @@ function TrackingHookStep({ onOptIn, onSkip, isReduced }) {
   return (
     <Animated.View style={[obStyles.stepWrap, { opacity: fadeAnim }]}>
       <View style={obStyles.trackIcon}>
-        <Target size={40} color="#64B5F6" />
+        <Target size={40} color={SEMANTIC_COLORS.accentSecondary} />
       </View>
       <Text style={obStyles.stepTitle}>Want to track your{'\n'}juicing journey?</Text>
       <Text style={obStyles.stepDesc}>
@@ -927,7 +912,7 @@ function TrackingHookStep({ onOptIn, onSkip, isReduced }) {
           end={{ x: 1, y: 1 }}
           style={obStyles.primaryBtnGradient}
         >
-          <Sparkles size={20} color="#FFFFFF" />
+          <Sparkles size={20} color={SEMANTIC_COLORS.textOnAccent} />
           <Text style={obStyles.primaryBtnText}>Start Tracking</Text>
         </LinearGradient>
       </Pressable>
@@ -948,7 +933,7 @@ function TrackingHookStep({ onOptIn, onSkip, isReduced }) {
   )
 }
 
-// ── Onboarding Screen 4: Goal Selection ──────────────────────
+// â”€â”€ Onboarding Screen 4: Goal Selection â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function GoalStep({ onSelect, isReduced }) {
   const fadeAnim = useRef(new Animated.Value(0)).current
@@ -962,7 +947,7 @@ function GoalStep({ onSelect, isReduced }) {
   return (
     <Animated.View style={[obStyles.stepWrap, { opacity: fadeAnim }]}>
       <Text style={obStyles.stepTitle}>What brings you{'\n'}to juicing?</Text>
-      <Text style={obStyles.stepDesc}>Pick one — you can always change it later.</Text>
+      <Text style={obStyles.stepDesc}>Pick one â€” you can always change it later.</Text>
 
       <View style={obStyles.goalGrid}>
         {GOALS.map((g) => (
@@ -987,7 +972,7 @@ function GoalStep({ onSelect, isReduced }) {
   )
 }
 
-// ── Post-Onboarding: Scan Home ───────────────────────────────
+// â”€â”€ Post-Onboarding: Scan Home â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function ScanHome({ onScan, onBrowse, onExample, onExplore, totalLogs, showSecondary, isReduced }) {
   const fadeAnim = useRef(new Animated.Value(0)).current
@@ -1052,7 +1037,7 @@ function ScanHome({ onScan, onBrowse, onExample, onExplore, totalLogs, showSecon
 
       {totalLogs > 0 && (
         <View style={obStyles.logsBadge}>
-          <Check size={14} color="#81C784" />
+          <Check size={14} color={SEMANTIC_COLORS.success} />
           <Text style={obStyles.logsBadgeText}>{totalLogs} juice{totalLogs !== 1 ? 's' : ''} logged</Text>
         </View>
       )}
@@ -1070,14 +1055,14 @@ function ScanHome({ onScan, onBrowse, onExample, onExplore, totalLogs, showSecon
         >
           <View style={obStyles.primaryBtnHighlight} pointerEvents="none" />
           <LinearGradient
-            colors={['#43A047', '#2E7D32', '#1B5E20']}
+            colors={BRAND.cta.gradient}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0.8 }}
             style={obStyles.primaryBtnGradient}
           >
-            <Camera size={22} color="#FFFFFF" />
+            <Camera size={22} color={SEMANTIC_COLORS.textOnAccent} />
             <Text style={obStyles.primaryBtnText}>
-              {isAnticipating ? 'Analyzing…' : 'Reveal My Nutrients'}
+              {isAnticipating ? 'Analyzingâ€¦' : 'Reveal My Nutrients'}
             </Text>
           </LinearGradient>
         </Pressable>
@@ -1134,7 +1119,7 @@ function BrowseHome({ onScan, onBrowse, onExample, onExplore, onGlowLibrary, onS
 
       {totalLogs > 0 && (
         <View style={obStyles.logsBadge}>
-          <Check size={14} color="#81C784" />
+          <Check size={14} color={SEMANTIC_COLORS.success} />
           <Text style={obStyles.logsBadgeText}>{totalLogs} juice{totalLogs !== 1 ? 's' : ''} logged</Text>
         </View>
       )}
@@ -1156,12 +1141,12 @@ function BrowseHome({ onScan, onBrowse, onExample, onExplore, onGlowLibrary, onS
         >
           <View style={obStyles.primaryBtnHighlight} pointerEvents="none" />
           <LinearGradient
-            colors={['#43A047', '#2E7D32', '#1B5E20']}
+            colors={BRAND.cta.gradient}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0.8 }}
             style={obStyles.primaryBtnGradient}
           >
-            <Camera size={22} color="#FFFFFF" />
+            <Camera size={22} color={SEMANTIC_COLORS.textOnAccent} />
             <Text style={obStyles.primaryBtnText}>{isReturning ? 'Scan Produce' : 'Reveal My Nutrients'}</Text>
           </LinearGradient>
         </Pressable>
@@ -1181,12 +1166,12 @@ function BrowseHome({ onScan, onBrowse, onExample, onExplore, onGlowLibrary, onS
               accessibilityRole="button"
               accessibilityLabel="Beginner Glow Path"
             >
-              <BookOpen size={20} color="#81C784" />
+              <BookOpen size={20} color={SEMANTIC_COLORS.success} />
               <View style={browseHomeStyles.actionContent}>
                 <Text style={browseHomeStyles.actionTitle}>Beginner Glow Path</Text>
                 <Text style={browseHomeStyles.actionDesc}>Day-by-day recipes to build consistency</Text>
               </View>
-              <ChevronRight size={16} color={DARK.textMuted} />
+              <ChevronRight size={16} color={SEMANTIC_COLORS.textMuted} />
             </Pressable>
 
             <Pressable
@@ -1199,12 +1184,12 @@ function BrowseHome({ onScan, onBrowse, onExample, onExplore, onGlowLibrary, onS
               accessibilityRole="button"
               accessibilityLabel="Seasonal Glow Packs"
             >
-              <Leaf size={20} color="#64B5F6" />
+              <Leaf size={20} color={SEMANTIC_COLORS.accentSecondary} />
               <View style={browseHomeStyles.actionContent}>
                 <Text style={browseHomeStyles.actionTitle}>Seasonal Glow Packs</Text>
                 <Text style={browseHomeStyles.actionDesc}>Limited-time seasonal recipe drops</Text>
               </View>
-              <ChevronRight size={16} color={DARK.textMuted} />
+              <ChevronRight size={16} color={SEMANTIC_COLORS.textMuted} />
             </Pressable>
 
             <Pressable
@@ -1222,7 +1207,7 @@ function BrowseHome({ onScan, onBrowse, onExample, onExplore, onGlowLibrary, onS
                 <Text style={browseHomeStyles.actionTitle}>Glow Library</Text>
                 <Text style={browseHomeStyles.actionDesc}>Pro-only recipe collections</Text>
               </View>
-              <ChevronRight size={16} color={DARK.textMuted} />
+              <ChevronRight size={16} color={SEMANTIC_COLORS.textMuted} />
             </Pressable>
           </>
         )}
@@ -1237,12 +1222,12 @@ function BrowseHome({ onScan, onBrowse, onExample, onExplore, onGlowLibrary, onS
           accessibilityRole="button"
           accessibilityLabel="Browse juice ideas"
         >
-          <Compass size={20} color="#64B5F6" />
+          <Compass size={20} color={SEMANTIC_COLORS.accentSecondary} />
           <View style={browseHomeStyles.actionContent}>
             <Text style={browseHomeStyles.actionTitle}>Browse Juice Ideas</Text>
             <Text style={browseHomeStyles.actionDesc}>Curated recipes to inspire you</Text>
           </View>
-          <ChevronRight size={16} color={DARK.textMuted} />
+          <ChevronRight size={16} color={SEMANTIC_COLORS.textMuted} />
         </Pressable>
 
         <Pressable
@@ -1260,7 +1245,7 @@ function BrowseHome({ onScan, onBrowse, onExample, onExplore, onGlowLibrary, onS
             <Text style={browseHomeStyles.actionTitle}>Learn How It Works</Text>
             <Text style={browseHomeStyles.actionDesc}>Quick 3-step walkthrough</Text>
           </View>
-          <ChevronRight size={16} color={DARK.textMuted} />
+          <ChevronRight size={16} color={SEMANTIC_COLORS.textMuted} />
         </Pressable>
 
         <Pressable
@@ -1273,12 +1258,12 @@ function BrowseHome({ onScan, onBrowse, onExample, onExplore, onGlowLibrary, onS
           accessibilityRole="button"
           accessibilityLabel="Try a demo scan"
         >
-          <Eye size={20} color="#FFB74D" />
+          <Eye size={20} color={SEMANTIC_COLORS.warning} />
           <View style={browseHomeStyles.actionContent}>
             <Text style={browseHomeStyles.actionTitle}>Try a Demo Scan</Text>
             <Text style={browseHomeStyles.actionDesc}>See results without scanning</Text>
           </View>
-          <ChevronRight size={16} color={DARK.textMuted} />
+          <ChevronRight size={16} color={SEMANTIC_COLORS.textMuted} />
         </Pressable>
       </View>
 
@@ -1290,33 +1275,31 @@ function BrowseHome({ onScan, onBrowse, onExample, onExplore, onGlowLibrary, onS
 const browseHomeStyles = StyleSheet.create({
   actions: {
     width: '100%',
-    gap: 8,
-    marginBottom: 8,
+    gap: SEMANTIC_SPACE.sm,
+    marginBottom: SEMANTIC_SPACE.sm,
   },
   actionCard: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    backgroundColor: 'rgba(255,255,255,0.04)',
-    borderRadius: 16,
+    ...compactSupportingCard,
+    borderRadius: SEMANTIC_RADIUS.large,
     paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderWidth: 0.5,
-    borderColor: 'rgba(255,255,255,0.06)',
+    paddingHorizontal: SEMANTIC_SPACE.lg,
   },
   actionContent: {
     flex: 1,
   },
   actionTitle: {
-    fontSize: FONT_SIZE.sm,
-    fontWeight: FONT_WEIGHT.semibold,
-    color: DARK.textPrimary,
+    fontSize: SEMANTIC_TYPOGRAPHY.bodyStrong.fontSize,
+    fontWeight: SEMANTIC_TYPOGRAPHY.bodyStrong.fontWeight,
+    color: SEMANTIC_COLORS.textPrimary,
     marginBottom: 2,
   },
   actionDesc: {
-    fontSize: FONT_SIZE.xs,
-    fontWeight: FONT_WEIGHT.medium,
-    color: DARK.textMuted,
+    fontSize: SEMANTIC_TYPOGRAPHY.caption.fontSize,
+    fontWeight: SEMANTIC_TYPOGRAPHY.caption.fontWeight,
+    color: SEMANTIC_COLORS.textMuted,
   },
 })
 
@@ -1457,7 +1440,7 @@ export default function ScanScreen({ navigation }) {
             accessibilityRole="button"
             accessibilityLabel="Settings"
           >
-            <Settings size={18} color="#484F58" />
+            <Settings size={18} color={SEMANTIC_COLORS.textMuted} />
           </TouchableOpacity>
         </View>
         <ScrollView
@@ -1519,12 +1502,12 @@ export default function ScanScreen({ navigation }) {
   )
 }
 
-// ── Styles ───────────────────────────────────────────────────
+// â”€â”€ Styles â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: '#060D0A',
+    backgroundColor: SEMANTIC_COLORS.canvas,
   },
   safe: {
     flex: 1,
@@ -1532,17 +1515,16 @@ const styles = StyleSheet.create({
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
+    paddingHorizontal: SEMANTIC_SPACE.lg,
     paddingTop: 4,
     paddingBottom: 2,
   },
   settingsBtn: {
+    ...iconOnlyAction,
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: SEMANTIC_COLORS.surfaceInteractive,
   },
   scrollWrap: {
     flex: 1,
@@ -1550,8 +1532,8 @@ const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
     justifyContent: 'center',
-    paddingHorizontal: 24,
-    paddingVertical: 24,
+    paddingHorizontal: SEMANTIC_SPACE.xl,
+    paddingVertical: SEMANTIC_SPACE.xl,
   },
 })
 
@@ -1559,41 +1541,38 @@ const obStyles = StyleSheet.create({
   stepWrap: {
     alignItems: 'center',
   },
-  // ── Liquid Nutrient Orb container ──
   orbWrap: {
-    marginBottom: 32,
+    marginBottom: SEMANTIC_SPACE.xxl,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  // ── Headline (31px, tighter spacing) ──
   heroHeadline: {
     fontSize: 31,
-    fontWeight: '900',
-    color: '#FFFFFF',
+    fontWeight: SEMANTIC_TYPOGRAPHY.screenTitle.fontWeight,
+    color: SEMANTIC_COLORS.textPrimary,
     textAlign: 'center',
     marginBottom: 12,
     letterSpacing: -0.8,
     lineHeight: 38,
   },
   heroSub: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#B0BEC5',
+    fontSize: SEMANTIC_TYPOGRAPHY.body.fontSize,
+    fontWeight: SEMANTIC_TYPOGRAPHY.body.fontWeight,
+    color: SEMANTIC_COLORS.textSecondary,
     textAlign: 'center',
     lineHeight: 23,
-    marginBottom: 16,
+    marginBottom: SEMANTIC_SPACE.lg,
     maxWidth: 280,
   },
-  // ── Primary CTA (taller, shadow, highlight) ──
   primaryBtnWrap: {
     width: '100%',
     marginBottom: 12,
   },
   primaryBtn: {
     width: '100%',
-    borderRadius: RADIUS.pill,
+    borderRadius: SEMANTIC_RADIUS.pill,
     overflow: 'hidden',
-    shadowColor: '#2E7D32',
+    shadowColor: BRAND.cta.shadow,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.25,
     shadowRadius: 16,
@@ -1602,12 +1581,12 @@ const obStyles = StyleSheet.create({
   primaryBtnHighlight: {
     position: 'absolute',
     top: 0,
-    left: 16,
-    right: 16,
+    left: SEMANTIC_SPACE.lg,
+    right: SEMANTIC_SPACE.lg,
     height: 1.5,
     backgroundColor: 'rgba(255,255,255,0.18)',
-    borderTopLeftRadius: RADIUS.pill,
-    borderTopRightRadius: RADIUS.pill,
+    borderTopLeftRadius: SEMANTIC_RADIUS.pill,
+    borderTopRightRadius: SEMANTIC_RADIUS.pill,
     zIndex: 1,
   },
   primaryBtnGradient: {
@@ -1616,34 +1595,33 @@ const obStyles = StyleSheet.create({
     justifyContent: 'center',
     gap: 10,
     paddingVertical: 18,
-    borderRadius: RADIUS.pill,
+    borderRadius: SEMANTIC_RADIUS.pill,
   },
   primaryBtnText: {
-    fontSize: FONT_SIZE.lg,
-    fontWeight: FONT_WEIGHT.heavy,
-    color: '#FFFFFF',
+    ...primaryActionLabel,
+    fontSize: SEMANTIC_TYPOGRAPHY.buttonLabel.fontSize + 4,
+    fontWeight: SEMANTIC_TYPOGRAPHY.screenTitle.fontWeight,
+    color: SEMANTIC_COLORS.textOnAccent,
     letterSpacing: 0.2,
   },
-  // ── Reassurance microcopy (≥16px for accessibility) ──
   reassurance: {
-    fontSize: 16,
-    fontWeight: FONT_WEIGHT.medium,
-    color: '#90A4AE',
+    fontSize: SEMANTIC_TYPOGRAPHY.body.fontSize,
+    fontWeight: SEMANTIC_TYPOGRAPHY.body.fontWeight,
+    color: SEMANTIC_COLORS.textMuted,
     textAlign: 'center',
-    marginBottom: 16,
+    marginBottom: SEMANTIC_SPACE.lg,
     lineHeight: 22,
   },
-  // ── Secondary micro-link (≥16px, comfortable tap) ──
   secondaryBtn: {
-    paddingVertical: 16,
-    paddingHorizontal: 24,
+    paddingVertical: SEMANTIC_SPACE.lg,
+    paddingHorizontal: SEMANTIC_SPACE.xl,
     minHeight: 48,
     justifyContent: 'center',
   },
   secondaryBtnText: {
-    fontSize: 16,
-    fontWeight: FONT_WEIGHT.semibold,
-    color: '#90A4AE',
+    fontSize: SEMANTIC_TYPOGRAPHY.body.fontSize,
+    fontWeight: SEMANTIC_TYPOGRAPHY.bodyStrong.fontWeight,
+    color: SEMANTIC_COLORS.textMuted,
   },
   exploreFirstBtn: {
     flexDirection: 'row',
@@ -1651,12 +1629,12 @@ const obStyles = StyleSheet.create({
     justifyContent: 'center',
     gap: 6,
     paddingVertical: 12,
-    paddingHorizontal: 24,
+    paddingHorizontal: SEMANTIC_SPACE.xl,
     minHeight: 44,
   },
   exploreFirstText: {
-    fontSize: 14,
-    fontWeight: FONT_WEIGHT.medium,
+    fontSize: SEMANTIC_TYPOGRAPHY.body.fontSize - 2,
+    fontWeight: SEMANTIC_TYPOGRAPHY.body.fontWeight,
     color: 'rgba(240, 246, 252, 0.35)',
   },
   trackIcon: {
@@ -1666,23 +1644,23 @@ const obStyles = StyleSheet.create({
     backgroundColor: 'rgba(100,181,246,0.08)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: SEMANTIC_SPACE.xl,
     borderWidth: 0.5,
     borderColor: 'rgba(100,181,246,0.15)',
   },
   stepTitle: {
-    fontSize: 24,
-    fontWeight: '900',
-    color: '#FFFFFF',
+    fontSize: SEMANTIC_TYPOGRAPHY.screenTitle.fontSize,
+    fontWeight: SEMANTIC_TYPOGRAPHY.screenTitle.fontWeight,
+    color: SEMANTIC_COLORS.textPrimary,
     textAlign: 'center',
     marginBottom: 10,
     letterSpacing: -0.3,
     lineHeight: 30,
   },
   stepDesc: {
-    fontSize: 15,
-    fontWeight: '500',
-    color: DARK.textSecondary,
+    fontSize: SEMANTIC_TYPOGRAPHY.body.fontSize + 1,
+    fontWeight: SEMANTIC_TYPOGRAPHY.body.fontWeight,
+    color: SEMANTIC_COLORS.textSecondary,
     textAlign: 'center',
     lineHeight: 22,
     marginBottom: 28,
@@ -1690,19 +1668,17 @@ const obStyles = StyleSheet.create({
   },
   goalGrid: {
     width: '100%',
-    gap: 8,
-    marginBottom: 16,
+    gap: SEMANTIC_SPACE.sm,
+    marginBottom: SEMANTIC_SPACE.lg,
   },
   goalChip: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    backgroundColor: 'rgba(255,255,255,0.04)',
-    borderRadius: RADIUS.xl,
+    ...compactSupportingCard,
+    borderRadius: SEMANTIC_RADIUS.large,
     paddingVertical: 14,
     paddingHorizontal: 18,
-    borderWidth: 0.5,
-    borderColor: 'rgba(255,255,255,0.06)',
   },
   goalEmoji: {
     fontSize: 20,
@@ -1710,9 +1686,9 @@ const obStyles = StyleSheet.create({
     textAlign: 'center',
   },
   goalLabel: {
-    fontSize: FONT_SIZE.md,
-    fontWeight: FONT_WEIGHT.semibold,
-    color: DARK.textPrimary,
+    fontSize: SEMANTIC_TYPOGRAPHY.cardTitle.fontSize,
+    fontWeight: SEMANTIC_TYPOGRAPHY.bodyStrong.fontWeight,
+    color: SEMANTIC_COLORS.textPrimary,
   },
   logsBadge: {
     flexDirection: 'row',
@@ -1721,14 +1697,14 @@ const obStyles = StyleSheet.create({
     backgroundColor: 'rgba(129,199,132,0.08)',
     paddingHorizontal: 14,
     paddingVertical: 6,
-    borderRadius: RADIUS.lg,
-    marginBottom: 16,
+    borderRadius: SEMANTIC_RADIUS.large,
+    marginBottom: SEMANTIC_SPACE.lg,
     borderWidth: 0.5,
     borderColor: 'rgba(129,199,132,0.15)',
   },
   logsBadgeText: {
-    fontSize: FONT_SIZE.sm,
-    fontWeight: FONT_WEIGHT.semibold,
-    color: '#81C784',
+    fontSize: SEMANTIC_TYPOGRAPHY.body.fontSize - 2,
+    fontWeight: SEMANTIC_TYPOGRAPHY.bodyStrong.fontWeight,
+    color: SEMANTIC_COLORS.success,
   },
 })

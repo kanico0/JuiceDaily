@@ -5,7 +5,8 @@ import {
   StyleSheet,
 } from 'react-native'
 import { Droplets as DropIcon, TrendingUp, Flame, AlertCircle } from 'lucide-react-native'
-import { DARK, FONT_SIZE, FONT_WEIGHT } from '../constants/tokens'
+import { SEMANTIC_COLORS, SEMANTIC_TYPOGRAPHY, FONT_WEIGHT } from '../constants/tokens'
+import { card, sectionHeading } from '../constants/styleRecipes'
 
 export default function TodaySummaryStats({ todayCount, todayScore, streakCount, suggestion }) {
   return (
@@ -14,19 +15,19 @@ export default function TodaySummaryStats({ todayCount, todayScore, streakCount,
         <Text style={styles.summaryTitle}>Today</Text>
         <View style={styles.summaryRow}>
           <View style={styles.summaryItem}>
-            <DropIcon size={16} color="#64B5F6" />
+            <DropIcon size={16} color={SEMANTIC_COLORS.accentSecondary} />
             <Text style={styles.summaryValue}>{todayCount}</Text>
             <Text style={styles.summaryLabel}>juices</Text>
           </View>
           <View style={styles.summaryDivider} />
           <View style={styles.summaryItem}>
-            <TrendingUp size={16} color="#81C784" />
+            <TrendingUp size={16} color={SEMANTIC_COLORS.success} />
             <Text style={styles.summaryValue}>{todayScore}</Text>
             <Text style={styles.summaryLabel}>score</Text>
           </View>
           <View style={styles.summaryDivider} />
           <View style={styles.summaryItem}>
-            <Flame size={16} color="#FFB74D" />
+            <Flame size={16} color={SEMANTIC_COLORS.warning} />
             <Text style={styles.summaryValue}>{streakCount}d</Text>
             <Text style={styles.summaryLabel}>streak</Text>
           </View>
@@ -35,7 +36,7 @@ export default function TodaySummaryStats({ todayCount, todayScore, streakCount,
 
       {suggestion ? (
         <View style={styles.suggestionRow}>
-          <AlertCircle size={14} color={DARK.textMuted} />
+          <AlertCircle size={14} color={SEMANTIC_COLORS.textMuted} />
           <Text style={styles.suggestionText}>{suggestion}</Text>
         </View>
       ) : null}
@@ -45,20 +46,12 @@ export default function TodaySummaryStats({ todayCount, todayScore, streakCount,
 
 const styles = StyleSheet.create({
   summaryCard: {
+    ...card,
     width: '100%',
-    backgroundColor: 'rgba(255,255,255,0.04)',
-    borderRadius: 16,
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    borderWidth: 0.5,
-    borderColor: 'rgba(255,255,255,0.08)',
     marginBottom: 10,
   },
   summaryTitle: {
-    fontSize: FONT_SIZE.xs,
-    fontWeight: FONT_WEIGHT.bold,
-    color: DARK.textMuted,
-    textTransform: 'uppercase',
+    ...sectionHeading,
     letterSpacing: 0.5,
     marginBottom: 12,
   },
@@ -72,19 +65,19 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   summaryValue: {
-    fontSize: 20,
-    fontWeight: FONT_WEIGHT.bold,
-    color: DARK.textPrimary,
+    fontSize: SEMANTIC_TYPOGRAPHY.numericEmphasis.fontSize,
+    fontWeight: SEMANTIC_TYPOGRAPHY.numericEmphasis.fontWeight,
+    color: SEMANTIC_COLORS.textPrimary,
   },
   summaryLabel: {
-    fontSize: FONT_SIZE.xs,
-    fontWeight: FONT_WEIGHT.medium,
-    color: DARK.textMuted,
+    fontSize: SEMANTIC_TYPOGRAPHY.caption.fontSize,
+    fontWeight: SEMANTIC_TYPOGRAPHY.caption.fontWeight,
+    color: SEMANTIC_COLORS.textMuted,
   },
   summaryDivider: {
     width: 1,
     height: 32,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: SEMANTIC_COLORS.borderSubtle,
   },
   suggestionRow: {
     flexDirection: 'row',
@@ -96,9 +89,9 @@ const styles = StyleSheet.create({
   },
   suggestionText: {
     flex: 1,
-    fontSize: FONT_SIZE.xs,
-    fontWeight: FONT_WEIGHT.medium,
-    color: DARK.textMuted,
+    fontSize: SEMANTIC_TYPOGRAPHY.caption.fontSize,
+    fontWeight: SEMANTIC_TYPOGRAPHY.caption.fontWeight,
+    color: SEMANTIC_COLORS.textMuted,
     fontStyle: 'italic',
   },
 })

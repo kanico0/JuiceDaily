@@ -320,3 +320,14 @@ export const SEMANTIC_SHADOWS = {
   floatingAction: SHADOW.md,
   modal: SHADOW.lg,
 }
+
+// ── Semantic Motion Durations ─────────────────────────────────
+// Maps to existing DURATION presets from motion.js.
+// Re-exported here for single-source discovery.
+
+export const SEMANTIC_MOTION = {
+  instant: 0,
+  fast: 150,
+  normal: 300,
+  slow: 450,
+}

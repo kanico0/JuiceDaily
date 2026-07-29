@@ -7,7 +7,8 @@ import {
   Animated,
 } from 'react-native'
 import * as Haptics from 'expo-haptics'
-import { DARK, FONT_SIZE, FONT_WEIGHT } from '../constants/tokens'
+import { SEMANTIC_COLORS, SEMANTIC_SPACE, SEMANTIC_RADIUS, SEMANTIC_TYPOGRAPHY, FONT_WEIGHT } from '../constants/tokens'
+import { card, primaryAction, primaryActionLabel, secondaryAction, secondaryActionLabel } from '../constants/styleRecipes'
 import { trackEvent } from '../services/AnalyticsService'
 import { shouldShowWeeklySummary, dismissWeeklySummary, buildWeeklySummaryData } from '../services/weeklySummary'
 
@@ -104,14 +105,10 @@ export default function WeeklySummaryTeaser({ juicesThisWeek, glowStreakCount, i
 
 const styles = StyleSheet.create({
   card: {
+    ...card,
     width: '100%',
-    backgroundColor: 'rgba(255,255,255,0.04)',
-    borderRadius: 16,
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-    borderWidth: 0.5,
     borderColor: 'rgba(255,179,0,0.15)',
-    marginBottom: 12,
+    marginBottom: SEMANTIC_SPACE.md,
   },
   headerRow: {
     flexDirection: 'row',
@@ -123,9 +120,9 @@ const styles = StyleSheet.create({
     fontSize: 22,
   },
   title: {
-    fontSize: FONT_SIZE.md,
-    fontWeight: FONT_WEIGHT.bold,
-    color: DARK.textPrimary,
+    fontSize: SEMANTIC_TYPOGRAPHY.cardTitle.fontSize,
+    fontWeight: SEMANTIC_TYPOGRAPHY.cardTitle.fontWeight,
+    color: SEMANTIC_COLORS.textPrimary,
   },
   statsRow: {
     flexDirection: 'row',
@@ -138,50 +135,37 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   statValue: {
-    fontSize: FONT_SIZE.md,
-    fontWeight: FONT_WEIGHT.bold,
-    color: DARK.textPrimary,
+    fontSize: SEMANTIC_TYPOGRAPHY.cardTitle.fontSize,
+    fontWeight: SEMANTIC_TYPOGRAPHY.cardTitle.fontWeight,
+    color: SEMANTIC_COLORS.textPrimary,
     marginBottom: 2,
   },
   statLabel: {
-    fontSize: FONT_SIZE.xs,
-    fontWeight: FONT_WEIGHT.medium,
-    color: DARK.textMuted,
+    fontSize: SEMANTIC_TYPOGRAPHY.caption.fontSize,
+    fontWeight: SEMANTIC_TYPOGRAPHY.caption.fontWeight,
+    color: SEMANTIC_COLORS.textMuted,
   },
   statDivider: {
     width: 1,
     height: 28,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: SEMANTIC_COLORS.borderSubtle,
   },
   btnRow: {
     flexDirection: 'row',
     gap: 8,
   },
   primaryBtn: {
+    ...primaryAction,
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 10,
-    borderRadius: 10,
-    backgroundColor: '#2E7D32',
   },
   primaryBtnText: {
-    fontSize: FONT_SIZE.sm,
-    fontWeight: FONT_WEIGHT.bold,
-    color: '#FFFFFF',
+    ...primaryActionLabel,
   },
   secondaryBtn: {
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderRadius: 10,
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    borderWidth: 0.5,
-    borderColor: 'rgba(255,255,255,0.08)',
+    ...secondaryAction,
+    flex: 0,
   },
   secondaryBtnText: {
-    fontSize: FONT_SIZE.sm,
-    fontWeight: FONT_WEIGHT.medium,
-    color: DARK.textMuted,
+    ...secondaryActionLabel,
   },
 })

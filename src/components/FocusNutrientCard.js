@@ -8,7 +8,8 @@ import {
 } from 'react-native'
 import * as Haptics from 'expo-haptics'
 import { Leaf, Sparkles, X, Camera } from 'lucide-react-native'
-import { DARK, FONT_SIZE, FONT_WEIGHT } from '../constants/tokens'
+import { SEMANTIC_COLORS, SEMANTIC_SPACE, SEMANTIC_RADIUS, SEMANTIC_TYPOGRAPHY, FONT_WEIGHT } from '../constants/tokens'
+import { card, sectionHeading, primaryAction, primaryActionLabel } from '../constants/styleRecipes'
 import { trackEvent } from '../services/AnalyticsService'
 import { getFocusForToday, swapFocusToday } from '../services/focusNutrient'
 
@@ -61,7 +62,7 @@ export default function FocusNutrientCard({ onScan, isReduced }) {
         </View>
         <Text style={styles.benefit}>{focusNutrient.benefit}</Text>
         <View style={styles.comboRow}>
-          <Leaf size={13} color="#81C784" />
+          <Leaf size={13} color={SEMANTIC_COLORS.success} />
           <Text style={styles.comboText}>Try: {focusNutrient.combos[0]}</Text>
         </View>
         <Pressable
@@ -75,7 +76,7 @@ export default function FocusNutrientCard({ onScan, isReduced }) {
           accessibilityRole="button"
           accessibilityLabel="See tips"
         >
-          <Sparkles size={14} color="#64B5F6" />
+          <Sparkles size={14} color={SEMANTIC_COLORS.accentSecondary} />
           <Text style={styles.tipsBtnText}>See tips</Text>
         </Pressable>
       </View>
@@ -98,7 +99,7 @@ export default function FocusNutrientCard({ onScan, isReduced }) {
                 accessibilityRole="button"
                 accessibilityLabel="Close"
               >
-                <X size={18} color={DARK.textMuted} />
+                <X size={18} color={SEMANTIC_COLORS.textMuted} />
               </Pressable>
             </View>
             <Text style={styles.modalBenefit}>{focusNutrient.benefit}</Text>
@@ -130,7 +131,7 @@ export default function FocusNutrientCard({ onScan, isReduced }) {
               accessibilityRole="button"
               accessibilityLabel="Try a scan"
             >
-              <Camera size={18} color="#FFFFFF" />
+              <Camera size={18} color={SEMANTIC_COLORS.textOnAccent} />
               <Text style={styles.modalCtaText}>Try a Scan</Text>
             </Pressable>
           </View>
@@ -142,14 +143,10 @@ export default function FocusNutrientCard({ onScan, isReduced }) {
 
 const styles = StyleSheet.create({
   card: {
+    ...card,
     width: '100%',
-    backgroundColor: 'rgba(255,255,255,0.04)',
-    borderRadius: 16,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderWidth: 0.5,
     borderColor: 'rgba(100,181,246,0.12)',
-    marginBottom: 12,
+    marginBottom: SEMANTIC_SPACE.md,
   },
   headerRow: {
     flexDirection: 'row',
@@ -163,36 +160,32 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   label: {
-    fontSize: FONT_SIZE.xs,
-    fontWeight: FONT_WEIGHT.bold,
-    color: DARK.textMuted,
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
+    ...sectionHeading,
   },
   name: {
-    fontSize: FONT_SIZE.md,
-    fontWeight: FONT_WEIGHT.bold,
-    color: DARK.textPrimary,
+    fontSize: SEMANTIC_TYPOGRAPHY.cardTitle.fontSize,
+    fontWeight: SEMANTIC_TYPOGRAPHY.cardTitle.fontWeight,
+    color: SEMANTIC_COLORS.textPrimary,
     marginTop: 1,
   },
   swapBtn: {
-    paddingVertical: 4,
+    paddingVertical: SEMANTIC_SPACE.xs,
     paddingHorizontal: 10,
-    borderRadius: 8,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderRadius: SEMANTIC_RADIUS.small,
+    backgroundColor: SEMANTIC_COLORS.surfaceInteractive,
     borderWidth: 0.5,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: SEMANTIC_COLORS.borderStrong,
   },
   swapText: {
-    fontSize: FONT_SIZE.xs,
+    fontSize: SEMANTIC_TYPOGRAPHY.caption.fontSize,
     fontWeight: FONT_WEIGHT.semibold,
-    color: DARK.textMuted,
+    color: SEMANTIC_COLORS.textMuted,
   },
   benefit: {
-    fontSize: FONT_SIZE.sm,
+    fontSize: SEMANTIC_TYPOGRAPHY.body.fontSize,
     fontWeight: FONT_WEIGHT.medium,
-    color: DARK.textMuted,
-    marginBottom: 8,
+    color: SEMANTIC_COLORS.textMuted,
+    marginBottom: SEMANTIC_SPACE.sm,
     lineHeight: 18,
   },
   comboRow: {
@@ -202,9 +195,9 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   comboText: {
-    fontSize: FONT_SIZE.xs,
-    fontWeight: FONT_WEIGHT.medium,
-    color: '#81C784',
+    fontSize: SEMANTIC_TYPOGRAPHY.caption.fontSize,
+    fontWeight: SEMANTIC_TYPOGRAPHY.caption.fontWeight,
+    color: SEMANTIC_COLORS.success,
     flex: 1,
   },
   tipsBtn: {
@@ -219,21 +212,21 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(100,181,246,0.15)',
   },
   tipsBtnText: {
-    fontSize: FONT_SIZE.sm,
+    fontSize: SEMANTIC_TYPOGRAPHY.body.fontSize,
     fontWeight: FONT_WEIGHT.semibold,
-    color: '#64B5F6',
+    color: SEMANTIC_COLORS.accentSecondary,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.7)',
+    backgroundColor: SEMANTIC_COLORS.overlay,
     justifyContent: 'flex-end',
   },
   modalContent: {
     backgroundColor: '#0D1A14',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingHorizontal: 24,
-    paddingTop: 24,
+    borderTopLeftRadius: SEMANTIC_RADIUS.card,
+    borderTopRightRadius: SEMANTIC_RADIUS.card,
+    paddingHorizontal: SEMANTIC_SPACE.xl,
+    paddingTop: SEMANTIC_SPACE.xl,
     paddingBottom: 40,
     maxHeight: '80%',
   },
@@ -248,31 +241,27 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     flex: 1,
-    fontSize: FONT_SIZE.xl || 22,
-    fontWeight: FONT_WEIGHT.bold,
-    color: DARK.textPrimary,
+    fontSize: SEMANTIC_TYPOGRAPHY.screenTitle.fontSize,
+    fontWeight: SEMANTIC_TYPOGRAPHY.screenTitle.fontWeight,
+    color: SEMANTIC_COLORS.textPrimary,
   },
   modalClose: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: SEMANTIC_COLORS.surfaceInteractive,
     justifyContent: 'center',
     alignItems: 'center',
   },
   modalBenefit: {
-    fontSize: FONT_SIZE.sm,
+    fontSize: SEMANTIC_TYPOGRAPHY.body.fontSize,
     fontWeight: FONT_WEIGHT.medium,
-    color: DARK.textMuted,
-    marginBottom: 16,
+    color: SEMANTIC_COLORS.textMuted,
+    marginBottom: SEMANTIC_SPACE.lg,
     lineHeight: 20,
   },
   modalSection: {
-    fontSize: FONT_SIZE.xs,
-    fontWeight: FONT_WEIGHT.bold,
-    color: DARK.textMuted,
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
+    ...sectionHeading,
     marginBottom: 10,
     marginTop: 4,
   },
@@ -286,14 +275,14 @@ const styles = StyleSheet.create({
     width: 5,
     height: 5,
     borderRadius: 3,
-    backgroundColor: '#64B5F6',
+    backgroundColor: SEMANTIC_COLORS.accentSecondary,
     marginTop: 6,
   },
   tipText: {
     flex: 1,
-    fontSize: FONT_SIZE.sm,
+    fontSize: SEMANTIC_TYPOGRAPHY.body.fontSize,
     fontWeight: FONT_WEIGHT.medium,
-    color: DARK.textPrimary,
+    color: SEMANTIC_COLORS.textPrimary,
     lineHeight: 20,
   },
   comboItem: {
@@ -310,23 +299,15 @@ const styles = StyleSheet.create({
   },
   comboItemText: {
     flex: 1,
-    fontSize: FONT_SIZE.sm,
+    fontSize: SEMANTIC_TYPOGRAPHY.body.fontSize,
     fontWeight: FONT_WEIGHT.medium,
-    color: '#81C784',
+    color: SEMANTIC_COLORS.success,
   },
   modalCta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    marginTop: 16,
-    paddingVertical: 14,
-    borderRadius: 14,
-    backgroundColor: '#2E7D32',
+    ...primaryAction,
+    marginTop: SEMANTIC_SPACE.lg,
   },
   modalCtaText: {
-    fontSize: FONT_SIZE.md,
-    fontWeight: FONT_WEIGHT.bold,
-    color: '#FFFFFF',
+    ...primaryActionLabel,
   },
 })

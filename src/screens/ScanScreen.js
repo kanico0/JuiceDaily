@@ -37,6 +37,7 @@ import {
   BookOpen,
   Home,
   Settings,
+  Heart,
 } from 'lucide-react-native'
 import MeshGradientBg from '../components/MeshGradientBg'
 import LiquidNutrientOrb from '../components/LiquidNutrientOrb'
@@ -1084,7 +1085,7 @@ function ScanHome({ onScan, onBrowse, onExample, onExplore, totalLogs, showSecon
 
 // -- Browse Home: Discovery Hub --
 
-function BrowseHome({ onScan, onBrowse, onExample, onExplore, onGlowLibrary, onSeasonalPacks, onBeginnerPath, isExpandedRecipes, totalLogs, isReduced }) {
+function BrowseHome({ onScan, onBrowse, onExample, onExplore, onGlowLibrary, onSeasonalPacks, onBeginnerPath, onWellnessFocus, isExpandedRecipes, totalLogs, isReduced }) {
   const fadeAnim = useRef(new Animated.Value(0)).current
   const btnScale = useRef(new Animated.Value(1)).current
   const isReturning = totalLogs > 0
@@ -1211,6 +1212,24 @@ function BrowseHome({ onScan, onBrowse, onExample, onExplore, onGlowLibrary, onS
             </Pressable>
           </>
         )}
+
+        <Pressable
+          style={({ pressed }) => [browseHomeStyles.actionCard, pressed && { opacity: 0.7 }]}
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+            onWellnessFocus()
+          }}
+          hitSlop={4}
+          accessibilityRole="button"
+          accessibilityLabel="Wellness Focus Recipe Finder"
+        >
+          <Heart size={20} color="#81C784" />
+          <View style={browseHomeStyles.actionContent}>
+            <Text style={browseHomeStyles.actionTitle}>Wellness Focus</Text>
+            <Text style={browseHomeStyles.actionDesc}>Find juices by wellness focus area</Text>
+          </View>
+          <ChevronRight size={16} color={SEMANTIC_COLORS.textMuted} />
+        </Pressable>
 
         <Pressable
           style={({ pressed }) => [browseHomeStyles.actionCard, pressed && { opacity: 0.7 }]}
@@ -1457,6 +1476,7 @@ export default function ScanScreen({ navigation }) {
               onGlowLibrary={() => navigation.navigate('GlowLibrary')}
               onSeasonalPacks={() => navigation.navigate('SeasonalGlowPacks')}
               onBeginnerPath={() => navigation.navigate('BeginnerGlowPath')}
+              onWellnessFocus={() => navigation.navigate('WellnessFocus')}
               isExpandedRecipes={isExpandedRecipes}
               totalLogs={totalLogCount}
               isReduced={isReduced}

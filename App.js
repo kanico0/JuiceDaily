@@ -40,6 +40,8 @@ import TodayScreen from './src/screens/TodayScreen'
 import GlowLibraryScreen from './src/screens/GlowLibraryScreen'
 import SeasonalGlowPacksScreen from './src/screens/SeasonalGlowPacksScreen'
 import BeginnerGlowPathScreen from './src/screens/BeginnerGlowPathScreen'
+import WellnessFocusScreen from './src/screens/WellnessFocusScreen'
+import WellnessResultsScreen from './src/screens/WellnessResultsScreen'
 import ExplainFlowScreen from './src/screens/ExplainFlowScreen'
 import PerformanceDashboardScreen from './src/screens/PerformanceDashboardScreen'
 import PerformanceOnboardingScreen from './src/screens/PerformanceOnboardingScreen'
@@ -78,6 +80,8 @@ function addSharedScreens(StackNav) {
       <StackNav.Screen name="GlowLibrary" component={GlowLibraryScreen} />
       <StackNav.Screen name="SeasonalGlowPacks" component={SeasonalGlowPacksScreen} />
       <StackNav.Screen name="BeginnerGlowPath" component={BeginnerGlowPathScreen} />
+      <StackNav.Screen name="WellnessFocus" component={WellnessFocusScreen} />
+      <StackNav.Screen name="WellnessResults" component={WellnessResultsScreen} />
       <StackNav.Screen name="WeeklyReport" component={WeeklyReportScreen} />
       <StackNav.Screen name="HallOfVitality" component={HallOfVitalityScreen} />
       <StackNav.Screen name="Settings" component={SettingsScreen} />

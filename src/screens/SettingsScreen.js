@@ -96,6 +96,7 @@ import {
 import Constants from 'expo-constants'
 import { useDeveloperAccess } from '../hooks/useDeveloperAccess'
 import DeveloperToolsPanel from '../components/DeveloperToolsPanel'
+import { WellnessSettingsDisclaimer, resetWellnessDisclaimer } from '../components/WellnessDisclaimer'
 
 // ── Intensity Stops ──────────────────────────────────────────
 
@@ -1302,6 +1303,8 @@ export default function SettingsScreen({ navigation }) {
           </TouchableOpacity>
         </View>
 
+        <WellnessSettingsDisclaimer />
+
         {/* ═══ DEVELOPER TOOLS (hidden, authorized only) ══════ */}
         {devAccess.devToolsVisible && (
           <DeveloperToolsPanel authResult={devAccess.authResult} />
@@ -1632,6 +1635,7 @@ export default function SettingsScreen({ navigation }) {
                           resetProfile()
                           resetChallenge()
                           resetScore()
+                          resetWellnessDisclaimer()
                           if (streakCtx && streakCtx.resetStreak) streakCtx.resetStreak()
                           resetAll()
                           Alert.alert('Done', 'All data cleared. Please restart the app for a clean state.')

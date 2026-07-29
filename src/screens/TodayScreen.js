@@ -12,6 +12,7 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  Pressable,
   Animated,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
@@ -32,12 +33,23 @@ import QuickLogger from '../components/QuickLogger'
 import RewardSplash from '../components/RewardSplash'
 import { useChallenge, DAILY_PILLARS } from '../services/ChallengeStore'
 import { useFlags } from '../services/FeatureFlags'
-import { useStreak } from '../services/StreakEngine'
+import { useGlowStreak, getGlowTodayKey } from '../services/glowStreak'
 import { useActivation } from '../services/ActivationStore'
 import { useUserProfile } from '../services/UserProfileStore'
+import { useJuiceLog } from '../services/JuiceLogStore'
+import { useNutritionScore } from '../services/NutritionScoreStore'
+import { USDA_RDA } from '../constants/nutrition'
 import { getGreeting } from '../constants/motivationData'
 import { DARK, FONT_SIZE, FONT_WEIGHT, RADIUS } from '../constants/tokens'
 import { useReducedMotion, DURATION, EASING } from '../utils/motion'
+import { trackEvent } from '../services/AnalyticsService'
+import { getSpotlightForDay, getSpotlightState } from '../data/juiceSpotlights'
+import { checkAchievements } from '../services/achievements'
+import TodaysJuiceSpotlight, { JuiceSpotlightDetailsModal } from '../components/TodaysJuiceSpotlight'
+import FocusNutrientCard from '../components/FocusNutrientCard'
+import TodaySummaryStats from '../components/TodaySummaryStats'
+import WeeklySummaryTeaser from '../components/WeeklySummaryTeaser'
+import AchievementOverlay from '../components/AchievementOverlay'
 
 // ── Supportive messages (calm, encouraging, not urgent) ──────
 
@@ -82,17 +94,98 @@ export default function TodayScreen({ navigation }) {
   const isReduced = useReducedMotion()
   const { isEnabled } = useFlags()
   const { challenge, logJuice, todayLog, vitalityScore } = useChallenge()
-  const streakCtx = useStreak()
+  const glowStreak = useGlowStreak()
   const { profile } = useUserProfile()
   const { unlocks, activation, recordLog } = useActivation()
+  const { todayEntries, totalLogCount } = useJuiceLog()
+  const { momentum, streak: nutritionStreak } = useNutritionScore()
   const [showQuickLogger, setShowQuickLogger] = useState(false)
   const [showRewardSplash, setShowRewardSplash] = useState(false)
+  const [showSpotlightDetails, setShowSpotlightDetails] = useState(false)
+  const [pendingAchievement, setPendingAchievement] = useState(null)
 
   const fadeAnim = useRef(new Animated.Value(0)).current
   useEffect(() => {
     if (isReduced) { fadeAnim.setValue(1) } else {
       Animated.timing(fadeAnim, { toValue: 1, duration: DURATION.enter, easing: EASING.decelerate, useNativeDriver: true }).start()
     }
+  }, [])
+
+  // ── Spotlight state ──
+  const spotlightDayKey = getGlowTodayKey()
+  const spotlight = useMemo(() => getSpotlightForDay({ dayKey: spotlightDayKey }), [spotlightDayKey])
+  const spotlightState = useMemo(() => getSpotlightState({ todayEntries, totalLogs: totalLogCount }), [todayEntries, totalLogCount])
+
+  const handleOpenSpotlight = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    setShowSpotlightDetails(true)
+    trackEvent('juice_spotlight_opened', { spotlight_id: spotlight.id, source: 'today_screen' })
+  }, [spotlight.id])
+
+  const handleUseSpotlightBlend = useCallback(() => {
+    setShowSpotlightDetails(false)
+    navigation.navigate('ScanFlow', {
+      screen: 'ScanHome',
+      params: {
+        manualEntry: true,
+        preloadIngredients: spotlight.ingredients,
+        source: 'spotlight',
+      },
+    })
+    trackEvent('juice_spotlight_used', { spotlight_id: spotlight.id, source: 'today_screen' })
+  }, [navigation, spotlight])
+
+  // ── Daily summary for TodaySummaryStats ──
+  const dailySummary = useMemo(() => {
+    const todayCount = todayLog.juices.length
+    const todayScore = typeof momentum === 'number' ? momentum : 0
+    const currentStreak = glowStreak.count
+
+    const todayTotals = {}
+    todayEntries.forEach((e) => {
+      const ns = e.nutrientSummary || {}
+      Object.keys(USDA_RDA).forEach((k) => { todayTotals[k] = (todayTotals[k] || 0) + (ns[k] || 0) })
+    })
+    const missingNutrients = Object.entries(USDA_RDA)
+      .filter(([k, rda]) => rda > 0 && ((todayTotals[k] || 0) / rda) < 0.05)
+      .map(([k]) => k === 'vitaminC' ? 'Vitamin C' : k === 'vitaminA' ? 'Vitamin A'
+        : k === 'potassium' ? 'Potassium' : k === 'iron' ? 'Iron'
+        : k === 'magnesium' ? 'Magnesium' : k === 'folate' ? 'Folate' : k)
+
+    let suggestion = ''
+    if (todayCount === 0 && currentStreak > 0) {
+      suggestion = `Keep your ${currentStreak}-day streak alive — scan your first juice today!`
+    } else if (todayCount === 0) {
+      suggestion = 'Start your day with a fresh juice scan!'
+    } else if (missingNutrients.length > 0 && missingNutrients.length <= 3) {
+      suggestion = `Try adding ${missingNutrients.join(', ')} to boost coverage.`
+    } else if (missingNutrients.length > 3) {
+      suggestion = `${missingNutrients.length} nutrients still below 5% — add variety!`
+    } else {
+      suggestion = 'Great coverage today! Keep it up.'
+    }
+
+    return { todayCount, todayScore, currentStreak, suggestion }
+  }, [todayLog.juices.length, momentum, glowStreak.count, todayEntries])
+
+  // ── Achievement check ──
+  useEffect(() => {
+    if (glowStreak.count === 0 && totalLogCount === 0) return
+    ;(async () => {
+      const newlyUnlocked = await checkAchievements({
+        totalLogs: totalLogCount,
+        streakCount: glowStreak.count,
+      })
+      if (newlyUnlocked.length > 0) {
+        setPendingAchievement(newlyUnlocked[0])
+        trackEvent('achievement_unlocked', { id: newlyUnlocked[0].id, source: 'today_screen' })
+      }
+    })()
+  }, [glowStreak.count, totalLogCount])
+
+  // ── Today screen viewed analytics ──
+  useEffect(() => {
+    trackEvent('today_screen_viewed', { total_logs: totalLogCount, has_logged_today: todayLog.juices.length > 0 })
   }, [])
 
   const greeting = useMemo(() => {
@@ -193,9 +286,9 @@ export default function TodayScreen({ navigation }) {
 
                     {/* Streak indicator */}
                     <View style={styles.heroStreakRow}>
-                      <Text style={styles.heroDay}>Day {challenge.currentDay}</Text>
-                      {challenge.streak > 0 && (
-                        <Text style={styles.heroStreak}>🔥 {challenge.streak} day streak</Text>
+                      <Text style={styles.heroDay}>Challenge Day {challenge.currentDay}</Text>
+                      {glowStreak.count > 0 && (
+                        <Text style={styles.heroStreak}>🔥 {glowStreak.count} day Glow Streak</Text>
                       )}
                     </View>
 
@@ -229,9 +322,43 @@ export default function TodayScreen({ navigation }) {
                     You've started tracking your nutrients.
                   </Text>
                   <Text style={styles.journeyDay}>
-                    Day {challenge.currentDay} of 7
+                    Challenge Day {challenge.currentDay} of 7
                   </Text>
                 </View>
+
+                {/* Today Summary Stats */}
+                <TodaySummaryStats
+                  todayCount={dailySummary.todayCount}
+                  todayScore={dailySummary.todayScore}
+                  streakCount={dailySummary.currentStreak}
+                  suggestion={dailySummary.suggestion}
+                />
+
+                {/* Today's Juice Spotlight */}
+                <TodaysJuiceSpotlight
+                  spotlight={spotlight}
+                  state={spotlightState}
+                  onViewBlend={handleOpenSpotlight}
+                  onScan={handleScan}
+                  onViewToday={() => {}}
+                  onAddAnother={handleQuickLog}
+                />
+                <JuiceSpotlightDetailsModal
+                  visible={showSpotlightDetails}
+                  spotlight={spotlight}
+                  onClose={() => setShowSpotlightDetails(false)}
+                  onUseBlend={handleUseSpotlightBlend}
+                />
+
+                {/* Today's Focus Nutrient */}
+                <FocusNutrientCard onScan={handleScan} isReduced={isReduced} />
+
+                {/* Weekly Summary Teaser (compact, real data only) */}
+                <WeeklySummaryTeaser
+                  juicesThisWeek={dailySummary.todayCount}
+                  glowStreakCount={glowStreak.count}
+                  isReduced={isReduced}
+                />
 
                 {/* Nutrient Halo (≥3 logs) */}
                 {showHalo && <NutrientHaloCard todayLog={todayLog} />}
@@ -301,10 +428,10 @@ export default function TodayScreen({ navigation }) {
                   </TouchableOpacity>
 
                   {/* Yesterday summary (small) */}
-                  {challenge.streak > 0 && (
+                  {glowStreak.count > 0 && (
                     <View style={styles.yesterdaySummary}>
                       <Text style={styles.yesterdayText}>
-                        🔥 {challenge.streak} day streak — keep it going
+                        🔥 {glowStreak.count} day Glow Streak — keep it going
                       </Text>
                     </View>
                   )}
@@ -317,10 +444,29 @@ export default function TodayScreen({ navigation }) {
                       {totalLogs} juice{totalLogs !== 1 ? 's' : ''} logged so far. Nice work.
                     </Text>
                     <Text style={styles.journeyDay}>
-                      Day {challenge.currentDay} of 7
+                      Challenge Day {challenge.currentDay} of 7
                     </Text>
                   </View>
                 )}
+
+                {/* Today's Juice Spotlight (pre-log) */}
+                <TodaysJuiceSpotlight
+                  spotlight={spotlight}
+                  state={spotlightState}
+                  onViewBlend={handleOpenSpotlight}
+                  onScan={handleScan}
+                  onViewToday={() => {}}
+                  onAddAnother={handleQuickLog}
+                />
+                <JuiceSpotlightDetailsModal
+                  visible={showSpotlightDetails}
+                  spotlight={spotlight}
+                  onClose={() => setShowSpotlightDetails(false)}
+                  onUseBlend={handleUseSpotlightBlend}
+                />
+
+                {/* Today's Focus Nutrient (pre-log) */}
+                <FocusNutrientCard onScan={handleScan} isReduced={isReduced} />
               </>
             )}
 
@@ -347,6 +493,13 @@ export default function TodayScreen({ navigation }) {
       <RewardSplash
         visible={showRewardSplash}
         onDismiss={() => setShowRewardSplash(false)}
+      />
+
+      {/* Achievement Overlay */}
+      <AchievementOverlay
+        achievement={pendingAchievement}
+        visible={!!pendingAchievement}
+        onDismiss={() => setPendingAchievement(null)}
       />
     </View>
   )

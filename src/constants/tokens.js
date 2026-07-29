@@ -214,3 +214,109 @@ export const A11Y = {
   minContrastLargeText: 3.0,
   minContrastUI: 3.0,
 }
+
+// ── Semantic Colors ───────────────────────────────────────────
+
+export const SEMANTIC_COLORS = {
+  canvas: BRAND.background.primary,
+  canvasDeep: BRAND.background.secondary,
+  surface: 'rgba(255,255,255,0.04)',
+  surfaceRaised: BRAND.glass.surfaceElevated,
+  surfaceInteractive: 'rgba(255,255,255,0.06)',
+  surfaceMuted: 'rgba(255,255,255,0.03)',
+  borderSubtle: 'rgba(255,255,255,0.04)',
+  borderStrong: 'rgba(255,255,255,0.08)',
+  textPrimary: BRAND.text.primary,
+  textSecondary: BRAND.text.secondary,
+  textMuted: BRAND.text.muted,
+  textOnAccent: '#FFFFFF',
+  accentPrimary: BRAND.cta.primary,
+  accentPrimaryPressed: BRAND.cta.pressed,
+  accentSecondary: '#64B5F6',
+  success: '#81C784',
+  warning: '#FFB74D',
+  danger: '#E91E63',
+  focusRing: 'rgba(100,181,246,0.4)',
+  overlay: 'rgba(0,0,0,0.7)',
+}
+
+// ── Semantic Spacing ──────────────────────────────────────────
+
+export const SEMANTIC_SPACE = {
+  xs: SPACE.xs,
+  sm: SPACE.sm,
+  md: SPACE.md,
+  lg: SPACE.lg,
+  xl: SPACE.xl,
+  xxl: SPACE.xxl,
+  xxxl: SPACE.xxxl,
+}
+
+// ── Semantic Radii ────────────────────────────────────────────
+
+export const SEMANTIC_RADIUS = {
+  small: RADIUS.sm,
+  medium: RADIUS.md,
+  large: RADIUS.lg,
+  card: RADIUS.lg,
+  pill: RADIUS.pill,
+  circular: RADIUS.pill,
+}
+
+// ── Semantic Typography Roles ─────────────────────────────────
+
+export const SEMANTIC_TYPOGRAPHY = {
+  screenTitle: {
+    fontSize: FONT_SIZE.xxl,
+    fontWeight: FONT_WEIGHT.bold,
+    lineHeight: LINE_HEIGHT.tight * FONT_SIZE.xxl,
+  },
+  sectionTitle: {
+    fontSize: FONT_SIZE.md,
+    fontWeight: FONT_WEIGHT.bold,
+    lineHeight: LINE_HEIGHT.normal * FONT_SIZE.md,
+  },
+  cardTitle: {
+    fontSize: FONT_SIZE.md,
+    fontWeight: FONT_WEIGHT.bold,
+    lineHeight: LINE_HEIGHT.normal * FONT_SIZE.md,
+  },
+  body: {
+    fontSize: FONT_SIZE.sm,
+    fontWeight: FONT_WEIGHT.regular,
+    lineHeight: LINE_HEIGHT.normal * FONT_SIZE.sm,
+  },
+  bodyStrong: {
+    fontSize: FONT_SIZE.sm,
+    fontWeight: FONT_WEIGHT.semibold,
+    lineHeight: LINE_HEIGHT.normal * FONT_SIZE.sm,
+  },
+  caption: {
+    fontSize: FONT_SIZE.xs,
+    fontWeight: FONT_WEIGHT.medium,
+    lineHeight: LINE_HEIGHT.normal * FONT_SIZE.xs,
+  },
+  metadata: {
+    fontSize: FONT_SIZE.xs,
+    fontWeight: FONT_WEIGHT.bold,
+    lineHeight: LINE_HEIGHT.normal * FONT_SIZE.xs,
+  },
+  buttonLabel: {
+    fontSize: FONT_SIZE.sm,
+    fontWeight: FONT_WEIGHT.bold,
+    lineHeight: LINE_HEIGHT.normal * FONT_SIZE.sm,
+  },
+  numericEmphasis: {
+    fontSize: FONT_SIZE.xl,
+    fontWeight: FONT_WEIGHT.bold,
+    lineHeight: LINE_HEIGHT.tight * FONT_SIZE.xl,
+  },
+}
+
+// ── Semantic Shadows / Elevation ──────────────────────────────
+
+export const SEMANTIC_SHADOWS = {
+  card: SHADOW.sm,
+  floatingAction: SHADOW.md,
+  modal: SHADOW.lg,
+}

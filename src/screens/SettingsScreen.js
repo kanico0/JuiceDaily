@@ -86,6 +86,7 @@ import {
   sendThreeDayTestNudges,
   setAndroidNotificationChannel,
 } from '../services/NotificationNudges'
+import { WellnessSettingsDisclaimer, resetWellnessDisclaimer } from '../components/WellnessDisclaimer'
 
 // ── Intensity Stops ──────────────────────────────────────────
 
@@ -1178,6 +1179,8 @@ export default function SettingsScreen({ navigation }) {
           </TouchableOpacity>
         </View>
 
+        <WellnessSettingsDisclaimer />
+
         {/* ═══ DEVELOPER FLAGS ═════════════════════════════ */}
         <SectionHeader
           icon={<FlaskConical size={18} color="#FFD54F" />}
@@ -1503,6 +1506,7 @@ export default function SettingsScreen({ navigation }) {
                           resetProfile()
                           resetChallenge()
                           resetScore()
+                          resetWellnessDisclaimer()
                           if (streakCtx && streakCtx.resetStreak) streakCtx.resetStreak()
                           resetAll()
                           Alert.alert('Done', 'All data cleared. Please restart the app for a clean state.')

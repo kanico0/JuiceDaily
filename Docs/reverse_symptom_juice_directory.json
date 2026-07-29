@@ -1,0 +1,1555 @@
+{
+  "_meta": {
+    "purpose": "Reverse lookup: wellness focus area -> associated nutrients -> juice/vegetable ingredients commonly rich in them",
+    "disclaimer": "For educational and entertainment purposes only. Not medical advice, diagnosis, or treatment. Nutrient associations reflect generally available public health information (e.g. NIH, USDA) and may not apply to your individual situation. Consult a doctor or registered dietitian before making dietary changes, especially if pregnant, nursing, on medication, or managing a medical condition.",
+    "schema_version": "1.1",
+    "focus_area_count": 100,
+    "nutrient_count": 32
+  },
+  "focus_areas": [
+    {
+      "id": "joint_comfort",
+      "label": "Joint Comfort (Mild Stiffness) Support",
+      "search_terms": [
+        "joint comfort (mild stiffness)"
+      ],
+      "associated_nutrients": [
+        "vitamin_c",
+        "anthocyanins",
+        "gingerol",
+        "curcumin"
+      ],
+      "note": "Commonly discussed nutrients for general joint comfort; not a treatment for any diagnosed joint condition."
+    },
+    {
+      "id": "post_workout_recovery",
+      "label": "Post-Workout Muscle Recovery Support",
+      "search_terms": [
+        "post-workout muscle recovery"
+      ],
+      "associated_nutrients": [
+        "potassium",
+        "tart_cherry",
+        "vitamin_c",
+        "magnesium"
+      ],
+      "note": "Tart cherry and antioxidants are frequently discussed in general recovery nutrition."
+    },
+    {
+      "id": "muscle_cramp_comfort",
+      "label": "Muscle Cramp Comfort Support",
+      "search_terms": [
+        "muscle cramp comfort"
+      ],
+      "associated_nutrients": [
+        "potassium",
+        "magnesium",
+        "calcium"
+      ],
+      "note": "Electrolyte minerals commonly linked to muscle function."
+    },
+    {
+      "id": "bone_strength",
+      "label": "Bone Strength Support",
+      "search_terms": [
+        "bone strength"
+      ],
+      "associated_nutrients": [
+        "calcium",
+        "vitamin_k",
+        "magnesium"
+      ],
+      "note": "General bone-supporting nutrients per public health sources."
+    },
+    {
+      "id": "flexibility_mobility",
+      "label": "Flexibility & Mobility Support",
+      "search_terms": [
+        "flexibility & mobility"
+      ],
+      "associated_nutrients": [
+        "vitamin_c",
+        "gingerol",
+        "curcumin"
+      ],
+      "note": "General connective-tissue-supporting nutrients."
+    },
+    {
+      "id": "athletic_endurance",
+      "label": "Athletic Endurance Support",
+      "search_terms": [
+        "athletic endurance"
+      ],
+      "associated_nutrients": [
+        "nitrates",
+        "iron",
+        "electrolytes"
+      ],
+      "note": "Beet-derived nitrates are commonly discussed in endurance nutrition circles."
+    },
+    {
+      "id": "exercise_soreness",
+      "label": "Exercise Soreness Comfort Support",
+      "search_terms": [
+        "exercise soreness comfort"
+      ],
+      "associated_nutrients": [
+        "tart_cherry",
+        "vitamin_c",
+        "potassium"
+      ],
+      "note": "Commonly cited post-exercise recovery nutrients."
+    },
+    {
+      "id": "nighttime_leg_comfort",
+      "label": "Nighttime Leg Comfort Support",
+      "search_terms": [
+        "nighttime leg comfort"
+      ],
+      "associated_nutrients": [
+        "magnesium",
+        "potassium",
+        "calcium"
+      ],
+      "note": "General mineral support; not intended for any diagnosed neurological condition."
+    },
+    {
+      "id": "immune_support",
+      "label": "Immune Support",
+      "search_terms": [
+        "immune"
+      ],
+      "associated_nutrients": [
+        "vitamin_c",
+        "vitamin_a",
+        "zinc"
+      ],
+      "note": "General immune-supporting nutrients per public health sources."
+    },
+    {
+      "id": "cold_flu_prep",
+      "label": "Cold & Flu Season Prep Support",
+      "search_terms": [
+        "cold & flu season prep"
+      ],
+      "associated_nutrients": [
+        "vitamin_c",
+        "zinc",
+        "vitamin_a"
+      ],
+      "note": "General seasonal wellness nutrients."
+    },
+    {
+      "id": "seasonal_allergy_comfort",
+      "label": "Seasonal Allergy Comfort Support",
+      "search_terms": [
+        "seasonal allergy comfort"
+      ],
+      "associated_nutrients": [
+        "quercetin",
+        "vitamin_c"
+      ],
+      "note": "Quercetin is a commonly discussed plant compound in seasonal wellness content."
+    },
+    {
+      "id": "sinus_congestion_comfort",
+      "label": "Sinus & Congestion Comfort Support",
+      "search_terms": [
+        "sinus & congestion comfort"
+      ],
+      "associated_nutrients": [
+        "vitamin_c",
+        "gingerol",
+        "electrolytes"
+      ],
+      "note": "General hydration and vitamin C are commonly cited for sinus comfort."
+    },
+    {
+      "id": "sore_throat_soothing",
+      "label": "Sore Throat Soothing Support",
+      "search_terms": [
+        "sore throat soothing"
+      ],
+      "associated_nutrients": [
+        "vitamin_c",
+        "gingerol",
+        "electrolytes"
+      ],
+      "note": "Hydration and vitamin C are commonly cited comfort measures."
+    },
+    {
+      "id": "cough_comfort",
+      "label": "Cough Comfort Support",
+      "search_terms": [
+        "cough comfort"
+      ],
+      "associated_nutrients": [
+        "vitamin_c",
+        "gingerol"
+      ],
+      "note": "General soothing/hydrating nutrients."
+    },
+    {
+      "id": "post_illness_recovery",
+      "label": "Post-Illness Recovery Support",
+      "search_terms": [
+        "post-illness recovery"
+      ],
+      "associated_nutrients": [
+        "vitamin_c",
+        "zinc",
+        "iron",
+        "electrolytes"
+      ],
+      "note": "General rebuilding nutrients after being unwell."
+    },
+    {
+      "id": "winter_wellness",
+      "label": "Winter Wellness Support",
+      "search_terms": [
+        "winter wellness"
+      ],
+      "associated_nutrients": [
+        "vitamin_c",
+        "vitamin_a",
+        "zinc"
+      ],
+      "note": "General cold-weather immune-supporting nutrients."
+    },
+    {
+      "id": "low_energy_fatigue",
+      "label": "Low Energy / Fatigue Support",
+      "search_terms": [
+        "low energy / fatigue"
+      ],
+      "associated_nutrients": [
+        "iron",
+        "b6",
+        "magnesium",
+        "vitamin_c"
+      ],
+      "note": "Vitamin C included because it aids iron absorption from plant sources."
+    },
+    {
+      "id": "morning_energy_boost",
+      "label": "Morning Energy Boost Support",
+      "search_terms": [
+        "morning energy boost"
+      ],
+      "associated_nutrients": [
+        "vitamin_c",
+        "iron",
+        "b6"
+      ],
+      "note": "General energizing nutrients; not a caffeine substitute claim."
+    },
+    {
+      "id": "afternoon_slump",
+      "label": "Afternoon Slump Support",
+      "search_terms": [
+        "afternoon slump"
+      ],
+      "associated_nutrients": [
+        "magnesium",
+        "fiber_pulp",
+        "vitamin_c"
+      ],
+      "note": "Fiber-retained juices are often discussed for steadier energy."
+    },
+    {
+      "id": "crash_free_energy",
+      "label": "Sustained, Crash-Free Energy Support",
+      "search_terms": [
+        "sustained, crash-free energy"
+      ],
+      "associated_nutrients": [
+        "fiber_pulp",
+        "magnesium",
+        "b6"
+      ],
+      "note": "Pulp-retained fiber slows sugar absorption, a commonly cited concept."
+    },
+    {
+      "id": "metabolism_support",
+      "label": "Metabolism Support",
+      "search_terms": [
+        "metabolism"
+      ],
+      "associated_nutrients": [
+        "b6",
+        "iron",
+        "niacin"
+      ],
+      "note": "General metabolism-related nutrients."
+    },
+    {
+      "id": "healthy_weight_mgmt",
+      "label": "Healthy Weight Management Support",
+      "search_terms": [
+        "healthy weight management"
+      ],
+      "associated_nutrients": [
+        "fiber_pulp",
+        "vitamin_c"
+      ],
+      "note": "General nutrient support only; not a weight-loss program."
+    },
+    {
+      "id": "sugar_craving_support",
+      "label": "Sugar Craving Support",
+      "search_terms": [
+        "sugar craving"
+      ],
+      "associated_nutrients": [
+        "fiber_pulp",
+        "magnesium"
+      ],
+      "note": "Fiber and minerals are commonly discussed in relation to craving management."
+    },
+    {
+      "id": "athletic_performance",
+      "label": "Athletic Performance Support",
+      "search_terms": [
+        "athletic performance"
+      ],
+      "associated_nutrients": [
+        "nitrates",
+        "potassium",
+        "electrolytes"
+      ],
+      "note": "General performance-nutrition concepts, not a supplement claim."
+    },
+    {
+      "id": "digestive_comfort",
+      "label": "Digestive Comfort / Bloating Support",
+      "search_terms": [
+        "digestive comfort / bloating"
+      ],
+      "associated_nutrients": [
+        "fiber_pulp",
+        "bromelain",
+        "papain",
+        "gingerol"
+      ],
+      "note": "Enzyme-related compounds and fiber are commonly cited for digestive comfort."
+    },
+    {
+      "id": "regularity_support",
+      "label": "Regularity Support",
+      "search_terms": [
+        "regularity"
+      ],
+      "associated_nutrients": [
+        "fiber_pulp",
+        "electrolytes"
+      ],
+      "note": "General fiber/hydration support."
+    },
+    {
+      "id": "gut_microbiome_support",
+      "label": "Gut Microbiome Support",
+      "search_terms": [
+        "gut microbiome"
+      ],
+      "associated_nutrients": [
+        "fiber_pulp",
+        "chlorophyll"
+      ],
+      "note": "General plant-fiber nutrients commonly discussed for gut health."
+    },
+    {
+      "id": "post_meal_bloat",
+      "label": "Post-Meal Bloat Comfort Support",
+      "search_terms": [
+        "post-meal bloat comfort"
+      ],
+      "associated_nutrients": [
+        "gingerol",
+        "bromelain",
+        "papain"
+      ],
+      "note": "Commonly cited digestive-enzyme-related ingredients."
+    },
+    {
+      "id": "heartburn_comfort",
+      "label": "Heartburn Comfort Support (Non-Citrus Focus)",
+      "search_terms": [
+        "heartburn comfort support (non-citrus focus)"
+      ],
+      "associated_nutrients": [
+        "gingerol",
+        "chlorophyll"
+      ],
+      "note": "Non-citrus, non-acidic ingredients are often preferred; citrus commonly excluded here."
+    },
+    {
+      "id": "nausea_comfort",
+      "label": "Nausea Comfort Support",
+      "search_terms": [
+        "nausea comfort"
+      ],
+      "associated_nutrients": [
+        "gingerol",
+        "electrolytes"
+      ],
+      "note": "Ginger is one of the most commonly cited general nausea-comfort ingredients."
+    },
+    {
+      "id": "motion_sickness_comfort",
+      "label": "Motion Sickness Comfort Support",
+      "search_terms": [
+        "motion sickness comfort"
+      ],
+      "associated_nutrients": [
+        "gingerol"
+      ],
+      "note": "Ginger is widely discussed in general wellness contexts for this purpose."
+    },
+    {
+      "id": "post_antibiotic_gut",
+      "label": "Post-Antibiotic Gut Rebuild Support",
+      "search_terms": [
+        "post-antibiotic gut rebuild"
+      ],
+      "associated_nutrients": [
+        "fiber_pulp",
+        "chlorophyll",
+        "vitamin_c"
+      ],
+      "note": "General plant-fiber support; not a substitute for probiotics or medical guidance."
+    },
+    {
+      "id": "skin_glow",
+      "label": "Skin Glow / Radiance Support",
+      "search_terms": [
+        "skin glow / radiance"
+      ],
+      "associated_nutrients": [
+        "vitamin_a",
+        "vitamin_c",
+        "vitamin_e"
+      ],
+      "note": "General antioxidant/vitamin support for skin appearance."
+    },
+    {
+      "id": "acne_prone_skin",
+      "label": "Acne-Prone Skin Support",
+      "search_terms": [
+        "acne-prone skin"
+      ],
+      "associated_nutrients": [
+        "vitamin_a",
+        "zinc",
+        "vitamin_c"
+      ],
+      "note": "General nutrient support; not a treatment for any diagnosed skin condition."
+    },
+    {
+      "id": "dry_skin_hydration",
+      "label": "Dry Skin Hydration Support",
+      "search_terms": [
+        "dry skin hydration"
+      ],
+      "associated_nutrients": [
+        "silica",
+        "electrolytes",
+        "vitamin_e"
+      ],
+      "note": "General hydration-focused ingredients."
+    },
+    {
+      "id": "skin_elasticity",
+      "label": "Skin Elasticity Support",
+      "search_terms": [
+        "skin elasticity"
+      ],
+      "associated_nutrients": [
+        "vitamin_c",
+        "silica"
+      ],
+      "note": "Vitamin C supports collagen synthesis, a commonly cited mechanism."
+    },
+    {
+      "id": "sun_exposed_skin",
+      "label": "Sun-Exposed Skin Antioxidant Support",
+      "search_terms": [
+        "sun-exposed skin antioxidant"
+      ],
+      "associated_nutrients": [
+        "vitamin_c",
+        "vitamin_e",
+        "lycopene"
+      ],
+      "note": "General antioxidant support; not sun protection or sunburn treatment."
+    },
+    {
+      "id": "undereye_puffiness",
+      "label": "Under-Eye Puffiness Support",
+      "search_terms": [
+        "under-eye puffiness"
+      ],
+      "associated_nutrients": [
+        "vitamin_k",
+        "electrolytes",
+        "potassium"
+      ],
+      "note": "General hydration/circulation nutrients commonly discussed for puffiness."
+    },
+    {
+      "id": "skin_healing_support",
+      "label": "Skin Healing Support (Minor Cuts & Scrapes)",
+      "search_terms": [
+        "skin healing support (minor cuts & scrapes)"
+      ],
+      "associated_nutrients": [
+        "vitamin_c",
+        "zinc"
+      ],
+      "note": "General nutrients linked to skin repair; not a substitute for wound care or medical treatment."
+    },
+    {
+      "id": "hair_strength",
+      "label": "Hair Strength Support",
+      "search_terms": [
+        "hair strength"
+      ],
+      "associated_nutrients": [
+        "iron",
+        "zinc",
+        "vitamin_c"
+      ],
+      "note": "General nutrients commonly discussed for hair health."
+    },
+    {
+      "id": "hair_thinning",
+      "label": "Hair Thinning Support",
+      "search_terms": [
+        "hair thinning"
+      ],
+      "associated_nutrients": [
+        "iron",
+        "zinc",
+        "folate"
+      ],
+      "note": "General nutrient support; not a treatment for hair loss conditions."
+    },
+    {
+      "id": "scalp_health",
+      "label": "Scalp Health Support",
+      "search_terms": [
+        "scalp health"
+      ],
+      "associated_nutrients": [
+        "zinc",
+        "vitamin_e"
+      ],
+      "note": "General nutrient support for scalp wellness."
+    },
+    {
+      "id": "nail_strength",
+      "label": "Nail Strength Support",
+      "search_terms": [
+        "nail strength"
+      ],
+      "associated_nutrients": [
+        "iron",
+        "zinc"
+      ],
+      "note": "General nutrients commonly linked to nail health."
+    },
+    {
+      "id": "brittle_nail_comfort",
+      "label": "Brittle Nail Comfort Support",
+      "search_terms": [
+        "brittle nail comfort"
+      ],
+      "associated_nutrients": [
+        "iron",
+        "zinc",
+        "vitamin_c"
+      ],
+      "note": "General nutrient support."
+    },
+    {
+      "id": "eye_strain_comfort",
+      "label": "Eye Strain / Screen Fatigue Comfort Support",
+      "search_terms": [
+        "eye strain / screen fatigue comfort"
+      ],
+      "associated_nutrients": [
+        "lutein",
+        "zeaxanthin",
+        "vitamin_a"
+      ],
+      "note": "Commonly discussed nutrients for general eye comfort."
+    },
+    {
+      "id": "general_eye_health",
+      "label": "General Eye Health Support",
+      "search_terms": [
+        "general eye health"
+      ],
+      "associated_nutrients": [
+        "vitamin_a",
+        "lutein",
+        "zeaxanthin"
+      ],
+      "note": "General eye-health nutrients per public sources."
+    },
+    {
+      "id": "night_vision_support",
+      "label": "Night Vision Support",
+      "search_terms": [
+        "night vision"
+      ],
+      "associated_nutrients": [
+        "vitamin_a"
+      ],
+      "note": "Vitamin A is the most commonly cited nutrient in this context."
+    },
+    {
+      "id": "dry_eye_comfort",
+      "label": "Dry Eye Comfort Support",
+      "search_terms": [
+        "dry eye comfort"
+      ],
+      "associated_nutrients": [
+        "vitamin_a",
+        "electrolytes"
+      ],
+      "note": "General hydration/vitamin support; not a treatment for diagnosed dry eye."
+    },
+    {
+      "id": "heart_healthy_nutrients",
+      "label": "Heart-Healthy Nutrient Support",
+      "search_terms": [
+        "heart-healthy nutrient"
+      ],
+      "associated_nutrients": [
+        "potassium",
+        "fiber_pulp",
+        "nitrates"
+      ],
+      "note": "General heart-healthy nutrients widely discussed in nutrition literature."
+    },
+    {
+      "id": "healthy_blood_pressure",
+      "label": "Healthy Blood Pressure Support",
+      "search_terms": [
+        "healthy blood pressure"
+      ],
+      "associated_nutrients": [
+        "potassium",
+        "magnesium",
+        "nitrates"
+      ],
+      "note": "Reflects commonly cited DASH-style nutrient patterns; not for diagnosed hypertension management without medical guidance."
+    },
+    {
+      "id": "cholesterol_balance",
+      "label": "Cholesterol Balance Support",
+      "search_terms": [
+        "cholesterol balance"
+      ],
+      "associated_nutrients": [
+        "fiber_pulp",
+        "plant_sterols",
+        "pectin"
+      ],
+      "note": "Soluble fiber and plant sterols are commonly cited in cholesterol-related nutrition content."
+    },
+    {
+      "id": "circulation_support",
+      "label": "Circulation Support",
+      "search_terms": [
+        "circulation"
+      ],
+      "associated_nutrients": [
+        "vitamin_e",
+        "iron",
+        "niacin",
+        "nitrates"
+      ],
+      "note": "General circulatory-support nutrients."
+    },
+    {
+      "id": "cold_hands_feet",
+      "label": "Cold Hands & Feet Comfort Support",
+      "search_terms": [
+        "cold hands & feet comfort"
+      ],
+      "associated_nutrients": [
+        "iron",
+        "vitamin_e",
+        "niacin"
+      ],
+      "note": "General nutrient support."
+    },
+    {
+      "id": "vein_health",
+      "label": "Vein Health Support",
+      "search_terms": [
+        "vein health"
+      ],
+      "associated_nutrients": [
+        "bioflavonoids",
+        "vitamin_c"
+      ],
+      "note": "Citrus bioflavonoids are commonly cited in general vein-health wellness content."
+    },
+    {
+      "id": "easy_bruising",
+      "label": "Easy Bruising Nutrient Support",
+      "search_terms": [
+        "easy bruising nutrient"
+      ],
+      "associated_nutrients": [
+        "vitamin_c",
+        "vitamin_k"
+      ],
+      "note": "General nutrient support; frequent or unexplained bruising should be discussed with a doctor."
+    },
+    {
+      "id": "blood_sugar_balance",
+      "label": "Healthy Blood Sugar Balance Support",
+      "search_terms": [
+        "healthy blood sugar balance"
+      ],
+      "associated_nutrients": [
+        "fiber_pulp",
+        "magnesium"
+      ],
+      "note": "General fiber/mineral nutrients; not intended for managing diabetes or any diagnosed condition."
+    },
+    {
+      "id": "steady_blood_sugar",
+      "label": "Steady Energy / Balanced Blood Sugar Support",
+      "search_terms": [
+        "steady energy / balanced blood sugar"
+      ],
+      "associated_nutrients": [
+        "fiber_pulp",
+        "magnesium"
+      ],
+      "note": "Pulp-retained fiber is commonly cited for slower sugar absorption."
+    },
+    {
+      "id": "metabolic_balance",
+      "label": "Metabolic Balance Support",
+      "search_terms": [
+        "metabolic balance"
+      ],
+      "associated_nutrients": [
+        "fiber_pulp",
+        "b6",
+        "magnesium"
+      ],
+      "note": "General metabolic-wellness nutrients."
+    },
+    {
+      "id": "balanced_carb_metabolism",
+      "label": "Balanced Carb Metabolism Support",
+      "search_terms": [
+        "balanced carb metabolism"
+      ],
+      "associated_nutrients": [
+        "fiber_pulp",
+        "magnesium"
+      ],
+      "note": "General fiber-focused nutrient support, not a clinical intervention."
+    },
+    {
+      "id": "pms_comfort",
+      "label": "PMS Comfort Support",
+      "search_terms": [
+        "pms comfort"
+      ],
+      "associated_nutrients": [
+        "magnesium",
+        "b6"
+      ],
+      "note": "Commonly cited general nutrients; consult a doctor for persistent symptoms."
+    },
+    {
+      "id": "menstrual_comfort",
+      "label": "Menstrual Comfort Support",
+      "search_terms": [
+        "menstrual comfort"
+      ],
+      "associated_nutrients": [
+        "iron",
+        "magnesium",
+        "vitamin_c"
+      ],
+      "note": "Iron support reflects general blood-loss-related nutrition guidance."
+    },
+    {
+      "id": "hormone_balance_general",
+      "label": "Hormone Balance Support (General)",
+      "search_terms": [
+        "hormone balance support"
+      ],
+      "associated_nutrients": [
+        "b6",
+        "magnesium",
+        "vitamin_c"
+      ],
+      "note": "General wellness nutrients; not a hormonal treatment."
+    },
+    {
+      "id": "menopause_comfort",
+      "label": "Menopause Comfort Support",
+      "search_terms": [
+        "menopause comfort"
+      ],
+      "associated_nutrients": [
+        "calcium",
+        "magnesium",
+        "vitamin_e"
+      ],
+      "note": "General nutrient support for this life stage; consult a doctor for personalized guidance."
+    },
+    {
+      "id": "water_retention_comfort",
+      "label": "Water Retention Comfort Support",
+      "search_terms": [
+        "water retention comfort"
+      ],
+      "associated_nutrients": [
+        "potassium",
+        "electrolytes"
+      ],
+      "note": "General mineral-balance nutrients."
+    },
+    {
+      "id": "prostate_friendly",
+      "label": "Prostate-Friendly Nutrient Support",
+      "search_terms": [
+        "prostate-friendly nutrient"
+      ],
+      "associated_nutrients": [
+        "lycopene",
+        "zinc"
+      ],
+      "note": "Lycopene (tomato/watermelon) is widely cited in general prostate-wellness nutrition content."
+    },
+    {
+      "id": "vitality_stamina",
+      "label": "Vitality & Stamina Support",
+      "search_terms": [
+        "vitality & stamina"
+      ],
+      "associated_nutrients": [
+        "nitrates",
+        "iron",
+        "zinc"
+      ],
+      "note": "General energy/circulation nutrients."
+    },
+    {
+      "id": "active_lifestyle_men",
+      "label": "Active Lifestyle Support (Men)",
+      "search_terms": [
+        "active lifestyle support (men)"
+      ],
+      "associated_nutrients": [
+        "potassium",
+        "electrolytes",
+        "b6"
+      ],
+      "note": "General performance-nutrition concepts."
+    },
+    {
+      "id": "focus_concentration",
+      "label": "Focus & Concentration Support",
+      "search_terms": [
+        "focus & concentration"
+      ],
+      "associated_nutrients": [
+        "vitamin_c",
+        "folate",
+        "iron"
+      ],
+      "note": "General nutrients linked to cognitive function in public health sources."
+    },
+    {
+      "id": "memory_support",
+      "label": "Memory Support",
+      "search_terms": [
+        "memory"
+      ],
+      "associated_nutrients": [
+        "vitamin_e",
+        "folate",
+        "anthocyanins"
+      ],
+      "note": "Antioxidants are commonly discussed in general brain-health nutrition content."
+    },
+    {
+      "id": "brain_fog_comfort",
+      "label": "Brain Fog Comfort Support",
+      "search_terms": [
+        "brain fog comfort"
+      ],
+      "associated_nutrients": [
+        "iron",
+        "b6",
+        "vitamin_c"
+      ],
+      "note": "General nutrient support; persistent brain fog is worth discussing with a doctor."
+    },
+    {
+      "id": "calm_relaxation",
+      "label": "Calm & Relaxation Support",
+      "search_terms": [
+        "calm & relaxation"
+      ],
+      "associated_nutrients": [
+        "magnesium",
+        "vitamin_c"
+      ],
+      "note": "General wellness nutrients, not a treatment for any diagnosed mental health condition."
+    },
+    {
+      "id": "mood_support_general",
+      "label": "Mood Support (General Wellness)",
+      "search_terms": [
+        "mood support"
+      ],
+      "associated_nutrients": [
+        "folate",
+        "vitamin_c",
+        "magnesium"
+      ],
+      "note": "General wellness nutrients only; please seek professional support for ongoing mood concerns."
+    },
+    {
+      "id": "stress_resilience",
+      "label": "Stress Resilience Support",
+      "search_terms": [
+        "stress resilience"
+      ],
+      "associated_nutrients": [
+        "vitamin_c",
+        "magnesium"
+      ],
+      "note": "General wellness nutrients commonly cited in stress-nutrition content."
+    },
+    {
+      "id": "mental_clarity",
+      "label": "Mental Clarity Support",
+      "search_terms": [
+        "mental clarity"
+      ],
+      "associated_nutrients": [
+        "vitamin_c",
+        "iron",
+        "folate"
+      ],
+      "note": "General cognitive-wellness nutrients."
+    },
+    {
+      "id": "sleep_quality",
+      "label": "Sleep Quality Support",
+      "search_terms": [
+        "sleep quality"
+      ],
+      "associated_nutrients": [
+        "tart_cherry",
+        "magnesium"
+      ],
+      "note": "Tart cherry is commonly cited in general sleep-wellness nutrition content."
+    },
+    {
+      "id": "winddown_bedtime",
+      "label": "Wind-Down / Bedtime Comfort Support",
+      "search_terms": [
+        "wind-down / bedtime comfort"
+      ],
+      "associated_nutrients": [
+        "magnesium",
+        "tart_cherry"
+      ],
+      "note": "General calming nutrients."
+    },
+    {
+      "id": "morning_grogginess",
+      "label": "Morning Grogginess Support",
+      "search_terms": [
+        "morning grogginess"
+      ],
+      "associated_nutrients": [
+        "vitamin_c",
+        "iron",
+        "electrolytes"
+      ],
+      "note": "General hydration/energy nutrients."
+    },
+    {
+      "id": "jet_lag_recovery",
+      "label": "Jet Lag Recovery Support",
+      "search_terms": [
+        "jet lag recovery"
+      ],
+      "associated_nutrients": [
+        "electrolytes",
+        "vitamin_c",
+        "magnesium"
+      ],
+      "note": "General hydration and recovery nutrients."
+    },
+    {
+      "id": "gum_health",
+      "label": "Gum Health Support",
+      "search_terms": [
+        "gum health"
+      ],
+      "associated_nutrients": [
+        "vitamin_c",
+        "calcium"
+      ],
+      "note": "Vitamin C is commonly cited in general gum-health nutrition content."
+    },
+    {
+      "id": "oral_freshness",
+      "label": "Oral Freshness Support",
+      "search_terms": [
+        "oral freshness"
+      ],
+      "associated_nutrients": [
+        "chlorophyll",
+        "vitamin_c"
+      ],
+      "note": "Chlorophyll-rich greens are commonly cited in general oral-freshness wellness content."
+    },
+    {
+      "id": "canker_sore_comfort",
+      "label": "Canker Sore Comfort Support",
+      "search_terms": [
+        "canker sore comfort"
+      ],
+      "associated_nutrients": [
+        "folate",
+        "iron",
+        "vitamin_c"
+      ],
+      "note": "General nutrient support; recurring sores are worth discussing with a doctor or dentist."
+    },
+    {
+      "id": "tension_headache_comfort",
+      "label": "Tension Headache Comfort Support",
+      "search_terms": [
+        "tension headache comfort"
+      ],
+      "associated_nutrients": [
+        "magnesium",
+        "electrolytes"
+      ],
+      "note": "Magnesium and hydration are commonly cited in general headache-wellness content."
+    },
+    {
+      "id": "caffeine_withdrawal_headache",
+      "label": "Caffeine Withdrawal Headache Support",
+      "search_terms": [
+        "caffeine withdrawal headache"
+      ],
+      "associated_nutrients": [
+        "electrolytes",
+        "magnesium"
+      ],
+      "note": "General hydration-focused nutrients."
+    },
+    {
+      "id": "urinary_comfort",
+      "label": "Urinary Comfort Support",
+      "search_terms": [
+        "urinary comfort"
+      ],
+      "associated_nutrients": [
+        "vitamin_c",
+        "electrolytes"
+      ],
+      "note": "General hydration nutrients; consult a doctor for suspected infection."
+    },
+    {
+      "id": "kidney_friendly_hydration",
+      "label": "Kidney-Friendly Hydration Support",
+      "search_terms": [
+        "kidney-friendly hydration"
+      ],
+      "associated_nutrients": [
+        "electrolytes",
+        "citrate"
+      ],
+      "note": "General hydration nutrients, not intended for anyone with diagnosed kidney conditions without medical guidance."
+    },
+    {
+      "id": "bladder_comfort",
+      "label": "Bladder Comfort Support",
+      "search_terms": [
+        "bladder comfort"
+      ],
+      "associated_nutrients": [
+        "electrolytes",
+        "vitamin_c"
+      ],
+      "note": "General hydration-focused nutrients."
+    },
+    {
+      "id": "daily_hydration_electrolytes",
+      "label": "Daily Hydration & Electrolyte Support",
+      "search_terms": [
+        "daily hydration & electrolyte"
+      ],
+      "associated_nutrients": [
+        "electrolytes",
+        "potassium"
+      ],
+      "note": "General everyday hydration nutrients."
+    },
+    {
+      "id": "liver_friendly",
+      "label": "Liver-Friendly Nutrient Support",
+      "search_terms": [
+        "liver-friendly nutrient"
+      ],
+      "associated_nutrients": [
+        "chlorophyll",
+        "vitamin_c",
+        "nitrates"
+      ],
+      "note": "General wellness nutrients; the body's own liver and kidneys handle detoxification \u2014 this is not a medical detox claim."
+    },
+    {
+      "id": "morning_reset",
+      "label": "Morning Reset Support",
+      "search_terms": [
+        "morning reset"
+      ],
+      "associated_nutrients": [
+        "chlorophyll",
+        "vitamin_c",
+        "electrolytes"
+      ],
+      "note": "A popular general-wellness term rather than a clinical necessity."
+    },
+    {
+      "id": "post_holiday_reset",
+      "label": "Post-Holiday Reset Support",
+      "search_terms": [
+        "post-holiday reset"
+      ],
+      "associated_nutrients": [
+        "fiber_pulp",
+        "electrolytes",
+        "vitamin_c"
+      ],
+      "note": "General lighter-eating-pattern nutrient support."
+    },
+    {
+      "id": "hangover_comfort",
+      "label": "Alcohol Recovery / Hangover Comfort Support",
+      "search_terms": [
+        "alcohol recovery / hangover comfort"
+      ],
+      "associated_nutrients": [
+        "electrolytes",
+        "vitamin_c",
+        "fiber_pulp"
+      ],
+      "note": "General rehydration nutrients; not a treatment for alcohol-related harm."
+    },
+    {
+      "id": "healthy_aging_antioxidant",
+      "label": "Healthy Aging Antioxidant Support",
+      "search_terms": [
+        "healthy aging antioxidant"
+      ],
+      "associated_nutrients": [
+        "vitamin_c",
+        "vitamin_e",
+        "anthocyanins"
+      ],
+      "note": "General antioxidant nutrients commonly discussed in healthy-aging wellness content."
+    },
+    {
+      "id": "cellular_health_antioxidant",
+      "label": "Cellular Health Antioxidant Support",
+      "search_terms": [
+        "cellular health antioxidant"
+      ],
+      "associated_nutrients": [
+        "vitamin_c",
+        "vitamin_e",
+        "anthocyanins"
+      ],
+      "note": "General antioxidant-focused nutrients."
+    },
+    {
+      "id": "fine_lines_skin_aging",
+      "label": "Fine Lines / Skin Aging Support",
+      "search_terms": [
+        "fine lines / skin aging"
+      ],
+      "associated_nutrients": [
+        "vitamin_c",
+        "vitamin_e"
+      ],
+      "note": "Vitamin C's role in collagen synthesis is commonly cited here."
+    },
+    {
+      "id": "bone_joint_aging",
+      "label": "Bone & Joint Aging Support",
+      "search_terms": [
+        "bone & joint aging"
+      ],
+      "associated_nutrients": [
+        "calcium",
+        "vitamin_k",
+        "vitamin_c"
+      ],
+      "note": "General nutrient support for aging-related bone/joint wellness."
+    },
+    {
+      "id": "travel_fatigue",
+      "label": "Travel Fatigue Support",
+      "search_terms": [
+        "travel fatigue"
+      ],
+      "associated_nutrients": [
+        "electrolytes",
+        "vitamin_c",
+        "iron"
+      ],
+      "note": "General hydration/energy nutrients."
+    },
+    {
+      "id": "post_flight_puffiness",
+      "label": "Post-Flight Puffiness Support",
+      "search_terms": [
+        "post-flight puffiness"
+      ],
+      "associated_nutrients": [
+        "potassium",
+        "electrolytes"
+      ],
+      "note": "General circulation/hydration nutrients."
+    },
+    {
+      "id": "outdoor_sun_recovery",
+      "label": "Outdoor / Sun Exposure Recovery Support",
+      "search_terms": [
+        "outdoor / sun exposure recovery"
+      ],
+      "associated_nutrients": [
+        "vitamin_c",
+        "vitamin_e",
+        "electrolytes"
+      ],
+      "note": "General antioxidant/hydration nutrients; not sunburn treatment."
+    },
+    {
+      "id": "general_antioxidant_boost",
+      "label": "General Antioxidant Boost Support",
+      "search_terms": [
+        "general antioxidant boost"
+      ],
+      "associated_nutrients": [
+        "vitamin_c",
+        "vitamin_e",
+        "anthocyanins"
+      ],
+      "note": "A broad-spectrum antioxidant category for general wellness."
+    },
+    {
+      "id": "everyday_foundational",
+      "label": "Everyday Wellness / Foundational Nutrient Support",
+      "search_terms": [
+        "everyday wellness / foundational nutrient"
+      ],
+      "associated_nutrients": [
+        "vitamin_c",
+        "vitamin_a",
+        "potassium",
+        "fiber_pulp"
+      ],
+      "note": "A broad, general-purpose everyday nutrition category."
+    }
+  ],
+  "nutrients": {
+    "vitamin_c": {
+      "label": "Vitamin C",
+      "juice_ingredients": [
+        "orange",
+        "lemon",
+        "lime",
+        "grapefruit",
+        "kiwi",
+        "strawberry",
+        "bell pepper",
+        "kale",
+        "parsley",
+        "pineapple"
+      ]
+    },
+    "vitamin_a": {
+      "label": "Vitamin A (as beta-carotene)",
+      "juice_ingredients": [
+        "carrot",
+        "sweet potato",
+        "pumpkin",
+        "mango",
+        "spinach",
+        "kale"
+      ]
+    },
+    "vitamin_e": {
+      "label": "Vitamin E",
+      "juice_ingredients": [
+        "spinach",
+        "kiwi",
+        "mango",
+        "swiss chard",
+        "sunflower sprouts"
+      ]
+    },
+    "vitamin_k": {
+      "label": "Vitamin K",
+      "juice_ingredients": [
+        "kale",
+        "spinach",
+        "swiss chard",
+        "parsley",
+        "collard greens"
+      ]
+    },
+    "folate": {
+      "label": "Folate (B9)",
+      "juice_ingredients": [
+        "spinach",
+        "romaine lettuce",
+        "beet",
+        "orange",
+        "parsley"
+      ]
+    },
+    "b6": {
+      "label": "Vitamin B6",
+      "juice_ingredients": [
+        "spinach",
+        "carrot",
+        "watermelon",
+        "beet"
+      ]
+    },
+    "niacin": {
+      "label": "Niacin (B3)",
+      "juice_ingredients": [
+        "carrot",
+        "tomato",
+        "spinach"
+      ]
+    },
+    "riboflavin": {
+      "label": "Riboflavin (B2)",
+      "juice_ingredients": [
+        "spinach",
+        "beet greens"
+      ]
+    },
+    "lycopene": {
+      "label": "Lycopene",
+      "juice_ingredients": [
+        "tomato",
+        "watermelon",
+        "pink grapefruit"
+      ]
+    },
+    "lutein": {
+      "label": "Lutein",
+      "juice_ingredients": [
+        "kale",
+        "spinach",
+        "romaine lettuce"
+      ]
+    },
+    "zeaxanthin": {
+      "label": "Zeaxanthin",
+      "juice_ingredients": [
+        "kale",
+        "orange bell pepper",
+        "spinach"
+      ]
+    },
+    "anthocyanins": {
+      "label": "Anthocyanins",
+      "juice_ingredients": [
+        "beet",
+        "blueberry",
+        "blackberry",
+        "purple cabbage",
+        "tart cherry"
+      ]
+    },
+    "bromelain": {
+      "label": "Bromelain",
+      "juice_ingredients": [
+        "pineapple"
+      ]
+    },
+    "papain": {
+      "label": "Papain",
+      "juice_ingredients": [
+        "papaya"
+      ]
+    },
+    "gingerol": {
+      "label": "Gingerol",
+      "juice_ingredients": [
+        "ginger root"
+      ]
+    },
+    "curcumin": {
+      "label": "Curcumin",
+      "juice_ingredients": [
+        "turmeric root"
+      ]
+    },
+    "quercetin": {
+      "label": "Quercetin",
+      "juice_ingredients": [
+        "apple (with skin)",
+        "kale",
+        "grape"
+      ]
+    },
+    "zinc": {
+      "label": "Zinc",
+      "juice_ingredients": [
+        "spinach",
+        "kale",
+        "ginger",
+        "pumpkin"
+      ]
+    },
+    "iron": {
+      "label": "Iron",
+      "juice_ingredients": [
+        "spinach",
+        "kale",
+        "beet greens",
+        "swiss chard",
+        "parsley"
+      ]
+    },
+    "magnesium": {
+      "label": "Magnesium",
+      "juice_ingredients": [
+        "spinach",
+        "beet greens",
+        "cucumber",
+        "celery",
+        "pumpkin"
+      ]
+    },
+    "potassium": {
+      "label": "Potassium",
+      "juice_ingredients": [
+        "celery",
+        "spinach",
+        "beet greens",
+        "cucumber",
+        "watermelon",
+        "coconut water"
+      ]
+    },
+    "calcium": {
+      "label": "Calcium",
+      "juice_ingredients": [
+        "kale",
+        "collard greens",
+        "bok choy",
+        "parsley"
+      ]
+    },
+    "fiber_pulp": {
+      "label": "Fiber (pulp-retained)",
+      "juice_ingredients": [
+        "apple (with pulp)",
+        "pear (with pulp)",
+        "carrot (with pulp)"
+      ]
+    },
+    "silica": {
+      "label": "Silica",
+      "juice_ingredients": [
+        "cucumber"
+      ]
+    },
+    "nitrates": {
+      "label": "Dietary Nitrates",
+      "juice_ingredients": [
+        "beet",
+        "celery",
+        "spinach",
+        "arugula"
+      ]
+    },
+    "chlorophyll": {
+      "label": "Chlorophyll",
+      "juice_ingredients": [
+        "wheatgrass",
+        "spinach",
+        "kale",
+        "parsley",
+        "cucumber"
+      ]
+    },
+    "citrate": {
+      "label": "Citrate",
+      "juice_ingredients": [
+        "lemon",
+        "lime"
+      ]
+    },
+    "bioflavonoids": {
+      "label": "Citrus Bioflavonoids",
+      "juice_ingredients": [
+        "citrus pith/peel",
+        "grape",
+        "orange"
+      ]
+    },
+    "plant_sterols": {
+      "label": "Plant Sterols",
+      "juice_ingredients": [
+        "apple",
+        "citrus pulp",
+        "carrot"
+      ]
+    },
+    "pectin": {
+      "label": "Pectin",
+      "juice_ingredients": [
+        "apple",
+        "citrus",
+        "pear"
+      ]
+    },
+    "tart_cherry": {
+      "label": "Tart Cherry Compounds",
+      "juice_ingredients": [
+        "tart cherry"
+      ]
+    },
+    "electrolytes": {
+      "label": "Natural Electrolytes",
+      "juice_ingredients": [
+        "cucumber",
+        "celery",
+        "watermelon",
+        "coconut water"
+      ]
+    }
+  }
+}

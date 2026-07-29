@@ -42,10 +42,11 @@ import {
   TrendingUp,
   AlertCircle,
   Settings,
+  Heart,
 } from 'lucide-react-native'
 import MeshGradientBg from '../components/MeshGradientBg'
 import LiquidNutrientOrb from '../components/LiquidNutrientOrb'
-import { DARK, RADIUS, FONT_SIZE, FONT_WEIGHT } from '../constants/tokens'
+import { DARK, RADIUS, FONT_SIZE, FONT_WEIGHT, SEMANTIC_COLORS } from '../constants/tokens'
 import { useReducedMotion, DURATION, EASING, LIQUID_SPRING, LIQUID_SPRING_SNAPPY } from '../utils/motion'
 import { trackEvent } from '../services/AnalyticsService'
 import { useActivation } from '../services/ActivationStore'
@@ -1097,7 +1098,7 @@ function ScanHome({ onScan, onBrowse, onExample, onExplore, totalLogs, showSecon
 
 // ── Browse Home: Stable Dashboard ────────────────────────────
 
-function BrowseHome({ onScan, onBrowse, onExample, onExplore, onViewToday, onGlowLibrary, onSeasonalPacks, onBeginnerPath, onLogIngredients, isExpandedRecipes, dailySummary, totalLogs, savedGoalId, onDismissGoalBanner, isReduced }) {
+function BrowseHome({ onScan, onBrowse, onExample, onExplore, onViewToday, onGlowLibrary, onSeasonalPacks, onBeginnerPath, onWellnessFocus, onLogIngredients, isExpandedRecipes, dailySummary, totalLogs, savedGoalId, onDismissGoalBanner, isReduced }) {
   const fadeAnim = useRef(new Animated.Value(0)).current
   const btnScale = useRef(new Animated.Value(1)).current
   const goalData = savedGoalId ? GOALS.find((g) => g.id === savedGoalId) : null
@@ -1662,6 +1663,24 @@ function BrowseHome({ onScan, onBrowse, onExample, onExplore, onViewToday, onGlo
             </Pressable>
           </>
         )}
+
+        <Pressable
+          style={({ pressed }) => [browseHomeStyles.actionCard, pressed && { opacity: 0.7 }]}
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+            onWellnessFocus()
+          }}
+          hitSlop={4}
+          accessibilityRole="button"
+          accessibilityLabel="Wellness Focus Recipe Finder"
+        >
+          <Heart size={20} color="#81C784" />
+          <View style={browseHomeStyles.actionContent}>
+            <Text style={browseHomeStyles.actionTitle}>Wellness Focus</Text>
+            <Text style={browseHomeStyles.actionDesc}>Find juices by wellness focus area</Text>
+          </View>
+          <ChevronRight size={16} color={SEMANTIC_COLORS.textMuted} />
+        </Pressable>
 
         <Pressable
           style={({ pressed }) => [browseHomeStyles.actionCard, pressed && { opacity: 0.7 }]}
@@ -2453,6 +2472,7 @@ export default function ScanScreen({ navigation }) {
               onSeasonalPacks={() => navigation.navigate('SeasonalGlowPacks')}
               onBeginnerPath={() => navigation.navigate('BeginnerGlowPath')}
               onLogIngredients={() => navigation.navigate('ScanFlow', { screen: 'ScanHome', params: { manualEntry: true, source: 'checkin' } })}
+              onWellnessFocus={() => navigation.navigate('WellnessFocus')}
               isExpandedRecipes={isExpandedRecipes}
               onViewToday={() => navigation.navigate('PerformanceDashboard')}
               dailySummary={dailySummary}

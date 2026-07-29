@@ -103,7 +103,7 @@ jest.mock('../src/services/JuiceLogStore', () => ({
   useJuiceLog: jest.fn().mockImplementation(() => ({
     todayEntries: mockTodayJuices.length > 0 ? [{ nutrientSummary: { vitaminC: 50, potassium: 300 } }] : [],
     totalLogCount: mockTotalLogCount,
-    diversityStats: { uniqueProduce: 8 },
+    diversityStats: { uniqueProduce: 8, uniqueToday: mockTodayJuices.length > 0 ? 2 : 0, uniqueWeek: 5 },
   })),
 }))
 
@@ -121,6 +121,7 @@ jest.mock('../src/services/ChallengeStore', () => ({
     logJuice: jest.fn(),
     todayLog: { juices: mockTodayJuices },
     vitalityScore: mockVitalityScore,
+    weeklyStats: { totalLogs: 4, uniqueProduce: 6 },
   }),
   DAILY_PILLARS: {
     vitaminC: { color: '#FFB74D', shortLabel: 'Vit C' },
@@ -236,6 +237,10 @@ function findAllByLabel(instance, label) {
   return matches
 }
 
+// Pre-load TodayScreen at module level so module loading does not
+// count against per-test wall-clock timeout under parallel execution
+const TodayScreen = require('../src/screens/TodayScreen').default
+
 const rendererRegistry = []
 
 // ── Test Suite ───────────────────────────────────────────────
@@ -263,13 +268,21 @@ describe('TodayScreen Real Integration — Phase 0B1 Extracted Components', () =
   })
 
   // ── 1. TodayScreen renders all real extracted components together ──
+  // Per-test timeout: under default parallel Jest (12 workers on 24-core machine),
+  // CPU contention from heavy suites can cause the 5s default wall-clock timeout
+  // to be exceeded for tests rendering real React components with multiple async
+  // effects (FocusNutrientCard, WeeklySummaryTeaser, checkAchievements).
+  // The async work itself is immediate (all mocked), but React reconciler +
+  // effect flushing under contention needs headroom.
   test('TodayScreen renders real FocusNutrientCard, TodaySummaryStats, WeeklySummaryTeaser, TodaysJuiceSpotlight together', async () => {
-    const TodayScreen = require('../src/screens/TodayScreen').default
     let renderer
-    await act(async () => {
+    act(() => {
       renderer = TestRenderer.create(React.createElement(TodayScreen, { navigation: mockNavigation }))
     })
     rendererRegistry.push(renderer)
+    await act(async () => {
+      await new Promise(resolve => setImmediate(resolve))
+    })
     const root = renderer.root
 
     // Real FocusNutrientCard renders "Today's Focus" label
@@ -278,10 +291,10 @@ describe('TodayScreen Real Integration — Phase 0B1 Extracted Components', () =
     expect(findAllByText(root, 'juices').length).toBeGreaterThan(0)
     expect(findAllByText(root, 'score').length).toBeGreaterThan(0)
     // Real TodaysJuiceSpotlight renders spotlight name
-    expect(findAllByText(root, 'TODAY’S JUICE SPOTLIGHT').length).toBeGreaterThan(0)
+    expect(findAllByText(root, "TODAY’S JUICE SPOTLIGHT").length).toBeGreaterThan(0)
     // WeeklySummaryTeaser returns null when shouldShowWeeklySummary is false
     expect(findAllByText(root, 'Your Glow Week').length).toBe(0)
-  })
+  }, 10000)
 
   // ── 2. Brand-new-user state does not show every optional card ──
   test('new user with zero logs does not show Halo, WeeklyPillar, or WeeklySummaryTeaser', async () => {
@@ -289,30 +302,34 @@ describe('TodayScreen Real Integration — Phase 0B1 Extracted Components', () =
     mockVitalityScore = 0
     mockTotalLogCount = 0
     mockMomentum = 0
-    const TodayScreen = require('../src/screens/TodayScreen').default
     let renderer
-    await act(async () => {
+    act(() => {
       renderer = TestRenderer.create(React.createElement(TodayScreen, { navigation: mockNavigation }))
     })
     rendererRegistry.push(renderer)
+    await act(async () => {
+      await new Promise(resolve => setImmediate(resolve))
+    })
     const root = renderer.root
 
-    // Pre-log state shows scan prompt
-    expect(findAllByText(root, "Ready for today's juice?").length).toBeGreaterThan(0)
+    // Pre-log state shows new-user headline
+    expect(findAllByText(root, 'Ready to add more raw today?').length).toBeGreaterThan(0)
     // No post-log hero
     expect(findAllByText(root, "Today's Juice").length).toBe(0)
     // No WeeklySummaryTeaser
     expect(findAllByText(root, 'Your Glow Week').length).toBe(0)
-  })
+  }, 10000)
 
   // ── 3. Populated-user state renders real current-day modules ──
   test('populated user renders hero card, summary stats, spotlight, and focus nutrient', async () => {
-    const TodayScreen = require('../src/screens/TodayScreen').default
     let renderer
-    await act(async () => {
+    act(() => {
       renderer = TestRenderer.create(React.createElement(TodayScreen, { navigation: mockNavigation }))
     })
     rendererRegistry.push(renderer)
+    await act(async () => {
+      await new Promise(resolve => setImmediate(resolve))
+    })
     const root = renderer.root
 
     expect(findAllByText(root, "Today's Juice").length).toBeGreaterThan(0)
@@ -320,8 +337,8 @@ describe('TodayScreen Real Integration — Phase 0B1 Extracted Components', () =
     expect(findAllByText(root, 'Challenge Day ').length).toBeGreaterThan(0)
     expect(findAllByText(root, 3).length).toBeGreaterThan(0)
     expect(findAllByText(root, "Today's Focus").length).toBeGreaterThan(0)
-    expect(findAllByText(root, 'TODAY’S JUICE SPOTLIGHT').length).toBeGreaterThan(0)
-  })
+    expect(findAllByText(root, "TODAY’S JUICE SPOTLIGHT").length).toBeGreaterThan(0)
+  }, 10000)
 
   // ── 4. Scan My Produce invokes navigation to ScanFlow ──
   test('Scan My Produce button calls navigation.navigate with ScanFlow', async () => {
@@ -329,12 +346,14 @@ describe('TodayScreen Real Integration — Phase 0B1 Extracted Components', () =
     mockVitalityScore = 0
     mockTotalLogCount = 0
     mockMomentum = 0
-    const TodayScreen = require('../src/screens/TodayScreen').default
     let renderer
-    await act(async () => {
+    act(() => {
       renderer = TestRenderer.create(React.createElement(TodayScreen, { navigation: mockNavigation }))
     })
     rendererRegistry.push(renderer)
+    await act(async () => {
+      await new Promise(resolve => setImmediate(resolve))
+    })
     const root = renderer.root
 
     const scanButtons = findAllByLabel(root, 'Scan my produce')
@@ -349,12 +368,14 @@ describe('TodayScreen Real Integration — Phase 0B1 Extracted Components', () =
 
   // ── 5. Focus Nutrient Swap invokes real handler/service ──
   test('FocusNutrientCard Swap button calls swapFocusToday and updates nutrient', async () => {
-    const TodayScreen = require('../src/screens/TodayScreen').default
     let renderer
-    await act(async () => {
+    act(() => {
       renderer = TestRenderer.create(React.createElement(TodayScreen, { navigation: mockNavigation }))
     })
     rendererRegistry.push(renderer)
+    await act(async () => {
+      await new Promise(resolve => setImmediate(resolve))
+    })
     const root = renderer.root
 
     const swapButtons = findAllByLabel(root, 'Swap nutrient')
@@ -370,18 +391,21 @@ describe('TodayScreen Real Integration — Phase 0B1 Extracted Components', () =
 
   // ── 6. Spotlight interaction opens details modal ──
   test('Spotlight View This Blend opens JuiceSpotlightDetailsModal', async () => {
-    // Use pre-log state so spotlight state.kind='new' → primaryLabel='View This Blend'
-    // and primaryHandler=onViewBlend → handleOpenSpotlight → setShowSpotlightDetails(true)
+    // Use pre-log state with returning user so spotlight is shown (not Simple Blend)
+    // state.kind='new' -> primaryLabel='View This Blend'
+    // and primaryHandler=onViewBlend -> handleOpenSpotlight -> setShowSpotlightDetails(true)
     mockTodayJuices = []
     mockVitalityScore = 0
-    mockTotalLogCount = 0
-    mockMomentum = 0
-    const TodayScreen = require('../src/screens/TodayScreen').default
+    mockTotalLogCount = 3
+    mockMomentum = 50
     let renderer
-    await act(async () => {
+    act(() => {
       renderer = TestRenderer.create(React.createElement(TodayScreen, { navigation: mockNavigation }))
     })
     rendererRegistry.push(renderer)
+    await act(async () => {
+      await new Promise(resolve => setImmediate(resolve))
+    })
     const root = renderer.root
 
     // In pre-log state with no entries, state.kind='new' → primaryLabel='View This Blend'
@@ -403,12 +427,14 @@ describe('TodayScreen Real Integration — Phase 0B1 Extracted Components', () =
 
   // ── 7. Relevant buttons have accessibility roles and labels ──
   test('key interactive elements have accessibilityRole and accessibilityLabel', async () => {
-    const TodayScreen = require('../src/screens/TodayScreen').default
     let renderer
-    await act(async () => {
+    act(() => {
       renderer = TestRenderer.create(React.createElement(TodayScreen, { navigation: mockNavigation }))
     })
     rendererRegistry.push(renderer)
+    await act(async () => {
+      await new Promise(resolve => setImmediate(resolve))
+    })
     const root = renderer.root
 
     const buttons = findAllByRole(root, 'button')
@@ -416,8 +442,8 @@ describe('TodayScreen Real Integration — Phase 0B1 Extracted Components', () =
 
     // Settings button
     expect(findAllByLabel(root, 'Settings').length).toBeGreaterThan(0)
-    // Scan Again button (post-log)
-    expect(findAllByLabel(root, 'Scan again').length).toBeGreaterThan(0)
+    // Log Another Juice button (post-log)
+    expect(findAllByLabel(root, 'Log another juice').length).toBeGreaterThan(0)
     // Browse Juice Ideas
     expect(findAllByLabel(root, 'Browse juice ideas').length).toBeGreaterThan(0)
     // Spotlight summary role
@@ -427,10 +453,12 @@ describe('TodayScreen Real Integration — Phase 0B1 Extracted Components', () =
 
   // ── 8. No act warnings, open handles, or post-unmount updates ──
   test('unmount is clean with no pending state updates', async () => {
-    const TodayScreen = require('../src/screens/TodayScreen').default
     let renderer
-    await act(async () => {
+    act(() => {
       renderer = TestRenderer.create(React.createElement(TodayScreen, { navigation: mockNavigation }))
+    })
+    await act(async () => {
+      await new Promise(resolve => setImmediate(resolve))
     })
 
     // Unmount inside act — should not throw or warn
@@ -441,4 +469,254 @@ describe('TodayScreen Real Integration — Phase 0B1 Extracted Components', () =
     // If we reach here without error, the test passes
     expect(true).toBe(true)
   })
+
+  // ── 9. New user: manual entry CTA navigates to ScanFlow with manualEntry param ──
+  test('new user: Enter Ingredients Manually button navigates to ScanFlow with manualEntry', async () => {
+    mockTodayJuices = []
+    mockVitalityScore = 0
+    mockTotalLogCount = 0
+    mockMomentum = 0
+    let renderer
+    act(() => {
+      renderer = TestRenderer.create(React.createElement(TodayScreen, { navigation: mockNavigation }))
+    })
+    rendererRegistry.push(renderer)
+    await act(async () => {
+      await new Promise(resolve => setImmediate(resolve))
+    })
+    const root = renderer.root
+
+    const manualBtns = findAllByLabel(root, 'Enter ingredients manually')
+    expect(manualBtns.length).toBeGreaterThan(0)
+
+    await act(async () => {
+      manualBtns[0].props.onPress()
+    })
+
+    expect(mockNavigate).toHaveBeenCalledWith('ScanFlow', { screen: 'ScanHome', params: { manualEntry: true } })
+  }, 10000)
+
+  // ── 10. New user: Easy Step card shows correct copy and navigates to manual entry ──
+  test('new user: Easy Step card shows Start My First Blend and navigates to manual entry', async () => {
+    mockTodayJuices = []
+    mockVitalityScore = 0
+    mockTotalLogCount = 0
+    mockMomentum = 0
+    let renderer
+    act(() => {
+      renderer = TestRenderer.create(React.createElement(TodayScreen, { navigation: mockNavigation }))
+    })
+    rendererRegistry.push(renderer)
+    await act(async () => {
+      await new Promise(resolve => setImmediate(resolve))
+    })
+    const root = renderer.root
+
+    expect(findAllByText(root, "Today’s Easy Step").length).toBeGreaterThan(0)
+    expect(findAllByText(root, 'Start My First Blend').length).toBeGreaterThan(0)
+
+    const easyStepBtns = findAllByLabel(root, 'Start my first blend')
+    expect(easyStepBtns.length).toBeGreaterThan(0)
+
+    const { trackEvent } = require('../src/services/AnalyticsService')
+
+    await act(async () => {
+      easyStepBtns[0].props.onPress()
+    })
+
+    expect(trackEvent).toHaveBeenCalledWith('today_easy_step_tapped', expect.objectContaining({ source: 'today_screen' }))
+    expect(mockNavigate).toHaveBeenCalledWith('ScanFlow', { screen: 'ScanHome', params: { manualEntry: true } })
+  }, 10000)
+
+  // ── 11. New user: Simple Blend card renders and navigates to RecipeDetail ──
+  test('new user: Simple Blend to Try card renders and navigates to RecipeDetail on tap', async () => {
+    mockTodayJuices = []
+    mockVitalityScore = 0
+    mockTotalLogCount = 0
+    mockMomentum = 0
+    let renderer
+    act(() => {
+      renderer = TestRenderer.create(React.createElement(TodayScreen, { navigation: mockNavigation }))
+    })
+    rendererRegistry.push(renderer)
+    await act(async () => {
+      await new Promise(resolve => setImmediate(resolve))
+    })
+    const root = renderer.root
+
+    expect(findAllByText(root, 'Simple Blend to Try').length).toBeGreaterThan(0)
+
+    const blendBtns = findAllByLabel(root, 'Explore wellness focuses')
+    // Find the simple blend button by checking for label starting with 'Simple blend to try:'
+    const allBtns = findAllByRole(root, 'button')
+    const simpleBlendBtn = allBtns.find(btn => {
+      const label = btn.props.accessibilityLabel
+      return label && label.startsWith('Simple blend to try:')
+    })
+    expect(simpleBlendBtn).toBeDefined()
+
+    const { trackEvent } = require('../src/services/AnalyticsService')
+
+    await act(async () => {
+      simpleBlendBtn.props.onPress()
+    })
+
+    expect(trackEvent).toHaveBeenCalledWith('simple_blend_tapped', expect.objectContaining({ source: 'today_screen' }))
+    expect(mockNavigate).toHaveBeenCalledWith('RecipeDetail', expect.objectContaining({ recipeId: expect.any(String) }))
+  }, 10000)
+
+  // ── 12. New user: Journey card shows 3-step journey ──
+  test('new user: Journey card shows Your RawLifeFlow Journey with 3 steps', async () => {
+    mockTodayJuices = []
+    mockVitalityScore = 0
+    mockTotalLogCount = 0
+    mockMomentum = 0
+    let renderer
+    act(() => {
+      renderer = TestRenderer.create(React.createElement(TodayScreen, { navigation: mockNavigation }))
+    })
+    rendererRegistry.push(renderer)
+    await act(async () => {
+      await new Promise(resolve => setImmediate(resolve))
+    })
+    const root = renderer.root
+
+    expect(findAllByText(root, 'Your RawLifeFlow Journey').length).toBeGreaterThan(0)
+    expect(findAllByText(root, 'Add your ingredients').length).toBeGreaterThan(0)
+    expect(findAllByText(root, 'Explore their nutrition').length).toBeGreaterThan(0)
+    expect(findAllByText(root, 'Log your first juice').length).toBeGreaterThan(0)
+  }, 10000)
+
+  // ── 13. New user: Wellness Focus card renders and navigates ──
+  test('new user: Wellness Focus card renders and navigates to WellnessFocus', async () => {
+    mockTodayJuices = []
+    mockVitalityScore = 0
+    mockTotalLogCount = 0
+    mockMomentum = 0
+    let renderer
+    act(() => {
+      renderer = TestRenderer.create(React.createElement(TodayScreen, { navigation: mockNavigation }))
+    })
+    rendererRegistry.push(renderer)
+    await act(async () => {
+      await new Promise(resolve => setImmediate(resolve))
+    })
+    const root = renderer.root
+
+    expect(findAllByText(root, 'Find Juices by Wellness Focus').length).toBeGreaterThan(0)
+    expect(findAllByText(root, 'Explore recipes through ingredient and nutrient associations.').length).toBeGreaterThan(0)
+
+    const wellnessBtns = findAllByLabel(root, 'Explore wellness focuses')
+    expect(wellnessBtns.length).toBeGreaterThan(0)
+
+    const { trackEvent } = require('../src/services/AnalyticsService')
+
+    await act(async () => {
+      wellnessBtns[0].props.onPress()
+    })
+
+    expect(trackEvent).toHaveBeenCalledWith('today_wellness_focus_tapped', expect.objectContaining({ source: 'today_screen' }))
+    expect(mockNavigate).toHaveBeenCalledWith('WellnessFocus')
+  }, 10000)
+
+  // ── 14. New user: supporting copy is shown ──
+  test('new user: supporting copy about scanning or manual entry is shown', async () => {
+    mockTodayJuices = []
+    mockVitalityScore = 0
+    mockTotalLogCount = 0
+    mockMomentum = 0
+    let renderer
+    act(() => {
+      renderer = TestRenderer.create(React.createElement(TodayScreen, { navigation: mockNavigation }))
+    })
+    rendererRegistry.push(renderer)
+    await act(async () => {
+      await new Promise(resolve => setImmediate(resolve))
+    })
+    const root = renderer.root
+
+    expect(findAllByText(root, 'Scan your produce or enter ingredients manually to explore its nutrition.').length).toBeGreaterThan(0)
+  }, 10000)
+
+  // ── 15. Returning pre-log user: Easy Step shows Log Today's Juice ──
+  test("returning pre-log user: Easy Step shows Log Today's Juice CTA", async () => {
+    mockTodayJuices = []
+    mockVitalityScore = 0
+    mockTotalLogCount = 3
+    mockMomentum = 50
+    let renderer
+    act(() => {
+      renderer = TestRenderer.create(React.createElement(TodayScreen, { navigation: mockNavigation }))
+    })
+    rendererRegistry.push(renderer)
+    await act(async () => {
+      await new Promise(resolve => setImmediate(resolve))
+    })
+    const root = renderer.root
+
+    expect(findAllByText(root, "Today’s Easy Step").length).toBeGreaterThan(0)
+    expect(findAllByText(root, "Log Today’s Juice").length).toBeGreaterThan(0)
+    // Should NOT show new-user journey card
+    expect(findAllByText(root, 'Your RawLifeFlow Journey').length).toBe(0)
+    // Should NOT show new-user headline
+    expect(findAllByText(root, 'Ready to add more raw today?').length).toBe(0)
+  }, 10000)
+
+  // ── 16. Post-log: Easy Step shows Today's juice is logged ──
+  test("post-log: Easy Step card shows Today's juice is logged with highlight", async () => {
+    let renderer
+    act(() => {
+      renderer = TestRenderer.create(React.createElement(TodayScreen, { navigation: mockNavigation }))
+    })
+    rendererRegistry.push(renderer)
+    await act(async () => {
+      await new Promise(resolve => setImmediate(resolve))
+    })
+    const root = renderer.root
+
+    expect(findAllByText(root, "Today's juice is logged").length).toBeGreaterThan(0)
+    // postLogHighlight should show distinct plants
+    expect(findAllByText(root, "2 distinct plants in today's juice").length).toBeGreaterThan(0)
+  }, 10000)
+
+  // ── 17. Post-log: Wellness Focus card is present ──
+  test('post-log: Wellness Focus discovery card is present', async () => {
+    let renderer
+    act(() => {
+      renderer = TestRenderer.create(React.createElement(TodayScreen, { navigation: mockNavigation }))
+    })
+    rendererRegistry.push(renderer)
+    await act(async () => {
+      await new Promise(resolve => setImmediate(resolve))
+    })
+    const root = renderer.root
+
+    expect(findAllByText(root, 'Find Juices by Wellness Focus').length).toBeGreaterThan(0)
+  }, 10000)
+
+  // ── 18. Manual entry tracks analytics event ──
+  test('manual entry button tracks today_manual_entry_tapped analytics event', async () => {
+    mockTodayJuices = []
+    mockVitalityScore = 0
+    mockTotalLogCount = 0
+    mockMomentum = 0
+    let renderer
+    act(() => {
+      renderer = TestRenderer.create(React.createElement(TodayScreen, { navigation: mockNavigation }))
+    })
+    rendererRegistry.push(renderer)
+    await act(async () => {
+      await new Promise(resolve => setImmediate(resolve))
+    })
+    const root = renderer.root
+
+    const manualBtns = findAllByLabel(root, 'Enter ingredients manually')
+    const { trackEvent } = require('../src/services/AnalyticsService')
+
+    await act(async () => {
+      manualBtns[0].props.onPress()
+    })
+
+    expect(trackEvent).toHaveBeenCalledWith('today_manual_entry_tapped', expect.objectContaining({ source: 'today_screen' }))
+  }, 10000)
 })

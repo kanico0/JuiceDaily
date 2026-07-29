@@ -291,6 +291,10 @@ const EVENT_SCHEMAS = {
     required: ['session_id', 'ts'],
     optional: ['platform'],
   },
+  scan_plan_icon_tapped: {
+    required: ['session_id', 'ts'],
+    optional: ['plan', 'scans_used', 'scans_limit', 'quota_exhausted', 'placement'],
+  },
   scan_quota_viewed: {
     required: ['session_id', 'ts'],
     optional: ['plan', 'scans_used', 'scans_remaining'],
@@ -323,7 +327,40 @@ const EVENT_SCHEMAS = {
     required: ['session_id', 'ts'],
     optional: ['package_type'],
   },
+  history_guidance_shown: {
+    required: ['session_id', 'ts'],
+    optional: ['guidance_state'],
+  },
+  history_empty_scan_tapped: {
+    required: ['session_id', 'ts'],
+    optional: [],
+  },
+  history_empty_manual_entry_tapped: {
+    required: ['session_id', 'ts'],
+    optional: [],
+  },
+
+  // ── Today screen engagement ───────────────────────────────
+  today_manual_entry_tapped: {
+    required: ['session_id', 'ts'],
+    optional: ['source'],
+  },
+  today_easy_step_tapped: {
+    required: ['session_id', 'ts'],
+    optional: ['source'],
+  },
+  simple_blend_tapped: {
+    required: ['session_id', 'ts'],
+    optional: ['source'],
+  },
+  today_wellness_focus_tapped: {
+    required: ['session_id', 'ts'],
+    optional: ['source'],
+  },
+
+
 }
+
 
 // ── Prohibited field patterns (PII / sensitive) ──────────────
 // These field names are NEVER allowed in any event payload.

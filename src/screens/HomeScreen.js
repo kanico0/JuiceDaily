@@ -34,6 +34,7 @@ import {
   Sparkles,
   Leaf,
   Cog,
+  BookOpen,
 } from 'lucide-react-native'
 import colors from '../constants/colors'
 import NUTRIENT_LIBRARY from '../constants/NutrientLibrary.json'
@@ -1001,6 +1002,23 @@ export default function JuiceSnapScreen({ navigation, route }) {
 
         {hasItems && !isLogged && (
           <TouchableOpacity
+            style={styles.findRecipesBtn}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+              const ids = (batch.scannedIngredients || []).map((i) => i.produceId)
+              navigation.navigate('ProduceRecipeResults', { selectedProduceIds: ids })
+            }}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="Find recipes with my produce"
+          >
+            <BookOpen size={18} color="#64B5F6" />
+            <Text style={styles.findRecipesBtnText}>Find Recipes With My Produce</Text>
+          </TouchableOpacity>
+        )}
+
+        {hasItems && !isLogged && (
+          <TouchableOpacity
             style={styles.logButton}
             onPress={handleLogToChallenge}
             activeOpacity={0.7}
@@ -1406,6 +1424,23 @@ const styles = StyleSheet.create({
   buttonSection: {
     alignItems: 'center',
     marginBottom: 20,
+  },
+  findRecipesBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: 'rgba(100,181,246,0.25)',
+    backgroundColor: 'rgba(100,181,246,0.06)',
+    marginBottom: 12,
+  },
+  findRecipesBtnText: {
+    color: '#64B5F6',
+    fontSize: 15,
+    fontWeight: '600',
   },
   logButton: {
     borderRadius: 28,

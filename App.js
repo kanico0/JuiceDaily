@@ -55,6 +55,7 @@ import IntroLaunchScreen from './src/screens/IntroLaunchScreen'
 import JuicingExperienceScreen from './src/screens/JuicingExperienceScreen'
 import PaywallScreen from './src/screens/PaywallScreen'
 import JuicerGuideScreen from './src/screens/JuicerGuideScreen'
+import ProduceRecipeResultsScreen from './src/screens/ProduceRecipeResultsScreen'
 import { NutritionScoreProvider } from './src/services/NutritionScoreStore'
 import { JuiceLogProvider, useJuiceLog } from './src/services/JuiceLogStore'
 import { refreshNudges } from './src/services/NotificationNudges'
@@ -111,6 +112,7 @@ function addSharedScreens(StackNav) {
       <StackNav.Screen name="HistoryScreen" component={HistoryScreen} />
       <StackNav.Screen name="Paywall" component={PaywallScreen} options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
       <StackNav.Screen name="JuicerGuide" component={JuicerGuideScreen} />
+      <StackNav.Screen name="ProduceRecipeResults" component={ProduceRecipeResultsScreen} />
     </>
   )
 }

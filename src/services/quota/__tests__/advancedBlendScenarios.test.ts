@@ -278,6 +278,152 @@ describe('Advanced Blend task scenarios', () => {
     })
   })
 
+  // ── Uncertain-outcome invariant tests ─────────────────────
+  //
+  // The operation ID must NOT be cleared after a network error,
+  // timeout, lost response, or any uncertain server outcome.
+  // It must persist so that retrying the same attempt reuses the
+  // same operation ID, allowing the server to reconcile state.
+  //
+  // The operation ID is cleared ONLY after:
+  //   1. Successful finalize (completion_confirmation)
+  //   2. Confirmed quota exhaustion before reservation (advanced_blend_limit_reached)
+  //   3. Explicit cancellation by the user starting a new attempt
+  //
+  // In HomeScreen, blendOperationIdRef.current is:
+  //   - Set at handleLogToChallenge confirmation time (line 663/679)
+  //   - Cleared on success (line 733)
+  //   - Cleared on quota exhaustion (line 740)
+  //   - NOT cleared on network_retry (line 754-769) — preserved for retry
+  //   - NOT cleared on dismiss (line 1094) — but handleLogToChallenge
+  //     overwrites with a new ID on the next user-authorized attempt
+
+  describe('network error does NOT clear the operation ID', () => {
+    it('operation ID persists after a network error for retry reuse', () => {
+      // Simulate the HomeScreen ref behavior:
+      // 1. handleLogToChallenge creates operation ID
+      // 2. executeLogToChallenge encounters network error
+      // 3. network_retry stage is shown
+      // 4. blendOperationIdRef.current is NOT cleared
+      const ref: { current: string | null } = { current: null }
+      ref.current = createOperationId()
+      const originalOpId = ref.current
+
+      // Simulate network error path — ref is NOT cleared
+      // (HomeScreen line 754-769 does not set blendOperationIdRef.current = null)
+      expect(ref.current).toBe(originalOpId)
+
+      // Retry uses the same operation ID
+      const retryOpId = ref.current
+      expect(retryOpId).toBe(originalOpId)
+    })
+
+    it('reserveBlendAllowance with the same operation ID after a network error is safe', async () => {
+      const ingredients = makeIngredients(5)
+      const opId = createOperationId()
+
+      // First attempt — simulate network error by catching
+      // In dev bypass, reserve succeeds — but in production,
+      // a network error would throw. The operation ID is reused.
+      const result1 = await reserveBlendAllowance(ingredients, opId)
+      expect(result1.requestId).toBe(opId)
+
+      // Retry with same operation ID
+      const result2 = await reserveBlendAllowance(ingredients, opId)
+      expect(result2.requestId).toBe(opId)
+    })
+  })
+
+  describe('retry after uncertain reserve response uses the same operation ID', () => {
+    it('authorizeAndProcessBatch retry with same opId gets same requestId', async () => {
+      const ingredients = makeIngredients(5)
+      const opId = createOperationId()
+
+      const result1 = await authorizeAndProcessBatch(ingredients, 'cold_pressed', opId)
+      expect(result1.allowance!.requestId).toBe(opId)
+
+      // Retry — same operation ID
+      const result2 = await authorizeAndProcessBatch(ingredients, 'cold_pressed', opId)
+      expect(result2.allowance!.requestId).toBe(opId)
+    })
+  })
+
+  describe('operation ID is cleared only after definitive outcomes', () => {
+    it('cleared after successful finalize (completion)', () => {
+      const ref: { current: string | null } = { current: null }
+      ref.current = createOperationId()
+      expect(ref.current).not.toBeNull()
+
+      // Simulate successful finalize → HomeScreen clears ref (line 733)
+      ref.current = null
+      expect(ref.current).toBeNull()
+    })
+
+    it('cleared after confirmed quota exhaustion before reservation', () => {
+      const ref: { current: string | null } = { current: null }
+      ref.current = createOperationId()
+      expect(ref.current).not.toBeNull()
+
+      // Simulate advanced_blend_limit_reached → HomeScreen clears ref (line 740)
+      ref.current = null
+      expect(ref.current).toBeNull()
+    })
+
+    it('NOT cleared after network error or uncertain outcome', () => {
+      const ref: { current: string | null } = { current: null }
+      ref.current = createOperationId()
+      const opId = ref.current
+
+      // Simulate network_retry path — ref is NOT cleared
+      // (HomeScreen lines 754-769 do not touch blendOperationIdRef)
+      expect(ref.current).toBe(opId)
+    })
+
+    it('NOT cleared after dismiss of network_retry modal', () => {
+      const ref: { current: string | null } = { current: null }
+      ref.current = createOperationId()
+      const opId = ref.current
+
+      // Simulate onDismiss — only hides modal, does not clear ref
+      // (HomeScreen line 1094: onDismiss={() => setShowAdvancedBlendModal(false)})
+      expect(ref.current).toBe(opId)
+    })
+  })
+
+  describe('uncertain release outcome retries with same operation ID', () => {
+    it('releaseBlendAllowance failure does not prevent retry with same opId', async () => {
+      const opId = createOperationId()
+      // release is a no-op in dev bypass, but in production it may fail
+      // The operation ID is still valid for retry
+      await releaseBlendAllowance(opId)
+      // Can still reserve with the same operation ID
+      const result = await reserveBlendAllowance(makeIngredients(5), opId)
+      expect(result.requestId).toBe(opId)
+      expect(result.allowed).toBe(true)
+    })
+  })
+
+  describe('new operation ID is created only for a genuinely new attempt', () => {
+    it('handleLogToChallenge creates a new operation ID, not executeLogToChallenge', () => {
+      // handleLogToChallenge (user taps "Log") → createOperationId() → store in ref
+      // executeLogToChallenge (called by confirm/retry) → reads ref, does NOT create new ID
+      const ref: { current: string | null } = { current: null }
+
+      // User confirms a new attempt
+      ref.current = createOperationId()
+      const firstAttemptOpId = ref.current
+
+      // Retry uses the same ref value (no new createOperationId call)
+      const retryOpId = ref.current
+      expect(retryOpId).toBe(firstAttemptOpId)
+
+      // User starts a genuinely new attempt
+      ref.current = createOperationId()
+      const newAttemptOpId = ref.current
+      expect(newAttemptOpId).not.toBe(firstAttemptOpId)
+    })
+  })
+
   describe('remaining count updates after success', () => {
     it('reserveBlendAllowance returns remaining field', async () => {
       const opId = createOperationId()

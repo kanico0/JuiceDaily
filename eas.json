@@ -26,6 +26,17 @@
         "EXPO_PUBLIC_BUILD_TARGET": "beta"
       }
     },
+    "remoteBeta": {
+      "developmentClient": false,
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "channel": "beta",
+      "env": {
+        "EXPO_PUBLIC_BUILD_TARGET": "beta"
+      }
+    },
     "preview": {
       "distribution": "internal",
       "android": {

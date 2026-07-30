@@ -358,6 +358,8 @@ export default function RecipeDetailScreen({ route, navigation }) {
       produceId: ing.produceId,
       weightG: ing.weightG || 150,
       isOrganic: !!ing.isOrganic,
+      ...(ing.portionMetadata ? { portionMetadata: ing.portionMetadata } : {}),
+      ...(ing.portionEntryMode ? { portionEntryMode: ing.portionEntryMode } : {}),
     }))
     pendingTasteRef.current = true
     navigation.navigate('ScanFlow', {

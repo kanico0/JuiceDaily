@@ -71,6 +71,23 @@ import { useOrganicPref, getDefaultOrganic } from '../utils/organicPreference'
 import { useNutritionScore } from '../services/NutritionScoreStore'
 import { useJuiceLog } from '../services/JuiceLogStore'
 import { recordMeaningfulActivity } from '../services/DormantReminderService'
+import {
+  isQuantitySupported as isProduceQuantitySupported,
+  getSupportedPortionUnits,
+  getDefaultPortionUnit,
+  getSupportedSizes,
+  estimateRawWeightGrams,
+  createQuantityMetadata,
+  applyManualWeightOverride,
+  recomputeFromQuantityChange,
+  restoreQuantityMetadata,
+  getPortionRegistryRecord,
+} from '../services/producePortionConversion'
+import {
+  getPreferredPortionEntryMode,
+} from '../services/portionEntryPreference'
+import PortionEntryModeToggle from '../components/PortionEntryModeToggle'
+import QuantityPortionEditor from '../components/QuantityPortionEditor'
 
 const JUICE_METHOD_STORAGE_KEY = '@juicing_juice_method_v1'
 
@@ -126,7 +143,21 @@ function computeTopRda(nutrition) {
   return rdaEntries.slice(0, 3)
 }
 
-function ProduceEditRow({ item, index, onReplace, onRemove, onWeightChange, onToggleOrganic, juiceMethod }) {
+function ProduceEditRow({
+  item,
+  index,
+  onReplace,
+  onRemove,
+  onWeightChange,
+  onToggleOrganic,
+  onModeChange,
+  onQuantityChange,
+  onUnitChange,
+  onSizeChange,
+  onEstimatedWeightChange,
+  onOverrideWeight,
+  juiceMethod,
+}) {
   const [isPickerOpen, setIsPickerOpen] = useState(false)
   const { fmtG } = useFormatWeight()
   const entry = PRODUCE_DATA[item.produceId]
@@ -134,6 +165,18 @@ function ProduceEditRow({ item, index, onReplace, onRemove, onWeightChange, onTo
   const pillar = allPillars[0] || null
   const pillarData = pillar ? DAILY_PILLARS[pillar] : null
   const isOrganic = item.isOrganic ?? false
+
+  const portionMeta = item.portionMetadata || null
+  const entryMode = item.portionEntryMode || 'weight'
+  const quantitySupported = isProduceQuantitySupported(item.produceId)
+  const registryRecord = getPortionRegistryRecord(item.produceId)
+  const confidence = registryRecord?.confidence || 'high'
+
+  const qtyMeta = portionMeta?.inputMode === 'quantity' ? portionMeta : null
+  const currentQuantity = qtyMeta?.enteredQuantity || ''
+  const currentUnitKey = qtyMeta?.unitKey || getDefaultPortionUnit(item.produceId)?.unitKey || null
+  const currentSizeKey = qtyMeta?.sizeKey || null
+  const wasOverridden = qtyMeta?.wasEstimateOverridden || false
 
   return (
     <View style={styles.editRow}>
@@ -154,47 +197,114 @@ function ProduceEditRow({ item, index, onReplace, onRemove, onWeightChange, onTo
         <ChevronDown size={14} color="#484F58" />
       </TouchableOpacity>
 
-      {/* Row 2: Controls */}
-      <View style={styles.editControlsRow}>
-        <TrafficLightBadge produceId={item.produceId} isOrganic={isOrganic} juiceMethod={juiceMethod} />
-        <TouchableOpacity
-          onPress={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-            onToggleOrganic(index)
-          }}
-          style={[styles.organicBtn, isOrganic && styles.organicBtnActive]}
-        >
-          <Leaf size={12} color={isOrganic ? '#81C784' : '#484F58'} />
-        </TouchableOpacity>
+      {/* Row 1b: Entry mode toggle */}
+      <View style={styles.editModeRow}>
+        <PortionEntryModeToggle
+          mode={entryMode}
+          onModeChange={(mode) => onModeChange(index, mode)}
+          quantityDisabled={!quantitySupported}
+          quantityDisabledReason={
+            !quantitySupported
+              ? 'Quantity estimates are not available for this ingredient yet. Enter its raw weight instead.'
+              : ''
+          }
+          accessibilityLabelPrefix={`Portion entry for ${entry?.name || item.produceId}`}
+        />
+      </View>
 
-        <View style={styles.editWeightRow}>
+      {/* Row 2: Controls — Weight mode */}
+      {entryMode === 'weight' && (
+        <View style={styles.editControlsRow}>
+          <TrafficLightBadge produceId={item.produceId} isOrganic={isOrganic} juiceMethod={juiceMethod} />
           <TouchableOpacity
-            onPress={() => onWeightChange(index, Math.max(10, item.weightG - 25))}
-            style={styles.editWeightBtn}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+              onToggleOrganic(index)
+            }}
+            style={[styles.organicBtn, isOrganic && styles.organicBtnActive]}
+            accessibilityRole="switch"
+            accessibilityState={{ checked: isOrganic }}
+            accessibilityLabel="Organic toggle"
           >
-            <Minus size={12} color="#8B949E" />
+            <Leaf size={12} color={isOrganic ? '#81C784' : '#484F58'} />
           </TouchableOpacity>
-          <View style={styles.editWeightLabels}>
-            <Text style={styles.editWeightText}>{fmtG(item.weightG)}</Text>
+
+          <View style={styles.editWeightRow}>
+            <TouchableOpacity
+              onPress={() => onWeightChange(index, Math.max(10, item.weightG - 25))}
+              style={styles.editWeightBtn}
+              accessibilityLabel="Decrease raw produce weight"
+            >
+              <Minus size={12} color="#8B949E" />
+            </TouchableOpacity>
+            <View style={styles.editWeightLabels}>
+              <Text style={styles.editWeightText}>{fmtG(item.weightG)}</Text>
+            </View>
+            <TouchableOpacity
+              onPress={() => onWeightChange(index, item.weightG + 25)}
+              style={styles.editWeightBtn}
+              accessibilityLabel="Increase raw produce weight"
+            >
+              <Plus size={12} color="#8B949E" />
+            </TouchableOpacity>
           </View>
+
           <TouchableOpacity
-            onPress={() => onWeightChange(index, item.weightG + 25)}
-            style={styles.editWeightBtn}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+              onRemove(index)
+            }}
+            style={styles.editRemoveBtn}
+            accessibilityLabel="Remove ingredient"
           >
-            <Plus size={12} color="#8B949E" />
+            <X size={14} color="#E91E63" />
           </TouchableOpacity>
         </View>
+      )}
 
-        <TouchableOpacity
-          onPress={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-            onRemove(index)
-          }}
-          style={styles.editRemoveBtn}
-        >
-          <X size={14} color="#E91E63" />
-        </TouchableOpacity>
-      </View>
+      {/* Row 2: Controls — Quantity mode */}
+      {entryMode === 'quantity' && quantitySupported && (
+        <View style={styles.editQuantityContainer}>
+          <View style={styles.editControlsRow}>
+            <TrafficLightBadge produceId={item.produceId} isOrganic={isOrganic} juiceMethod={juiceMethod} />
+            <TouchableOpacity
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+                onToggleOrganic(index)
+              }}
+              style={[styles.organicBtn, isOrganic && styles.organicBtnActive]}
+              accessibilityRole="switch"
+              accessibilityState={{ checked: isOrganic }}
+              accessibilityLabel="Organic toggle"
+            >
+              <Leaf size={12} color={isOrganic ? '#81C784' : '#484F58'} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+                onRemove(index)
+              }}
+              style={styles.editRemoveBtn}
+              accessibilityLabel="Remove ingredient"
+            >
+              <X size={14} color="#E91E63" />
+            </TouchableOpacity>
+          </View>
+          <QuantityPortionEditor
+            produceId={item.produceId}
+            quantity={currentQuantity}
+            unitKey={currentUnitKey}
+            sizeKey={currentSizeKey}
+            onQuantityChange={(qty) => onQuantityChange(index, qty)}
+            onUnitChange={(unitKey) => onUnitChange(index, unitKey)}
+            onSizeChange={(sizeKey) => onSizeChange(index, sizeKey)}
+            onEstimatedWeightChange={(weightG) => onEstimatedWeightChange(index, weightG)}
+            confidence={confidence}
+            wasOverridden={wasOverridden}
+            onOverrideWeight={(deltaG) => onOverrideWeight(index, deltaG)}
+          />
+        </View>
+      )}
 
       {/* Produce picker modal */}
       <Modal visible={isPickerOpen} transparent animationType="fade">
@@ -401,12 +511,14 @@ function QuotaMeter({ navigation }) {
 function seedPreloadIngredients(preload, organicMode) {
   return preload.map((item) => {
     if (typeof item === 'string') {
-      return { produceId: item, weightG: 150, isOrganic: getDefaultOrganic(organicMode) }
+      return { produceId: item, weightG: 150, isOrganic: getDefaultOrganic(organicMode), portionEntryMode: 'weight' }
     }
     return {
       produceId: item.produceId,
       weightG: item.weightG || 150,
       isOrganic: typeof item.isOrganic === 'boolean' ? item.isOrganic : getDefaultOrganic(organicMode),
+      portionEntryMode: item.portionEntryMode || 'weight',
+      portionMetadata: item.portionMetadata || undefined,
     }
   })
 }
@@ -444,6 +556,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
   const [manualSearch, setManualSearch] = useState('')
   const [showUpsellNudge, setShowUpsellNudge] = useState(false)
   const [juiceMethod, setJuiceMethod] = useState('centrifugal')
+  const [globalPortionMode, setGlobalPortionMode] = useState('weight')
 
   // Hydrate persisted juicer type (cold_pressed | centrifugal)
   // Re-hydrates on focus so changes made in Settings are picked up.
@@ -462,6 +575,18 @@ export default function JuiceSnapScreen({ navigation, route }) {
     }
     hydrateJuiceMethod()
     const unsubscribe = navigation?.addListener?.('focus', hydrateJuiceMethod)
+    return () => { if (typeof unsubscribe === 'function') unsubscribe() }
+  }, [navigation])
+
+  // Hydrate global portion entry preference
+  useEffect(() => {
+    const hydratePortionMode = () => {
+      getPreferredPortionEntryMode().then((mode) => {
+        setGlobalPortionMode(mode)
+      }).catch(() => {})
+    }
+    hydratePortionMode()
+    const unsubscribe = navigation?.addListener?.('focus', hydratePortionMode)
     return () => { if (typeof unsubscribe === 'function') unsubscribe() }
   }, [navigation])
 
@@ -519,8 +644,27 @@ export default function JuiceSnapScreen({ navigation, route }) {
       LayoutAnimation.Properties.opacity
     ))
     const weightG = item.weightG || 150
+    const newIngredient = {
+      produceId: item.id,
+      weightG,
+      isOrganic: getDefaultOrganic(organicMode),
+      portionEntryMode: globalPortionMode,
+    }
+    if (globalPortionMode === 'quantity' && isProduceQuantitySupported(item.id)) {
+      const defaultUnit = getDefaultPortionUnit(item.id)
+      if (defaultUnit) {
+        const hasSML = defaultUnit.sizes.some((s) => s.sizeKey !== 'standard')
+        const defaultSize = hasSML
+          ? (defaultUnit.sizes.find((s) => s.sizeKey === 'medium') || defaultUnit.sizes[0])
+          : null
+        // Don't fabricate a quantity — leave metadata empty until user enters one
+        newIngredient.portionMetadata = undefined
+        newIngredient.pendingUnitKey = defaultUnit.unitKey
+        newIngredient.pendingSizeKey = defaultSize?.sizeKey || null
+      }
+    }
     setBatch((prev) => {
-      const updated = [...prev.scannedIngredients, { produceId: item.id, weightG, isOrganic: getDefaultOrganic(organicMode) }]
+      const updated = [...prev.scannedIngredients, newIngredient]
       // Show upsell nudge at 7+ manual ingredients
       if (updated.length >= 7 && !isPro) {
         setShowUpsellNudge(true)
@@ -545,7 +689,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
       return buildBatch(updated, juiceMethod)
     })
     setIsLogged(false)
-  }, [isPro, blendNoticeShown])
+  }, [isPro, blendNoticeShown, globalPortionMode, organicMode])
 
   const handleCameraClose = useCallback(() => {
     setIsCameraOpen(false)
@@ -585,7 +729,14 @@ export default function JuiceSnapScreen({ navigation, route }) {
   const handleReplace = useCallback((index, newProduceId) => {
     setBatch((prev) => {
       const updated = [...prev.scannedIngredients]
-      updated[index] = { ...updated[index], produceId: newProduceId }
+      updated[index] = {
+        ...updated[index],
+        produceId: newProduceId,
+        portionMetadata: undefined,
+        portionEntryMode: 'weight',
+        pendingUnitKey: undefined,
+        pendingSizeKey: undefined,
+      }
       return buildBatch(updated, juiceMethod)
     })
     setIsLogged(false)
@@ -638,6 +789,152 @@ export default function JuiceSnapScreen({ navigation, route }) {
     setIsLogged(false)
   }, [])
 
+  // ── Portion entry handlers ──────────────────────────────────
+
+  const handleModeChange = useCallback((index, newMode) => {
+    setBatch((prev) => {
+      const updated = [...prev.scannedIngredients]
+      const item = updated[index]
+      if (newMode === 'quantity') {
+        // Switching to Quantity: restore prior metadata if available
+        if (item.portionMetadata?.inputMode === 'quantity') {
+          const restored = restoreQuantityMetadata(item.portionMetadata)
+          updated[index] = {
+            ...item,
+            portionEntryMode: 'quantity',
+            weightG: restored.weightG,
+            portionMetadata: restored.metadata,
+          }
+        } else {
+          // No prior metadata — don't invent a count, just switch mode
+          updated[index] = {
+            ...item,
+            portionEntryMode: 'quantity',
+          }
+        }
+      } else {
+        // Switching to Weight: preserve current weightG, keep metadata for later restore
+        updated[index] = {
+          ...item,
+          portionEntryMode: 'weight',
+        }
+      }
+      return buildBatch(updated, juiceMethod)
+    })
+    setIsLogged(false)
+  }, [juiceMethod])
+
+  const handleQuantityChange = useCallback((index, qty) => {
+    setBatch((prev) => {
+      const updated = [...prev.scannedIngredients]
+      const item = updated[index]
+      const unitKey = item.portionMetadata?.unitKey || item.pendingUnitKey || getDefaultPortionUnit(item.produceId)?.unitKey
+      const sizeKey = item.portionMetadata?.sizeKey || item.pendingSizeKey || null
+      const input = { produceId: item.produceId, quantity: qty, unitKey, sizeKey: sizeKey || undefined }
+      const result = recomputeFromQuantityChange(input)
+      if (!result) return prev
+      updated[index] = {
+        ...item,
+        weightG: result.weightG,
+        portionMetadata: result.metadata,
+        portionEntryMode: 'quantity',
+      }
+      return buildBatch(updated, juiceMethod)
+    })
+    setIsLogged(false)
+  }, [juiceMethod])
+
+  const handleUnitChange = useCallback((index, newUnitKey) => {
+    setBatch((prev) => {
+      const updated = [...prev.scannedIngredients]
+      const item = updated[index]
+      const qty = item.portionMetadata?.enteredQuantity
+      if (!qty) {
+        // Just update pending unit if no quantity entered yet
+        updated[index] = { ...item, pendingUnitKey: newUnitKey }
+        return { ...prev, scannedIngredients: updated }
+      }
+      // Recompute with new unit
+      const units = getSupportedPortionUnits(item.produceId)
+      const newUnit = units.find((u) => u.unitKey === newUnitKey)
+      const hasSML = newUnit?.sizes.some((s) => s.sizeKey !== 'standard') || false
+      const defaultSize = hasSML
+        ? (newUnit.sizes.find((s) => s.sizeKey === 'medium') || newUnit.sizes[0])
+        : null
+      const sizeKey = defaultSize?.sizeKey || undefined
+      const input = { produceId: item.produceId, quantity: qty, unitKey: newUnitKey, sizeKey }
+      const result = recomputeFromQuantityChange(input)
+      if (!result) return prev
+      updated[index] = {
+        ...item,
+        weightG: result.weightG,
+        portionMetadata: result.metadata,
+        portionEntryMode: 'quantity',
+      }
+      return buildBatch(updated, juiceMethod)
+    })
+    setIsLogged(false)
+  }, [juiceMethod])
+
+  const handleSizeChange = useCallback((index, newSizeKey) => {
+    setBatch((prev) => {
+      const updated = [...prev.scannedIngredients]
+      const item = updated[index]
+      const qty = item.portionMetadata?.enteredQuantity
+      if (!qty) {
+        updated[index] = { ...item, pendingSizeKey: newSizeKey }
+        return { ...prev, scannedIngredients: updated }
+      }
+      const unitKey = item.portionMetadata?.unitKey || item.pendingUnitKey
+      const input = { produceId: item.produceId, quantity: qty, unitKey, sizeKey: newSizeKey || undefined }
+      const result = recomputeFromQuantityChange(input)
+      if (!result) return prev
+      updated[index] = {
+        ...item,
+        weightG: result.weightG,
+        portionMetadata: result.metadata,
+        portionEntryMode: 'quantity',
+      }
+      return buildBatch(updated, juiceMethod)
+    })
+    setIsLogged(false)
+  }, [juiceMethod])
+
+  const handleEstimatedWeightChange = useCallback((index, estimatedWeightG) => {
+    setBatch((prev) => {
+      const updated = [...prev.scannedIngredients]
+      const item = updated[index]
+      // Only update if not overridden
+      if (item.portionMetadata?.wasEstimateOverridden) return prev
+      updated[index] = {
+        ...item,
+        weightG: estimatedWeightG,
+        portionMetadata: item.portionMetadata
+          ? { ...item.portionMetadata, estimatedRawWeightG: estimatedWeightG }
+          : undefined,
+      }
+      return buildBatch(updated, juiceMethod)
+    })
+    setIsLogged(false)
+  }, [juiceMethod])
+
+  const handleOverrideWeight = useCallback((index, deltaG) => {
+    setBatch((prev) => {
+      const updated = [...prev.scannedIngredients]
+      const item = updated[index]
+      if (!item.portionMetadata || item.portionMetadata.inputMode !== 'quantity') return prev
+      const newWeight = Math.max(10, item.weightG + deltaG)
+      const result = applyManualWeightOverride(item.portionMetadata, newWeight)
+      updated[index] = {
+        ...item,
+        weightG: result.weightG,
+        portionMetadata: result.metadata,
+      }
+      return buildBatch(updated, juiceMethod)
+    })
+    setIsLogged(false)
+  }, [juiceMethod])
+
   const handleAddProduce = useCallback((produceId) => {
     LayoutAnimation.configureNext(LayoutAnimation.create(
       300,
@@ -645,11 +942,28 @@ export default function JuiceSnapScreen({ navigation, route }) {
       LayoutAnimation.Properties.opacity
     ))
     setBatch((prev) => {
-      const updated = [...prev.scannedIngredients, { produceId, weightG: 150, isOrganic: getDefaultOrganic(organicMode) }]
+      const newIngredient = {
+        produceId,
+        weightG: 150,
+        isOrganic: getDefaultOrganic(organicMode),
+        portionEntryMode: globalPortionMode,
+      }
+      if (globalPortionMode === 'quantity' && isProduceQuantitySupported(produceId)) {
+        const defaultUnit = getDefaultPortionUnit(produceId)
+        if (defaultUnit) {
+          const hasSML = defaultUnit.sizes.some((s) => s.sizeKey !== 'standard')
+          const defaultSize = hasSML
+            ? (defaultUnit.sizes.find((s) => s.sizeKey === 'medium') || defaultUnit.sizes[0])
+            : null
+          newIngredient.pendingUnitKey = defaultUnit.unitKey
+          newIngredient.pendingSizeKey = defaultSize?.sizeKey || null
+        }
+      }
+      const updated = [...prev.scannedIngredients, newIngredient]
       return buildBatch(updated, juiceMethod)
     })
     setIsLogged(false)
-  }, [])
+  }, [juiceMethod, globalPortionMode, organicMode])
 
   const handleLogToChallenge = useCallback(async () => {
     if (!hasItems) return
@@ -927,6 +1241,12 @@ export default function JuiceSnapScreen({ navigation, route }) {
                 onRemove={handleRemove}
                 onWeightChange={handleWeightChange}
                 onToggleOrganic={handleToggleOrganic}
+                onModeChange={handleModeChange}
+                onQuantityChange={handleQuantityChange}
+                onUnitChange={handleUnitChange}
+                onSizeChange={handleSizeChange}
+                onEstimatedWeightChange={handleEstimatedWeightChange}
+                onOverrideWeight={handleOverrideWeight}
                 juiceMethod={juiceMethod}
               />
             ))}
@@ -1269,6 +1589,14 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#21262D',
     gap: 6,
+  },
+  editModeRow: {
+    paddingLeft: 16,
+    paddingRight: 4,
+  },
+  editQuantityContainer: {
+    flexDirection: 'column',
+    gap: 8,
   },
   editNameRow: {
     flexDirection: 'row',

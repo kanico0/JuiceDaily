@@ -724,6 +724,8 @@ export function ChallengeProvider({ children }) {
           ingredients: scannedIngredients.map((i) => ({
             produceId: i.produceId,
             weightG: i.weightG || 150,
+            ...(i.portionMetadata ? { portionMetadata: i.portionMetadata } : {}),
+            ...(i.portionEntryMode ? { portionEntryMode: i.portionEntryMode } : {}),
           })),
         },
       },

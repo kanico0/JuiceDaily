@@ -87,6 +87,12 @@ import {
   setAndroidNotificationChannel,
 } from '../services/NotificationNudges'
 import { WellnessSettingsDisclaimer, resetWellnessDisclaimer } from '../components/WellnessDisclaimer'
+import {
+  getPreferredPortionEntryMode,
+  setPreferredPortionEntryMode,
+  normalizePreferredPortionEntryMode,
+} from '../services/portionEntryPreference'
+import PortionEntryModeToggle from '../components/PortionEntryModeToggle'
 
 // ── Intensity Stops ──────────────────────────────────────────
 
@@ -575,6 +581,7 @@ export default function SettingsScreen({ navigation }) {
   const [nudgeSettings, setNudgeSettingsLocal] = useState(null)
   const [nudgePermDenied, setNudgePermDenied] = useState(false)
   const [juicerType, setJuicerType] = useState('centrifugal')
+  const [portionEntryMode, setPortionEntryMode] = useState('weight')
 
   const clearActivationStorage = useCallback(async () => {
     try {
@@ -595,12 +602,21 @@ export default function SettingsScreen({ navigation }) {
     AsyncStorage.getItem(JUICE_METHOD_STORAGE_KEY).then((val) => {
       if (val === 'cold_pressed' || val === 'centrifugal') setJuicerType(val)
     }).catch(() => {})
+    getPreferredPortionEntryMode().then((mode) => {
+      setPortionEntryMode(mode)
+    }).catch(() => {})
   }, [])
 
   const handleSetJuicerType = useCallback((key) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
     setJuicerType(key)
     AsyncStorage.setItem(JUICE_METHOD_STORAGE_KEY, key).catch(() => {})
+  }, [])
+
+  const handleSetPortionEntryMode = useCallback((mode) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    setPortionEntryMode(mode)
+    setPreferredPortionEntryMode(mode).catch(() => {})
   }, [])
 
   const updateNudgeSetting = useCallback(async (partial) => {
@@ -754,6 +770,19 @@ export default function SettingsScreen({ navigation }) {
               )
             })}
           </View>
+        </View>
+
+        {/* ═══ PREFERRED PORTION ENTRY ═════════════════════ */}
+        <View style={styles.intensityCard}>
+          <Text style={styles.intensityTitle}>Preferred Portion Entry</Text>
+          <PortionEntryModeToggle
+            mode={portionEntryMode}
+            onModeChange={handleSetPortionEntryMode}
+            accessibilityLabelPrefix="Preferred portion entry"
+          />
+          <Text style={styles.intensityHint}>
+            Choose how new ingredients are entered. You can change the method for any individual ingredient.
+          </Text>
         </View>
 
         {/* ═══ MY JUICER TYPE ═══════════════════════════════ */}

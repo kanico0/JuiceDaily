@@ -16,6 +16,8 @@ import {
   ScrollView,
   Modal,
   Animated,
+  FlatList,
+  TextInput,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { LinearGradient } from 'expo-linear-gradient'
@@ -60,6 +62,7 @@ import { shouldShowWeeklySummary, dismissWeeklySummary, buildWeeklySummaryData }
 import { checkAchievements } from '../services/achievements'
 import AchievementOverlay from '../components/AchievementOverlay'
 import { RECIPES, getCleanupLabel } from '../constants/recipeData'
+import { searchRecipes } from '../services/recipeSearch'
 
 const GOALS = [
   { id: 'energy', label: 'More Energy', emoji: '⚡' },
@@ -241,11 +244,11 @@ const secStyles = StyleSheet.create({
 
 function BrowseIdeasModal({ visible, onDismiss, onScanReady, isReduced, navigation }) {
   const fadeAnim = useRef(new Animated.Value(0)).current
-  const coreRecipes = useMemo(() => {
-    return RECIPES
-      .filter((r) => r.collection === 'core' && r.tier === 'free')
-      .slice()
-  }, [])
+  const [searchQuery, setSearchQuery] = useState('')
+
+  const searchResults = useMemo(() => {
+    return searchRecipes(searchQuery, { collection: 'core', tier: 'free' }, 100)
+  }, [searchQuery])
 
   useEffect(() => {
     if (visible) {
@@ -255,10 +258,36 @@ function BrowseIdeasModal({ visible, onDismiss, onScanReady, isReduced, navigati
       }
     } else {
       fadeAnim.setValue(0)
+      setSearchQuery('')
     }
   }, [visible])
 
   if (!visible) return null
+
+  const renderItem = ({ item: r }) => (
+    <TouchableOpacity
+      key={r.id}
+      style={browseStyles.templateCard}
+      onPress={() => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+        trackEvent('browse_recipe_opened', { recipe_id: r.id })
+        onDismiss()
+        navigation.navigate('RecipeDetail', { recipeId: r.id })
+      }}
+      activeOpacity={0.7}
+      accessibilityRole="button"
+      accessibilityLabel={`${r.title}: ${r.ingredients.map((i) => i.name).join(', ')}`}
+    >
+      <View style={[browseStyles.templateDot, { backgroundColor: r.vibeColor }]} />
+      <View style={browseStyles.templateContent}>
+        <Text style={browseStyles.templateName}>{r.title}</Text>
+        <Text style={browseStyles.templateIng} numberOfLines={1}>
+          {r.vibeTag} · {r.ingredients.length} ingredients · {getCleanupLabel(r.cleanupScore)}
+        </Text>
+      </View>
+      <ChevronRight size={14} color={DARK.textMuted} />
+    </TouchableOpacity>
+  )
 
   return (
     <Modal visible transparent animationType="none" statusBarTranslucent>
@@ -277,36 +306,51 @@ function BrowseIdeasModal({ visible, onDismiss, onScanReady, isReduced, navigati
             </TouchableOpacity>
           </View>
 
-          <ScrollView
-            style={browseStyles.scroll}
+          <View style={browseStyles.searchContainer}>
+            <TextInput
+              style={browseStyles.searchInput}
+              placeholder="Search by name or ingredient…"
+              placeholderTextColor={DARK.textMuted}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              autoCapitalize="none"
+              autoCorrect={false}
+              returnKeyType="search"
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity
+                onPress={() => setSearchQuery('')}
+                style={browseStyles.searchClear}
+                accessibilityRole="button"
+                accessibilityLabel="Clear search"
+              >
+                <X size={16} color={DARK.textMuted} />
+              </TouchableOpacity>
+            )}
+          </View>
+
+          <Text style={browseStyles.resultCount}>
+            {searchResults.length} {searchResults.length === 1 ? 'recipe' : 'recipes'}
+          </Text>
+
+          <FlatList
+            data={searchResults}
+            renderItem={renderItem}
+            keyExtractor={(item) => item.id}
             contentContainerStyle={browseStyles.scrollContent}
             showsVerticalScrollIndicator={false}
-          >
-            {coreRecipes.map((r) => (
-              <TouchableOpacity
-                key={r.id}
-                style={browseStyles.templateCard}
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-                  trackEvent('browse_recipe_opened', { recipe_id: r.id })
-                  onDismiss()
-                  navigation.navigate('RecipeDetail', { recipeId: r.id })
-                }}
-                activeOpacity={0.7}
-                accessibilityRole="button"
-                accessibilityLabel={`${r.title}: ${r.ingredients.map((i) => i.name).join(', ')}`}
-              >
-                <View style={[browseStyles.templateDot, { backgroundColor: r.vibeColor }]} />
-                <View style={browseStyles.templateContent}>
-                  <Text style={browseStyles.templateName}>{r.title}</Text>
-                  <Text style={browseStyles.templateIng} numberOfLines={1}>
-                    {r.vibeTag} · {r.ingredients.length} ingredients · {getCleanupLabel(r.cleanupScore)}
-                  </Text>
-                </View>
-                <ChevronRight size={14} color={DARK.textMuted} />
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
+            initialNumToRender={20}
+            maxToRenderPerBatch={20}
+            windowSize={5}
+            removeClippedSubviews
+            ListEmptyComponent={
+              <View style={browseStyles.emptyState}>
+                <Text style={browseStyles.emptyText}>
+                  No recipes found. Try a different search.
+                </Text>
+              </View>
+            }
+          />
 
           <View style={browseStyles.footer}>
             <TouchableOpacity
@@ -364,6 +408,39 @@ const browseStyles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.06)',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 16,
+    marginBottom: 8,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: FONT_SIZE.md,
+    color: DARK.textPrimary,
+    paddingVertical: 10,
+  },
+  searchClear: {
+    padding: 4,
+  },
+  resultCount: {
+    fontSize: FONT_SIZE.xs,
+    color: DARK.textMuted,
+    paddingHorizontal: 16,
+    paddingBottom: 8,
+  },
+  emptyState: {
+    padding: 32,
+    alignItems: 'center',
+  },
+  emptyText: {
+    fontSize: FONT_SIZE.md,
+    color: DARK.textMuted,
+    textAlign: 'center',
   },
   scroll: {
     flex: 1,

@@ -1,0 +1,1283 @@
+{
+  "totalRepairs": 213,
+  "repairs": [
+    {
+      "id": "garden-glow-up",
+      "field": "vibeTag",
+      "original": "ðŸŒ¿ Fresh Greens",
+      "corrected": "🌿 Fresh Greens"
+    },
+    {
+      "id": "garden-glow-up",
+      "field": "ingredients[4].amount",
+      "original": "Â½ peeled",
+      "corrected": "½ peeled"
+    },
+    {
+      "id": "garden-glow-up",
+      "field": "ingredients[5].amount",
+      "original": "Â½ inch knob",
+      "corrected": "½ inch knob"
+    },
+    {
+      "id": "kale-me-crazy",
+      "field": "vibeTag",
+      "original": "ðŸŒ¿ Fresh Greens",
+      "corrected": "🌿 Fresh Greens"
+    },
+    {
+      "id": "kale-me-crazy",
+      "field": "ingredients[1].amount",
+      "original": "1Â½ cups chunks",
+      "corrected": "1½ cups chunks"
+    },
+    {
+      "id": "kale-me-crazy",
+      "field": "ingredients[3].amount",
+      "original": "Â½ medium",
+      "corrected": "½ medium"
+    },
+    {
+      "id": "kale-me-crazy",
+      "field": "ingredients[4].amount",
+      "original": "Â½ peeled",
+      "corrected": "½ peeled"
+    },
+    {
+      "id": "spinach-spark",
+      "field": "vibeTag",
+      "original": "ðŸŒ¿ Fresh Greens",
+      "corrected": "🌿 Fresh Greens"
+    },
+    {
+      "id": "spinach-spark",
+      "field": "ingredients[4].amount",
+      "original": "Â½ peeled",
+      "corrected": "½ peeled"
+    },
+    {
+      "id": "green-lightning",
+      "field": "vibeTag",
+      "original": "ðŸŒ¿ Fresh Greens",
+      "corrected": "🌿 Fresh Greens"
+    },
+    {
+      "id": "green-lightning",
+      "field": "ingredients[4].amount",
+      "original": "Â½ peeled",
+      "corrected": "½ peeled"
+    },
+    {
+      "id": "romaine-holiday",
+      "field": "vibeTag",
+      "original": "ðŸŒ¿ Fresh Greens",
+      "corrected": "🌿 Fresh Greens"
+    },
+    {
+      "id": "romaine-holiday",
+      "field": "ingredients[4].amount",
+      "original": "Â½ peeled",
+      "corrected": "½ peeled"
+    },
+    {
+      "id": "emerald-orchard",
+      "field": "vibeTag",
+      "original": "ðŸŒ¿ Fresh Greens",
+      "corrected": "🌿 Fresh Greens"
+    },
+    {
+      "id": "emerald-orchard",
+      "field": "ingredients[4].amount",
+      "original": "Â½ peeled",
+      "corrected": "½ peeled"
+    },
+    {
+      "id": "emerald-orchard",
+      "field": "ingredients[5].amount",
+      "original": "Â½ inch knob",
+      "corrected": "½ inch knob"
+    },
+    {
+      "id": "parsley-party",
+      "field": "vibeTag",
+      "original": "ðŸŒ¿ Fresh Greens",
+      "corrected": "🌿 Fresh Greens"
+    },
+    {
+      "id": "parsley-party",
+      "field": "ingredients[0].amount",
+      "original": "1Â½ cups packed",
+      "corrected": "1½ cups packed"
+    },
+    {
+      "id": "parsley-party",
+      "field": "ingredients[4].amount",
+      "original": "Â½ peeled",
+      "corrected": "½ peeled"
+    },
+    {
+      "id": "cilantro-cool-down",
+      "field": "vibeTag",
+      "original": "ðŸŒ¿ Fresh Greens",
+      "corrected": "🌿 Fresh Greens"
+    },
+    {
+      "id": "green-room-refresh",
+      "field": "vibeTag",
+      "original": "ðŸŒ¿ Fresh Greens",
+      "corrected": "🌿 Fresh Greens"
+    },
+    {
+      "id": "green-room-refresh",
+      "field": "ingredients[3].amount",
+      "original": "Â½ bulb",
+      "corrected": "½ bulb"
+    },
+    {
+      "id": "green-room-refresh",
+      "field": "ingredients[4].amount",
+      "original": "Â½ peeled",
+      "corrected": "½ peeled"
+    },
+    {
+      "id": "watercress-wake-up",
+      "field": "vibeTag",
+      "original": "ðŸŒ¿ Fresh Greens",
+      "corrected": "🌿 Fresh Greens"
+    },
+    {
+      "id": "watercress-wake-up",
+      "field": "ingredients[4].amount",
+      "original": "Â½ peeled",
+      "corrected": "½ peeled"
+    },
+    {
+      "id": "watercress-wake-up",
+      "field": "ingredients[5].amount",
+      "original": "Â½ inch knob",
+      "corrected": "½ inch knob"
+    },
+    {
+      "id": "chard-charge",
+      "field": "vibeTag",
+      "original": "ðŸŒ¿ Fresh Greens",
+      "corrected": "🌿 Fresh Greens"
+    },
+    {
+      "id": "chard-charge",
+      "field": "ingredients[4].amount",
+      "original": "Â½ peeled",
+      "corrected": "½ peeled"
+    },
+    {
+      "id": "chard-charge",
+      "field": "ingredients[5].amount",
+      "original": "Â½ inch knob",
+      "corrected": "½ inch knob"
+    },
+    {
+      "id": "zucchini-zen",
+      "field": "vibeTag",
+      "original": "ðŸŒ¿ Fresh Greens",
+      "corrected": "🌿 Fresh Greens"
+    },
+    {
+      "id": "zucchini-zen",
+      "field": "ingredients[3].amount",
+      "original": "1Â½ cups",
+      "corrected": "1½ cups"
+    },
+    {
+      "id": "zucchini-zen",
+      "field": "ingredients[4].amount",
+      "original": "Â½ peeled",
+      "corrected": "½ peeled"
+    },
+    {
+      "id": "broccoli-breeze",
+      "field": "vibeTag",
+      "original": "ðŸŒ¿ Fresh Greens",
+      "corrected": "🌿 Fresh Greens"
+    },
+    {
+      "id": "broccoli-breeze",
+      "field": "ingredients[4].amount",
+      "original": "Â½ peeled",
+      "corrected": "½ peeled"
+    },
+    {
+      "id": "broccoli-breeze",
+      "field": "ingredients[5].amount",
+      "original": "Â½ inch knob",
+      "corrected": "½ inch knob"
+    },
+    {
+      "id": "mint-condition",
+      "field": "vibeTag",
+      "original": "ðŸŒ¿ Fresh Greens",
+      "corrected": "🌿 Fresh Greens"
+    },
+    {
+      "id": "mint-condition",
+      "field": "ingredients[3].amount",
+      "original": "Â½ peeled",
+      "corrected": "½ peeled"
+    },
+    {
+      "id": "pineapple-green-scene",
+      "field": "vibeTag",
+      "original": "ðŸŒ¿ Fresh Greens",
+      "corrected": "🌿 Fresh Greens"
+    },
+    {
+      "id": "pineapple-green-scene",
+      "field": "ingredients[4].amount",
+      "original": "Â½ peeled",
+      "corrected": "½ peeled"
+    },
+    {
+      "id": "gold-rush-glow",
+      "field": "vibeTag",
+      "original": "â˜€ï¸ Golden Glow",
+      "corrected": "☀️ Golden Glow"
+    },
+    {
+      "id": "gold-rush-glow",
+      "field": "ingredients[3].amount",
+      "original": "Â½ peeled",
+      "corrected": "½ peeled"
+    },
+    {
+      "id": "carrot-top-pop",
+      "field": "vibeTag",
+      "original": "â˜€ï¸ Golden Glow",
+      "corrected": "☀️ Golden Glow"
+    },
+    {
+      "id": "carrot-top-pop",
+      "field": "ingredients[3].amount",
+      "original": "Â½ peeled",
+      "corrected": "½ peeled"
+    },
+    {
+      "id": "carrot-top-pop",
+      "field": "ingredients[4].amount",
+      "original": "Â½ inch knob",
+      "corrected": "½ inch knob"
+    },
+    {
+      "id": "orange-crush-rush",
+      "field": "vibeTag",
+      "original": "â˜€ï¸ Golden Glow",
+      "corrected": "☀️ Golden Glow"
+    },
+    {
+      "id": "orange-crush-rush",
+      "field": "ingredients[2].amount",
+      "original": "Â½ peeled",
+      "corrected": "½ peeled"
+    },
+    {
+      "id": "orange-crush-rush",
+      "field": "ingredients[4].amount",
+      "original": "Â½ inch knob",
+      "corrected": "½ inch knob"
+    },
+    {
+      "id": "sunny-side-sip",
+      "field": "vibeTag",
+      "original": "â˜€ï¸ Golden Glow",
+      "corrected": "☀️ Golden Glow"
+    },
+    {
+      "id": "sunny-side-sip",
+      "field": "ingredients[3].amount",
+      "original": "Â½ peeled",
+      "corrected": "½ peeled"
+    },
+    {
+      "id": "sunny-side-sip",
+      "field": "ingredients[4].amount",
+      "original": "Â½ inch knob",
+      "corrected": "½ inch knob"
+    },
+    {
+      "id": "golden-hour-groove",
+      "field": "vibeTag",
+      "original": "â˜€ï¸ Golden Glow",
+      "corrected": "☀️ Golden Glow"
+    },
+    {
+      "id": "golden-hour-groove",
+      "field": "ingredients[4].amount",
+      "original": "Â½ peeled",
+      "corrected": "½ peeled"
+    },
+    {
+      "id": "sweet-potato-sunbeam",
+      "field": "vibeTag",
+      "original": "â˜€ï¸ Golden Glow",
+      "corrected": "☀️ Golden Glow"
+    },
+    {
+      "id": "sweet-potato-sunbeam",
+      "field": "ingredients[4].amount",
+      "original": "Â½ peeled",
+      "corrected": "½ peeled"
+    },
+    {
+      "id": "peachy-carrot-kick",
+      "field": "vibeTag",
+      "original": "â˜€ï¸ Golden Glow",
+      "corrected": "☀️ Golden Glow"
+    },
+    {
+      "id": "peachy-carrot-kick",
+      "field": "ingredients[3].amount",
+      "original": "Â½ peeled",
+      "corrected": "½ peeled"
+    },
+    {
+      "id": "turmeric-tango",
+      "field": "vibeTag",
+      "original": "â˜€ï¸ Golden Glow",
+      "corrected": "☀️ Golden Glow"
+    },
+    {
+      "id": "turmeric-tango",
+      "field": "ingredients[1].amount",
+      "original": "1Â½ cups chunks",
+      "corrected": "1½ cups chunks"
+    },
+    {
+      "id": "turmeric-tango",
+      "field": "ingredients[3].amount",
+      "original": "1Â½ inch root",
+      "corrected": "1½ inch root"
+    },
+    {
+      "id": "turmeric-tango",
+      "field": "ingredients[4].amount",
+      "original": "Â½ inch knob",
+      "corrected": "½ inch knob"
+    },
+    {
+      "id": "turmeric-tango",
+      "field": "ingredients[5].amount",
+      "original": "Â¼ peeled",
+      "corrected": "¼ peeled"
+    },
+    {
+      "id": "carrot-citrus-crown",
+      "field": "vibeTag",
+      "original": "â˜€ï¸ Golden Glow",
+      "corrected": "☀️ Golden Glow"
+    },
+    {
+      "id": "carrot-citrus-crown",
+      "field": "ingredients[3].amount",
+      "original": "Â½ medium",
+      "corrected": "½ medium"
+    },
+    {
+      "id": "pineapple-amber-wave",
+      "field": "vibeTag",
+      "original": "â˜€ï¸ Golden Glow",
+      "corrected": "☀️ Golden Glow"
+    },
+    {
+      "id": "pineapple-amber-wave",
+      "field": "ingredients[2].amount",
+      "original": "Â½ seeded",
+      "corrected": "½ seeded"
+    },
+    {
+      "id": "pineapple-amber-wave",
+      "field": "ingredients[4].amount",
+      "original": "Â½ inch knob",
+      "corrected": "½ inch knob"
+    },
+    {
+      "id": "pear-of-sunshine",
+      "field": "vibeTag",
+      "original": "â˜€ï¸ Golden Glow",
+      "corrected": "☀️ Golden Glow"
+    },
+    {
+      "id": "pear-of-sunshine",
+      "field": "ingredients[3].amount",
+      "original": "Â½ peeled",
+      "corrected": "½ peeled"
+    },
+    {
+      "id": "pear-of-sunshine",
+      "field": "ingredients[4].amount",
+      "original": "Â½ inch root",
+      "corrected": "½ inch root"
+    },
+    {
+      "id": "ginger-gold-digger",
+      "field": "vibeTag",
+      "original": "â˜€ï¸ Golden Glow",
+      "corrected": "☀️ Golden Glow"
+    },
+    {
+      "id": "ginger-gold-digger",
+      "field": "ingredients[3].amount",
+      "original": "1Â½ inch knob",
+      "corrected": "1½ inch knob"
+    },
+    {
+      "id": "ginger-gold-digger",
+      "field": "ingredients[4].amount",
+      "original": "Â½ peeled",
+      "corrected": "½ peeled"
+    },
+    {
+      "id": "ginger-gold-digger",
+      "field": "ingredients[5].amount",
+      "original": "Â½ inch root",
+      "corrected": "½ inch root"
+    },
+    {
+      "id": "beet-drop",
+      "field": "ingredients[3].amount",
+      "original": "Â½ peeled",
+      "corrected": "½ peeled"
+    },
+    {
+      "id": "ruby-runway",
+      "field": "ingredients[1].amount",
+      "original": "1Â½ cups chunks",
+      "corrected": "1½ cups chunks"
+    },
+    {
+      "id": "ruby-runway",
+      "field": "ingredients[3].amount",
+      "original": "Â½ peeled",
+      "corrected": "½ peeled"
+    },
+    {
+      "id": "red-carpet-rush",
+      "field": "ingredients[1].amount",
+      "original": "1Â½ cups",
+      "corrected": "1½ cups"
+    },
+    {
+      "id": "red-carpet-rush",
+      "field": "ingredients[4].amount",
+      "original": "Â½ peeled",
+      "corrected": "½ peeled"
+    },
+    {
+      "id": "purple-reign-refresh",
+      "field": "ingredients[1].amount",
+      "original": "1Â½ cups",
+      "corrected": "1½ cups"
+    },
+    {
+      "id": "purple-reign-refresh",
+      "field": "ingredients[4].amount",
+      "original": "Â½ peeled",
+      "corrected": "½ peeled"
+    },
+    {
+      "id": "pomegranate-pulse",
+      "field": "ingredients[3].amount",
+      "original": "Â½ whole",
+      "corrected": "½ whole"
+    },
+    {
+      "id": "pomegranate-pulse",
+      "field": "ingredients[4].amount",
+      "original": "Â½ peeled",
+      "corrected": "½ peeled"
+    },
+    {
+      "id": "beetberry-boom",
+      "field": "ingredients[4].amount",
+      "original": "Â½ peeled",
+      "corrected": "½ peeled"
+    },
+    {
+      "id": "beetberry-boom",
+      "field": "ingredients[5].amount",
+      "original": "Â½ inch knob",
+      "corrected": "½ inch knob"
+    },
+    {
+      "id": "plum-lucky",
+      "field": "ingredients[3].amount",
+      "original": "Â½ peeled",
+      "corrected": "½ peeled"
+    },
+    {
+      "id": "berry-beet-bounce",
+      "field": "ingredients[2].amount",
+      "original": "Â¾ cup",
+      "corrected": "¾ cup"
+    },
+    {
+      "id": "berry-beet-bounce",
+      "field": "ingredients[5].amount",
+      "original": "Â½ peeled",
+      "corrected": "½ peeled"
+    },
+    {
+      "id": "red-velvet-root",
+      "field": "ingredients[5].amount",
+      "original": "Â¼ peeled",
+      "corrected": "¼ peeled"
+    },
+    {
+      "id": "grape-expectations",
+      "field": "ingredients[3].amount",
+      "original": "Â½ whole",
+      "corrected": "½ whole"
+    },
+    {
+      "id": "grape-expectations",
+      "field": "ingredients[4].amount",
+      "original": "Â½ peeled",
+      "corrected": "½ peeled"
+    },
+    {
+      "id": "radish-rose-rush",
+      "field": "ingredients[1].amount",
+      "original": "2Â½ cups",
+      "corrected": "2½ cups"
+    },
+    {
+      "id": "radish-rose-rush",
+      "field": "ingredients[3].amount",
+      "original": "Â½ whole",
+      "corrected": "½ whole"
+    },
+    {
+      "id": "radish-rose-rush",
+      "field": "ingredients[4].amount",
+      "original": "Â½ peeled",
+      "corrected": "½ peeled"
+    },
+    {
+      "id": "citrus-main-character",
+      "field": "ingredients[3].amount",
+      "original": "Â½ peeled",
+      "corrected": "½ peeled"
+    },
+    {
+      "id": "grapefruit-glimmer",
+      "field": "ingredients[2].amount",
+      "original": "Â½ whole",
+      "corrected": "½ whole"
+    },
+    {
+      "id": "grapefruit-glimmer",
+      "field": "ingredients[3].amount",
+      "original": "Â½ peeled",
+      "corrected": "½ peeled"
+    },
+    {
+      "id": "orange-you-glad",
+      "field": "ingredients[3].amount",
+      "original": "Â½ inch knob",
+      "corrected": "½ inch knob"
+    },
+    {
+      "id": "orange-you-glad",
+      "field": "ingredients[4].amount",
+      "original": "Â½ inch root",
+      "corrected": "½ inch root"
+    },
+    {
+      "id": "pink-citrus-pop",
+      "field": "ingredients[3].amount",
+      "original": "Â½ peeled",
+      "corrected": "½ peeled"
+    },
+    {
+      "id": "citrus-green-screen",
+      "field": "ingredients[3].amount",
+      "original": "Â½ peeled",
+      "corrected": "½ peeled"
+    },
+    {
+      "id": "citrus-green-screen",
+      "field": "ingredients[5].amount",
+      "original": "Â¼ peeled",
+      "corrected": "¼ peeled"
+    },
+    {
+      "id": "citrus-dream-team",
+      "field": "ingredients[3].amount",
+      "original": "Â½ peeled",
+      "corrected": "½ peeled"
+    },
+    {
+      "id": "grapefruit-greenroom",
+      "field": "ingredients[4].amount",
+      "original": "Â½ peeled",
+      "corrected": "½ peeled"
+    },
+    {
+      "id": "citrus-confetti",
+      "field": "ingredients[1].amount",
+      "original": "Â½ peeled",
+      "corrected": "½ peeled"
+    },
+    {
+      "id": "citrus-confetti",
+      "field": "ingredients[3].amount",
+      "original": "Â½ seeded",
+      "corrected": "½ seeded"
+    },
+    {
+      "id": "citrus-confetti",
+      "field": "ingredients[5].amount",
+      "original": "Â½ peeled",
+      "corrected": "½ peeled"
+    },
+    {
+      "id": "morning-zest-fest",
+      "field": "ingredients[3].amount",
+      "original": "Â½ peeled",
+      "corrected": "½ peeled"
+    },
+    {
+      "id": "morning-zest-fest",
+      "field": "ingredients[5].amount",
+      "original": "Â½ inch root",
+      "corrected": "½ inch root"
+    },
+    {
+      "id": "grapefruit-not-sorry",
+      "field": "ingredients[0].amount",
+      "original": "1Â½ peeled",
+      "corrected": "1½ peeled"
+    },
+    {
+      "id": "grapefruit-not-sorry",
+      "field": "ingredients[3].amount",
+      "original": "Â½ whole",
+      "corrected": "½ whole"
+    },
+    {
+      "id": "grapefruit-not-sorry",
+      "field": "ingredients[4].amount",
+      "original": "Â½ peeled",
+      "corrected": "½ peeled"
+    },
+    {
+      "id": "island-time-ignite",
+      "field": "ingredients[0].amount",
+      "original": "2Â½ cups chunks",
+      "corrected": "2½ cups chunks"
+    },
+    {
+      "id": "island-time-ignite",
+      "field": "ingredients[3].amount",
+      "original": "Â½ peeled",
+      "corrected": "½ peeled"
+    },
+    {
+      "id": "kiwi-cabana",
+      "field": "ingredients[1].amount",
+      "original": "1Â½ cups chunks",
+      "corrected": "1½ cups chunks"
+    },
+    {
+      "id": "kiwi-cabana",
+      "field": "ingredients[3].amount",
+      "original": "Â½ medium",
+      "corrected": "½ medium"
+    },
+    {
+      "id": "kiwi-cabana",
+      "field": "ingredients[4].amount",
+      "original": "Â½ peeled",
+      "corrected": "½ peeled"
+    },
+    {
+      "id": "pineapple-paradise-punch",
+      "field": "ingredients[3].amount",
+      "original": "Â½ peeled",
+      "corrected": "½ peeled"
+    },
+    {
+      "id": "tropic-like-its-hot",
+      "field": "ingredients[4].amount",
+      "original": "Â½ inch root",
+      "corrected": "½ inch root"
+    },
+    {
+      "id": "tropic-like-its-hot",
+      "field": "ingredients[5].amount",
+      "original": "Â½ peeled",
+      "corrected": "½ peeled"
+    },
+    {
+      "id": "honeydew-horizon",
+      "field": "ingredients[3].amount",
+      "original": "Â½ peeled",
+      "corrected": "½ peeled"
+    },
+    {
+      "id": "cantaloupe-coastline",
+      "field": "ingredients[3].amount",
+      "original": "Â½ peeled",
+      "corrected": "½ peeled"
+    },
+    {
+      "id": "cantaloupe-coastline",
+      "field": "ingredients[4].amount",
+      "original": "Â½ inch knob",
+      "corrected": "½ inch knob"
+    },
+    {
+      "id": "peach-pineapple-playlist",
+      "field": "ingredients[1].amount",
+      "original": "1Â½ cups chunks",
+      "corrected": "1½ cups chunks"
+    },
+    {
+      "id": "peach-pineapple-playlist",
+      "field": "ingredients[3].amount",
+      "original": "Â½ whole",
+      "corrected": "½ whole"
+    },
+    {
+      "id": "peach-pineapple-playlist",
+      "field": "ingredients[4].amount",
+      "original": "Â½ peeled",
+      "corrected": "½ peeled"
+    },
+    {
+      "id": "green-island-groove",
+      "field": "ingredients[3].amount",
+      "original": "Â½ medium",
+      "corrected": "½ medium"
+    },
+    {
+      "id": "green-island-groove",
+      "field": "ingredients[4].amount",
+      "original": "Â½ peeled",
+      "corrected": "½ peeled"
+    },
+    {
+      "id": "tropical-traffic-stopper",
+      "field": "ingredients[0].amount",
+      "original": "1Â½ cups chunks",
+      "corrected": "1½ cups chunks"
+    },
+    {
+      "id": "tropical-traffic-stopper",
+      "field": "ingredients[4].amount",
+      "original": "Â½ peeled",
+      "corrected": "½ peeled"
+    },
+    {
+      "id": "tropical-traffic-stopper",
+      "field": "ingredients[5].amount",
+      "original": "Â½ inch knob",
+      "corrected": "½ inch knob"
+    },
+    {
+      "id": "sunset-cabana",
+      "field": "ingredients[1].amount",
+      "original": "1Â½ cups chunks",
+      "corrected": "1½ cups chunks"
+    },
+    {
+      "id": "sunset-cabana",
+      "field": "ingredients[4].amount",
+      "original": "Â½ peeled",
+      "corrected": "½ peeled"
+    },
+    {
+      "id": "tropical-herb-escape",
+      "field": "ingredients[3].amount",
+      "original": "Â½ cup packed",
+      "corrected": "½ cup packed"
+    },
+    {
+      "id": "tropical-herb-escape",
+      "field": "ingredients[4].amount",
+      "original": "Â½ peeled",
+      "corrected": "½ peeled"
+    },
+    {
+      "id": "watermelon-wonder",
+      "field": "vibeTag",
+      "original": "ðŸ’§ Hydration Station",
+      "corrected": "💧 Hydration Station"
+    },
+    {
+      "id": "watermelon-wonder",
+      "field": "ingredients[2].amount",
+      "original": "Â½ peeled",
+      "corrected": "½ peeled"
+    },
+    {
+      "id": "cucumber-cloud-nine",
+      "field": "vibeTag",
+      "original": "ðŸ’§ Hydration Station",
+      "corrected": "💧 Hydration Station"
+    },
+    {
+      "id": "cucumber-cloud-nine",
+      "field": "ingredients[3].amount",
+      "original": "Â½ peeled",
+      "corrected": "½ peeled"
+    },
+    {
+      "id": "melon-mood-lift",
+      "field": "vibeTag",
+      "original": "ðŸ’§ Hydration Station",
+      "corrected": "💧 Hydration Station"
+    },
+    {
+      "id": "melon-mood-lift",
+      "field": "ingredients[3].amount",
+      "original": "Â½ peeled",
+      "corrected": "½ peeled"
+    },
+    {
+      "id": "pink-poolside",
+      "field": "vibeTag",
+      "original": "ðŸ’§ Hydration Station",
+      "corrected": "💧 Hydration Station"
+    },
+    {
+      "id": "pink-poolside",
+      "field": "ingredients[2].amount",
+      "original": "Â½ whole",
+      "corrected": "½ whole"
+    },
+    {
+      "id": "pink-poolside",
+      "field": "ingredients[3].amount",
+      "original": "Â½ peeled",
+      "corrected": "½ peeled"
+    },
+    {
+      "id": "celery-sea-breeze",
+      "field": "vibeTag",
+      "original": "ðŸ’§ Hydration Station",
+      "corrected": "💧 Hydration Station"
+    },
+    {
+      "id": "celery-sea-breeze",
+      "field": "ingredients[3].amount",
+      "original": "Â½ peeled",
+      "corrected": "½ peeled"
+    },
+    {
+      "id": "pear-fect-hydration",
+      "field": "vibeTag",
+      "original": "ðŸ’§ Hydration Station",
+      "corrected": "💧 Hydration Station"
+    },
+    {
+      "id": "pear-fect-hydration",
+      "field": "ingredients[3].amount",
+      "original": "Â½ peeled",
+      "corrected": "½ peeled"
+    },
+    {
+      "id": "honeydew-hush",
+      "field": "vibeTag",
+      "original": "ðŸ’§ Hydration Station",
+      "corrected": "💧 Hydration Station"
+    },
+    {
+      "id": "honeydew-hush",
+      "field": "ingredients[3].amount",
+      "original": "Â½ peeled",
+      "corrected": "½ peeled"
+    },
+    {
+      "id": "cool-as-a-cucumber",
+      "field": "vibeTag",
+      "original": "ðŸ’§ Hydration Station",
+      "corrected": "💧 Hydration Station"
+    },
+    {
+      "id": "cool-as-a-cucumber",
+      "field": "ingredients[2].amount",
+      "original": "Â½ bulb",
+      "corrected": "½ bulb"
+    },
+    {
+      "id": "cool-as-a-cucumber",
+      "field": "ingredients[3].amount",
+      "original": "Â½ peeled",
+      "corrected": "½ peeled"
+    },
+    {
+      "id": "watermelon-basil-bliss",
+      "field": "vibeTag",
+      "original": "ðŸ’§ Hydration Station",
+      "corrected": "💧 Hydration Station"
+    },
+    {
+      "id": "watermelon-basil-bliss",
+      "field": "ingredients[1].amount",
+      "original": "Â½ whole",
+      "corrected": "½ whole"
+    },
+    {
+      "id": "watermelon-basil-bliss",
+      "field": "ingredients[2].amount",
+      "original": "Â½ peeled",
+      "corrected": "½ peeled"
+    },
+    {
+      "id": "watermelon-basil-bliss",
+      "field": "ingredients[3].amount",
+      "original": "Â½ cup packed",
+      "corrected": "½ cup packed"
+    },
+    {
+      "id": "watermelon-basil-bliss",
+      "field": "ingredients[4].amount",
+      "original": "Â½ inch knob",
+      "corrected": "½ inch knob"
+    },
+    {
+      "id": "cantaloupe-cool-front",
+      "field": "vibeTag",
+      "original": "ðŸ’§ Hydration Station",
+      "corrected": "💧 Hydration Station"
+    },
+    {
+      "id": "cantaloupe-cool-front",
+      "field": "ingredients[3].amount",
+      "original": "Â½ peeled",
+      "corrected": "½ peeled"
+    },
+    {
+      "id": "fennel-fresh-start",
+      "field": "vibeTag",
+      "original": "ðŸŒ± Herb Garden",
+      "corrected": "🌱 Herb Garden"
+    },
+    {
+      "id": "fennel-fresh-start",
+      "field": "ingredients[2].amount",
+      "original": "Â½ whole",
+      "corrected": "½ whole"
+    },
+    {
+      "id": "fennel-fresh-start",
+      "field": "ingredients[3].amount",
+      "original": "Â½ peeled",
+      "corrected": "½ peeled"
+    },
+    {
+      "id": "fennel-fresh-start",
+      "field": "ingredients[4].amount",
+      "original": "Â½ inch knob",
+      "corrected": "½ inch knob"
+    },
+    {
+      "id": "pear-basil-bright",
+      "field": "vibeTag",
+      "original": "ðŸŒ± Herb Garden",
+      "corrected": "🌱 Herb Garden"
+    },
+    {
+      "id": "pear-basil-bright",
+      "field": "ingredients[2].amount",
+      "original": "Â¾ cup packed",
+      "corrected": "¾ cup packed"
+    },
+    {
+      "id": "pear-basil-bright",
+      "field": "ingredients[3].amount",
+      "original": "Â½ peeled",
+      "corrected": "½ peeled"
+    },
+    {
+      "id": "apple-fennel-fizz",
+      "field": "vibeTag",
+      "original": "ðŸŒ± Herb Garden",
+      "corrected": "🌱 Herb Garden"
+    },
+    {
+      "id": "apple-fennel-fizz",
+      "field": "ingredients[2].amount",
+      "original": "Â½ whole",
+      "corrected": "½ whole"
+    },
+    {
+      "id": "apple-fennel-fizz",
+      "field": "ingredients[3].amount",
+      "original": "Â½ peeled",
+      "corrected": "½ peeled"
+    },
+    {
+      "id": "pear-parsley-polish",
+      "field": "vibeTag",
+      "original": "ðŸŒ± Herb Garden",
+      "corrected": "🌱 Herb Garden"
+    },
+    {
+      "id": "pear-parsley-polish",
+      "field": "ingredients[1].amount",
+      "original": "1Â½ cups packed",
+      "corrected": "1½ cups packed"
+    },
+    {
+      "id": "pear-parsley-polish",
+      "field": "ingredients[4].amount",
+      "original": "Â½ peeled",
+      "corrected": "½ peeled"
+    },
+    {
+      "id": "grape-basil-groove",
+      "field": "vibeTag",
+      "original": "ðŸŒ± Herb Garden",
+      "corrected": "🌱 Herb Garden"
+    },
+    {
+      "id": "grape-basil-groove",
+      "field": "ingredients[3].amount",
+      "original": "Â½ cup packed",
+      "corrected": "½ cup packed"
+    },
+    {
+      "id": "grape-basil-groove",
+      "field": "ingredients[4].amount",
+      "original": "Â½ peeled",
+      "corrected": "½ peeled"
+    },
+    {
+      "id": "fennel-citrus-flirt",
+      "field": "vibeTag",
+      "original": "ðŸŒ± Herb Garden",
+      "corrected": "🌱 Herb Garden"
+    },
+    {
+      "id": "fennel-citrus-flirt",
+      "field": "ingredients[3].amount",
+      "original": "Â½ peeled",
+      "corrected": "½ peeled"
+    },
+    {
+      "id": "fennel-citrus-flirt",
+      "field": "ingredients[4].amount",
+      "original": "Â½ inch knob",
+      "corrected": "½ inch knob"
+    },
+    {
+      "id": "minted-pear-moment",
+      "field": "vibeTag",
+      "original": "ðŸŒ± Herb Garden",
+      "corrected": "🌱 Herb Garden"
+    },
+    {
+      "id": "minted-pear-moment",
+      "field": "ingredients[2].amount",
+      "original": "Â½ peeled",
+      "corrected": "½ peeled"
+    },
+    {
+      "id": "garden-bloody-brilliant",
+      "field": "vibeTag",
+      "original": "ðŸ¥¬ Savory Sipper",
+      "corrected": "🥬 Savory Sipper"
+    },
+    {
+      "id": "garden-bloody-brilliant",
+      "field": "ingredients[3].amount",
+      "original": "Â½ seeded",
+      "corrected": "½ seeded"
+    },
+    {
+      "id": "garden-bloody-brilliant",
+      "field": "ingredients[4].amount",
+      "original": "Â½ peeled",
+      "corrected": "½ peeled"
+    },
+    {
+      "id": "garden-bloody-brilliant",
+      "field": "ingredients[5].amount",
+      "original": "Â½ cup",
+      "corrected": "½ cup"
+    },
+    {
+      "id": "green-gazpacho-go",
+      "field": "vibeTag",
+      "original": "ðŸ¥¬ Savory Sipper",
+      "corrected": "🥬 Savory Sipper"
+    },
+    {
+      "id": "green-gazpacho-go",
+      "field": "ingredients[1].amount",
+      "original": "Â½ seeded",
+      "corrected": "½ seeded"
+    },
+    {
+      "id": "green-gazpacho-go",
+      "field": "ingredients[4].amount",
+      "original": "Â½ peeled",
+      "corrected": "½ peeled"
+    },
+    {
+      "id": "green-gazpacho-go",
+      "field": "ingredients[5].amount",
+      "original": "Â½ cup",
+      "corrected": "½ cup"
+    },
+    {
+      "id": "pepper-power-pour",
+      "field": "vibeTag",
+      "original": "ðŸ¥¬ Savory Sipper",
+      "corrected": "🥬 Savory Sipper"
+    },
+    {
+      "id": "pepper-power-pour",
+      "field": "ingredients[4].amount",
+      "original": "Â½ peeled",
+      "corrected": "½ peeled"
+    },
+    {
+      "id": "pepper-power-pour",
+      "field": "ingredients[5].amount",
+      "original": "Â½ inch knob",
+      "corrected": "½ inch knob"
+    },
+    {
+      "id": "cabbage-crunch-cooler",
+      "field": "vibeTag",
+      "original": "ðŸ¥¬ Savory Sipper",
+      "corrected": "🥬 Savory Sipper"
+    },
+    {
+      "id": "cabbage-crunch-cooler",
+      "field": "ingredients[4].amount",
+      "original": "Â½ peeled",
+      "corrected": "½ peeled"
+    },
+    {
+      "id": "cabbage-crunch-cooler",
+      "field": "ingredients[5].amount",
+      "original": "Â½ inch knob",
+      "corrected": "½ inch knob"
+    },
+    {
+      "id": "spicy-tomato-strut",
+      "field": "vibeTag",
+      "original": "ðŸ¥¬ Savory Sipper",
+      "corrected": "🥬 Savory Sipper"
+    },
+    {
+      "id": "spicy-tomato-strut",
+      "field": "ingredients[3].amount",
+      "original": "Â½ whole",
+      "corrected": "½ whole"
+    },
+    {
+      "id": "spicy-tomato-strut",
+      "field": "ingredients[4].amount",
+      "original": "Â½ peeled",
+      "corrected": "½ peeled"
+    },
+    {
+      "id": "spicy-tomato-strut",
+      "field": "ingredients[5].name",
+      "original": "JalapeÃ±o",
+      "corrected": "Jalapeño"
+    },
+    {
+      "id": "spicy-tomato-strut",
+      "field": "ingredients[5].amount",
+      "original": "Â¼ seeded",
+      "corrected": "¼ seeded"
+    },
+    {
+      "id": "ginger-snap-shot",
+      "field": "vibeTag",
+      "original": "ðŸ”¥ Quick Kick",
+      "corrected": "🔥 Quick Kick"
+    },
+    {
+      "id": "ginger-snap-shot",
+      "field": "ingredients[3].amount",
+      "original": "Â½ inch root",
+      "corrected": "½ inch root"
+    },
+    {
+      "id": "golden-microburst",
+      "field": "vibeTag",
+      "original": "ðŸ”¥ Quick Kick",
+      "corrected": "🔥 Quick Kick"
+    },
+    {
+      "id": "golden-microburst",
+      "field": "ingredients[3].amount",
+      "original": "Â½ peeled",
+      "corrected": "½ peeled"
+    },
+    {
+      "id": "beet-it-shot",
+      "field": "vibeTag",
+      "original": "ðŸ”¥ Quick Kick",
+      "corrected": "🔥 Quick Kick"
+    },
+    {
+      "id": "beet-it-shot",
+      "field": "ingredients[1].amount",
+      "original": "Â½ medium",
+      "corrected": "½ medium"
+    },
+    {
+      "id": "beet-it-shot",
+      "field": "ingredients[2].amount",
+      "original": "Â½ peeled",
+      "corrected": "½ peeled"
+    },
+    {
+      "id": "green-rocket-shot",
+      "field": "vibeTag",
+      "original": "ðŸ”¥ Quick Kick",
+      "corrected": "🔥 Quick Kick"
+    },
+    {
+      "id": "green-rocket-shot",
+      "field": "ingredients[2].amount",
+      "original": "Â½ medium",
+      "corrected": "½ medium"
+    },
+    {
+      "id": "green-rocket-shot",
+      "field": "ingredients[3].amount",
+      "original": "Â½ peeled",
+      "corrected": "½ peeled"
+    },
+    {
+      "id": "pineapple-pepper-pop",
+      "field": "vibeTag",
+      "original": "ðŸ”¥ Quick Kick",
+      "corrected": "🔥 Quick Kick"
+    },
+    {
+      "id": "pineapple-pepper-pop",
+      "field": "ingredients[3].name",
+      "original": "JalapeÃ±o",
+      "corrected": "Jalapeño"
+    },
+    {
+      "id": "pineapple-pepper-pop",
+      "field": "ingredients[3].amount",
+      "original": "Â¼ seeded",
+      "corrected": "¼ seeded"
+    },
+    {
+      "id": "pineapple-pepper-pop",
+      "field": "ingredients[4].amount",
+      "original": "Â½ inch root",
+      "corrected": "½ inch root"
+    }
+  ]
+}

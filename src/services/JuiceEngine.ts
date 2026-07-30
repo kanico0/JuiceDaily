@@ -163,6 +163,7 @@ export const PRODUCE_DATA: Record<string, ProduceEntry> = {
   mint:             p('Mint',             'vegetable', 70, 0.0,   32,  212, 569, 5.1, 80, 114, 0.65, 0.90, 0.98),
   basil:            p('Basil',            'vegetable', 23, 0.3,   18,  264, 295, 3.2, 64,  68, 0.65, 0.90, 0.98),
   aloe_vera:        p('Aloe Vera',        'vegetable', 15, 0.0,    9,    0,  75, 0.2, 17,   0, 0.90, 0.95, 1.00),
+  watercress:       p('Watercress',       'vegetable', 11, 0.4,   43,  160, 330, 0.2, 21,  82, 0.72, 0.88, 0.98),
 
   // ── Cruciferous & Cabbage ──
   broccoli:         p('Broccoli',         'vegetable', 34, 1.7,   89,   31, 316, 0.7, 21,  63, 0.70, 0.88, 0.98),

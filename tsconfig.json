@@ -21,6 +21,7 @@
     "app.bak",
     "components/scanner",
     "scripts/createPlayReviewAccount.ts",
-    "scripts/createReviewerGrant.ts"
+    "scripts/createReviewerGrant.ts",
+    "scripts/validateProducePortions.ts"
   ]
 }

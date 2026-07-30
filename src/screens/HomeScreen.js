@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react'
+import React, { useState, useCallback, useEffect, useRef } from 'react'
 import {
   View,
   Text,
@@ -51,7 +51,7 @@ import { usePro } from '../services/ProStore'
 import MeshGradientBg from '../components/MeshGradientBg'
 import { processJuiceBatch, PRODUCE_DATA } from '../services/JuiceEngine'
 import AdvancedBlendModal from '../components/AdvancedBlendModal'
-import { countDistinctProduceIds, classifyBlend, BlendAllowanceError, FREE_ADVANCED_BLEND_ALLOWANCE } from '../services/quota/blendAllowanceService'
+import { countDistinctProduceIds, classifyBlend, BlendAllowanceError, FREE_ADVANCED_BLEND_ALLOWANCE, createOperationId } from '../services/quota/blendAllowanceService'
 import { authorizeAndProcessBatch } from '../services/quota/blendNutritionGate'
 import { trackEvent } from '../services/AnalyticsService'
 
@@ -437,6 +437,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
   const [advancedBlendRemaining, setAdvancedBlendRemaining] = useState(FREE_ADVANCED_BLEND_ALLOWANCE)
   const [blendNoticeShown, setBlendNoticeShown] = useState(false)
   const [blendCheckInProgress, setBlendCheckInProgress] = useState(false)
+  const blendOperationIdRef = useRef(null)
   const [showPaywall, setShowPaywall] = useState(false)
   const [isManualMode, setIsManualMode] = useState(route?.params?.manualEntry === true)
   const [manualSearch, setManualSearch] = useState('')
@@ -658,6 +659,8 @@ export default function JuiceSnapScreen({ navigation, route }) {
 
     // Advanced Blend: check allowance for free users
     if (blendType === 'advanced' && !isPro) {
+      // Create a new operation ID for this analysis attempt
+      blendOperationIdRef.current = createOperationId()
       // Show pre-analysis confirmation first
       setAdvancedBlendStage('pre_analysis_confirmation')
       setAdvancedBlendRemaining(FREE_ADVANCED_BLEND_ALLOWANCE)
@@ -669,6 +672,11 @@ export default function JuiceSnapScreen({ navigation, route }) {
         source: effectiveManualMode ? 'manual' : 'photo',
       })
       return
+    }
+
+    // Pro users: create operation ID and proceed directly
+    if (blendType === 'advanced' && isPro) {
+      blendOperationIdRef.current = createOperationId()
     }
 
     await executeLogToChallenge()
@@ -696,7 +704,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
           source: logSource,
         })
 
-        const authorized = await authorizeAndProcessBatch(ingredients, batch.juiceMethod || 'cold_pressed')
+        const authorized = await authorizeAndProcessBatch(ingredients, batch.juiceMethod || 'cold_pressed', blendOperationIdRef.current || undefined)
         totals = authorized.totals || totals
         allowanceResult = authorized.allowance
 
@@ -722,12 +730,14 @@ export default function JuiceSnapScreen({ navigation, route }) {
           setAdvancedBlendStage('completion_confirmation')
           setAdvancedBlendRemaining(remaining)
           setShowAdvancedBlendModal(true)
+          blendOperationIdRef.current = null
         }
       } catch (err) {
         if (err instanceof BlendAllowanceError && err.code === 'advanced_blend_limit_reached') {
           setAdvancedBlendStage('allowance_exhausted')
           setAdvancedBlendRemaining(0)
           setShowAdvancedBlendModal(true)
+          blendOperationIdRef.current = null
           trackEvent('advanced_blend_quota_exhausted', {
             plan: 'free',
             ingredient_count: distinctCount,

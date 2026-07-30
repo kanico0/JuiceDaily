@@ -3,13 +3,17 @@
 // Advanced Blend analysis allowance with reservation-finalization.
 //
 // Flow:
-//   1. reserveBlendAllowance(ingredients) → { allowed, requestId, ... }
-//   2. If allowed: run processJuiceBatch (nutrition calculation)
-//   3. On success: finalizeBlendAllowance(requestId)
-//   4. On failure: releaseBlendAllowance(requestId)
+//   1. createOperationId() → operationId (UUID-based, one per attempt)
+//   2. reserveBlendAllowance(ingredients, operationId) → { allowed, ... }
+//   3. If allowed: run processJuiceBatch (nutrition calculation)
+//   4. On success: finalizeBlendAllowance(operationId)
+//   5. On failure: releaseBlendAllowance(operationId)
 //
-// The requestId is a deterministic hash of the canonical ingredient
-// set, so retrying the same blend is idempotent (never consumes twice).
+// The operationId is a UUID-based identifier created once per user
+// confirmation. Retries reuse the same operationId so the server
+// can deduplicate. A new analysis attempt gets a new operationId
+// even with identical ingredients, so separate legitimate analyses
+// each consume their own allowance.
 //
 // Simple Blends (1–4) always pass — no server call needed.
 // Pro users: server checks subscriptions table, not client state.
@@ -71,16 +75,34 @@ export function countDistinctProduceIds (ingredients: { produceId: string }[]): 
   return ids.size
 }
 
-// Deterministic request ID from canonical ingredient set.
-// Same ingredients → same requestId → idempotent retries.
-export function buildRequestId (ingredients: { produceId: string }[]): string {
+// ── Operation ID (UUID-based, one per analysis attempt) ──────
+//
+// A unique operation ID is created when the user confirms a new
+// Advanced Blend analysis. The same operation ID is reused for
+// reserve, retries, finalize, and release for that one attempt.
+// A later analysis attempt receives a new operation ID even when
+// the ingredient combination is identical.
+
+let _counter = 0
+
+export function createOperationId (): string {
+  _counter += 1
+  const ts = Date.now().toString(36)
+  const rand = Math.random().toString(36).slice(2, 10)
+  const counter = _counter.toString(36)
+  return `advanced-blend-${ts}-${rand}-${counter}`
+}
+
+// Ingredient fingerprint for transaction metadata only.
+// NOT used as the idempotency key — the operationId is.
+export function ingredientFingerprint (ingredients: { produceId: string }[]): string {
   const ids = ingredients
     .map((i) => i.produceId)
     .filter((id): id is string => typeof id === 'string' && id.length > 0)
     .map((id) => id.toLowerCase())
     .sort()
   const distinct = [...new Set(ids)]
-  return `blend-${distinct.join('-')}`
+  return distinct.join('-')
 }
 
 // ── Server URL ──────────────────────────────────────────────
@@ -99,10 +121,10 @@ function isDevBypass (): boolean {
 
 export async function reserveBlendAllowance (
   ingredients: { produceId: string }[],
+  operationId: string,
 ): Promise<BlendAllowanceResult> {
   const distinctCount = countDistinctProduceIds(ingredients)
   const blendType = classifyBlend(distinctCount)
-  const requestId = buildRequestId(ingredients)
 
   // Simple Blends: no server call needed.
   if (blendType === 'simple') {
@@ -115,7 +137,7 @@ export async function reserveBlendAllowance (
       limit: FREE_ADVANCED_BLEND_ALLOWANCE,
       plan: 'free',
       blendType: 'simple',
-      requestId,
+      requestId: operationId,
     }
   }
 
@@ -130,7 +152,7 @@ export async function reserveBlendAllowance (
       limit: FREE_ADVANCED_BLEND_ALLOWANCE,
       plan: 'free',
       blendType: 'advanced',
-      requestId,
+      requestId: operationId,
     }
   }
 
@@ -163,8 +185,9 @@ export async function reserveBlendAllowance (
     },
     body: JSON.stringify({
       action: 'reserve',
-      requestId,
+      requestId: operationId,
       ingredientIds,
+      ingredientFingerprint: ingredientFingerprint(ingredients),
     }),
   })
 
@@ -180,7 +203,7 @@ export async function reserveBlendAllowance (
       limit: typeof body.limit === 'number' ? body.limit : FREE_ADVANCED_BLEND_ALLOWANCE,
       plan: body.plan === 'pro' ? 'pro' : 'free',
       blendType: (body.blend_type === 'advanced' ? 'advanced' : 'simple') as BlendType,
-      requestId: String(body.request_id ?? requestId),
+      requestId: String(body.request_id ?? operationId),
     }
     throw new BlendAllowanceError(result.code, body.message ?? 'Advanced Blend allowance reached', result)
   }
@@ -202,7 +225,7 @@ export async function reserveBlendAllowance (
     limit: typeof body.limit === 'number' ? body.limit : FREE_ADVANCED_BLEND_ALLOWANCE,
     plan: body.plan === 'pro' ? 'pro' : 'free',
     blendType: (body.blend_type === 'advanced' ? 'advanced' : 'simple') as BlendType,
-    requestId: String(body.request_id ?? requestId),
+    requestId: String(body.request_id ?? operationId),
   }
 }
 

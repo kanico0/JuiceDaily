@@ -15,6 +15,9 @@
 //   4. On reserve failure (limit reached, network error): throw, no nutrition
 //   5. On nutrition success: finalize, return result
 //   6. On nutrition failure: release, rethrow
+//
+// The operationId parameter ensures idempotency: one ID per user
+// confirmation, reused across retries. A new attempt gets a new ID.
 // ─────────────────────────────────────────────────────────────
 
 import { processJuiceBatch, type ScannedIngredient, type JuiceResult, type JuiceMethod } from '../JuiceEngine'
@@ -35,6 +38,7 @@ export interface AuthorizedJuiceResult extends JuiceResult {
 export async function authorizeAndProcessBatch (
   scannedItems: ScannedIngredient[],
   juiceMethod: JuiceMethod = 'cold_pressed',
+  operationId?: string,
 ): Promise<AuthorizedJuiceResult> {
   const distinctCount = countDistinctProduceIds(scannedItems)
   const blendType = classifyBlend(distinctCount)
@@ -46,7 +50,10 @@ export async function authorizeAndProcessBatch (
   }
 
   // Advanced Blends: reserve → process → finalize/release.
-  const reservation = await reserveBlendAllowance(scannedItems)
+  // operationId is required for Advanced Blends — the caller must
+  // create it via createOperationId() at confirmation time.
+  const requestId = operationId ?? `advanced-blend-fallback-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+  const reservation = await reserveBlendAllowance(scannedItems, requestId)
 
   try {
     const result = processJuiceBatch(scannedItems, juiceMethod)

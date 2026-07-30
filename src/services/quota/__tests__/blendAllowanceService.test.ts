@@ -18,7 +18,8 @@ jest.mock('../../subscriptions/subscriptionConfig', () => ({
 import {
   classifyBlend,
   countDistinctProduceIds,
-  buildRequestId,
+  createOperationId,
+  ingredientFingerprint,
   reserveBlendAllowance,
   finalizeBlendAllowance,
   releaseBlendAllowance,
@@ -113,19 +114,30 @@ describe('blend classification boundary', () => {
   })
 })
 
-describe('buildRequestId', () => {
-  it('produces deterministic ID from same ingredients', () => {
+describe('createOperationId', () => {
+  it('produces a unique ID on each call', () => {
+    const id1 = createOperationId()
+    const id2 = createOperationId()
+    expect(id1).not.toBe(id2)
+  })
+
+  it('produces IDs with the advanced-blend prefix', () => {
+    const id = createOperationId()
+    expect(id).toMatch(/^advanced-blend-/)
+  })
+})
+
+describe('ingredientFingerprint', () => {
+  it('produces deterministic fingerprint from same ingredients', () => {
     const ingredients = [
       { produceId: 'apple' },
       { produceId: 'kale' },
       { produceId: 'ginger' },
     ]
-    const id1 = buildRequestId(ingredients)
-    const id2 = buildRequestId(ingredients)
-    expect(id1).toBe(id2)
+    expect(ingredientFingerprint(ingredients)).toBe(ingredientFingerprint(ingredients))
   })
 
-  it('produces same ID regardless of order', () => {
+  it('produces same fingerprint regardless of order', () => {
     const set1 = [
       { produceId: 'apple' },
       { produceId: 'kale' },
@@ -134,29 +146,19 @@ describe('buildRequestId', () => {
       { produceId: 'kale' },
       { produceId: 'apple' },
     ]
-    expect(buildRequestId(set1)).toBe(buildRequestId(set2))
+    expect(ingredientFingerprint(set1)).toBe(ingredientFingerprint(set2))
   })
 
-  it('produces different IDs for different ingredients', () => {
+  it('produces different fingerprints for different ingredients', () => {
     const set1 = [{ produceId: 'apple' }]
     const set2 = [{ produceId: 'kale' }]
-    expect(buildRequestId(set1)).not.toBe(buildRequestId(set2))
+    expect(ingredientFingerprint(set1)).not.toBe(ingredientFingerprint(set2))
   })
 
   it('deduplicates and lowercases', () => {
     const set1 = [{ produceId: 'Apple' }, { produceId: 'apple' }]
     const set2 = [{ produceId: 'apple' }]
-    expect(buildRequestId(set1)).toBe(buildRequestId(set2))
-  })
-
-  it('filters out invalid produceIds', () => {
-    const set1 = [
-      { produceId: 'apple' },
-      { produceId: '' },
-      { produceId: null as unknown as string },
-    ]
-    const set2 = [{ produceId: 'apple' }]
-    expect(buildRequestId(set1)).toBe(buildRequestId(set2))
+    expect(ingredientFingerprint(set1)).toBe(ingredientFingerprint(set2))
   })
 })
 
@@ -167,10 +169,12 @@ describe('reserveBlendAllowance', () => {
         { produceId: 'apple' },
         { produceId: 'kale' },
       ]
-      const result = await reserveBlendAllowance(ingredients)
+      const opId = createOperationId()
+      const result = await reserveBlendAllowance(ingredients, opId)
       expect(result.allowed).toBe(true)
       expect(result.code).toBe('simple_blend_allowed')
       expect(result.blendType).toBe('simple')
+      expect(result.requestId).toBe(opId)
     })
   })
 
@@ -183,10 +187,27 @@ describe('reserveBlendAllowance', () => {
         { produceId: 'lemon' },
         { produceId: 'carrot' },
       ]
-      const result = await reserveBlendAllowance(ingredients)
+      const opId = createOperationId()
+      const result = await reserveBlendAllowance(ingredients, opId)
       expect(result.allowed).toBe(true)
       expect(result.code).toBe('dev_bypass')
       expect(result.blendType).toBe('advanced')
+      expect(result.requestId).toBe(opId)
+    })
+
+    it('different operation IDs for same ingredients produce different requestIds', async () => {
+      const ingredients = [
+        { produceId: 'apple' },
+        { produceId: 'kale' },
+        { produceId: 'ginger' },
+        { produceId: 'lemon' },
+        { produceId: 'carrot' },
+      ]
+      const opId1 = createOperationId()
+      const opId2 = createOperationId()
+      const result1 = await reserveBlendAllowance(ingredients, opId1)
+      const result2 = await reserveBlendAllowance(ingredients, opId2)
+      expect(result1.requestId).not.toBe(result2.requestId)
     })
   })
 })

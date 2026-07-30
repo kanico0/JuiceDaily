@@ -44,6 +44,8 @@ import MonthlyHeatmap from '../components/MonthlyHeatmap'
 import LivingBackground from '../components/LivingBackground'
 import { useUserProfile } from '../services/UserProfileStore'
 import { processJuiceBatch } from '../services/JuiceEngine'
+import { authorizeAndProcessBatch, BlendAllowanceError, countDistinctProduceIds, classifyBlend } from '../services/quota/blendNutritionGate'
+import { createOperationId } from '../services/quota/blendAllowanceService'
 import { generateSuggestions } from '../services/AISuggestionService'
 import {
   getGreeting,
@@ -263,8 +265,23 @@ export default function DashboardScreen({ navigation, route }) {
     }
   }, [logJuice, isEnabled])
 
-  const handleFirstLaunchLog = useCallback((scannedIngredients) => {
-    const batchResult = processJuiceBatch(scannedIngredients, 'cold_pressed')
+  const handleFirstLaunchLog = useCallback(async (scannedIngredients) => {
+    const distinctCount = countDistinctProduceIds(scannedIngredients)
+    const blendType = classifyBlend(distinctCount)
+    const operationId = blendType === 'advanced' ? createOperationId() : undefined
+
+    let batchResult
+    try {
+      const authorized = await authorizeAndProcessBatch(scannedIngredients, 'cold_pressed', operationId)
+      batchResult = authorized
+    } catch (err) {
+      if (err instanceof BlendAllowanceError) {
+        if (__DEV__) console.warn('[Dashboard] Advanced Blend allowance error:', err.code)
+      }
+      markFirstLaunchDone()
+      return
+    }
+
     logJuice(scannedIngredients, {
       ...batchResult,
       scannedIngredients,

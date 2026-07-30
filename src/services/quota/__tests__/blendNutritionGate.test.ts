@@ -14,8 +14,8 @@ jest.mock('../../subscriptions/subscriptionConfig', () => ({
   SUPABASE_CONFIGURED: false,
   MONETIZATION_ENABLED: false,
 }))
-
 import { authorizeAndProcessBatch } from '../blendNutritionGate'
+import { createOperationId } from '../blendAllowanceService'
 import { processJuiceBatch, type ScannedIngredient } from '../../JuiceEngine'
 
 describe('authorizeAndProcessBatch', () => {
@@ -52,7 +52,8 @@ describe('authorizeAndProcessBatch', () => {
     ]
 
     it('processes with allowance result in dev bypass', async () => {
-      const result = await authorizeAndProcessBatch(advancedIngredients, 'cold_pressed')
+      const opId = createOperationId()
+      const result = await authorizeAndProcessBatch(advancedIngredients, 'cold_pressed', opId)
       expect(result.allowance).not.toBeNull()
       expect(result.allowance!.allowed).toBe(true)
       expect(result.allowance!.code).toBe('dev_bypass')
@@ -61,7 +62,8 @@ describe('authorizeAndProcessBatch', () => {
     })
 
     it('returns nutrition totals for advanced blend', async () => {
-      const result = await authorizeAndProcessBatch(advancedIngredients, 'cold_pressed')
+      const opId = createOperationId()
+      const result = await authorizeAndProcessBatch(advancedIngredients, 'cold_pressed', opId)
       expect(result.totals.calories).toBeGreaterThan(0)
     })
   })

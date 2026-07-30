@@ -3,8 +3,8 @@ import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { Camera, FlaskConical, Crown } from 'lucide-react-native'
 import { useQuota } from '../services/quota/QuotaStore'
 import { useSubscription } from '../services/subscriptions/SubscriptionStore'
-import { fetchBlendAllowance } from '../services/quota/blendAllowanceService'
-import { FREE_MONTHLY_SCAN_LIMIT, FREE_ADVANCED_BLEND_ALLOWANCE } from '../services/subscriptions/subscriptionConfig'
+import { fetchBlendAllowance, FREE_ADVANCED_BLEND_ALLOWANCE } from '../services/quota/blendAllowanceService'
+import { FREE_MONTHLY_SCAN_LIMIT, PRO_MONTHLY_SCAN_LIMIT } from '../services/subscriptions/subscriptionConfig'
 import { trackEvent } from '../services/AnalyticsService'
 
 export default function FreePlanUsageCard ({ onUpgrade, refreshTrigger }) {
@@ -55,7 +55,9 @@ export default function FreePlanUsageCard ({ onUpgrade, refreshTrigger }) {
           <Crown size={16} color="#7EE787" />
           <Text style={styles.headerText}>RawLifeFlow Pro</Text>
         </View>
-        <Text style={styles.proBody}>Unlimited scans and Advanced Blend analyses.</Text>
+        <Text style={styles.proBody}>
+          Up to {PRO_MONTHLY_SCAN_LIMIT} AI scans per month and unlimited Advanced Blend analyses.
+        </Text>
       </View>
     )
   }

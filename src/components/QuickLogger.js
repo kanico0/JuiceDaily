@@ -28,6 +28,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 import { DARK, RADIUS, SPACE, FONT_SIZE, FONT_WEIGHT } from '../constants/tokens'
 import { useReducedMotion, DURATION, EASING } from '../utils/motion'
 import { processJuiceBatch, PRODUCE_DATA } from '../services/JuiceEngine'
+import { authorizeAndProcessBatch, BlendAllowanceError, countDistinctProduceIds, classifyBlend } from '../services/quota/blendNutritionGate'
+import { createOperationId } from '../services/quota/blendAllowanceService'
 import { trackEvent } from '../services/AnalyticsService'
 import { useFlags } from '../services/FeatureFlags'
 import { useFormatWeight } from '../utils/weightFormat'
@@ -297,8 +299,22 @@ export default function QuickLogger({ visible, onDismiss, onLogComplete, onCusto
       isOrganic: ing.isOrganic ?? false,
     }))
 
-    // Process through JuiceEngine
-    const batchResult = processJuiceBatch(scannedIngredients, 'cold_pressed')
+    // Process through centralized Advanced Blend gate
+    const distinctCount = countDistinctProduceIds(scannedIngredients)
+    const blendType = classifyBlend(distinctCount)
+    const operationId = blendType === 'advanced' ? createOperationId() : undefined
+
+    let batchResult
+    try {
+      const authorized = await authorizeAndProcessBatch(scannedIngredients, 'cold_pressed', operationId)
+      batchResult = authorized
+    } catch (err) {
+      if (err instanceof BlendAllowanceError) {
+        if (__DEV__) console.warn('[QuickLogger] Advanced Blend allowance error:', err.code)
+      }
+      onDismiss()
+      return
+    }
 
     // Persist offline immediately
     const logId = `ql_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`

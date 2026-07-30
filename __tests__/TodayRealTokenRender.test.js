@@ -206,8 +206,9 @@ jest.mock('../src/services/quota/QuotaStore', () => ({
 jest.mock('../src/services/quota/blendAllowanceService', () => ({
   classifyBlend: jest.fn((n) => n >= 5 ? 'advanced' : 'simple'),
   countDistinctProduceIds: jest.fn((ings) => new Set(ings.map(i => i.produceId?.toLowerCase())).size),
-  buildRequestId: jest.fn((ings) => 'blend-' + ings.map(i => i.produceId).sort().join('-')),
-  reserveBlendAllowance: jest.fn(async () => ({ allowed: true, code: 'dev_bypass', remaining: 3, used: 0, reserved: 0, limit: 3, plan: 'free', blendType: 'advanced', requestId: 'test' })),
+  createOperationId: jest.fn(() => 'advanced-blend-test-' + Math.random().toString(36).slice(2, 8)),
+  ingredientFingerprint: jest.fn((ings) => ings.map(i => i.produceId?.toLowerCase()).sort().join('-')),
+  reserveBlendAllowance: jest.fn(async (ings, opId) => ({ allowed: true, code: 'dev_bypass', remaining: 3, used: 0, reserved: 0, limit: 3, plan: 'free', blendType: 'advanced', requestId: opId || 'test' })),
   finalizeBlendAllowance: jest.fn(async () => {}),
   releaseBlendAllowance: jest.fn(async () => {}),
   fetchBlendAllowance: jest.fn(async () => null),
@@ -216,7 +217,7 @@ jest.mock('../src/services/quota/blendAllowanceService', () => ({
   FREE_ADVANCED_BLEND_ALLOWANCE: 3,
 }))
 jest.mock('../src/services/quota/blendNutritionGate', () => ({
-  authorizeAndProcessBatch: jest.fn(async (ings) => ({ ...require('../../src/services/JuiceEngine').processJuiceBatch(ings), allowance: null })),
+  authorizeAndProcessBatch: jest.fn(async (ings, method, opId) => ({ ...require('../../src/services/JuiceEngine').processJuiceBatch(ings, method), allowance: null })),
   BlendAllowanceError: class BlendAllowanceError extends Error { constructor(code, msg, result) { super(msg); this.code = code; this.result = result } },
   classifyBlend: jest.fn((n) => n >= 5 ? 'advanced' : 'simple'),
   countDistinctProduceIds: jest.fn((ings) => new Set(ings.map(i => i.produceId?.toLowerCase())).size),

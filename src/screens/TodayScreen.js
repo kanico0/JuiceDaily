@@ -33,6 +33,7 @@ import NutrientHaloCard from '../components/NutrientHaloCard'
 import WeeklyPillarView from '../components/WeeklyPillarView'
 import QuickLogger from '../components/QuickLogger'
 import RewardSplash from '../components/RewardSplash'
+import FreePlanUsageCard from '../components/FreePlanUsageCard'
 import { useChallenge, DAILY_PILLARS } from '../services/ChallengeStore'
 import { useFlags } from '../services/FeatureFlags'
 import { useGlowStreak, getGlowTodayKey } from '../services/glowStreak'
@@ -91,6 +92,7 @@ export default function TodayScreen({ navigation }) {
   const { momentum, streak: nutritionStreak } = useNutritionScore()
   const [showQuickLogger, setShowQuickLogger] = useState(false)
   const [showRewardSplash, setShowRewardSplash] = useState(false)
+  const [usageRefreshTrigger, setUsageRefreshTrigger] = useState(0)
   const [showSpotlightDetails, setShowSpotlightDetails] = useState(false)
   const [pendingAchievement, setPendingAchievement] = useState(null)
 
@@ -125,6 +127,14 @@ export default function TodayScreen({ navigation }) {
     })
     trackEvent('juice_spotlight_used', { spotlight_id: spotlight.id, source: 'today_screen' })
   }, [navigation, spotlight])
+
+  // Refresh usage card on navigation focus
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      setUsageRefreshTrigger((t) => t + 1)
+    })
+    return unsubscribe
+  }, [navigation])
 
   // -- Daily summary for TodaySummaryStats --
   const dailySummary = useMemo(() => {
@@ -697,6 +707,12 @@ export default function TodayScreen({ navigation }) {
                 <FocusNutrientCard onScan={handleScan} isReduced={isReduced} />
               </>
             )}
+
+            {/* Free Plan Usage Card */}
+            <FreePlanUsageCard
+              onUpgrade={() => navigation.navigate('Paywall', { source: 'today_usage' })}
+              refreshTrigger={usageRefreshTrigger}
+            />
 
             <View style={{ height: SEMANTIC_SPACE.xxl }} />
           </ScrollView>

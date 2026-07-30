@@ -27,6 +27,8 @@
  * 20. FDC ID format — USDA records should have a numeric fdcId or null
  * 21. recordId consistency — recordId must equal ndbNumber or String(fdcId)
  * 22. Manifest reconciliation — every USDA record matches official-source-manifest.json
+ * 23. Low-confidence requires weight-only — confidence==='low' must have quantitySupported===false
+ * 24. Manifest access date validity — accessedDate must not precede known dataset release date
  */
 
 import { PRODUCE_PORTIONS } from '../src/constants/producePortions'
@@ -235,10 +237,35 @@ for (const [pid, record] of Object.entries(PRODUCE_PORTIONS)) {
       }
     }
   }
+
+  // 23. Low-confidence requires weight-only
+  if (record.confidence === 'low' && record.quantitySupported) {
+    errors.push({ check: 'low-confidence-weight-only', produceId: pid, message: 'confidence is low but quantitySupported is true — low-confidence records must be weight-only' })
+  }
+}
+
+// 24. Manifest access date validity — accessedDate must not precede known dataset release date
+if (manifest) {
+  const KNOWN_RELEASE_DATES: Record<string, string> = {
+    'SR Legacy (April 2018)': '2018-04-01',
+    'Foundation Foods': '2026-04-01',
+    'FNDDS 2021-2023': '2024-01-01',
+  }
+  for (const [pid, rec] of Object.entries(manifest.records)) {
+    const accessedDate = (rec as any).accessedDate
+    const dataset = (rec as any).sourceDataset
+    if (accessedDate && dataset) {
+      for (const [knownDataset, releaseDate] of Object.entries(KNOWN_RELEASE_DATES)) {
+        if (dataset.includes(knownDataset.split(' (')[0]) && accessedDate < releaseDate) {
+          errors.push({ check: 'manifest-access-date', produceId: pid, message: `accessedDate ${accessedDate} precedes ${knownDataset} release date ${releaseDate}` })
+        }
+      }
+    }
+  }
 }
 
 // Summary
-const totalChecks = 22
+const totalChecks = 24
 const passedChecks = totalChecks // will adjust if errors
 
 console.log('=== Produce Portion Registry Validator ===\n')

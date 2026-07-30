@@ -16,7 +16,7 @@
 | Validator script | `scripts/validateProducePortions.ts` |
 | Test file | `src/constants/__tests__/producePortions.test.ts` |
 | Official manifest | `Docs/generated/official-source-manifest.json` |
-| Accessed date | 2025-01-15 |
+| Accessed date | 2026-07-30 |
 
 ## Schema Summary (v2 — Redesigned)
 

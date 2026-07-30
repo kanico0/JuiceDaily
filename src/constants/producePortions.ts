@@ -74,9 +74,19 @@ export interface ProducePortionRecord {
   notes?: string
 }
 
+// Deeply readonly variants for external consumers
+export type ReadonlyPortionSize = Readonly<PortionSize>
+export type ReadonlyPortionUnit = Readonly<Omit<PortionUnit, 'sizes'> & { sizes: ReadonlyPortionSize[] }>
+export type ReadonlySourceRecord = Readonly<SourceRecord>
+export type ReadonlyProducePortionRecord = Readonly<Omit<ProducePortionRecord, 'units' | 'sourceRecords'> & {
+  units: ReadonlyPortionUnit[]
+  sourceRecords: ReadonlySourceRecord[]
+}>
+export type ReadonlyProducePortions = Readonly<Record<string, ReadonlyProducePortionRecord>>
+
 // ── Helper ────────────────────────────────────────────────────
 
-const ACCESSED = '2025-01-15'
+const ACCESSED = '2026-07-30'
 
 function sr(
   authority: SourceRecord['authority'],
@@ -102,9 +112,23 @@ function sr(
   }
 }
 
+// ── Deep Freeze ──────────────────────────────────────────────
+
+function deepFreeze<T>(obj: T): T {
+  if (obj === null || typeof obj !== 'object') return obj
+  Object.freeze(obj)
+  for (const key of Object.keys(obj)) {
+    const val = (obj as Record<string, unknown>)[key]
+    if (val !== null && typeof val === 'object' && !Object.isFrozen(val)) {
+      deepFreeze(val)
+    }
+  }
+  return obj
+}
+
 // ── Registry ──────────────────────────────────────────────────
 
-export const PRODUCE_PORTIONS: Readonly<Record<string, ProducePortionRecord>> = Object.freeze({
+export const PRODUCE_PORTIONS: ReadonlyProducePortions = deepFreeze({
   // ── Greens ──────────────────────────────────────────────────
 
   kale: {
@@ -943,33 +967,14 @@ export const PRODUCE_PORTIONS: Readonly<Record<string, ProducePortionRecord>> = 
 
   turmeric: {
     produceId: 'turmeric',
-    quantitySupported: true,
-    defaultUnitKey: 'tablespoon',
-    units: [
-      {
-        unitKey: 'tablespoon',
-        family: 'tablespoon',
-        displaySingular: 'tablespoon (grated)',
-        displayPlural: 'tablespoons (grated)',
-        allowDecimal: true,
-        inputStep: 0.5,
-        sizes: [{ sizeKey: 'standard', displaySize: '1 tbsp, grated', gramWeight: 6 }],
-      },
-      {
-        unitKey: 'inch_piece',
-        family: 'inch_piece',
-        displaySingular: 'inch piece',
-        displayPlural: 'inch pieces',
-        allowDecimal: true,
-        inputStep: 0.5,
-        sizes: [{ sizeKey: 'standard', displaySize: '1-inch piece', gramWeight: 25 }],
-      },
-    ],
+    quantitySupported: false,
+    defaultUnitKey: null,
+    units: [],
     sourceRecords: [
-      sr('USDA', 'Foundation Foods', null, 170556, '1 tbsp, grated (6 g) — estimated from ginger density', 'raw', 'edible portion without refuse (peeled)', 'USDA FoodData Central Foundation Foods FDC ID 170556, Turmeric, raw'),
+      sr('USDA', 'Foundation Foods', null, 170556, 'No standardized household portion available', 'raw', 'edible portion without refuse (peeled)', 'USDA FoodData Central Foundation Foods FDC ID 170556, Turmeric, raw'),
     ],
     confidence: 'low',
-    notes: 'USDA has limited household measure data for fresh turmeric root. Tablespoon weight estimated from ginger SR Legacy density; 1-inch piece estimated.',
+    notes: 'No direct suitable raw turmeric household portion was verified. USDA Foundation Foods (FDC 170556) has turmeric raw but lacks standardized household measure data. Prior ginger-density estimates were removed as unverified.',
   },
 
   garlic: {
@@ -1143,33 +1148,14 @@ export const PRODUCE_PORTIONS: Readonly<Record<string, ProducePortionRecord>> = 
 
   cayenne: {
     produceId: 'cayenne',
-    quantitySupported: true,
-    defaultUnitKey: 'whole',
-    units: [
-      {
-        unitKey: 'whole',
-        family: 'whole',
-        displaySingular: 'cayenne pepper',
-        displayPlural: 'cayenne peppers',
-        allowDecimal: false,
-        inputStep: 1,
-        sizes: [{ sizeKey: 'medium', displaySize: 'medium (5 inch)', gramWeight: 17 }],
-      },
-      {
-        unitKey: 'tablespoon',
-        family: 'tablespoon',
-        displaySingular: 'tablespoon (minced)',
-        displayPlural: 'tablespoons (minced)',
-        allowDecimal: true,
-        inputStep: 0.5,
-        sizes: [{ sizeKey: 'standard', displaySize: '1 tbsp, minced', gramWeight: 9 }],
-      },
-    ],
+    quantitySupported: false,
+    defaultUnitKey: null,
+    units: [],
     sourceRecords: [
-      sr('USDA', 'SR Legacy', '11819', 170106, '1 pepper (17 g)', 'raw', 'edible portion without refuse (stem, seeds removed)', 'USDA FoodData Central SR Legacy NDB 11819, Peppers, hot chili, red, raw (FDC ID 170106)'),
+      sr('USDA', 'SR Legacy', '11819', 170106, 'No standardized household portion for cayenne specifically', 'raw', 'edible portion without refuse (stem, seeds removed)', 'USDA FoodData Central SR Legacy NDB 11819, Peppers, hot chili, red, raw (FDC ID 170106)'),
     ],
     confidence: 'low',
-    notes: 'USDA SR Legacy groups cayenne under hot chili red pepper. Per-pepper weight estimated from FNDDS.',
+    notes: 'USDA SR Legacy NDB 11819 covers generic hot chili red peppers, not cayenne specifically. The source provides 1 pepper = 45g for generic hot chili, but this cannot be directly equated to cayenne peppers without explicit source confirmation. Prior 17g per-pepper weight was derived from FNDDS, not SR Legacy. Set to weight-only pending a verified cayenne-specific household measure.',
   },
 
   tomato: {

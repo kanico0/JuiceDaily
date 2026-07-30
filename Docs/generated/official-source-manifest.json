@@ -2,13 +2,13 @@
   "manifestVersion": "2.0",
   "generatedAt": "2026-07-30T15:41:12.025Z",
   "sourceDataset": "USDA FoodData Central SR Legacy (April 2018) + Foundation Foods (April 2026)",
-  "accessedDate": "2025-01-15",
+  "accessedDate": "2026-07-30",
   "summary": {
     "totalRecords": 69,
     "srLegacyRecords": 65,
     "foundationFoodRecords": 2,
     "noStandardDataRecords": 2,
-    "totalPortions": 278
+    "totalPortions": 277
   },
   "records": {
     "kale": {
@@ -20,7 +20,7 @@
       "sourceAuthority": "USDA",
       "sourceDataset": "SR Legacy (April 2018)",
       "citationText": "USDA FoodData Central SR Legacy NDB 11233, Kale, raw (FDC ID 168421)",
-      "accessedDate": "2025-01-15",
+      "accessedDate": "2026-07-30",
       "portions": [
         {
           "gramWeight": 21,
@@ -41,7 +41,7 @@
       "sourceAuthority": "USDA",
       "sourceDataset": "SR Legacy (April 2018)",
       "citationText": "USDA FoodData Central SR Legacy NDB 11457, Spinach, raw (FDC ID 168462)",
-      "accessedDate": "2025-01-15",
+      "accessedDate": "2026-07-30",
       "portions": [
         {
           "gramWeight": 30,
@@ -86,7 +86,7 @@
       "sourceAuthority": "USDA",
       "sourceDataset": "SR Legacy (April 2018)",
       "citationText": "USDA FoodData Central SR Legacy NDB 11147, Chard, swiss, raw (FDC ID 169991)",
-      "accessedDate": "2025-01-15",
+      "accessedDate": "2026-07-30",
       "portions": [
         {
           "gramWeight": 36,
@@ -115,7 +115,7 @@
       "sourceAuthority": "USDA",
       "sourceDataset": "SR Legacy (April 2018)",
       "citationText": "USDA FoodData Central SR Legacy NDB 11161, Collards, raw (FDC ID 170406)",
-      "accessedDate": "2025-01-15",
+      "accessedDate": "2026-07-30",
       "portions": [
         {
           "gramWeight": 36,
@@ -136,7 +136,7 @@
       "sourceAuthority": "USDA",
       "sourceDataset": "SR Legacy (April 2018)",
       "citationText": "USDA FoodData Central SR Legacy NDB 11207, Dandelion greens, raw (FDC ID 169226)",
-      "accessedDate": "2025-01-15",
+      "accessedDate": "2026-07-30",
       "portions": [
         {
           "gramWeight": 55,
@@ -157,7 +157,7 @@
       "sourceAuthority": "USDA",
       "sourceDataset": "SR Legacy (April 2018)",
       "citationText": "USDA FoodData Central SR Legacy NDB 11959, Arugula, raw (FDC ID 169387)",
-      "accessedDate": "2025-01-15",
+      "accessedDate": "2026-07-30",
       "portions": [
         {
           "gramWeight": 2,
@@ -186,7 +186,7 @@
       "sourceAuthority": "USDA",
       "sourceDataset": "SR Legacy (April 2018)",
       "citationText": "USDA FoodData Central SR Legacy NDB 11251, Lettuce, cos or romaine, raw (FDC ID 169247)",
-      "accessedDate": "2025-01-15",
+      "accessedDate": "2026-07-30",
       "portions": [
         {
           "gramWeight": 47,
@@ -239,7 +239,7 @@
       "sourceAuthority": "USDA",
       "sourceDataset": "SR Legacy (April 2018)",
       "citationText": "USDA FoodData Central SR Legacy NDB 11297, Parsley, fresh (FDC ID 170416)",
-      "accessedDate": "2025-01-15",
+      "accessedDate": "2026-07-30",
       "portions": [
         {
           "gramWeight": 60,
@@ -276,7 +276,7 @@
       "sourceAuthority": "USDA",
       "sourceDataset": "SR Legacy (April 2018)",
       "citationText": "USDA FoodData Central SR Legacy NDB 11165, Coriander (cilantro) leaves, raw (FDC ID 169997)",
-      "accessedDate": "2025-01-15",
+      "accessedDate": "2026-07-30",
       "portions": [
         {
           "gramWeight": 4,
@@ -305,7 +305,7 @@
       "sourceAuthority": "USDA",
       "sourceDataset": "SR Legacy (April 2018)",
       "citationText": "USDA FoodData Central SR Legacy NDB 2065, Spearmint, fresh (FDC ID 173475)",
-      "accessedDate": "2025-01-15",
+      "accessedDate": "2026-07-30",
       "portions": [
         {
           "gramWeight": 0.3,
@@ -334,7 +334,7 @@
       "sourceAuthority": "USDA",
       "sourceDataset": "SR Legacy (April 2018)",
       "citationText": "USDA FoodData Central SR Legacy NDB 2044, Basil, fresh (FDC ID 172232)",
-      "accessedDate": "2025-01-15",
+      "accessedDate": "2026-07-30",
       "portions": [
         {
           "gramWeight": 2.5,
@@ -371,7 +371,7 @@
       "sourceAuthority": "USDA",
       "sourceDataset": "SR Legacy (April 2018)",
       "citationText": "USDA FoodData Central SR Legacy NDB 11591, Watercress, raw (FDC ID 170068)",
-      "accessedDate": "2025-01-15",
+      "accessedDate": "2026-07-30",
       "portions": [
         {
           "gramWeight": 34,
@@ -408,7 +408,7 @@
       "sourceAuthority": "USDA",
       "sourceDataset": "SR Legacy (April 2018)",
       "citationText": "USDA FoodData Central SR Legacy NDB 11090, Broccoli, raw (FDC ID 170379)",
-      "accessedDate": "2025-01-15",
+      "accessedDate": "2026-07-30",
       "portions": [
         {
           "gramWeight": 91,
@@ -469,7 +469,7 @@
       "sourceAuthority": "USDA",
       "sourceDataset": "SR Legacy (April 2018)",
       "citationText": "USDA FoodData Central SR Legacy NDB 11109, Cabbage, raw (FDC ID 169975)",
-      "accessedDate": "2025-01-15",
+      "accessedDate": "2026-07-30",
       "portions": [
         {
           "gramWeight": 89,
@@ -546,7 +546,7 @@
       "sourceAuthority": "USDA",
       "sourceDataset": "SR Legacy (April 2018)",
       "citationText": "USDA FoodData Central SR Legacy NDB 11112, Cabbage, red, raw (FDC ID 169977)",
-      "accessedDate": "2025-01-15",
+      "accessedDate": "2026-07-30",
       "portions": [
         {
           "gramWeight": 89,
@@ -607,7 +607,7 @@
       "sourceAuthority": "USDA",
       "sourceDataset": "SR Legacy (April 2018)",
       "citationText": "USDA FoodData Central SR Legacy NDB 11135, Cauliflower, raw (FDC ID 169986)",
-      "accessedDate": "2025-01-15",
+      "accessedDate": "2026-07-30",
       "portions": [
         {
           "gramWeight": 107,
@@ -660,7 +660,7 @@
       "sourceAuthority": "USDA",
       "sourceDataset": "SR Legacy (April 2018)",
       "citationText": "USDA FoodData Central SR Legacy NDB 11241, Kohlrabi, raw (FDC ID 168424)",
-      "accessedDate": "2025-01-15",
+      "accessedDate": "2026-07-30",
       "portions": [
         {
           "gramWeight": 135,
@@ -689,7 +689,7 @@
       "sourceAuthority": "USDA",
       "sourceDataset": "SR Legacy (April 2018)",
       "citationText": "USDA FoodData Central SR Legacy NDB 11124, Carrots, raw (FDC ID 170393)",
-      "accessedDate": "2025-01-15",
+      "accessedDate": "2026-07-30",
       "portions": [
         {
           "gramWeight": 128,
@@ -774,7 +774,7 @@
       "sourceAuthority": "USDA",
       "sourceDataset": "SR Legacy (April 2018)",
       "citationText": "USDA FoodData Central SR Legacy NDB 11143, Celery, raw (FDC ID 169988)",
-      "accessedDate": "2025-01-15",
+      "accessedDate": "2026-07-30",
       "portions": [
         {
           "gramWeight": 101,
@@ -843,7 +843,7 @@
       "sourceAuthority": "USDA",
       "sourceDataset": "SR Legacy (April 2018)",
       "citationText": "USDA FoodData Central SR Legacy NDB 11080, Beets, raw (FDC ID 169145)",
-      "accessedDate": "2025-01-15",
+      "accessedDate": "2026-07-30",
       "portions": [
         {
           "gramWeight": 136,
@@ -872,7 +872,7 @@
       "sourceAuthority": "USDA",
       "sourceDataset": "SR Legacy (April 2018)",
       "citationText": "USDA FoodData Central SR Legacy NDB 11205, Cucumber, with peel, raw (FDC ID 168409)",
-      "accessedDate": "2025-01-15",
+      "accessedDate": "2026-07-30",
       "portions": [
         {
           "gramWeight": 52,
@@ -901,7 +901,7 @@
       "sourceAuthority": "USDA",
       "sourceDataset": "SR Legacy (April 2018)",
       "citationText": "USDA FoodData Central SR Legacy NDB 11957, Fennel, bulb, raw (FDC ID 169385)",
-      "accessedDate": "2025-01-15",
+      "accessedDate": "2026-07-30",
       "portions": [
         {
           "gramWeight": 87,
@@ -930,7 +930,7 @@
       "sourceAuthority": "USDA",
       "sourceDataset": "SR Legacy (April 2018)",
       "citationText": "USDA FoodData Central SR Legacy NDB 11507, Sweet potato, raw, unprepared (Includes foods for USDA's Food Distribution Program) (FDC ID 168482)",
-      "accessedDate": "2025-01-15",
+      "accessedDate": "2026-07-30",
       "portions": [
         {
           "gramWeight": 133,
@@ -959,7 +959,7 @@
       "sourceAuthority": "USDA",
       "sourceDataset": "SR Legacy (April 2018)",
       "citationText": "USDA FoodData Central SR Legacy NDB 11564, Turnips, raw (FDC ID 170465)",
-      "accessedDate": "2025-01-15",
+      "accessedDate": "2026-07-30",
       "portions": [
         {
           "gramWeight": 130,
@@ -1020,7 +1020,7 @@
       "sourceAuthority": "USDA",
       "sourceDataset": "SR Legacy (April 2018)",
       "citationText": "USDA FoodData Central SR Legacy NDB 11141, Celeriac, raw (FDC ID 170400)",
-      "accessedDate": "2025-01-15",
+      "accessedDate": "2026-07-30",
       "portions": [
         {
           "gramWeight": 156,
@@ -1041,7 +1041,7 @@
       "sourceAuthority": "USDA",
       "sourceDataset": "SR Legacy (April 2018)",
       "citationText": "USDA FoodData Central SR Legacy NDB 11603, Yambean (jicama), raw (FDC ID 170073)",
-      "accessedDate": "2025-01-15",
+      "accessedDate": "2026-07-30",
       "portions": [
         {
           "gramWeight": 120,
@@ -1102,7 +1102,7 @@
       "sourceAuthority": "USDA",
       "sourceDataset": "SR Legacy (April 2018)",
       "citationText": "USDA FoodData Central SR Legacy NDB 11477, Squash, summer, zucchini, includes skin, raw (FDC ID 169291)",
-      "accessedDate": "2025-01-15",
+      "accessedDate": "2026-07-30",
       "portions": [
         {
           "gramWeight": 124,
@@ -1163,7 +1163,7 @@
       "sourceAuthority": "USDA",
       "sourceDataset": "SR Legacy (April 2018)",
       "citationText": "USDA FoodData Central SR Legacy NDB 11011, Asparagus, raw (FDC ID 168389)",
-      "accessedDate": "2025-01-15",
+      "accessedDate": "2026-07-30",
       "portions": [
         {
           "gramWeight": 134,
@@ -1224,7 +1224,7 @@
       "sourceAuthority": "USDA",
       "sourceDataset": "SR Legacy (April 2018)",
       "citationText": "USDA FoodData Central SR Legacy NDB 11429, Radishes, raw (FDC ID 169276)",
-      "accessedDate": "2025-01-15",
+      "accessedDate": "2026-07-30",
       "portions": [
         {
           "gramWeight": 116,
@@ -1285,7 +1285,7 @@
       "sourceAuthority": "USDA",
       "sourceDataset": "SR Legacy (April 2018)",
       "citationText": "USDA FoodData Central SR Legacy NDB 11216, Ginger root, raw (FDC ID 169231)",
-      "accessedDate": "2025-01-15",
+      "accessedDate": "2026-07-30",
       "portions": [
         {
           "gramWeight": 2,
@@ -1322,7 +1322,7 @@
       "sourceAuthority": "USDA",
       "sourceDataset": "SR Legacy (April 2018)",
       "citationText": "USDA FoodData Central SR Legacy NDB 11215, Garlic, raw (FDC ID 169230)",
-      "accessedDate": "2025-01-15",
+      "accessedDate": "2026-07-30",
       "portions": [
         {
           "gramWeight": 136,
@@ -1367,7 +1367,7 @@
       "sourceAuthority": "USDA",
       "sourceDataset": "SR Legacy (April 2018)",
       "citationText": "USDA FoodData Central SR Legacy NDB 11821, Peppers, sweet, red, raw (FDC ID 170108)",
-      "accessedDate": "2025-01-15",
+      "accessedDate": "2026-07-30",
       "portions": [
         {
           "gramWeight": 149,
@@ -1436,7 +1436,7 @@
       "sourceAuthority": "USDA",
       "sourceDataset": "SR Legacy (April 2018)",
       "citationText": "USDA FoodData Central SR Legacy NDB 11951, Peppers, sweet, yellow, raw (FDC ID 169383)",
-      "accessedDate": "2025-01-15",
+      "accessedDate": "2026-07-30",
       "portions": [
         {
           "gramWeight": 186,
@@ -1465,7 +1465,7 @@
       "sourceAuthority": "USDA",
       "sourceDataset": "SR Legacy (April 2018)",
       "citationText": "USDA FoodData Central SR Legacy NDB 11333, Peppers, sweet, green, raw (FDC ID 170427)",
-      "accessedDate": "2025-01-15",
+      "accessedDate": "2026-07-30",
       "portions": [
         {
           "gramWeight": 149,
@@ -1542,7 +1542,7 @@
       "sourceAuthority": "USDA",
       "sourceDataset": "SR Legacy (April 2018)",
       "citationText": "USDA FoodData Central SR Legacy NDB 11979, Peppers, jalapeno, raw (FDC ID 168576)",
-      "accessedDate": "2025-01-15",
+      "accessedDate": "2026-07-30",
       "portions": [
         {
           "gramWeight": 90,
@@ -1571,7 +1571,7 @@
       "sourceAuthority": "USDA",
       "sourceDataset": "SR Legacy (April 2018)",
       "citationText": "USDA FoodData Central SR Legacy NDB 11819, Peppers, hot chili, red, raw (FDC ID 170106)",
-      "accessedDate": "2025-01-15",
+      "accessedDate": "2026-07-30",
       "portions": [
         {
           "gramWeight": 45,
@@ -1600,7 +1600,7 @@
       "sourceAuthority": "USDA",
       "sourceDataset": "SR Legacy (April 2018)",
       "citationText": "USDA FoodData Central SR Legacy NDB 11529, Tomatoes, red, ripe, raw, year round average (FDC ID 170457)",
-      "accessedDate": "2025-01-15",
+      "accessedDate": "2026-07-30",
       "portions": [
         {
           "gramWeight": 149,
@@ -1717,7 +1717,7 @@
       "sourceAuthority": "USDA",
       "sourceDataset": "SR Legacy (April 2018)",
       "citationText": "USDA FoodData Central SR Legacy NDB 9003, Apples, raw, with skin (Includes foods for USDA's Food Distribution Program) (FDC ID 171688)",
-      "accessedDate": "2025-01-15",
+      "accessedDate": "2026-07-30",
       "portions": [
         {
           "gramWeight": 125,
@@ -1786,7 +1786,7 @@
       "sourceAuthority": "USDA",
       "sourceDataset": "SR Legacy (April 2018)",
       "citationText": "USDA FoodData Central SR Legacy NDB 9150, Lemons, raw, without peel (FDC ID 167746)",
-      "accessedDate": "2025-01-15",
+      "accessedDate": "2026-07-30",
       "portions": [
         {
           "gramWeight": 212,
@@ -1839,7 +1839,7 @@
       "sourceAuthority": "USDA",
       "sourceDataset": "SR Legacy (April 2018)",
       "citationText": "USDA FoodData Central SR Legacy NDB 9159, Limes, raw (FDC ID 168155)",
-      "accessedDate": "2025-01-15",
+      "accessedDate": "2026-07-30",
       "portions": [
         {
           "gramWeight": 67,
@@ -1868,7 +1868,7 @@
       "sourceAuthority": "USDA",
       "sourceDataset": "SR Legacy (April 2018)",
       "citationText": "USDA FoodData Central SR Legacy NDB 9200, Oranges, raw, all commercial varieties (FDC ID 169097)",
-      "accessedDate": "2025-01-15",
+      "accessedDate": "2026-07-30",
       "portions": [
         {
           "gramWeight": 180,
@@ -1913,7 +1913,7 @@
       "sourceAuthority": "USDA",
       "sourceDataset": "SR Legacy (April 2018)",
       "citationText": "USDA FoodData Central SR Legacy NDB 9111, Grapefruit, raw, pink and red and white, all areas (FDC ID 173033)",
-      "accessedDate": "2025-01-15",
+      "accessedDate": "2026-07-30",
       "portions": [
         {
           "gramWeight": 230,
@@ -1958,7 +1958,7 @@
       "sourceAuthority": "USDA",
       "sourceDataset": "SR Legacy (April 2018)",
       "citationText": "USDA FoodData Central SR Legacy NDB 9429, Pineapple, raw, traditional varieties (FDC ID 168193)",
-      "accessedDate": "2025-01-15",
+      "accessedDate": "2026-07-30",
       "portions": [
         {
           "gramWeight": 165,
@@ -2003,7 +2003,7 @@
       "sourceAuthority": "USDA",
       "sourceDataset": "SR Legacy (April 2018)",
       "citationText": "USDA FoodData Central SR Legacy NDB 9326, Watermelon, raw (FDC ID 167765)",
-      "accessedDate": "2025-01-15",
+      "accessedDate": "2026-07-30",
       "portions": [
         {
           "gramWeight": 154,
@@ -2064,7 +2064,7 @@
       "sourceAuthority": "USDA",
       "sourceDataset": "SR Legacy (April 2018)",
       "citationText": "USDA FoodData Central SR Legacy NDB 9286, Pomegranates, raw (FDC ID 169134)",
-      "accessedDate": "2025-01-15",
+      "accessedDate": "2026-07-30",
       "portions": [
         {
           "gramWeight": 87,
@@ -2093,7 +2093,7 @@
       "sourceAuthority": "USDA",
       "sourceDataset": "SR Legacy (April 2018)",
       "citationText": "USDA FoodData Central SR Legacy NDB 9176, Mangos, raw (FDC ID 169910)",
-      "accessedDate": "2025-01-15",
+      "accessedDate": "2026-07-30",
       "portions": [
         {
           "gramWeight": 165,
@@ -2122,7 +2122,7 @@
       "sourceAuthority": "USDA",
       "sourceDataset": "SR Legacy (April 2018)",
       "citationText": "USDA FoodData Central SR Legacy NDB 9226, Papayas, raw (FDC ID 169926)",
-      "accessedDate": "2025-01-15",
+      "accessedDate": "2026-07-30",
       "portions": [
         {
           "gramWeight": 145,
@@ -2167,7 +2167,7 @@
       "sourceAuthority": "USDA",
       "sourceDataset": "SR Legacy (April 2018)",
       "citationText": "USDA FoodData Central SR Legacy NDB 9148, Kiwifruit, green, raw (FDC ID 168153)",
-      "accessedDate": "2025-01-15",
+      "accessedDate": "2026-07-30",
       "portions": [
         {
           "gramWeight": 180,
@@ -2204,7 +2204,7 @@
       "sourceAuthority": "USDA",
       "sourceDataset": "SR Legacy (April 2018)",
       "citationText": "USDA FoodData Central SR Legacy NDB 9252, Pears, raw (FDC ID 169118)",
-      "accessedDate": "2025-01-15",
+      "accessedDate": "2026-07-30",
       "portions": [
         {
           "gramWeight": 140,
@@ -2265,7 +2265,7 @@
       "sourceAuthority": "USDA",
       "sourceDataset": "SR Legacy (April 2018)",
       "citationText": "USDA FoodData Central SR Legacy NDB 9132, Grapes, red or green (European type, such as Thompson seedless), raw (FDC ID 174683)",
-      "accessedDate": "2025-01-15",
+      "accessedDate": "2026-07-30",
       "portions": [
         {
           "gramWeight": 151,
@@ -2302,7 +2302,7 @@
       "sourceAuthority": "USDA",
       "sourceDataset": "SR Legacy (April 2018)",
       "citationText": "USDA FoodData Central SR Legacy NDB 9316, Strawberries, raw (FDC ID 167762)",
-      "accessedDate": "2025-01-15",
+      "accessedDate": "2026-07-30",
       "portions": [
         {
           "gramWeight": 152,
@@ -2395,7 +2395,7 @@
       "sourceAuthority": "USDA",
       "sourceDataset": "SR Legacy (April 2018)",
       "citationText": "USDA FoodData Central SR Legacy NDB 9050, Blueberries, raw (FDC ID 171711)",
-      "accessedDate": "2025-01-15",
+      "accessedDate": "2026-07-30",
       "portions": [
         {
           "gramWeight": 148,
@@ -2424,7 +2424,7 @@
       "sourceAuthority": "USDA",
       "sourceDataset": "SR Legacy (April 2018)",
       "citationText": "USDA FoodData Central SR Legacy NDB 9302, Raspberries, raw (FDC ID 167755)",
-      "accessedDate": "2025-01-15",
+      "accessedDate": "2026-07-30",
       "portions": [
         {
           "gramWeight": 123,
@@ -2461,7 +2461,7 @@
       "sourceAuthority": "USDA",
       "sourceDataset": "SR Legacy (April 2018)",
       "citationText": "USDA FoodData Central SR Legacy NDB 9042, Blackberries, raw (FDC ID 173946)",
-      "accessedDate": "2025-01-15",
+      "accessedDate": "2026-07-30",
       "portions": [
         {
           "gramWeight": 144,
@@ -2482,7 +2482,7 @@
       "sourceAuthority": "USDA",
       "sourceDataset": "SR Legacy (April 2018)",
       "citationText": "USDA FoodData Central SR Legacy NDB 9078, Cranberries, raw (FDC ID 171722)",
-      "accessedDate": "2025-01-15",
+      "accessedDate": "2026-07-30",
       "portions": [
         {
           "gramWeight": 110,
@@ -2511,7 +2511,7 @@
       "sourceAuthority": "USDA",
       "sourceDataset": "SR Legacy (April 2018)",
       "citationText": "USDA FoodData Central SR Legacy NDB 9063, Cherries, sour, red, raw (FDC ID 173954)",
-      "accessedDate": "2025-01-15",
+      "accessedDate": "2026-07-30",
       "portions": [
         {
           "gramWeight": 155,
@@ -2540,7 +2540,7 @@
       "sourceAuthority": "USDA",
       "sourceDataset": "SR Legacy (April 2018)",
       "citationText": "USDA FoodData Central SR Legacy NDB 9181, Melons, cantaloupe, raw (FDC ID 169092)",
-      "accessedDate": "2025-01-15",
+      "accessedDate": "2026-07-30",
       "portions": [
         {
           "gramWeight": 177,
@@ -2641,7 +2641,7 @@
       "sourceAuthority": "USDA",
       "sourceDataset": "SR Legacy (April 2018)",
       "citationText": "USDA FoodData Central SR Legacy NDB 9184, Melons, honeydew, raw (FDC ID 169911)",
-      "accessedDate": "2025-01-15",
+      "accessedDate": "2026-07-30",
       "portions": [
         {
           "gramWeight": 170,
@@ -2718,7 +2718,7 @@
       "sourceAuthority": "USDA",
       "sourceDataset": "SR Legacy (April 2018)",
       "citationText": "USDA FoodData Central SR Legacy NDB 12119, Nuts, coconut water (liquid from coconuts) (FDC ID 170174)",
-      "accessedDate": "2025-01-15",
+      "accessedDate": "2026-07-30",
       "portions": [
         {
           "gramWeight": 240,
@@ -2755,7 +2755,7 @@
       "sourceAuthority": "USDA",
       "sourceDataset": "SR Legacy (April 2018)",
       "citationText": "USDA FoodData Central SR Legacy NDB 9231, Passion-fruit, (granadilla), purple, raw (FDC ID 169108)",
-      "accessedDate": "2025-01-15",
+      "accessedDate": "2026-07-30",
       "portions": [
         {
           "gramWeight": 236,
@@ -2784,7 +2784,7 @@
       "sourceAuthority": "USDA",
       "sourceDataset": "SR Legacy (April 2018)",
       "citationText": "USDA FoodData Central SR Legacy NDB 9236, Peaches, yellow, raw (FDC ID 169928)",
-      "accessedDate": "2025-01-15",
+      "accessedDate": "2026-07-30",
       "portions": [
         {
           "gramWeight": 154,
@@ -2845,7 +2845,7 @@
       "sourceAuthority": "USDA",
       "sourceDataset": "SR Legacy (April 2018)",
       "citationText": "USDA FoodData Central SR Legacy NDB 9279, Plums, raw (FDC ID 169949)",
-      "accessedDate": "2025-01-15",
+      "accessedDate": "2026-07-30",
       "portions": [
         {
           "gramWeight": 165,
@@ -2882,7 +2882,7 @@
       "sourceAuthority": "USDA",
       "sourceDataset": "SR Legacy (April 2018)",
       "citationText": "USDA FoodData Central SR Legacy NDB 9191, Nectarines, raw (FDC ID 169914)",
-      "accessedDate": "2025-01-15",
+      "accessedDate": "2026-07-30",
       "portions": [
         {
           "gramWeight": 143,
@@ -2935,7 +2935,7 @@
       "sourceAuthority": "USDA",
       "sourceDataset": "Foundation Foods",
       "citationText": "USDA FoodData Central Foundation Foods FDC ID 2685572, Cabbage, bok choy, raw (NDB 11116)",
-      "accessedDate": "2025-01-15",
+      "accessedDate": "2026-07-30",
       "portions": [
         {
           "gramWeight": 70,
@@ -2957,7 +2957,7 @@
       "sourceAuthority": "USDA",
       "sourceDataset": "FNDDS 2021-2023",
       "citationText": "USDA FoodData Central FNDDS 2021-2023 — wheatgrass has no standardized portion weight in SR Legacy, Foundation Foods, or FNDDS",
-      "accessedDate": "2025-01-15",
+      "accessedDate": "2026-07-30",
       "portions": [],
       "confidence": "low",
       "notes": "Wheatgrass is typically juiced in small amounts measured by weight. No standardized USDA household measure exists in any FoodData Central data type."
@@ -2971,18 +2971,10 @@
       "sourceAuthority": "USDA",
       "sourceDataset": "Foundation Foods",
       "citationText": "USDA FoodData Central Foundation Foods FDC ID 170556, Turmeric, raw",
-      "accessedDate": "2025-01-15",
-      "portions": [
-        {
-          "gramWeight": 6,
-          "portionDescription": "1 tbsp, grated (estimated from ginger density)",
-          "modifier": "tbsp, grated",
-          "amount": 1,
-          "measureUnit": "undetermined"
-        }
-      ],
+      "accessedDate": "2026-07-30",
+      "portions": [],
       "confidence": "low",
-      "notes": "USDA Foundation Foods has turmeric raw (FDC 170556) but with limited household measure data. Tablespoon weight estimated from ginger SR Legacy density (NDB 11216, 1 tsp = 2g, so 1 tbsp ≈ 6g). 1-inch piece estimated at 25g from ginger root density."
+      "notes": "USDA Foundation Foods has turmeric raw (FDC 170556) but lacks standardized household measure data. No direct suitable raw turmeric household portion was verified."
     },
     "aloe_vera": {
       "produceId": "aloe_vera",
@@ -2993,7 +2985,7 @@
       "sourceAuthority": "USDA",
       "sourceDataset": "FNDDS 2021-2023",
       "citationText": "USDA FoodData Central FNDDS 2021-2023 — aloe vera gel has no standardized USDA household portion weight",
-      "accessedDate": "2025-01-15",
+      "accessedDate": "2026-07-30",
       "portions": [],
       "confidence": "low",
       "notes": "Aloe vera is typically used as extracted gel measured by weight. No standardized USDA household measure exists for raw aloe leaves in any FoodData Central data type."
@@ -3007,7 +2999,7 @@
       "sourceAuthority": "USDA",
       "sourceDataset": "SR Legacy (April 2018)",
       "citationText": "USDA FoodData Central SR Legacy NDB 9003, Apples, raw, with skin (Includes foods for USDA's Food Distribution Program) (FDC ID 171688)",
-      "accessedDate": "2025-01-15",
+      "accessedDate": "2026-07-30",
       "portions": [
         {
           "gramWeight": 125,
@@ -3076,7 +3068,7 @@
       "sourceAuthority": "USDA",
       "sourceDataset": "SR Legacy (April 2018)",
       "citationText": "USDA FoodData Central SR Legacy NDB 9003, Apples, raw, with skin (Includes foods for USDA's Food Distribution Program) (FDC ID 171688)",
-      "accessedDate": "2025-01-15",
+      "accessedDate": "2026-07-30",
       "portions": [
         {
           "gramWeight": 125,

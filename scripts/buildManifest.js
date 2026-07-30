@@ -54,12 +54,10 @@ const nonSrRecords = {
     description: 'Turmeric, raw',
     sourceAuthority: 'USDA',
     sourceDataset: 'Foundation Foods',
-    portions: [
-      { gramWeight: 6, portionDescription: '1 tbsp, grated (estimated from ginger density)', modifier: 'tbsp, grated', amount: 1, measureUnit: 'undetermined' },
-    ],
+    portions: [],
     citationText: 'USDA FoodData Central Foundation Foods FDC ID 170556, Turmeric, raw',
     confidence: 'low',
-    notes: 'USDA Foundation Foods has turmeric raw (FDC 170556) but with limited household measure data. Tablespoon weight estimated from ginger SR Legacy density (NDB 11216, 1 tsp = 2g, so 1 tbsp ≈ 6g). 1-inch piece estimated at 25g from ginger root density.',
+    notes: 'USDA Foundation Foods has turmeric raw (FDC 170556) but lacks standardized household measure data. No direct suitable raw turmeric household portion was verified.',
   },
   aloe_vera: {
     fdcId: null,
@@ -77,7 +75,7 @@ const nonSrRecords = {
 
 // Build the manifest
 const manifest = {}
-const accessedDate = '2025-01-15'
+const accessedDate = '2026-07-30'
 
 // Add SR Legacy records
 for (const [produceId, data] of Object.entries(exactMatches.results)) {

@@ -215,4 +215,71 @@ describe('Produce Portion Registry', () => {
       }
     }
   })
+
+  // 23. Low-confidence requires weight-only (regression test)
+  test('confidence=low requires quantitySupported=false', () => {
+    for (const [pid, record] of Object.entries(PRODUCE_PORTIONS)) {
+      if (record.confidence === 'low') {
+        expect(record.quantitySupported).toBe(false)
+        expect(record.units.length).toBe(0)
+        expect(record.defaultUnitKey).toBeNull()
+      }
+    }
+  })
+
+  // 24. Deep immutability — top-level produce record
+  test('cannot mutate a top-level produce record', () => {
+    const kale = PRODUCE_PORTIONS.kale
+    expect(() => {
+      'use strict'
+      ;(kale as any).produceId = 'tampered'
+    }).toThrow()
+    expect(kale.produceId).toBe('kale')
+  })
+
+  // 25. Deep immutability — unit label
+  test('cannot mutate a unit displaySingular', () => {
+    const unit = PRODUCE_PORTIONS.kale.units[0]
+    expect(() => {
+      'use strict'
+      ;(unit as any).displaySingular = 'tampered'
+    }).toThrow()
+    expect(unit.displaySingular).not.toBe('tampered')
+  })
+
+  // 26. Deep immutability — size gram value
+  test('cannot mutate a size gramWeight', () => {
+    const size = PRODUCE_PORTIONS.kale.units[0].sizes[0]
+    expect(() => {
+      'use strict'
+      ;(size as any).gramWeight = 999
+    }).toThrow()
+    expect(size.gramWeight).not.toBe(999)
+  })
+
+  // 27. Deep immutability — source identifier
+  test('cannot mutate a sourceRecord ndbNumber', () => {
+    const sr = PRODUCE_PORTIONS.kale.sourceRecords[0]
+    expect(() => {
+      'use strict'
+      ;(sr as any).ndbNumber = '00000'
+    }).toThrow()
+    expect(sr.ndbNumber).not.toBe('00000')
+  })
+
+  // 28. Deep immutability — all nested objects frozen
+  test('all nested objects (units, sizes, sourceRecords) are frozen', () => {
+    for (const [pid, record] of Object.entries(PRODUCE_PORTIONS)) {
+      expect(Object.isFrozen(record)).toBe(true)
+      for (const unit of record.units) {
+        expect(Object.isFrozen(unit)).toBe(true)
+        for (const size of unit.sizes) {
+          expect(Object.isFrozen(size)).toBe(true)
+        }
+      }
+      for (const sr of record.sourceRecords) {
+        expect(Object.isFrozen(sr)).toBe(true)
+      }
+    }
+  })
 })

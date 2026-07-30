@@ -244,6 +244,7 @@ export const ALL_STORAGE_KEYS = [
   '@juicing_performance_onboarding_done',
   '@juicing_log_entries_v1',
   '@dormant_reminder_last_activity',
+  '@juicing_portion_entry_mode_v1',
 ] as const
 
 /**

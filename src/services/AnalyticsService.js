@@ -357,7 +357,44 @@ const EVENT_SCHEMAS = {
     required: ['session_id', 'ts'],
     optional: ['source'],
   },
-
+  // -- Advanced Blend allowance --
+  advanced_blend_threshold_reached: {
+    required: ['session_id', 'ts'],
+    optional: ['plan', 'ingredient_count', 'source'],
+  },
+  advanced_blend_confirmation_shown: {
+    required: ['session_id', 'ts'],
+    optional: ['plan', 'remaining', 'ingredient_count', 'source'],
+  },
+  advanced_blend_analysis_started: {
+    required: ['session_id', 'ts'],
+    optional: ['plan', 'ingredient_count', 'request_id', 'source'],
+  },
+  advanced_blend_analysis_completed: {
+    required: ['session_id', 'ts'],
+    optional: ['plan', 'ingredient_count', 'remaining', 'used', 'limit', 'source'],
+  },
+  advanced_blend_analysis_released: {
+    required: ['session_id', 'ts'],
+    optional: ['plan', 'ingredient_count', 'error_code', 'source'],
+  },
+  advanced_blend_quota_exhausted: {
+    required: ['session_id', 'ts'],
+    optional: ['plan', 'ingredient_count', 'used', 'limit', 'source'],
+  },
+  advanced_blend_allowance_error: {
+    required: ['session_id', 'ts'],
+    optional: ['plan', 'error_code', 'ingredient_count', 'source'],
+  },
+  // -- Today usage card --
+  today_usage_card_viewed: {
+    required: ['session_id', 'ts'],
+    optional: ['plan', 'scan_remaining', 'blend_remaining'],
+  },
+  today_usage_row_tapped: {
+    required: ['session_id', 'ts'],
+    optional: ['row', 'plan'],
+  },
 
 }
 

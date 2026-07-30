@@ -50,6 +50,10 @@ import CameraScreen from './CameraScreen'
 import { usePro } from '../services/ProStore'
 import MeshGradientBg from '../components/MeshGradientBg'
 import { processJuiceBatch, PRODUCE_DATA } from '../services/JuiceEngine'
+import AdvancedBlendModal from '../components/AdvancedBlendModal'
+import { countDistinctProduceIds, classifyBlend, BlendAllowanceError, FREE_ADVANCED_BLEND_ALLOWANCE } from '../services/quota/blendAllowanceService'
+import { authorizeAndProcessBatch } from '../services/quota/blendNutritionGate'
+import { trackEvent } from '../services/AnalyticsService'
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true)
@@ -428,6 +432,11 @@ export default function JuiceSnapScreen({ navigation, route }) {
   const { checkSnapEligibility, useSnap, snapInfo, isPro } = usePro()
   const [showSnapGate, setShowSnapGate] = useState(false)
   const [showAccountGate, setShowAccountGate] = useState(false)
+  const [showAdvancedBlendModal, setShowAdvancedBlendModal] = useState(false)
+  const [advancedBlendStage, setAdvancedBlendStage] = useState('fifth_ingredient_notice')
+  const [advancedBlendRemaining, setAdvancedBlendRemaining] = useState(FREE_ADVANCED_BLEND_ALLOWANCE)
+  const [blendNoticeShown, setBlendNoticeShown] = useState(false)
+  const [blendCheckInProgress, setBlendCheckInProgress] = useState(false)
   const [showPaywall, setShowPaywall] = useState(false)
   const [isManualMode, setIsManualMode] = useState(route?.params?.manualEntry === true)
   const [manualSearch, setManualSearch] = useState('')
@@ -514,10 +523,27 @@ export default function JuiceSnapScreen({ navigation, route }) {
       if (updated.length >= 7 && !isPro) {
         setShowUpsellNudge(true)
       }
+      // Fifth-ingredient notice for Advanced Blend
+      const distinctCount = countDistinctProduceIds(updated)
+      if (distinctCount === 5 && !blendNoticeShown && !isPro) {
+        setAdvancedBlendStage('fifth_ingredient_notice')
+        setAdvancedBlendRemaining(FREE_ADVANCED_BLEND_ALLOWANCE)
+        setShowAdvancedBlendModal(true)
+        setBlendNoticeShown(true)
+        trackEvent('advanced_blend_threshold_reached', {
+          plan: 'free',
+          ingredient_count: distinctCount,
+          source: 'manual_entry',
+        })
+      }
+      // Reset notice when back to Simple
+      if (distinctCount <= 4) {
+        setBlendNoticeShown(false)
+      }
       return buildBatch(updated, juiceMethod)
     })
     setIsLogged(false)
-  }, [isPro])
+  }, [isPro, blendNoticeShown])
 
   const handleCameraClose = useCallback(() => {
     setIsCameraOpen(false)
@@ -530,7 +556,20 @@ export default function JuiceSnapScreen({ navigation, route }) {
     setBatch(buildBatch(visionResult.scannedIngredients, juiceMethod))
     setIsCameraOpen(false)
     setIsLogged(false)
-  }, [juiceMethod])
+    // Check for Advanced Blend threshold from photo scan
+    const distinctCount = countDistinctProduceIds(visionResult.scannedIngredients)
+    if (distinctCount >= 5 && !isPro) {
+      setAdvancedBlendStage('fifth_ingredient_notice')
+      setAdvancedBlendRemaining(FREE_ADVANCED_BLEND_ALLOWANCE)
+      setShowAdvancedBlendModal(true)
+      setBlendNoticeShown(true)
+      trackEvent('advanced_blend_threshold_reached', {
+        plan: 'free',
+        ingredient_count: distinctCount,
+        source: 'photo',
+      })
+    }
+  }, [juiceMethod, isPro])
 
   const handleUpdateItem = useCallback((index, newProduceId, newWeightG) => {
     setBatch((prev) => {
@@ -610,14 +649,119 @@ export default function JuiceSnapScreen({ navigation, route }) {
     setIsLogged(false)
   }, [])
 
-  const handleLogToChallenge = useCallback(() => {
+  const handleLogToChallenge = useCallback(async () => {
+    if (!hasItems) return
+
+    const ingredients = batch?.scannedIngredients || []
+    const distinctCount = countDistinctProduceIds(ingredients)
+    const blendType = classifyBlend(distinctCount)
+
+    // Advanced Blend: check allowance for free users
+    if (blendType === 'advanced' && !isPro) {
+      // Show pre-analysis confirmation first
+      setAdvancedBlendStage('pre_analysis_confirmation')
+      setAdvancedBlendRemaining(FREE_ADVANCED_BLEND_ALLOWANCE)
+      setShowAdvancedBlendModal(true)
+      trackEvent('advanced_blend_confirmation_shown', {
+        plan: 'free',
+        remaining: FREE_ADVANCED_BLEND_ALLOWANCE,
+        ingredient_count: distinctCount,
+        source: effectiveManualMode ? 'manual' : 'photo',
+      })
+      return
+    }
+
+    await executeLogToChallenge()
+  }, [hasItems, batch, isPro, effectiveManualMode])
+
+  const executeLogToChallenge = useCallback(async () => {
     if (!hasItems) return
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
 
     const ingredients = batch?.scannedIngredients || []
-    const totals = batch?.totals || {}
+    const distinctCount = countDistinctProduceIds(ingredients)
+    const blendType = classifyBlend(distinctCount)
+    const logSource = effectiveManualMode ? 'manual' : 'photo'
 
-    logJuice(ingredients, batch)
+    let totals = batch?.totals || {}
+    let allowanceResult = null
+
+    // Advanced Blend: go through server-authoritative transaction
+    if (blendType === 'advanced') {
+      setBlendCheckInProgress(true)
+      try {
+        trackEvent('advanced_blend_analysis_started', {
+          plan: isPro ? 'pro' : 'free',
+          ingredient_count: distinctCount,
+          source: logSource,
+        })
+
+        const authorized = await authorizeAndProcessBatch(ingredients, batch.juiceMethod || 'cold_pressed')
+        totals = authorized.totals || totals
+        allowanceResult = authorized.allowance
+
+        // Update batch with real nutrition totals
+        setBatch((prev) => ({
+          ...prev,
+          totals,
+          items: authorized.ingredients || prev.items,
+        }))
+
+        if (allowanceResult && allowanceResult.plan === 'free') {
+          const remaining = allowanceResult.remaining ?? 0
+          trackEvent('advanced_blend_analysis_completed', {
+            plan: 'free',
+            ingredient_count: distinctCount,
+            remaining,
+            used: allowanceResult.used,
+            limit: allowanceResult.limit,
+            source: logSource,
+          })
+
+          // Show completion confirmation
+          setAdvancedBlendStage('completion_confirmation')
+          setAdvancedBlendRemaining(remaining)
+          setShowAdvancedBlendModal(true)
+        }
+      } catch (err) {
+        if (err instanceof BlendAllowanceError && err.code === 'advanced_blend_limit_reached') {
+          setAdvancedBlendStage('allowance_exhausted')
+          setAdvancedBlendRemaining(0)
+          setShowAdvancedBlendModal(true)
+          trackEvent('advanced_blend_quota_exhausted', {
+            plan: 'free',
+            ingredient_count: distinctCount,
+            used: err.result?.used ?? 0,
+            limit: err.result?.limit ?? FREE_ADVANCED_BLEND_ALLOWANCE,
+            source: logSource,
+          })
+          setBlendCheckInProgress(false)
+          return
+        }
+
+        // Network or server error — fail closed
+        if (__DEV__) console.warn('[blend] allowance check failed:', err?.message)
+        setAdvancedBlendStage('network_retry')
+        setShowAdvancedBlendModal(true)
+        trackEvent('advanced_blend_allowance_error', {
+          plan: isPro ? 'pro' : 'free',
+          error_code: err instanceof BlendAllowanceError ? err.code : 'unknown',
+          ingredient_count: distinctCount,
+          source: logSource,
+        })
+        trackEvent('advanced_blend_analysis_released', {
+          plan: isPro ? 'pro' : 'free',
+          ingredient_count: distinctCount,
+          error_code: err instanceof BlendAllowanceError ? err.code : 'unknown',
+          source: logSource,
+        })
+        setBlendCheckInProgress(false)
+        return
+      }
+      setBlendCheckInProgress(false)
+    }
+
+    logJuice(ingredients, { ...batch, totals })
 
     // Record to Nutrition Score system
     const ingredientIds = ingredients
@@ -627,7 +771,6 @@ export default function JuiceSnapScreen({ navigation, route }) {
     recordNutritionLog(ingredientIds, totals)
 
     // Create a JuiceLogEntry for the Today log
-    const logSource = effectiveManualMode ? 'manual' : 'photo'
     addLogEntry({
       source: logSource,
       ingredientIds: ingredientIds,
@@ -637,7 +780,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
 
     setIsLogged(true)
 
-    // Navigate to ScanSuccess with session metrics (replaces BigSqueeze celebration)
+    // Navigate to ScanSuccess with session metrics
     const nutrientKeys = Object.keys(totals).filter(
       (k) => (Number(totals[k]) || 0) > 0
     )
@@ -647,7 +790,12 @@ export default function JuiceSnapScreen({ navigation, route }) {
       previousMomentum: prevMomentum,
       ingredientNames: ingredientIds,
     })
-  }, [hasItems, batch, logJuice, recordNutritionLog, preMomentum, navigation])
+  }, [hasItems, batch, isPro, effectiveManualMode, logJuice, recordNutritionLog, preMomentum, navigation])
+
+  const handleAdvancedBlendConfirm = useCallback(() => {
+    setShowAdvancedBlendModal(false)
+    executeLogToChallenge()
+  }, [executeLogToChallenge])
 
   const handleBigSqueezeDismiss = useCallback(() => {
     setShowBigSqueeze(false)
@@ -919,6 +1067,26 @@ export default function JuiceSnapScreen({ navigation, route }) {
         onDismiss={() => setShowSnapGate(false)}
         onUpgrade={() => navigation.navigate('Vault')}
         onBuyPack={() => navigation.navigate('Vault')}
+      />
+
+      <AdvancedBlendModal
+        visible={showAdvancedBlendModal}
+        stage={advancedBlendStage}
+        remaining={advancedBlendRemaining}
+        onUpgrade={() => {
+          setShowAdvancedBlendModal(false)
+          trackEvent('today_usage_row_tapped', {
+            row: 'advanced_blend_upgrade',
+            plan: isPro ? 'pro' : 'free',
+          })
+          navigation.navigate('Paywall', { source: 'advanced_blend' })
+        }}
+        onDismiss={() => setShowAdvancedBlendModal(false)}
+        onConfirm={handleAdvancedBlendConfirm}
+        onRetry={() => {
+          setShowAdvancedBlendModal(false)
+          executeLogToChallenge()
+        }}
       />
     </SafeAreaView>
     </View>

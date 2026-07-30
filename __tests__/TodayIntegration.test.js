@@ -177,6 +177,37 @@ jest.mock('../src/components/AchievementOverlay', () => {
   const React = require('react')
   return { __esModule: true, default: () => React.createElement(React.Fragment) }
 })
+jest.mock('../src/components/FreePlanUsageCard', () => {
+  return function FreePlanUsageCard() { return null }
+})
+jest.mock('../src/services/quota/QuotaStore', () => ({
+  useQuota: () => ({ quota: null, loading: false, warningLevel: 'none', refresh: async () => {}, applySnapshot: () => {} }),
+  QuotaProvider: ({ children }) => children,
+}))
+jest.mock('../src/services/quota/blendAllowanceService', () => ({
+  classifyBlend: jest.fn((n) => n >= 5 ? 'advanced' : 'simple'),
+  countDistinctProduceIds: jest.fn((ings) => new Set(ings.map(i => i.produceId?.toLowerCase())).size),
+  buildRequestId: jest.fn((ings) => 'blend-' + ings.map(i => i.produceId).sort().join('-')),
+  reserveBlendAllowance: jest.fn(async () => ({ allowed: true, code: 'dev_bypass', remaining: 3, used: 0, reserved: 0, limit: 3, plan: 'free', blendType: 'advanced', requestId: 'test' })),
+  finalizeBlendAllowance: jest.fn(async () => {}),
+  releaseBlendAllowance: jest.fn(async () => {}),
+  fetchBlendAllowance: jest.fn(async () => null),
+  BlendAllowanceError: class BlendAllowanceError extends Error { constructor(code, msg, result) { super(msg); this.code = code; this.result = result } },
+  SIMPLE_BLEND_MAX_INGREDIENTS: 4,
+  FREE_ADVANCED_BLEND_ALLOWANCE: 3,
+}))
+jest.mock('../src/services/quota/blendNutritionGate', () => ({
+  authorizeAndProcessBatch: jest.fn(async (ings) => ({ ...require('../../src/services/JuiceEngine').processJuiceBatch(ings), allowance: null })),
+  BlendAllowanceError: class BlendAllowanceError extends Error { constructor(code, msg, result) { super(msg); this.code = code; this.result = result } },
+  classifyBlend: jest.fn((n) => n >= 5 ? 'advanced' : 'simple'),
+  countDistinctProduceIds: jest.fn((ings) => new Set(ings.map(i => i.produceId?.toLowerCase())).size),
+}))
+jest.mock('../src/components/AdvancedBlendModal', () => ({
+  __esModule: true,
+  default: function AdvancedBlendModal() { return null },
+  getAdvancedBlendModalContent: jest.fn(() => ({ title: '', subtitle: null, body: '' })),
+}))
+
 
 // ── Helpers ───────────────────────────────────────────────────
 

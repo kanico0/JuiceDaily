@@ -1,4 +1,4 @@
-import { RECIPES } from '../constants/recipeData'
+import { RECIPES, DATASET_FINGERPRINT } from '../constants/recipeData'
 import {
   WELLNESS_DIRECTORY,
   WELLNESS_FOCUS_AREAS,
@@ -26,11 +26,23 @@ export interface FocusAreaResult {
 
 // ── Normalization (ported from recipe_coverage_validator.py) ───
 
+const ALIAS_MAP: Record<string, string> = {
+  'strawberries': 'strawberry',
+  'blueberries': 'blueberry',
+  'raspberries': 'raspberry',
+  'blackberries': 'blackberry',
+  'red cabbage': 'purple cabbage',
+  'cilantro': 'coriander',
+  'jalape\u00f1o': 'jalapeno',
+  'jalape\u00f1os': 'jalapeno',
+}
+
 export function normalize(s: string): string {
   let result = s.toLowerCase().trim()
   result = result.replace(/\(.*?\)/g, '')
   result = result.replace(/\b(root|greens|leaf|leaves)\b/g, '')
   result = result.replace(/\s+/g, ' ').trim()
+  if (ALIAS_MAP[result]) result = ALIAS_MAP[result]
   return result
 }
 
@@ -173,8 +185,7 @@ interface CacheEntry {
 const cache = new Map<string, CacheEntry>()
 
 function computeDataVersionHash(): string {
-  const recipeIds = RECIPES.map((r) => r.id).join(',')
-  return `${WELLNESS_SCHEMA_VERSION}:${recipeIds.length}`
+  return `${WELLNESS_SCHEMA_VERSION}:${DATASET_FINGERPRINT}`
 }
 
 function getCacheKey(focusAreaId: string, minOverlap: number, minRatio: number): string {

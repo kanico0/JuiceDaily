@@ -1286,10 +1286,22 @@
         "grapefruit",
         "kiwi",
         "strawberry",
+        "raspberry",
         "bell pepper",
         "kale",
         "parsley",
-        "pineapple"
+        "pineapple",
+        "basil",
+        "mint",
+        "fennel",
+        "radish",
+        "zucchini",
+        "green cabbage",
+        "purple cabbage",
+        "broccoli",
+        "jalapeno",
+        "watercress",
+        "coriander"
       ]
     },
     "vitamin_a": {
@@ -1300,7 +1312,8 @@
         "pumpkin",
         "mango",
         "spinach",
-        "kale"
+        "kale",
+        "cantaloupe"
       ]
     },
     "vitamin_e": {
@@ -1320,7 +1333,12 @@
         "spinach",
         "swiss chard",
         "parsley",
-        "collard greens"
+        "collard greens",
+        "basil",
+        "green cabbage",
+        "purple cabbage",
+        "broccoli",
+        "watercress"
       ]
     },
     "folate": {
@@ -1330,7 +1348,11 @@
         "romaine lettuce",
         "beet",
         "orange",
-        "parsley"
+        "parsley",
+        "green cabbage",
+        "radish",
+        "fennel",
+        "watercress"
       ]
     },
     "b6": {
@@ -1387,8 +1409,11 @@
         "beet",
         "blueberry",
         "blackberry",
+        "raspberry",
         "purple cabbage",
-        "tart cherry"
+        "tart cherry",
+        "plum",
+        "pomegranate"
       ]
     },
     "bromelain": {
@@ -1420,7 +1445,11 @@
       "juice_ingredients": [
         "apple (with skin)",
         "kale",
-        "grape"
+        "grape",
+        "plum",
+        "raspberry",
+        "purple cabbage",
+        "coriander"
       ]
     },
     "zinc": {
@@ -1449,7 +1478,9 @@
         "beet greens",
         "cucumber",
         "celery",
-        "pumpkin"
+        "pumpkin",
+        "zucchini",
+        "peach"
       ]
     },
     "potassium": {
@@ -1460,7 +1491,13 @@
         "beet greens",
         "cucumber",
         "watermelon",
-        "coconut water"
+        "coconut water",
+        "zucchini",
+        "honeydew",
+        "cantaloupe",
+        "peach",
+        "fennel",
+        "plum"
       ]
     },
     "calcium": {
@@ -1477,7 +1514,12 @@
       "juice_ingredients": [
         "apple (with pulp)",
         "pear (with pulp)",
-        "carrot (with pulp)"
+        "carrot (with pulp)",
+        "plum",
+        "peach",
+        "fennel",
+        "zucchini",
+        "raspberry"
       ]
     },
     "silica": {
@@ -1492,7 +1534,11 @@
         "beet",
         "celery",
         "spinach",
-        "arugula"
+        "arugula",
+        "radish",
+        "fennel",
+        "green cabbage",
+        "watercress"
       ]
     },
     "chlorophyll": {
@@ -1502,7 +1548,12 @@
         "spinach",
         "kale",
         "parsley",
-        "cucumber"
+        "cucumber",
+        "mint",
+        "basil",
+        "green cabbage",
+        "watercress",
+        "broccoli"
       ]
     },
     "citrate": {
@@ -1517,7 +1568,14 @@
       "juice_ingredients": [
         "citrus pith/peel",
         "grape",
-        "orange"
+        "orange",
+        "strawberry",
+        "raspberry",
+        "blueberry",
+        "basil",
+        "mint",
+        "pomegranate",
+        "jalapeno"
       ]
     },
     "plant_sterols": {
@@ -1548,7 +1606,9 @@
         "cucumber",
         "celery",
         "watermelon",
-        "coconut water"
+        "coconut water",
+        "honeydew",
+        "cantaloupe"
       ]
     }
   }

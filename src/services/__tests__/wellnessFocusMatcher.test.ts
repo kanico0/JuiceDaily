@@ -35,6 +35,26 @@ describe('wellnessFocusMatcher', () => {
     it('collapses multiple spaces', () => {
       expect(normalize('  green   apple  ')).toBe('green apple')
     })
+
+    it('normalizes plural berries to singular', () => {
+      expect(normalize('strawberries')).toBe('strawberry')
+      expect(normalize('blueberries')).toBe('blueberry')
+      expect(normalize('raspberries')).toBe('raspberry')
+      expect(normalize('blackberries')).toBe('blackberry')
+    })
+
+    it('normalizes red cabbage to purple cabbage', () => {
+      expect(normalize('red cabbage')).toBe('purple cabbage')
+    })
+
+    it('normalizes cilantro to coriander', () => {
+      expect(normalize('cilantro')).toBe('coriander')
+    })
+
+    it('normalizes jalape\u00f1o to jalapeno', () => {
+      expect(normalize('jalape\u00f1o')).toBe('jalapeno')
+      expect(normalize('jalape\u00f1os')).toBe('jalapeno')
+    })
   })
 
   describe('ingredientMatches', () => {
@@ -211,6 +231,34 @@ describe('wellnessFocusMatcher', () => {
       expect(getCacheSize()).toBe(1)
       clearWellnessCache()
       expect(getCacheSize()).toBe(0)
+    })
+
+    it('a changed dataset fingerprint invalidates cached Wellness results', () => {
+      const realRECIPES = RECIPES
+
+      jest.resetModules()
+      jest.doMock('../../constants/recipeData', () => ({
+        RECIPES: realRECIPES,
+        DATASET_FINGERPRINT: 'fake-fingerprint-a',
+      }))
+      const modA = require('../wellnessFocusMatcher')
+      modA.clearWellnessCache()
+      const resultsA = modA.getCachedRanking('immune_support')
+      expect(resultsA.length).toBeGreaterThan(0)
+      expect(modA.getCacheSize()).toBe(1)
+
+      jest.resetModules()
+      jest.doMock('../../constants/recipeData', () => ({
+        RECIPES: realRECIPES,
+        DATASET_FINGERPRINT: 'fake-fingerprint-b',
+      }))
+      const modB = require('../wellnessFocusMatcher')
+      expect(modB.getCacheSize()).toBe(0)
+      const resultsB = modB.getCachedRanking('immune_support')
+      expect(modB.getCacheSize()).toBe(1)
+
+      jest.dontMock('../../constants/recipeData')
+      jest.resetModules()
     })
   })
 

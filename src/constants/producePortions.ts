@@ -52,6 +52,8 @@ export interface PortionUnit {
 export interface SourceRecord {
   authority: 'USDA' | 'FDA' | 'peer-reviewed'
   dataset: string
+  ndbNumber: string | null
+  fdcId: number | null
   recordId: string
   sourcePortionDescription: string
   preparationState: string
@@ -79,7 +81,8 @@ const ACCESSED = '2025-01-15'
 function sr(
   authority: SourceRecord['authority'],
   dataset: string,
-  recordId: string,
+  ndbNumber: string | null,
+  fdcId: number | null,
   sourcePortionDescription: string,
   preparationState: string,
   edibleBasis: string,
@@ -88,7 +91,9 @@ function sr(
   return {
     authority,
     dataset,
-    recordId,
+    ndbNumber,
+    fdcId,
+    recordId: ndbNumber ?? (fdcId != null ? String(fdcId) : ''),
     sourcePortionDescription,
     preparationState,
     edibleBasis,
@@ -127,7 +132,7 @@ export const PRODUCE_PORTIONS: Readonly<Record<string, ProducePortionRecord>> = 
       },
     ],
     sourceRecords: [
-      sr('USDA', 'SR Legacy', '11215', '1 cup, chopped (67 g)', 'raw', 'edible portion without refuse', 'USDA FoodData Central SR Legacy NDB 11215, Kale, raw'),
+      sr('USDA', 'SR Legacy', '11233', 168421, '1 cup, chopped (67 g)', 'raw', 'edible portion without refuse', 'USDA FoodData Central SR Legacy NDB 11233, Kale, raw (FDC ID 168421)'),
     ],
     confidence: 'high',
   },
@@ -148,7 +153,7 @@ export const PRODUCE_PORTIONS: Readonly<Record<string, ProducePortionRecord>> = 
       },
     ],
     sourceRecords: [
-      sr('USDA', 'SR Legacy', '11457', '1 cup (30 g)', 'raw', 'edible portion without refuse', 'USDA FoodData Central SR Legacy NDB 11457, Spinach, raw'),
+      sr('USDA', 'SR Legacy', '11457', 168462, '1 cup (30 g)', 'raw', 'edible portion without refuse', 'USDA FoodData Central SR Legacy NDB 11457, Spinach, raw (FDC ID 168462)'),
     ],
     confidence: 'high',
   },
@@ -169,7 +174,7 @@ export const PRODUCE_PORTIONS: Readonly<Record<string, ProducePortionRecord>> = 
       },
     ],
     sourceRecords: [
-      sr('USDA', 'SR Legacy', '11161', '1 cup, chopped (36 g)', 'raw', 'edible portion without refuse', 'USDA FoodData Central SR Legacy NDB 11161, Chard, swiss, raw'),
+      sr('USDA', 'SR Legacy', '11147', 169991, '1 cup, chopped (36 g)', 'raw', 'edible portion without refuse', 'USDA FoodData Central SR Legacy NDB 11147, Chard, swiss, raw (FDC ID 169991)'),
     ],
     confidence: 'high',
   },
@@ -190,7 +195,7 @@ export const PRODUCE_PORTIONS: Readonly<Record<string, ProducePortionRecord>> = 
       },
     ],
     sourceRecords: [
-      sr('USDA', 'SR Legacy', '11174', '1 cup, chopped (36 g)', 'raw', 'edible portion without refuse', 'USDA FoodData Central SR Legacy NDB 11174, Collards, raw'),
+      sr('USDA', 'SR Legacy', '11161', 170406, '1 cup, chopped (36 g)', 'raw', 'edible portion without refuse', 'USDA FoodData Central SR Legacy NDB 11161, Collards, raw (FDC ID 170406)'),
     ],
     confidence: 'high',
   },
@@ -211,7 +216,7 @@ export const PRODUCE_PORTIONS: Readonly<Record<string, ProducePortionRecord>> = 
       },
     ],
     sourceRecords: [
-      sr('USDA', 'SR Legacy', '11207', '1 cup, chopped (55 g)', 'raw', 'edible portion without refuse', 'USDA FoodData Central SR Legacy NDB 11207, Dandelion greens, raw'),
+      sr('USDA', 'SR Legacy', '11207', 169226, '1 cup, chopped (55 g)', 'raw', 'edible portion without refuse', 'USDA FoodData Central SR Legacy NDB 11207, Dandelion greens, raw (FDC ID 169226)'),
     ],
     confidence: 'medium',
     notes: 'SR Legacy has limited data points for dandelion greens; gram weight derived from FNDDS cross-reference.',
@@ -233,7 +238,7 @@ export const PRODUCE_PORTIONS: Readonly<Record<string, ProducePortionRecord>> = 
       },
     ],
     sourceRecords: [
-      sr('USDA', 'FNDDS', '110365', '1 cup raw (20 g)', 'raw', 'edible portion without refuse', 'USDA FoodData Central FNDDS 2021-2023, Arugula, raw'),
+      sr('USDA', 'SR Legacy', '11959', 169387, '1 cup raw (20 g)', 'raw', 'edible portion without refuse', 'USDA FoodData Central SR Legacy NDB 11959, Arugula, raw (FDC ID 169387)'),
     ],
     confidence: 'medium',
   },
@@ -254,7 +259,7 @@ export const PRODUCE_PORTIONS: Readonly<Record<string, ProducePortionRecord>> = 
       },
     ],
     sourceRecords: [
-      sr('USDA', 'SR Legacy', '11251', '1 cup, shredded (47 g)', 'raw', 'edible portion without refuse', 'USDA FoodData Central SR Legacy NDB 11251, Lettuce, cos or romaine, raw'),
+      sr('USDA', 'SR Legacy', '11251', 169247, '1 cup, shredded (47 g)', 'raw', 'edible portion without refuse', 'USDA FoodData Central SR Legacy NDB 11251, Lettuce, cos or romaine, raw (FDC ID 169247)'),
     ],
     confidence: 'high',
   },
@@ -275,7 +280,7 @@ export const PRODUCE_PORTIONS: Readonly<Record<string, ProducePortionRecord>> = 
       },
     ],
     sourceRecords: [
-      sr('USDA', 'SR Legacy', '11196', '1 cup, shredded (70 g)', 'raw', 'edible portion without refuse', 'USDA FoodData Central SR Legacy NDB 11196, Bok choy, raw'),
+      sr('USDA', 'Foundation Foods', '11116', 2685572, '1 cup, shredded (70 g)', 'raw', 'edible portion without refuse', 'USDA FoodData Central Foundation Foods NDB 11116, Cabbage, bok choy, raw (FDC ID 2685572)'),
     ],
     confidence: 'medium',
   },
@@ -286,7 +291,7 @@ export const PRODUCE_PORTIONS: Readonly<Record<string, ProducePortionRecord>> = 
     defaultUnitKey: null,
     units: [],
     sourceRecords: [
-      sr('USDA', 'FNDDS', '110366', 'No standard household measure established', 'raw', 'edible portion without refuse', 'USDA FoodData Central FNDDS 2021-2023 — wheatgrass has no standardized portion weight in SR Legacy or FNDDS'),
+      sr('USDA', 'FNDDS', null, null, 'No standard household measure established', 'raw', 'edible portion without refuse', 'USDA FoodData Central FNDDS 2021-2023 — wheatgrass has no standardized portion weight in SR Legacy, Foundation Foods, or FNDDS'),
     ],
     confidence: 'low',
     notes: 'Wheatgrass is typically juiced in small amounts measured by weight. No standardized USDA household measure exists.',
@@ -317,7 +322,7 @@ export const PRODUCE_PORTIONS: Readonly<Record<string, ProducePortionRecord>> = 
       },
     ],
     sourceRecords: [
-      sr('USDA', 'SR Legacy', '11297', '1 cup, chopped (60 g); 1 tbsp (3.8 g)', 'raw', 'edible portion without refuse', 'USDA FoodData Central SR Legacy NDB 11297, Parsley, raw'),
+      sr('USDA', 'SR Legacy', '11297', 170416, '1 cup, chopped (60 g); 1 tbsp (3.8 g)', 'raw', 'edible portion without refuse', 'USDA FoodData Central SR Legacy NDB 11297, Parsley, fresh (FDC ID 170416)'),
     ],
     confidence: 'high',
   },
@@ -338,7 +343,7 @@ export const PRODUCE_PORTIONS: Readonly<Record<string, ProducePortionRecord>> = 
       },
     ],
     sourceRecords: [
-      sr('USDA', 'SR Legacy', '11168', '1 cup (16 g)', 'raw', 'edible portion without refuse', 'USDA FoodData Central SR Legacy NDB 11168, Coriander (cilantro) leaves, raw'),
+      sr('USDA', 'SR Legacy', '11165', 169997, '1 cup (16 g)', 'raw', 'edible portion without refuse', 'USDA FoodData Central SR Legacy NDB 11165, Coriander (cilantro) leaves, raw (FDC ID 169997)'),
     ],
     confidence: 'medium',
   },
@@ -368,7 +373,7 @@ export const PRODUCE_PORTIONS: Readonly<Record<string, ProducePortionRecord>> = 
       },
     ],
     sourceRecords: [
-      sr('USDA', 'SR Legacy', '110207', '1 cup (32 g); 1 tbsp (2 g)', 'raw', 'edible portion without refuse', 'USDA FoodData Central SR Legacy NDB 110207, Spearmint, fresh'),
+      sr('USDA', 'SR Legacy', '2065', 173475, '1 cup (32 g); 1 tbsp (2 g)', 'raw', 'edible portion without refuse', 'USDA FoodData Central SR Legacy NDB 2065, Spearmint, fresh (FDC ID 173475)'),
     ],
     confidence: 'medium',
   },
@@ -398,7 +403,7 @@ export const PRODUCE_PORTIONS: Readonly<Record<string, ProducePortionRecord>> = 
       },
     ],
     sourceRecords: [
-      sr('USDA', 'SR Legacy', '110204', '1 cup, chopped (24 g); 1 tbsp (1.5 g)', 'raw', 'edible portion without refuse', 'USDA FoodData Central SR Legacy NDB 110204, Basil, fresh'),
+      sr('USDA', 'SR Legacy', '2044', 172232, '1 cup, chopped (24 g); 1 tbsp (1.5 g)', 'raw', 'edible portion without refuse', 'USDA FoodData Central SR Legacy NDB 2044, Basil, fresh (FDC ID 172232)'),
     ],
     confidence: 'medium',
   },
@@ -409,7 +414,7 @@ export const PRODUCE_PORTIONS: Readonly<Record<string, ProducePortionRecord>> = 
     defaultUnitKey: null,
     units: [],
     sourceRecords: [
-      sr('USDA', 'FNDDS', '110368', 'No standard household measure established', 'raw', 'edible portion (gel only)', 'USDA FoodData Central FNDDS 2021-2023 — aloe vera gel has no standardized USDA household portion weight'),
+      sr('USDA', 'FNDDS', null, null, 'No standard household measure established', 'raw', 'edible portion (gel only)', 'USDA FoodData Central FNDDS 2021-2023 — aloe vera gel has no standardized USDA household portion weight'),
     ],
     confidence: 'low',
     notes: 'Aloe vera is typically used as extracted gel measured by weight. No standardized USDA household measure exists for raw aloe leaves.',
@@ -431,7 +436,7 @@ export const PRODUCE_PORTIONS: Readonly<Record<string, ProducePortionRecord>> = 
       },
     ],
     sourceRecords: [
-      sr('USDA', 'SR Legacy', '110167', '1 cup (34 g)', 'raw', 'edible portion without refuse', 'USDA FoodData Central SR Legacy NDB 110167, Watercress, raw'),
+      sr('USDA', 'SR Legacy', '11591', 170068, '1 cup (34 g)', 'raw', 'edible portion without refuse', 'USDA FoodData Central SR Legacy NDB 11591, Watercress, raw (FDC ID 170068)'),
     ],
     confidence: 'high',
   },
@@ -463,7 +468,7 @@ export const PRODUCE_PORTIONS: Readonly<Record<string, ProducePortionRecord>> = 
       },
     ],
     sourceRecords: [
-      sr('USDA', 'SR Legacy', '11090', '1 cup, chopped (91 g); 1 stalk (151 g)', 'raw', 'edible portion without refuse', 'USDA FoodData Central SR Legacy NDB 11090, Broccoli, raw'),
+      sr('USDA', 'SR Legacy', '11090', 170379, '1 cup, chopped (91 g); 1 stalk (151 g)', 'raw', 'edible portion without refuse', 'USDA FoodData Central SR Legacy NDB 11090, Broccoli, raw (FDC ID 170379)'),
     ],
     confidence: 'high',
   },
@@ -484,7 +489,7 @@ export const PRODUCE_PORTIONS: Readonly<Record<string, ProducePortionRecord>> = 
       },
     ],
     sourceRecords: [
-      sr('USDA', 'SR Legacy', '11101', '1 cup, shredded (70 g)', 'raw', 'edible portion without refuse', 'USDA FoodData Central SR Legacy NDB 11101, Cabbage, raw'),
+      sr('USDA', 'SR Legacy', '11109', 169975, '1 cup, shredded (70 g)', 'raw', 'edible portion without refuse', 'USDA FoodData Central SR Legacy NDB 11109, Cabbage, raw (FDC ID 169975)'),
     ],
     confidence: 'high',
   },
@@ -505,7 +510,7 @@ export const PRODUCE_PORTIONS: Readonly<Record<string, ProducePortionRecord>> = 
       },
     ],
     sourceRecords: [
-      sr('USDA', 'SR Legacy', '11112', '1 cup, shredded (70 g)', 'raw', 'edible portion without refuse', 'USDA FoodData Central SR Legacy NDB 11112, Cabbage, red, raw'),
+      sr('USDA', 'SR Legacy', '11112', 169977, '1 cup, shredded (70 g)', 'raw', 'edible portion without refuse', 'USDA FoodData Central SR Legacy NDB 11112, Cabbage, red, raw (FDC ID 169977)'),
     ],
     confidence: 'medium',
     notes: 'Red cabbage portion weight inferred from green cabbage SR Legacy data; FNDDS uses same portion weight for both.',
@@ -527,7 +532,7 @@ export const PRODUCE_PORTIONS: Readonly<Record<string, ProducePortionRecord>> = 
       },
     ],
     sourceRecords: [
-      sr('USDA', 'SR Legacy', '11135', '1 cup, chopped (107 g)', 'raw', 'edible portion without refuse', 'USDA FoodData Central SR Legacy NDB 11135, Cauliflower, raw'),
+      sr('USDA', 'SR Legacy', '11135', 169986, '1 cup, chopped (107 g)', 'raw', 'edible portion without refuse', 'USDA FoodData Central SR Legacy NDB 11135, Cauliflower, raw (FDC ID 169986)'),
     ],
     confidence: 'high',
   },
@@ -548,7 +553,7 @@ export const PRODUCE_PORTIONS: Readonly<Record<string, ProducePortionRecord>> = 
       },
     ],
     sourceRecords: [
-      sr('USDA', 'SR Legacy', '11149', '1 cup, slices (135 g)', 'raw', 'edible portion without refuse', 'USDA FoodData Central SR Legacy NDB 11149, Kohlrabi, raw'),
+      sr('USDA', 'SR Legacy', '11241', 168424, '1 cup, slices (135 g)', 'raw', 'edible portion without refuse', 'USDA FoodData Central SR Legacy NDB 11241, Kohlrabi, raw (FDC ID 168424)'),
     ],
     confidence: 'medium',
   },
@@ -584,7 +589,7 @@ export const PRODUCE_PORTIONS: Readonly<Record<string, ProducePortionRecord>> = 
       },
     ],
     sourceRecords: [
-      sr('USDA', 'SR Legacy', '170393', '1 medium (61 g); 1 cup chopped (128 g); 1 large (72 g); 1 small (50 g)', 'raw', 'edible portion without refuse', 'USDA FoodData Central SR Legacy FDC ID 170393, Carrots, raw'),
+      sr('USDA', 'SR Legacy', '11124', 170393, '1 medium (61 g); 1 cup chopped (128 g); 1 large (72 g); 1 small (50 g)', 'raw', 'edible portion without refuse', 'USDA FoodData Central SR Legacy NDB 11124, Carrots, raw (FDC ID 170393)'),
     ],
     confidence: 'high',
   },
@@ -618,7 +623,7 @@ export const PRODUCE_PORTIONS: Readonly<Record<string, ProducePortionRecord>> = 
       },
     ],
     sourceRecords: [
-      sr('USDA', 'SR Legacy', '170424', '1 stalk medium (40 g); 1 cup chopped (101 g); 1 stalk large (64 g); 1 stalk small (17 g)', 'raw', 'edible portion without refuse', 'USDA FoodData Central SR Legacy FDC ID 170424, Celery, raw'),
+      sr('USDA', 'SR Legacy', '11143', 169988, '1 stalk medium (40 g); 1 cup chopped (101 g); 1 stalk large (64 g); 1 stalk small (17 g)', 'raw', 'edible portion without refuse', 'USDA FoodData Central SR Legacy NDB 11143, Celery, raw (FDC ID 169988)'),
     ],
     confidence: 'high',
   },
@@ -648,7 +653,7 @@ export const PRODUCE_PORTIONS: Readonly<Record<string, ProducePortionRecord>> = 
       },
     ],
     sourceRecords: [
-      sr('USDA', 'SR Legacy', '169145', '1 beet (82 g); 1 cup (136 g)', 'raw', 'edible portion without refuse', 'USDA FoodData Central SR Legacy FDC ID 169145, Beets, raw'),
+      sr('USDA', 'SR Legacy', '11080', 169145, '1 beet (82 g); 1 cup (136 g)', 'raw', 'edible portion without refuse', 'USDA FoodData Central SR Legacy NDB 11080, Beets, raw (FDC ID 169145)'),
     ],
     confidence: 'high',
   },
@@ -681,7 +686,7 @@ export const PRODUCE_PORTIONS: Readonly<Record<string, ProducePortionRecord>> = 
       },
     ],
     sourceRecords: [
-      sr('USDA', 'SR Legacy', '168409', '1 cucumber 8-1/4 inch (301 g); 1 cup sliced (104 g)', 'raw', 'edible portion without refuse', 'USDA FoodData Central SR Legacy FDC ID 168409, Cucumber, with peel, raw'),
+      sr('USDA', 'SR Legacy', '11205', 168409, '1 cucumber 8-1/4 inch (301 g); 1 cup sliced (104 g)', 'raw', 'edible portion without refuse', 'USDA FoodData Central SR Legacy NDB 11205, Cucumber, with peel, raw (FDC ID 168409)'),
     ],
     confidence: 'high',
   },
@@ -702,7 +707,7 @@ export const PRODUCE_PORTIONS: Readonly<Record<string, ProducePortionRecord>> = 
       },
     ],
     sourceRecords: [
-      sr('USDA', 'SR Legacy', '170238', '1 cup, sliced (87 g)', 'raw', 'edible portion without refuse', 'USDA FoodData Central SR Legacy FDC ID 170238, Fennel, bulb, raw'),
+      sr('USDA', 'SR Legacy', '11957', 169385, '1 cup, sliced (87 g)', 'raw', 'edible portion without refuse', 'USDA FoodData Central SR Legacy NDB 11957, Fennel, bulb, raw (FDC ID 169385)'),
     ],
     confidence: 'medium',
   },
@@ -736,7 +741,7 @@ export const PRODUCE_PORTIONS: Readonly<Record<string, ProducePortionRecord>> = 
       },
     ],
     sourceRecords: [
-      sr('USDA', 'SR Legacy', '170280', '1 medium (151 g); 1 cup cubed (133 g); 1 large (328 g)', 'raw', 'edible portion without refuse', 'USDA FoodData Central SR Legacy FDC ID 170280, Sweet potato, raw'),
+      sr('USDA', 'SR Legacy', '11507', 168482, '1 medium (151 g); 1 cup cubed (133 g); 1 large (328 g)', 'raw', 'edible portion without refuse', 'USDA FoodData Central SR Legacy NDB 11507, Sweet potato, raw, unprepared (Includes foods for USDA\'s Food Distribution Program) (FDC ID 168482)'),
     ],
     confidence: 'high',
   },
@@ -757,7 +762,7 @@ export const PRODUCE_PORTIONS: Readonly<Record<string, ProducePortionRecord>> = 
       },
     ],
     sourceRecords: [
-      sr('USDA', 'SR Legacy', '170465', '1 cup, cubed (130 g)', 'raw', 'edible portion without refuse', 'USDA FoodData Central SR Legacy FDC ID 170465, Turnips, raw'),
+      sr('USDA', 'SR Legacy', '11564', 170465, '1 cup, cubed (130 g)', 'raw', 'edible portion without refuse', 'USDA FoodData Central SR Legacy NDB 11564, Turnips, raw (FDC ID 170465)'),
     ],
     confidence: 'medium',
   },
@@ -778,7 +783,7 @@ export const PRODUCE_PORTIONS: Readonly<Record<string, ProducePortionRecord>> = 
       },
     ],
     sourceRecords: [
-      sr('USDA', 'SR Legacy', '170425', '1 cup, cubed (140 g)', 'raw', 'edible portion without refuse (peeled)', 'USDA FoodData Central SR Legacy FDC ID 170425, Celeriac, raw'),
+      sr('USDA', 'SR Legacy', '11141', 170400, '1 cup, cubed (140 g)', 'raw', 'edible portion without refuse (peeled)', 'USDA FoodData Central SR Legacy NDB 11141, Celeriac, raw (FDC ID 170400)'),
     ],
     confidence: 'medium',
   },
@@ -799,7 +804,7 @@ export const PRODUCE_PORTIONS: Readonly<Record<string, ProducePortionRecord>> = 
       },
     ],
     sourceRecords: [
-      sr('USDA', 'SR Legacy', '170434', '1 cup, slices (120 g)', 'raw', 'edible portion without refuse (peeled)', 'USDA FoodData Central SR Legacy FDC ID 170434, Jicama, raw'),
+      sr('USDA', 'SR Legacy', '11603', 170073, '1 cup, slices (120 g)', 'raw', 'edible portion without refuse (peeled)', 'USDA FoodData Central SR Legacy NDB 11603, Yambean (jicama), raw (FDC ID 170073)'),
     ],
     confidence: 'medium',
   },
@@ -833,7 +838,7 @@ export const PRODUCE_PORTIONS: Readonly<Record<string, ProducePortionRecord>> = 
       },
     ],
     sourceRecords: [
-      sr('USDA', 'SR Legacy', '170416', '1 medium (196 g); 1 cup sliced (113 g); 1 large (324 g); 1 small (118 g)', 'raw', 'edible portion without refuse', 'USDA FoodData Central SR Legacy FDC ID 170416, Squash, summer, zucchini, includes skin, raw'),
+      sr('USDA', 'SR Legacy', '11477', 169291, '1 medium (196 g); 1 cup sliced (113 g); 1 large (324 g); 1 small (118 g)', 'raw', 'edible portion without refuse', 'USDA FoodData Central SR Legacy NDB 11477, Squash, summer, zucchini, includes skin, raw (FDC ID 169291)'),
     ],
     confidence: 'high',
   },
@@ -867,7 +872,7 @@ export const PRODUCE_PORTIONS: Readonly<Record<string, ProducePortionRecord>> = 
       },
     ],
     sourceRecords: [
-      sr('USDA', 'SR Legacy', '168389', '1 cup (134 g); 1 spear medium (16 g); 1 spear large (20 g); 1 spear small (12 g)', 'raw', 'edible portion without refuse', 'USDA FoodData Central SR Legacy FDC ID 168389, Asparagus, raw'),
+      sr('USDA', 'SR Legacy', '11011', 168389, '1 cup (134 g); 1 spear medium (16 g); 1 spear large (20 g); 1 spear small (12 g)', 'raw', 'edible portion without refuse', 'USDA FoodData Central SR Legacy NDB 11011, Asparagus, raw (FDC ID 168389)'),
     ],
     confidence: 'high',
   },
@@ -900,7 +905,7 @@ export const PRODUCE_PORTIONS: Readonly<Record<string, ProducePortionRecord>> = 
       },
     ],
     sourceRecords: [
-      sr('USDA', 'SR Legacy', '169987', '1 radish medium (9 g); 1 cup sliced (116 g)', 'raw', 'edible portion without refuse', 'USDA FoodData Central SR Legacy FDC ID 169987, Radishes, raw'),
+      sr('USDA', 'SR Legacy', '11429', 169276, '1 radish medium (9 g); 1 cup sliced (116 g)', 'raw', 'edible portion without refuse', 'USDA FoodData Central SR Legacy NDB 11429, Radishes, raw (FDC ID 169276)'),
     ],
     confidence: 'medium',
   },
@@ -930,7 +935,7 @@ export const PRODUCE_PORTIONS: Readonly<Record<string, ProducePortionRecord>> = 
       },
     ],
     sourceRecords: [
-      sr('USDA', 'SR Legacy', '1104647', '1 tbsp, grated (6 g)', 'raw', 'edible portion without refuse (peeled)', 'USDA FoodData Central SR Legacy FDC ID 1104647, Ginger, raw'),
+      sr('USDA', 'SR Legacy', '11216', 169231, '1 tbsp, grated (6 g)', 'raw', 'edible portion without refuse (peeled)', 'USDA FoodData Central SR Legacy NDB 11216, Ginger root, raw (FDC ID 169231)'),
     ],
     confidence: 'medium',
     notes: '1-inch piece weight estimated from USDA density data; USDA only provides grated tablespoon measure.',
@@ -961,7 +966,7 @@ export const PRODUCE_PORTIONS: Readonly<Record<string, ProducePortionRecord>> = 
       },
     ],
     sourceRecords: [
-      sr('USDA', 'Foundation Foods', '170556', '1 tbsp, grated (6 g) — estimated from ginger density', 'raw', 'edible portion without refuse (peeled)', 'USDA FoodData Central Foundation Foods FDC ID 170556, Turmeric, raw'),
+      sr('USDA', 'Foundation Foods', null, 170556, '1 tbsp, grated (6 g) — estimated from ginger density', 'raw', 'edible portion without refuse (peeled)', 'USDA FoodData Central Foundation Foods FDC ID 170556, Turmeric, raw'),
     ],
     confidence: 'low',
     notes: 'USDA has limited household measure data for fresh turmeric root. Tablespoon weight estimated from ginger SR Legacy density; 1-inch piece estimated.',
@@ -996,7 +1001,7 @@ export const PRODUCE_PORTIONS: Readonly<Record<string, ProducePortionRecord>> = 
       },
     ],
     sourceRecords: [
-      sr('USDA', 'SR Legacy', '1104647', '1 clove (3 g); 1 tbsp minced (8 g)', 'raw', 'edible portion without refuse (peeled)', 'USDA FoodData Central SR Legacy FDC ID 1104647, Garlic, raw'),
+      sr('USDA', 'SR Legacy', '11215', 169230, '1 clove (3 g); 1 tbsp minced (8 g)', 'raw', 'edible portion without refuse (peeled)', 'USDA FoodData Central SR Legacy NDB 11215, Garlic, raw (FDC ID 169230)'),
     ],
     confidence: 'high',
   },
@@ -1032,7 +1037,7 @@ export const PRODUCE_PORTIONS: Readonly<Record<string, ProducePortionRecord>> = 
       },
     ],
     sourceRecords: [
-      sr('USDA', 'SR Legacy', '1183295', '1 cup chopped (149 g); 1 medium (119 g)', 'raw', 'edible portion without refuse (stem, seeds removed)', 'USDA FoodData Central SR Legacy FDC ID 1183295, Peppers, sweet, red, raw'),
+      sr('USDA', 'SR Legacy', '11821', 170108, '1 cup chopped (149 g); 1 medium (119 g)', 'raw', 'edible portion without refuse (stem, seeds removed)', 'USDA FoodData Central SR Legacy NDB 11821, Peppers, sweet, red, raw (FDC ID 170108)'),
     ],
     confidence: 'high',
   },
@@ -1066,7 +1071,7 @@ export const PRODUCE_PORTIONS: Readonly<Record<string, ProducePortionRecord>> = 
       },
     ],
     sourceRecords: [
-      sr('USDA', 'SR Legacy', '1183295', '1 cup chopped (149 g); 1 medium (119 g) — inferred from red bell pepper', 'raw', 'edible portion without refuse (stem, seeds removed)', 'USDA FoodData Central SR Legacy — yellow bell pepper portion weights inferred from red/green bell pepper SR Legacy data'),
+      sr('USDA', 'SR Legacy', '11951', 169383, '1 cup chopped (149 g); 1 medium (119 g) — inferred from red bell pepper', 'raw', 'edible portion without refuse (stem, seeds removed)', 'USDA FoodData Central SR Legacy NDB 11951, Peppers, sweet, yellow, raw (FDC ID 169383)'),
     ],
     confidence: 'medium',
     notes: 'USDA SR Legacy does not have a separate yellow bell pepper entry; portion weights inferred from red and green bell pepper data which share identical measures.',
@@ -1101,7 +1106,7 @@ export const PRODUCE_PORTIONS: Readonly<Record<string, ProducePortionRecord>> = 
       },
     ],
     sourceRecords: [
-      sr('USDA', 'SR Legacy', '170427', '1 cup chopped (149 g); 1 medium (119 g)', 'raw', 'edible portion without refuse (stem, seeds removed)', 'USDA FoodData Central SR Legacy FDC ID 170427, Peppers, sweet, green, raw'),
+      sr('USDA', 'SR Legacy', '11333', 170427, '1 cup chopped (149 g); 1 medium (119 g)', 'raw', 'edible portion without refuse (stem, seeds removed)', 'USDA FoodData Central SR Legacy NDB 11333, Peppers, sweet, green, raw (FDC ID 170427)'),
     ],
     confidence: 'high',
   },
@@ -1131,7 +1136,7 @@ export const PRODUCE_PORTIONS: Readonly<Record<string, ProducePortionRecord>> = 
       },
     ],
     sourceRecords: [
-      sr('USDA', 'SR Legacy', '1104467', '1 pepper (15 g); 1 tbsp minced (9 g)', 'raw', 'edible portion without refuse (stem, seeds removed)', 'USDA FoodData Central SR Legacy FDC ID 1104467, Peppers, jalapeño, raw'),
+      sr('USDA', 'SR Legacy', '11979', 168576, '1 pepper (15 g); 1 tbsp minced (9 g)', 'raw', 'edible portion without refuse (stem, seeds removed)', 'USDA FoodData Central SR Legacy NDB 11979, Peppers, jalapeno, raw (FDC ID 168576)'),
     ],
     confidence: 'medium',
   },
@@ -1161,7 +1166,7 @@ export const PRODUCE_PORTIONS: Readonly<Record<string, ProducePortionRecord>> = 
       },
     ],
     sourceRecords: [
-      sr('USDA', 'SR Legacy', '1104517', '1 pepper (17 g)', 'raw', 'edible portion without refuse (stem, seeds removed)', 'USDA FoodData Central SR Legacy FDC ID 1104517, Peppers, hot chili, red, raw'),
+      sr('USDA', 'SR Legacy', '11819', 170106, '1 pepper (17 g)', 'raw', 'edible portion without refuse (stem, seeds removed)', 'USDA FoodData Central SR Legacy NDB 11819, Peppers, hot chili, red, raw (FDC ID 170106)'),
     ],
     confidence: 'low',
     notes: 'USDA SR Legacy groups cayenne under hot chili red pepper. Per-pepper weight estimated from FNDDS.',
@@ -1196,7 +1201,7 @@ export const PRODUCE_PORTIONS: Readonly<Record<string, ProducePortionRecord>> = 
       },
     ],
     sourceRecords: [
-      sr('USDA', 'FNDDS', '2709719', '1 medium whole (123 g); 1 cup chopped (180 g); 1 large whole (182 g); 1 small whole (91 g)', 'raw', 'edible portion without refuse (stem removed)', 'USDA FoodData Central FNDDS 2021-2023, Tomatoes, raw'),
+      sr('USDA', 'SR Legacy', '11529', 170457, '1 medium whole (123 g); 1 cup chopped (180 g); 1 large whole (182 g); 1 small whole (91 g)', 'raw', 'edible portion without refuse (stem removed)', 'USDA FoodData Central SR Legacy NDB 11529, Tomatoes, red, ripe, raw, year round average (FDC ID 170457)'),
     ],
     confidence: 'high',
   },
@@ -1232,8 +1237,8 @@ export const PRODUCE_PORTIONS: Readonly<Record<string, ProducePortionRecord>> = 
       },
     ],
     sourceRecords: [
-      sr('USDA', 'SR Legacy', '171688', '1 medium (182 g); 1 cup chopped (125 g); 1 large (223 g); 1 small (149 g)', 'raw, with skin', 'edible portion without refuse (core, stem removed)', 'USDA FoodData Central SR Legacy FDC ID 171688, Apples, raw, with skin'),
-      sr('FDA', '21 CFR Appendix C', '21CFR101.44', '1 large (242 g)', 'raw', 'edible portion without refuse', 'FDA 21 CFR Appendix C to Part 101 — Nutrition Facts for Raw Fruits'),
+      sr('USDA', 'SR Legacy', '9003', 171688, '1 medium (182 g); 1 cup chopped (125 g); 1 large (223 g); 1 small (149 g)', 'raw, with skin', 'edible portion without refuse (core, stem removed)', 'USDA FoodData Central SR Legacy NDB 9003, Apples, raw, with skin (Includes foods for USDA\'s Food Distribution Program) (FDC ID 171688)'),
+      sr('FDA', '21 CFR Appendix C', null, null, '1 large (242 g)', 'raw', 'edible portion without refuse', 'FDA 21 CFR Appendix C to Part 101 — Nutrition Facts for Raw Fruits'),
     ],
     confidence: 'high',
   },
@@ -1267,7 +1272,7 @@ export const PRODUCE_PORTIONS: Readonly<Record<string, ProducePortionRecord>> = 
       },
     ],
     sourceRecords: [
-      sr('USDA', 'SR Legacy', '171688', '1 medium (182 g); 1 cup chopped (125 g) — apple variety not differentiated in SR Legacy', 'raw, with skin', 'edible portion without refuse (core, stem removed)', 'USDA FoodData Central SR Legacy FDC ID 171688, Apples, raw, with skin'),
+      sr('USDA', 'SR Legacy', '9003', 171688, '1 medium (182 g); 1 cup chopped (125 g) — apple variety not differentiated in SR Legacy', 'raw, with skin', 'edible portion without refuse (core, stem removed)', 'USDA FoodData Central SR Legacy NDB 9003, Apples, raw, with skin (Includes foods for USDA\'s Food Distribution Program) (FDC ID 171688)'),
     ],
     confidence: 'high',
     notes: 'USDA SR Legacy does not differentiate apple varieties by portion weight; green and red apples share identical measures.',
@@ -1302,7 +1307,7 @@ export const PRODUCE_PORTIONS: Readonly<Record<string, ProducePortionRecord>> = 
       },
     ],
     sourceRecords: [
-      sr('USDA', 'SR Legacy', '171688', '1 medium (182 g); 1 cup chopped (125 g) — apple variety not differentiated in SR Legacy', 'raw, with skin', 'edible portion without refuse (core, stem removed)', 'USDA FoodData Central SR Legacy FDC ID 171688, Apples, raw, with skin'),
+      sr('USDA', 'SR Legacy', '9003', 171688, '1 medium (182 g); 1 cup chopped (125 g) — apple variety not differentiated in SR Legacy', 'raw, with skin', 'edible portion without refuse (core, stem removed)', 'USDA FoodData Central SR Legacy NDB 9003, Apples, raw, with skin (Includes foods for USDA\'s Food Distribution Program) (FDC ID 171688)'),
     ],
     confidence: 'high',
     notes: 'USDA SR Legacy does not differentiate apple varieties by portion weight; green and red apples share identical measures.',
@@ -1346,8 +1351,8 @@ export const PRODUCE_PORTIONS: Readonly<Record<string, ProducePortionRecord>> = 
       },
     ],
     sourceRecords: [
-      sr('USDA', 'SR Legacy', '171705', '1 medium (101 g); 1 wedge (7 g); 1 tbsp juice (15 g); 1 large (136 g); 1 small (58 g)', 'raw', 'edible portion without refuse (peel, seeds removed for juice)', 'USDA FoodData Central SR Legacy FDC ID 171705, Lemons, raw, with peel'),
-      sr('FDA', '21 CFR Appendix C', '21CFR101.44', '1 medium (140 g)', 'raw', 'edible portion without refuse', 'FDA 21 CFR Appendix C to Part 101 — Nutrition Facts for Raw Fruits'),
+      sr('USDA', 'SR Legacy', '9150', 167746, '1 medium (101 g); 1 wedge (7 g); 1 tbsp juice (15 g); 1 large (136 g); 1 small (58 g)', 'raw', 'edible portion without refuse (peel, seeds removed for juice)', 'USDA FoodData Central SR Legacy NDB 9150, Lemons, raw, without peel (FDC ID 167746)'),
+      sr('FDA', '21 CFR Appendix C', null, null, '1 medium (140 g)', 'raw', 'edible portion without refuse', 'FDA 21 CFR Appendix C to Part 101 — Nutrition Facts for Raw Fruits'),
     ],
     confidence: 'high',
   },
@@ -1390,7 +1395,7 @@ export const PRODUCE_PORTIONS: Readonly<Record<string, ProducePortionRecord>> = 
       },
     ],
     sourceRecords: [
-      sr('USDA', 'SR Legacy', '171908', '1 medium (67 g); 1 wedge (5 g); 1 tbsp juice (15 g); 1 large (88 g); 1 small (44 g)', 'raw', 'edible portion without refuse (peel, seeds removed for juice)', 'USDA FoodData Central SR Legacy FDC ID 171908, Limes, raw'),
+      sr('USDA', 'SR Legacy', '9159', 168155, '1 medium (67 g); 1 wedge (5 g); 1 tbsp juice (15 g); 1 large (88 g); 1 small (44 g)', 'raw', 'edible portion without refuse (peel, seeds removed for juice)', 'USDA FoodData Central SR Legacy NDB 9159, Limes, raw (FDC ID 168155)'),
     ],
     confidence: 'high',
   },
@@ -1424,8 +1429,8 @@ export const PRODUCE_PORTIONS: Readonly<Record<string, ProducePortionRecord>> = 
       },
     ],
     sourceRecords: [
-      sr('USDA', 'SR Legacy', '171710', '1 medium (131 g); 1 cup sections (180 g); 1 large (185 g); 1 small (96 g)', 'raw', 'edible portion without refuse (peel, seeds removed)', 'USDA FoodData Central SR Legacy FDC ID 171710, Oranges, raw, all commercial varieties'),
-      sr('FDA', '21 CFR Appendix C', '21CFR101.44', '1 medium (140 g)', 'raw', 'edible portion without refuse', 'FDA 21 CFR Appendix C to Part 101 — Nutrition Facts for Raw Fruits'),
+      sr('USDA', 'SR Legacy', '9200', 169097, '1 medium (131 g); 1 cup sections (180 g); 1 large (185 g); 1 small (96 g)', 'raw', 'edible portion without refuse (peel, seeds removed)', 'USDA FoodData Central SR Legacy NDB 9200, Oranges, raw, all commercial varieties (FDC ID 169097)'),
+      sr('FDA', '21 CFR Appendix C', null, null, '1 medium (140 g)', 'raw', 'edible portion without refuse', 'FDA 21 CFR Appendix C to Part 101 — Nutrition Facts for Raw Fruits'),
     ],
     confidence: 'high',
   },
@@ -1459,8 +1464,8 @@ export const PRODUCE_PORTIONS: Readonly<Record<string, ProducePortionRecord>> = 
       },
     ],
     sourceRecords: [
-      sr('USDA', 'SR Legacy', '171711', '1 medium (236 g); 1 cup sections (230 g); 1 large (326 g); 1 small (128 g)', 'raw', 'edible portion without refuse (peel, seeds removed)', 'USDA FoodData Central SR Legacy FDC ID 171711, Grapefruit, raw, all varieties'),
-      sr('FDA', '21 CFR Appendix C', '21CFR101.44', '1 medium (240 g)', 'raw', 'edible portion without refuse', 'FDA 21 CFR Appendix C to Part 101 — Nutrition Facts for Raw Fruits'),
+      sr('USDA', 'SR Legacy', '9111', 173033, '1 medium (236 g); 1 cup sections (230 g); 1 large (326 g); 1 small (128 g)', 'raw', 'edible portion without refuse (peel, seeds removed)', 'USDA FoodData Central SR Legacy NDB 9111, Grapefruit, raw, pink and red and white, all areas (FDC ID 173033)'),
+      sr('FDA', '21 CFR Appendix C', null, null, '1 medium (240 g)', 'raw', 'edible portion without refuse', 'FDA 21 CFR Appendix C to Part 101 — Nutrition Facts for Raw Fruits'),
     ],
     confidence: 'high',
   },
@@ -1490,7 +1495,7 @@ export const PRODUCE_PORTIONS: Readonly<Record<string, ProducePortionRecord>> = 
       },
     ],
     sourceRecords: [
-      sr('USDA', 'SR Legacy', '171712', '1 cup chunks (165 g); 1 slice (79 g)', 'raw', 'edible portion without refuse (skin, core removed)', 'USDA FoodData Central SR Legacy FDC ID 171712, Pineapple, raw, all varieties'),
+      sr('USDA', 'SR Legacy', '9429', 168193, '1 cup chunks (165 g); 1 slice (79 g)', 'raw', 'edible portion without refuse (skin, core removed)', 'USDA FoodData Central SR Legacy NDB 9429, Pineapple, raw, traditional varieties (FDC ID 168193)'),
     ],
     confidence: 'high',
   },
@@ -1520,8 +1525,8 @@ export const PRODUCE_PORTIONS: Readonly<Record<string, ProducePortionRecord>> = 
       },
     ],
     sourceRecords: [
-      sr('USDA', 'SR Legacy', '171713', '1 cup balls (152 g); 1 wedge (286 g)', 'raw', 'edible portion without refuse (rind, seeds removed)', 'USDA FoodData Central SR Legacy FDC ID 171713, Watermelon, raw'),
-      sr('FDA', '21 CFR Appendix C', '21CFR101.44', '1 cup (152 g)', 'raw', 'edible portion without refuse', 'FDA 21 CFR Appendix C to Part 101 — Nutrition Facts for Raw Fruits'),
+      sr('USDA', 'SR Legacy', '9326', 167765, '1 cup balls (152 g); 1 wedge (286 g)', 'raw', 'edible portion without refuse (rind, seeds removed)', 'USDA FoodData Central SR Legacy NDB 9326, Watermelon, raw (FDC ID 167765)'),
+      sr('FDA', '21 CFR Appendix C', null, null, '1 cup (152 g)', 'raw', 'edible portion without refuse', 'FDA 21 CFR Appendix C to Part 101 — Nutrition Facts for Raw Fruits'),
     ],
     confidence: 'high',
   },
@@ -1551,7 +1556,7 @@ export const PRODUCE_PORTIONS: Readonly<Record<string, ProducePortionRecord>> = 
       },
     ],
     sourceRecords: [
-      sr('USDA', 'SR Legacy', '171714', '1 medium (282 g); 1 cup arils (174 g)', 'raw', 'edible portion without refuse (skin, membrane removed; arils only)', 'USDA FoodData Central SR Legacy FDC ID 171714, Pomegranates, raw'),
+      sr('USDA', 'SR Legacy', '9286', 169134, '1 medium (282 g); 1 cup arils (174 g)', 'raw', 'edible portion without refuse (skin, membrane removed; arils only)', 'USDA FoodData Central SR Legacy NDB 9286, Pomegranates, raw (FDC ID 169134)'),
     ],
     confidence: 'medium',
   },
@@ -1581,8 +1586,8 @@ export const PRODUCE_PORTIONS: Readonly<Record<string, ProducePortionRecord>> = 
       },
     ],
     sourceRecords: [
-      sr('USDA', 'SR Legacy', '171715', '1 cup pieces (165 g)', 'raw', 'edible portion without refuse (skin, pit removed)', 'USDA FoodData Central SR Legacy FDC ID 171715, Mangoes, raw'),
-      sr('FDA', '21 CFR Appendix C', '21CFR101.44', '1 medium (200 g)', 'raw', 'edible portion without refuse', 'FDA 21 CFR Appendix C to Part 101 — Nutrition Facts for Raw Fruits'),
+      sr('USDA', 'SR Legacy', '9176', 169910, '1 cup pieces (165 g)', 'raw', 'edible portion without refuse (skin, pit removed)', 'USDA FoodData Central SR Legacy NDB 9176, Mangos, raw (FDC ID 169910)'),
+      sr('FDA', '21 CFR Appendix C', null, null, '1 medium (200 g)', 'raw', 'edible portion without refuse', 'FDA 21 CFR Appendix C to Part 101 — Nutrition Facts for Raw Fruits'),
     ],
     confidence: 'medium',
     notes: 'Per-mango weight from FDA Appendix C; USDA SR Legacy only provides cup measure.',
@@ -1613,7 +1618,7 @@ export const PRODUCE_PORTIONS: Readonly<Record<string, ProducePortionRecord>> = 
       },
     ],
     sourceRecords: [
-      sr('USDA', 'SR Legacy', '171716', '1 cup pieces (140 g); 1 medium (157 g)', 'raw', 'edible portion without refuse (skin, seeds removed)', 'USDA FoodData Central SR Legacy FDC ID 171716, Papayas, raw'),
+      sr('USDA', 'SR Legacy', '9226', 169926, '1 cup pieces (140 g); 1 medium (157 g)', 'raw', 'edible portion without refuse (skin, seeds removed)', 'USDA FoodData Central SR Legacy NDB 9226, Papayas, raw (FDC ID 169926)'),
     ],
     confidence: 'medium',
   },
@@ -1643,7 +1648,7 @@ export const PRODUCE_PORTIONS: Readonly<Record<string, ProducePortionRecord>> = 
       },
     ],
     sourceRecords: [
-      sr('USDA', 'SR Legacy', '171717', '1 medium (76 g); 1 cup sliced (180 g)', 'raw', 'edible portion without refuse (skin removed)', 'USDA FoodData Central SR Legacy FDC ID 171717, Kiwifruit, green, raw'),
+      sr('USDA', 'SR Legacy', '9148', 168153, '1 medium (76 g); 1 cup sliced (180 g)', 'raw', 'edible portion without refuse (skin removed)', 'USDA FoodData Central SR Legacy NDB 9148, Kiwifruit, green, raw (FDC ID 168153)'),
     ],
     confidence: 'high',
   },
@@ -1677,8 +1682,8 @@ export const PRODUCE_PORTIONS: Readonly<Record<string, ProducePortionRecord>> = 
       },
     ],
     sourceRecords: [
-      sr('USDA', 'SR Legacy', '171719', '1 medium (178 g); 1 cup pieces (140 g); 1 large (230 g); 1 small (148 g)', 'raw', 'edible portion without refuse (core, stem removed)', 'USDA FoodData Central SR Legacy FDC ID 171719, Pears, raw'),
-      sr('FDA', '21 CFR Appendix C', '21CFR101.44', '1 medium (178 g)', 'raw', 'edible portion without refuse', 'FDA 21 CFR Appendix C to Part 101 — Nutrition Facts for Raw Fruits'),
+      sr('USDA', 'SR Legacy', '9252', 169118, '1 medium (178 g); 1 cup pieces (140 g); 1 large (230 g); 1 small (148 g)', 'raw', 'edible portion without refuse (core, stem removed)', 'USDA FoodData Central SR Legacy NDB 9252, Pears, raw (FDC ID 169118)'),
+      sr('FDA', '21 CFR Appendix C', null, null, '1 medium (178 g)', 'raw', 'edible portion without refuse', 'FDA 21 CFR Appendix C to Part 101 — Nutrition Facts for Raw Fruits'),
     ],
     confidence: 'high',
   },
@@ -1708,8 +1713,8 @@ export const PRODUCE_PORTIONS: Readonly<Record<string, ProducePortionRecord>> = 
       },
     ],
     sourceRecords: [
-      sr('USDA', 'SR Legacy', '171721', '1 cup (151 g); 1 grape (5 g)', 'raw', 'edible portion without refuse (stems removed)', 'USDA FoodData Central SR Legacy FDC ID 171721, Grapes, red or green, raw'),
-      sr('FDA', '21 CFR Appendix C', '21CFR101.44', '3/4 cup (126 g)', 'raw', 'edible portion without refuse', 'FDA 21 CFR Appendix C to Part 101 — Nutrition Facts for Raw Fruits'),
+      sr('USDA', 'SR Legacy', '9132', 174683, '1 cup (151 g); 1 grape (5 g)', 'raw', 'edible portion without refuse (stems removed)', 'USDA FoodData Central SR Legacy NDB 9132, Grapes, red or green (European type, such as Thompson seedless), raw (FDC ID 174683)'),
+      sr('FDA', '21 CFR Appendix C', null, null, '3/4 cup (126 g)', 'raw', 'edible portion without refuse', 'FDA 21 CFR Appendix C to Part 101 — Nutrition Facts for Raw Fruits'),
     ],
     confidence: 'high',
   },
@@ -1752,7 +1757,7 @@ export const PRODUCE_PORTIONS: Readonly<Record<string, ProducePortionRecord>> = 
       },
     ],
     sourceRecords: [
-      sr('USDA', 'SR Legacy', '171722', '1 cup whole (152 g); 1 cup sliced (166 g); 1 large (18 g); 1 medium (12 g); 1 small (9 g)', 'raw', 'edible portion without refuse (caps, stems removed)', 'USDA FoodData Central SR Legacy FDC ID 171722, Strawberries, raw'),
+      sr('USDA', 'SR Legacy', '9316', 167762, '1 cup whole (152 g); 1 cup sliced (166 g); 1 large (18 g); 1 medium (12 g); 1 small (9 g)', 'raw', 'edible portion without refuse (caps, stems removed)', 'USDA FoodData Central SR Legacy NDB 9316, Strawberries, raw (FDC ID 167762)'),
     ],
     confidence: 'high',
   },
@@ -1782,8 +1787,8 @@ export const PRODUCE_PORTIONS: Readonly<Record<string, ProducePortionRecord>> = 
       },
     ],
     sourceRecords: [
-      sr('USDA', 'SR Legacy', '171723', '1 cup (148 g)', 'raw', 'edible portion without refuse (stems removed)', 'USDA FoodData Central SR Legacy FDC ID 171723, Blueberries, raw'),
-      sr('FDA', '21 CFR Appendix C', '21CFR101.44', '3/4 cup (113 g)', 'raw', 'edible portion without refuse', 'FDA 21 CFR Appendix C to Part 101 — Nutrition Facts for Raw Fruits'),
+      sr('USDA', 'SR Legacy', '9050', 171711, '1 cup (148 g)', 'raw', 'edible portion without refuse (stems removed)', 'USDA FoodData Central SR Legacy NDB 9050, Blueberries, raw (FDC ID 171711)'),
+      sr('FDA', '21 CFR Appendix C', null, null, '3/4 cup (113 g)', 'raw', 'edible portion without refuse', 'FDA 21 CFR Appendix C to Part 101 — Nutrition Facts for Raw Fruits'),
     ],
     confidence: 'high',
   },
@@ -1804,7 +1809,7 @@ export const PRODUCE_PORTIONS: Readonly<Record<string, ProducePortionRecord>> = 
       },
     ],
     sourceRecords: [
-      sr('USDA', 'SR Legacy', '171724', '1 cup (123 g)', 'raw', 'edible portion without refuse', 'USDA FoodData Central SR Legacy FDC ID 171724, Raspberries, raw'),
+      sr('USDA', 'SR Legacy', '9302', 167755, '1 cup (123 g)', 'raw', 'edible portion without refuse', 'USDA FoodData Central SR Legacy NDB 9302, Raspberries, raw (FDC ID 167755)'),
     ],
     confidence: 'high',
   },
@@ -1825,7 +1830,7 @@ export const PRODUCE_PORTIONS: Readonly<Record<string, ProducePortionRecord>> = 
       },
     ],
     sourceRecords: [
-      sr('USDA', 'SR Legacy', '171725', '1 cup (144 g)', 'raw', 'edible portion without refuse', 'USDA FoodData Central SR Legacy FDC ID 171725, Blackberries, raw'),
+      sr('USDA', 'SR Legacy', '9042', 173946, '1 cup (144 g)', 'raw', 'edible portion without refuse', 'USDA FoodData Central SR Legacy NDB 9042, Blackberries, raw (FDC ID 173946)'),
     ],
     confidence: 'high',
   },
@@ -1855,7 +1860,7 @@ export const PRODUCE_PORTIONS: Readonly<Record<string, ProducePortionRecord>> = 
       },
     ],
     sourceRecords: [
-      sr('USDA', 'SR Legacy', '171726', '1 cup whole (110 g); 1 tbsp chopped (6.9 g)', 'raw', 'edible portion without refuse', 'USDA FoodData Central SR Legacy FDC ID 171726, Cranberries, raw'),
+      sr('USDA', 'SR Legacy', '9078', 171722, '1 cup whole (110 g); 1 tbsp chopped (6.9 g)', 'raw', 'edible portion without refuse', 'USDA FoodData Central SR Legacy NDB 9078, Cranberries, raw (FDC ID 171722)'),
     ],
     confidence: 'high',
   },
@@ -1885,8 +1890,8 @@ export const PRODUCE_PORTIONS: Readonly<Record<string, ProducePortionRecord>> = 
       },
     ],
     sourceRecords: [
-      sr('USDA', 'SR Legacy', '171727', '1 cup with pits (155 g); 1 cherry (8 g)', 'raw', 'edible portion without refuse (stems, pits removed)', 'USDA FoodData Central SR Legacy FDC ID 171727, Cherries, sour, red, raw'),
-      sr('FDA', '21 CFR Appendix C', '21CFR101.44', '1 cup (155 g)', 'raw', 'edible portion without refuse', 'FDA 21 CFR Appendix C to Part 101 — Nutrition Facts for Raw Fruits'),
+      sr('USDA', 'SR Legacy', '9063', 173954, '1 cup with pits (155 g); 1 cherry (8 g)', 'raw', 'edible portion without refuse (stems, pits removed)', 'USDA FoodData Central SR Legacy NDB 9063, Cherries, sour, red, raw (FDC ID 173954)'),
+      sr('FDA', '21 CFR Appendix C', null, null, '1 cup (155 g)', 'raw', 'edible portion without refuse', 'FDA 21 CFR Appendix C to Part 101 — Nutrition Facts for Raw Fruits'),
     ],
     confidence: 'medium',
     notes: 'USDA SR Legacy provides sour cherry data; JuiceEngine uses tart cherry. Sweet cherry portion weights are similar.',
@@ -1917,8 +1922,8 @@ export const PRODUCE_PORTIONS: Readonly<Record<string, ProducePortionRecord>> = 
       },
     ],
     sourceRecords: [
-      sr('USDA', 'SR Legacy', '171706', '1 cup balls (160 g); 1 wedge (160 g)', 'raw', 'edible portion without refuse (rind, seeds removed)', 'USDA FoodData Central SR Legacy FDC ID 171706, Cantaloupe, raw'),
-      sr('FDA', '21 CFR Appendix C', '21CFR101.44', '1/4 melon (134 g)', 'raw', 'edible portion without refuse', 'FDA 21 CFR Appendix C to Part 101 — Nutrition Facts for Raw Fruits'),
+      sr('USDA', 'SR Legacy', '9181', 169092, '1 cup balls (160 g); 1 wedge (160 g)', 'raw', 'edible portion without refuse (rind, seeds removed)', 'USDA FoodData Central SR Legacy NDB 9181, Melons, cantaloupe, raw (FDC ID 169092)'),
+      sr('FDA', '21 CFR Appendix C', null, null, '1/4 melon (134 g)', 'raw', 'edible portion without refuse', 'FDA 21 CFR Appendix C to Part 101 — Nutrition Facts for Raw Fruits'),
     ],
     confidence: 'high',
   },
@@ -1948,7 +1953,7 @@ export const PRODUCE_PORTIONS: Readonly<Record<string, ProducePortionRecord>> = 
       },
     ],
     sourceRecords: [
-      sr('USDA', 'SR Legacy', '171707', '1 cup balls (177 g); 1 wedge (130 g)', 'raw', 'edible portion without refuse (rind, seeds removed)', 'USDA FoodData Central SR Legacy FDC ID 171707, Melons, honeydew, raw'),
+      sr('USDA', 'SR Legacy', '9184', 169911, '1 cup balls (177 g); 1 wedge (130 g)', 'raw', 'edible portion without refuse (rind, seeds removed)', 'USDA FoodData Central SR Legacy NDB 9184, Melons, honeydew, raw (FDC ID 169911)'),
     ],
     confidence: 'medium',
   },
@@ -1959,7 +1964,7 @@ export const PRODUCE_PORTIONS: Readonly<Record<string, ProducePortionRecord>> = 
     defaultUnitKey: null,
     units: [],
     sourceRecords: [
-      sr('USDA', 'SR Legacy', '171788', '1 cup (240 g) — liquid measure, not solid produce portion', 'raw', 'edible portion (liquid only)', 'USDA FoodData Central SR Legacy FDC ID 171788, Nuts, coconut water (liquid from coconuts)'),
+      sr('USDA', 'SR Legacy', '12119', 170174, '1 cup (240 g) — liquid measure, not solid produce portion', 'raw', 'edible portion (liquid only)', 'USDA FoodData Central SR Legacy NDB 12119, Nuts, coconut water (liquid from coconuts) (FDC ID 170174)'),
     ],
     confidence: 'medium',
     notes: 'Coconut water is a liquid, not a solid produce item. Weight-only entry is appropriate; users should weigh the liquid in grams. Cup measure provided for reference only (240 g per cup).',
@@ -1990,7 +1995,7 @@ export const PRODUCE_PORTIONS: Readonly<Record<string, ProducePortionRecord>> = 
       },
     ],
     sourceRecords: [
-      sr('USDA', 'SR Legacy', '171728', '1 fruit (18 g); 1 tbsp pulp (13 g)', 'raw', 'edible portion without refuse (skin removed; pulp and seeds only)', 'USDA FoodData Central SR Legacy FDC ID 171728, Passion fruit, (granadilla), raw'),
+      sr('USDA', 'SR Legacy', '9231', 169108, '1 fruit (18 g); 1 tbsp pulp (13 g)', 'raw', 'edible portion without refuse (skin removed; pulp and seeds only)', 'USDA FoodData Central SR Legacy NDB 9231, Passion-fruit, (granadilla), purple, raw (FDC ID 169108)'),
     ],
     confidence: 'medium',
   },
@@ -2024,8 +2029,8 @@ export const PRODUCE_PORTIONS: Readonly<Record<string, ProducePortionRecord>> = 
       },
     ],
     sourceRecords: [
-      sr('USDA', 'SR Legacy', '171720', '1 medium (150 g); 1 cup slices (154 g); 1 large (175 g); 1 small (98 g)', 'raw', 'edible portion without refuse (pit removed)', 'USDA FoodData Central SR Legacy FDC ID 171720, Peaches, raw'),
-      sr('FDA', '21 CFR Appendix C', '21CFR101.44', '1 medium (150 g)', 'raw', 'edible portion without refuse', 'FDA 21 CFR Appendix C to Part 101 — Nutrition Facts for Raw Fruits'),
+      sr('USDA', 'SR Legacy', '9236', 169928, '1 medium (150 g); 1 cup slices (154 g); 1 large (175 g); 1 small (98 g)', 'raw', 'edible portion without refuse (pit removed)', 'USDA FoodData Central SR Legacy NDB 9236, Peaches, yellow, raw (FDC ID 169928)'),
+      sr('FDA', '21 CFR Appendix C', null, null, '1 medium (150 g)', 'raw', 'edible portion without refuse', 'FDA 21 CFR Appendix C to Part 101 — Nutrition Facts for Raw Fruits'),
     ],
     confidence: 'high',
   },
@@ -2059,8 +2064,8 @@ export const PRODUCE_PORTIONS: Readonly<Record<string, ProducePortionRecord>> = 
       },
     ],
     sourceRecords: [
-      sr('USDA', 'SR Legacy', '171724', '1 medium (104 g); 1 cup slices (165 g); 1 large (151 g); 1 small (66 g)', 'raw', 'edible portion without refuse (pit removed)', 'USDA FoodData Central SR Legacy FDC ID 171724, Plums, raw'),
-      sr('FDA', '21 CFR Appendix C', '21CFR101.44', '1 medium (104 g)', 'raw', 'edible portion without refuse', 'FDA 21 CFR Appendix C to Part 101 — Nutrition Facts for Raw Fruits'),
+      sr('USDA', 'SR Legacy', '9279', 169949, '1 medium (104 g); 1 cup slices (165 g); 1 large (151 g); 1 small (66 g)', 'raw', 'edible portion without refuse (pit removed)', 'USDA FoodData Central SR Legacy NDB 9279, Plums, raw (FDC ID 169949)'),
+      sr('FDA', '21 CFR Appendix C', null, null, '1 medium (104 g)', 'raw', 'edible portion without refuse', 'FDA 21 CFR Appendix C to Part 101 — Nutrition Facts for Raw Fruits'),
     ],
     confidence: 'high',
   },
@@ -2094,7 +2099,7 @@ export const PRODUCE_PORTIONS: Readonly<Record<string, ProducePortionRecord>> = 
       },
     ],
     sourceRecords: [
-      sr('USDA', 'SR Legacy', '171718', '1 medium (142 g); 1 cup slices (143 g); 1 large (192 g); 1 small (121 g)', 'raw', 'edible portion without refuse (pit removed)', 'USDA FoodData Central SR Legacy FDC ID 171718, Nectarines, raw'),
+      sr('USDA', 'SR Legacy', '9191', 169914, '1 medium (142 g); 1 cup slices (143 g); 1 large (192 g); 1 small (121 g)', 'raw', 'edible portion without refuse (pit removed)', 'USDA FoodData Central SR Legacy NDB 9191, Nectarines, raw (FDC ID 169914)'),
     ],
     confidence: 'high',
   },

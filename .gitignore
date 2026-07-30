@@ -43,3 +43,27 @@ yarn-error.*
 
 # Local Netlify folder
 .netlify
+
+# USDA SR Legacy raw dataset (download from https://fdc.nal.usda.gov/download-datasets)
+scripts/sr_legacy/
+scripts/sr_legacy.zip
+
+# Intermediate generated files (regenerate via scripts/parseSrLegacyExact.js → buildManifest.js)
+Docs/generated/sr-legacy-exact-matches.json
+Docs/generated/sr-legacy-portion-data.json
+Docs/generated/ndb-comparison.json
+Docs/generated/usda-api-results.json
+
+# Scratch/debug scripts (not required for regeneration or validation)
+scripts/checkNdb.js
+scripts/compareNdb.js
+scripts/fetchOfficialSources.js
+scripts/parseSrLegacy.js
+scripts/printExact.js
+scripts/printResults.js
+scripts/searchMissing.js
+scripts/searchMissing2.js
+scripts/searchMissing3.js
+scripts/searchMissing4.js
+scripts/finalVerification.js
+scripts/usda-garlic.json

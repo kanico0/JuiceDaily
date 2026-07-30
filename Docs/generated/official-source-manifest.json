@@ -1,0 +1,3140 @@
+{
+  "manifestVersion": "2.0",
+  "generatedAt": "2026-07-30T15:41:12.025Z",
+  "sourceDataset": "USDA FoodData Central SR Legacy (April 2018) + Foundation Foods (April 2026)",
+  "accessedDate": "2025-01-15",
+  "summary": {
+    "totalRecords": 69,
+    "srLegacyRecords": 65,
+    "foundationFoodRecords": 2,
+    "noStandardDataRecords": 2,
+    "totalPortions": 278
+  },
+  "records": {
+    "kale": {
+      "produceId": "kale",
+      "fdcId": 168421,
+      "ndbNumber": "11233",
+      "dataType": "sr_legacy_food",
+      "description": "Kale, raw",
+      "sourceAuthority": "USDA",
+      "sourceDataset": "SR Legacy (April 2018)",
+      "citationText": "USDA FoodData Central SR Legacy NDB 11233, Kale, raw (FDC ID 168421)",
+      "accessedDate": "2025-01-15",
+      "portions": [
+        {
+          "gramWeight": 21,
+          "portionDescription": "cup",
+          "modifier": "cup",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 1
+        }
+      ]
+    },
+    "spinach": {
+      "produceId": "spinach",
+      "fdcId": 168462,
+      "ndbNumber": "11457",
+      "dataType": "sr_legacy_food",
+      "description": "Spinach, raw",
+      "sourceAuthority": "USDA",
+      "sourceDataset": "SR Legacy (April 2018)",
+      "citationText": "USDA FoodData Central SR Legacy NDB 11457, Spinach, raw (FDC ID 168462)",
+      "accessedDate": "2025-01-15",
+      "portions": [
+        {
+          "gramWeight": 30,
+          "portionDescription": "cup",
+          "modifier": "cup",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 1
+        },
+        {
+          "gramWeight": 340,
+          "portionDescription": "bunch",
+          "modifier": "bunch",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 2
+        },
+        {
+          "gramWeight": 10,
+          "portionDescription": "leaf",
+          "modifier": "leaf",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 3
+        },
+        {
+          "gramWeight": 284,
+          "portionDescription": "package (10 oz)",
+          "modifier": "package (10 oz)",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 4
+        }
+      ]
+    },
+    "swiss_chard": {
+      "produceId": "swiss_chard",
+      "fdcId": 169991,
+      "ndbNumber": "11147",
+      "dataType": "sr_legacy_food",
+      "description": "Chard, swiss, raw",
+      "sourceAuthority": "USDA",
+      "sourceDataset": "SR Legacy (April 2018)",
+      "citationText": "USDA FoodData Central SR Legacy NDB 11147, Chard, swiss, raw (FDC ID 169991)",
+      "accessedDate": "2025-01-15",
+      "portions": [
+        {
+          "gramWeight": 36,
+          "portionDescription": "cup",
+          "modifier": "cup",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 1
+        },
+        {
+          "gramWeight": 48,
+          "portionDescription": "leaf",
+          "modifier": "leaf",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 2
+        }
+      ]
+    },
+    "collard_greens": {
+      "produceId": "collard_greens",
+      "fdcId": 170406,
+      "ndbNumber": "11161",
+      "dataType": "sr_legacy_food",
+      "description": "Collards, raw",
+      "sourceAuthority": "USDA",
+      "sourceDataset": "SR Legacy (April 2018)",
+      "citationText": "USDA FoodData Central SR Legacy NDB 11161, Collards, raw (FDC ID 170406)",
+      "accessedDate": "2025-01-15",
+      "portions": [
+        {
+          "gramWeight": 36,
+          "portionDescription": "cup, chopped",
+          "modifier": "cup, chopped",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 1
+        }
+      ]
+    },
+    "dandelion_greens": {
+      "produceId": "dandelion_greens",
+      "fdcId": 169226,
+      "ndbNumber": "11207",
+      "dataType": "sr_legacy_food",
+      "description": "Dandelion greens, raw",
+      "sourceAuthority": "USDA",
+      "sourceDataset": "SR Legacy (April 2018)",
+      "citationText": "USDA FoodData Central SR Legacy NDB 11207, Dandelion greens, raw (FDC ID 169226)",
+      "accessedDate": "2025-01-15",
+      "portions": [
+        {
+          "gramWeight": 55,
+          "portionDescription": "cup, chopped",
+          "modifier": "cup, chopped",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 1
+        }
+      ]
+    },
+    "arugula": {
+      "produceId": "arugula",
+      "fdcId": 169387,
+      "ndbNumber": "11959",
+      "dataType": "sr_legacy_food",
+      "description": "Arugula, raw",
+      "sourceAuthority": "USDA",
+      "sourceDataset": "SR Legacy (April 2018)",
+      "citationText": "USDA FoodData Central SR Legacy NDB 11959, Arugula, raw (FDC ID 169387)",
+      "accessedDate": "2025-01-15",
+      "portions": [
+        {
+          "gramWeight": 2,
+          "portionDescription": "leaf",
+          "modifier": "leaf",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 1
+        },
+        {
+          "gramWeight": 10,
+          "portionDescription": "cup",
+          "modifier": "cup",
+          "amount": 0.5,
+          "measureUnit": "undetermined",
+          "seqNum": 2
+        }
+      ]
+    },
+    "romaine": {
+      "produceId": "romaine",
+      "fdcId": 169247,
+      "ndbNumber": "11251",
+      "dataType": "sr_legacy_food",
+      "description": "Lettuce, cos or romaine, raw",
+      "sourceAuthority": "USDA",
+      "sourceDataset": "SR Legacy (April 2018)",
+      "citationText": "USDA FoodData Central SR Legacy NDB 11251, Lettuce, cos or romaine, raw (FDC ID 169247)",
+      "accessedDate": "2025-01-15",
+      "portions": [
+        {
+          "gramWeight": 47,
+          "portionDescription": "cup shredded",
+          "modifier": "cup shredded",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 1
+        },
+        {
+          "gramWeight": 6,
+          "portionDescription": "leaf inner",
+          "modifier": "leaf inner",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 2
+        },
+        {
+          "gramWeight": 28,
+          "portionDescription": "leaf outer",
+          "modifier": "leaf outer",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 3
+        },
+        {
+          "gramWeight": 626,
+          "portionDescription": "head",
+          "modifier": "head",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 4
+        },
+        {
+          "gramWeight": 85,
+          "portionDescription": "NLEA serving",
+          "modifier": "NLEA serving",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 5
+        }
+      ]
+    },
+    "parsley": {
+      "produceId": "parsley",
+      "fdcId": 170416,
+      "ndbNumber": "11297",
+      "dataType": "sr_legacy_food",
+      "description": "Parsley, fresh",
+      "sourceAuthority": "USDA",
+      "sourceDataset": "SR Legacy (April 2018)",
+      "citationText": "USDA FoodData Central SR Legacy NDB 11297, Parsley, fresh (FDC ID 170416)",
+      "accessedDate": "2025-01-15",
+      "portions": [
+        {
+          "gramWeight": 60,
+          "portionDescription": "cup chopped",
+          "modifier": "cup chopped",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 1
+        },
+        {
+          "gramWeight": 3.8,
+          "portionDescription": "tbsp",
+          "modifier": "tbsp",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 2
+        },
+        {
+          "gramWeight": 10,
+          "portionDescription": "sprigs",
+          "modifier": "sprigs",
+          "amount": 10,
+          "measureUnit": "undetermined",
+          "seqNum": 3
+        }
+      ]
+    },
+    "cilantro": {
+      "produceId": "cilantro",
+      "fdcId": 169997,
+      "ndbNumber": "11165",
+      "dataType": "sr_legacy_food",
+      "description": "Coriander (cilantro) leaves, raw",
+      "sourceAuthority": "USDA",
+      "sourceDataset": "SR Legacy (April 2018)",
+      "citationText": "USDA FoodData Central SR Legacy NDB 11165, Coriander (cilantro) leaves, raw (FDC ID 169997)",
+      "accessedDate": "2025-01-15",
+      "portions": [
+        {
+          "gramWeight": 4,
+          "portionDescription": "cup",
+          "modifier": "cup",
+          "amount": 0.25,
+          "measureUnit": "undetermined",
+          "seqNum": 1
+        },
+        {
+          "gramWeight": 20,
+          "portionDescription": "sprigs",
+          "modifier": "sprigs",
+          "amount": 9,
+          "measureUnit": "undetermined",
+          "seqNum": 2
+        }
+      ]
+    },
+    "mint": {
+      "produceId": "mint",
+      "fdcId": 173475,
+      "ndbNumber": "2065",
+      "dataType": "sr_legacy_food",
+      "description": "Spearmint, fresh",
+      "sourceAuthority": "USDA",
+      "sourceDataset": "SR Legacy (April 2018)",
+      "citationText": "USDA FoodData Central SR Legacy NDB 2065, Spearmint, fresh (FDC ID 173475)",
+      "accessedDate": "2025-01-15",
+      "portions": [
+        {
+          "gramWeight": 0.3,
+          "portionDescription": "leaves",
+          "modifier": "leaves",
+          "amount": 2,
+          "measureUnit": "undetermined",
+          "seqNum": 1
+        },
+        {
+          "gramWeight": 11.4,
+          "portionDescription": "tbsp",
+          "modifier": "tbsp",
+          "amount": 2,
+          "measureUnit": "undetermined",
+          "seqNum": 2
+        }
+      ]
+    },
+    "basil": {
+      "produceId": "basil",
+      "fdcId": 172232,
+      "ndbNumber": "2044",
+      "dataType": "sr_legacy_food",
+      "description": "Basil, fresh",
+      "sourceAuthority": "USDA",
+      "sourceDataset": "SR Legacy (April 2018)",
+      "citationText": "USDA FoodData Central SR Legacy NDB 2044, Basil, fresh (FDC ID 172232)",
+      "accessedDate": "2025-01-15",
+      "portions": [
+        {
+          "gramWeight": 2.5,
+          "portionDescription": "leaves",
+          "modifier": "leaves",
+          "amount": 5,
+          "measureUnit": "undetermined",
+          "seqNum": 1
+        },
+        {
+          "gramWeight": 5.3,
+          "portionDescription": "tbsp, chopped",
+          "modifier": "tbsp, chopped",
+          "amount": 2,
+          "measureUnit": "undetermined",
+          "seqNum": 2
+        },
+        {
+          "gramWeight": 6,
+          "portionDescription": "cup leaves, whole",
+          "modifier": "cup leaves, whole",
+          "amount": 0.25,
+          "measureUnit": "undetermined",
+          "seqNum": 3
+        }
+      ]
+    },
+    "watercress": {
+      "produceId": "watercress",
+      "fdcId": 170068,
+      "ndbNumber": "11591",
+      "dataType": "sr_legacy_food",
+      "description": "Watercress, raw",
+      "sourceAuthority": "USDA",
+      "sourceDataset": "SR Legacy (April 2018)",
+      "citationText": "USDA FoodData Central SR Legacy NDB 11591, Watercress, raw (FDC ID 170068)",
+      "accessedDate": "2025-01-15",
+      "portions": [
+        {
+          "gramWeight": 34,
+          "portionDescription": "cup, chopped",
+          "modifier": "cup, chopped",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 1
+        },
+        {
+          "gramWeight": 2.5,
+          "portionDescription": "sprig",
+          "modifier": "sprig",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 2
+        },
+        {
+          "gramWeight": 25,
+          "portionDescription": "sprigs",
+          "modifier": "sprigs",
+          "amount": 10,
+          "measureUnit": "undetermined",
+          "seqNum": 3
+        }
+      ]
+    },
+    "broccoli": {
+      "produceId": "broccoli",
+      "fdcId": 170379,
+      "ndbNumber": "11090",
+      "dataType": "sr_legacy_food",
+      "description": "Broccoli, raw",
+      "sourceAuthority": "USDA",
+      "sourceDataset": "SR Legacy (April 2018)",
+      "citationText": "USDA FoodData Central SR Legacy NDB 11090, Broccoli, raw (FDC ID 170379)",
+      "accessedDate": "2025-01-15",
+      "portions": [
+        {
+          "gramWeight": 91,
+          "portionDescription": "cup chopped",
+          "modifier": "cup chopped",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 1
+        },
+        {
+          "gramWeight": 608,
+          "portionDescription": "bunch",
+          "modifier": "bunch",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 2
+        },
+        {
+          "gramWeight": 31,
+          "portionDescription": "spear (about 5\" long)",
+          "modifier": "spear (about 5\" long)",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 3
+        },
+        {
+          "gramWeight": 151,
+          "portionDescription": "stalk",
+          "modifier": "stalk",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 4
+        },
+        {
+          "gramWeight": 44,
+          "portionDescription": "cup, chopped or diced",
+          "modifier": "cup, chopped or diced",
+          "amount": 0.5,
+          "measureUnit": "undetermined",
+          "seqNum": 5
+        },
+        {
+          "gramWeight": 148,
+          "portionDescription": "NLEA serving",
+          "modifier": "NLEA serving",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 6
+        }
+      ]
+    },
+    "cabbage_green": {
+      "produceId": "cabbage_green",
+      "fdcId": 169975,
+      "ndbNumber": "11109",
+      "dataType": "sr_legacy_food",
+      "description": "Cabbage, raw",
+      "sourceAuthority": "USDA",
+      "sourceDataset": "SR Legacy (April 2018)",
+      "citationText": "USDA FoodData Central SR Legacy NDB 11109, Cabbage, raw (FDC ID 169975)",
+      "accessedDate": "2025-01-15",
+      "portions": [
+        {
+          "gramWeight": 89,
+          "portionDescription": "cup, chopped",
+          "modifier": "cup, chopped",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 1
+        },
+        {
+          "gramWeight": 70,
+          "portionDescription": "cup, shredded",
+          "modifier": "cup, shredded",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 2
+        },
+        {
+          "gramWeight": 1248,
+          "portionDescription": "head, large (about 7\" dia)",
+          "modifier": "head, large (about 7\" dia)",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 3
+        },
+        {
+          "gramWeight": 33,
+          "portionDescription": "leaf, large",
+          "modifier": "leaf, large",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 4
+        },
+        {
+          "gramWeight": 908,
+          "portionDescription": "head, medium (about 5-3/4\" dia)",
+          "modifier": "head, medium (about 5-3/4\" dia)",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 5
+        },
+        {
+          "gramWeight": 23,
+          "portionDescription": "leaf, medium",
+          "modifier": "leaf, medium",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 6
+        },
+        {
+          "gramWeight": 714,
+          "portionDescription": "head, small (about 4-1/2\" dia)",
+          "modifier": "head, small (about 4-1/2\" dia)",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 7
+        },
+        {
+          "gramWeight": 15,
+          "portionDescription": "leaf",
+          "modifier": "leaf",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 8
+        }
+      ]
+    },
+    "cabbage_red": {
+      "produceId": "cabbage_red",
+      "fdcId": 169977,
+      "ndbNumber": "11112",
+      "dataType": "sr_legacy_food",
+      "description": "Cabbage, red, raw",
+      "sourceAuthority": "USDA",
+      "sourceDataset": "SR Legacy (April 2018)",
+      "citationText": "USDA FoodData Central SR Legacy NDB 11112, Cabbage, red, raw (FDC ID 169977)",
+      "accessedDate": "2025-01-15",
+      "portions": [
+        {
+          "gramWeight": 89,
+          "portionDescription": "cup, chopped",
+          "modifier": "cup, chopped",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 1
+        },
+        {
+          "gramWeight": 70,
+          "portionDescription": "cup, shredded",
+          "modifier": "cup, shredded",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 2
+        },
+        {
+          "gramWeight": 1134,
+          "portionDescription": "head, large (about 5-1/2\" dia)",
+          "modifier": "head, large (about 5-1/2\" dia)",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 3
+        },
+        {
+          "gramWeight": 23,
+          "portionDescription": "leaf",
+          "modifier": "leaf",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 4
+        },
+        {
+          "gramWeight": 839,
+          "portionDescription": "head, medium (about 5\" dia)",
+          "modifier": "head, medium (about 5\" dia)",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 5
+        },
+        {
+          "gramWeight": 567,
+          "portionDescription": "head, small (4\" dia)",
+          "modifier": "head, small (4\" dia)",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 6
+        }
+      ]
+    },
+    "cauliflower": {
+      "produceId": "cauliflower",
+      "fdcId": 169986,
+      "ndbNumber": "11135",
+      "dataType": "sr_legacy_food",
+      "description": "Cauliflower, raw",
+      "sourceAuthority": "USDA",
+      "sourceDataset": "SR Legacy (April 2018)",
+      "citationText": "USDA FoodData Central SR Legacy NDB 11135, Cauliflower, raw (FDC ID 169986)",
+      "accessedDate": "2025-01-15",
+      "portions": [
+        {
+          "gramWeight": 107,
+          "portionDescription": "cup chopped (1/2\" pieces)",
+          "modifier": "cup chopped (1/2\" pieces)",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 1
+        },
+        {
+          "gramWeight": 13,
+          "portionDescription": "floweret",
+          "modifier": "floweret",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 2
+        },
+        {
+          "gramWeight": 840,
+          "portionDescription": "head large (6-7\" dia.)",
+          "modifier": "head large (6-7\" dia.)",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 3
+        },
+        {
+          "gramWeight": 588,
+          "portionDescription": "head medium (5-6\" dia.)",
+          "modifier": "head medium (5-6\" dia.)",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 4
+        },
+        {
+          "gramWeight": 265,
+          "portionDescription": "head small (4\" dia.)",
+          "modifier": "head small (4\" dia.)",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 5
+        }
+      ]
+    },
+    "kohlrabi": {
+      "produceId": "kohlrabi",
+      "fdcId": 168424,
+      "ndbNumber": "11241",
+      "dataType": "sr_legacy_food",
+      "description": "Kohlrabi, raw",
+      "sourceAuthority": "USDA",
+      "sourceDataset": "SR Legacy (April 2018)",
+      "citationText": "USDA FoodData Central SR Legacy NDB 11241, Kohlrabi, raw (FDC ID 168424)",
+      "accessedDate": "2025-01-15",
+      "portions": [
+        {
+          "gramWeight": 135,
+          "portionDescription": "cup",
+          "modifier": "cup",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 1
+        },
+        {
+          "gramWeight": 16,
+          "portionDescription": "slice",
+          "modifier": "slice",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 2
+        }
+      ]
+    },
+    "carrot": {
+      "produceId": "carrot",
+      "fdcId": 170393,
+      "ndbNumber": "11124",
+      "dataType": "sr_legacy_food",
+      "description": "Carrots, raw",
+      "sourceAuthority": "USDA",
+      "sourceDataset": "SR Legacy (April 2018)",
+      "citationText": "USDA FoodData Central SR Legacy NDB 11124, Carrots, raw (FDC ID 170393)",
+      "accessedDate": "2025-01-15",
+      "portions": [
+        {
+          "gramWeight": 128,
+          "portionDescription": "cup chopped",
+          "modifier": "cup chopped",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 1
+        },
+        {
+          "gramWeight": 110,
+          "portionDescription": "cup grated",
+          "modifier": "cup grated",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 2
+        },
+        {
+          "gramWeight": 122,
+          "portionDescription": "cup strips or slices",
+          "modifier": "cup strips or slices",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 3
+        },
+        {
+          "gramWeight": 72,
+          "portionDescription": "large (7-1/4\" to 8-/1/2\" long)",
+          "modifier": "large (7-1/4\" to 8-/1/2\" long)",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 4
+        },
+        {
+          "gramWeight": 61,
+          "portionDescription": "medium",
+          "modifier": "medium",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 5
+        },
+        {
+          "gramWeight": 50,
+          "portionDescription": "small (5-1/2\" long)",
+          "modifier": "small (5-1/2\" long)",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 6
+        },
+        {
+          "gramWeight": 3,
+          "portionDescription": "slice",
+          "modifier": "slice",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 7
+        },
+        {
+          "gramWeight": 7,
+          "portionDescription": "strip large (3\" long)",
+          "modifier": "strip large (3\" long)",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 8
+        },
+        {
+          "gramWeight": 4,
+          "portionDescription": "strip medium",
+          "modifier": "strip medium",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 9
+        }
+      ]
+    },
+    "celery": {
+      "produceId": "celery",
+      "fdcId": 169988,
+      "ndbNumber": "11143",
+      "dataType": "sr_legacy_food",
+      "description": "Celery, raw",
+      "sourceAuthority": "USDA",
+      "sourceDataset": "SR Legacy (April 2018)",
+      "citationText": "USDA FoodData Central SR Legacy NDB 11143, Celery, raw (FDC ID 169988)",
+      "accessedDate": "2025-01-15",
+      "portions": [
+        {
+          "gramWeight": 101,
+          "portionDescription": "cup chopped",
+          "modifier": "cup chopped",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 1
+        },
+        {
+          "gramWeight": 110,
+          "portionDescription": "NLEA serving",
+          "modifier": "NLEA serving",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 2
+        },
+        {
+          "gramWeight": 7.5,
+          "portionDescription": "tbsp",
+          "modifier": "tbsp",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 3
+        },
+        {
+          "gramWeight": 64,
+          "portionDescription": "stalk, large (11\"-12\" long)",
+          "modifier": "stalk, large (11\"-12\" long)",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 4
+        },
+        {
+          "gramWeight": 40,
+          "portionDescription": "stalk, medium (7-1/2\" - 8\" long)",
+          "modifier": "stalk, medium (7-1/2\" - 8\" long)",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 5
+        },
+        {
+          "gramWeight": 17,
+          "portionDescription": "stalk, small (5\" long)",
+          "modifier": "stalk, small (5\" long)",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 6
+        },
+        {
+          "gramWeight": 4,
+          "portionDescription": "strip (4\" long)",
+          "modifier": "strip (4\" long)",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 7
+        }
+      ]
+    },
+    "beet": {
+      "produceId": "beet",
+      "fdcId": 169145,
+      "ndbNumber": "11080",
+      "dataType": "sr_legacy_food",
+      "description": "Beets, raw",
+      "sourceAuthority": "USDA",
+      "sourceDataset": "SR Legacy (April 2018)",
+      "citationText": "USDA FoodData Central SR Legacy NDB 11080, Beets, raw (FDC ID 169145)",
+      "accessedDate": "2025-01-15",
+      "portions": [
+        {
+          "gramWeight": 136,
+          "portionDescription": "cup",
+          "modifier": "cup",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 1
+        },
+        {
+          "gramWeight": 82,
+          "portionDescription": "beet (2\" dia)",
+          "modifier": "beet (2\" dia)",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 2
+        }
+      ]
+    },
+    "cucumber": {
+      "produceId": "cucumber",
+      "fdcId": 168409,
+      "ndbNumber": "11205",
+      "dataType": "sr_legacy_food",
+      "description": "Cucumber, with peel, raw",
+      "sourceAuthority": "USDA",
+      "sourceDataset": "SR Legacy (April 2018)",
+      "citationText": "USDA FoodData Central SR Legacy NDB 11205, Cucumber, with peel, raw (FDC ID 168409)",
+      "accessedDate": "2025-01-15",
+      "portions": [
+        {
+          "gramWeight": 52,
+          "portionDescription": "cup slices",
+          "modifier": "cup slices",
+          "amount": 0.5,
+          "measureUnit": "undetermined",
+          "seqNum": 1
+        },
+        {
+          "gramWeight": 301,
+          "portionDescription": "cucumber (8-1/4\")",
+          "modifier": "cucumber (8-1/4\")",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 2
+        }
+      ]
+    },
+    "fennel": {
+      "produceId": "fennel",
+      "fdcId": 169385,
+      "ndbNumber": "11957",
+      "dataType": "sr_legacy_food",
+      "description": "Fennel, bulb, raw",
+      "sourceAuthority": "USDA",
+      "sourceDataset": "SR Legacy (April 2018)",
+      "citationText": "USDA FoodData Central SR Legacy NDB 11957, Fennel, bulb, raw (FDC ID 169385)",
+      "accessedDate": "2025-01-15",
+      "portions": [
+        {
+          "gramWeight": 87,
+          "portionDescription": "cup, sliced",
+          "modifier": "cup, sliced",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 1
+        },
+        {
+          "gramWeight": 234,
+          "portionDescription": "bulb",
+          "modifier": "bulb",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 2
+        }
+      ]
+    },
+    "sweet_potato": {
+      "produceId": "sweet_potato",
+      "fdcId": 168482,
+      "ndbNumber": "11507",
+      "dataType": "sr_legacy_food",
+      "description": "Sweet potato, raw, unprepared (Includes foods for USDA's Food Distribution Program)",
+      "sourceAuthority": "USDA",
+      "sourceDataset": "SR Legacy (April 2018)",
+      "citationText": "USDA FoodData Central SR Legacy NDB 11507, Sweet potato, raw, unprepared (Includes foods for USDA's Food Distribution Program) (FDC ID 168482)",
+      "accessedDate": "2025-01-15",
+      "portions": [
+        {
+          "gramWeight": 133,
+          "portionDescription": "cup, cubes",
+          "modifier": "cup, cubes",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 1
+        },
+        {
+          "gramWeight": 130,
+          "portionDescription": "sweetpotato, 5\" long",
+          "modifier": "sweetpotato, 5\" long",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 2
+        }
+      ]
+    },
+    "turnip": {
+      "produceId": "turnip",
+      "fdcId": 170465,
+      "ndbNumber": "11564",
+      "dataType": "sr_legacy_food",
+      "description": "Turnips, raw",
+      "sourceAuthority": "USDA",
+      "sourceDataset": "SR Legacy (April 2018)",
+      "citationText": "USDA FoodData Central SR Legacy NDB 11564, Turnips, raw (FDC ID 170465)",
+      "accessedDate": "2025-01-15",
+      "portions": [
+        {
+          "gramWeight": 130,
+          "portionDescription": "cup, cubes",
+          "modifier": "cup, cubes",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 1
+        },
+        {
+          "gramWeight": 183,
+          "portionDescription": "large",
+          "modifier": "large",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 2
+        },
+        {
+          "gramWeight": 122,
+          "portionDescription": "medium",
+          "modifier": "medium",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 3
+        },
+        {
+          "gramWeight": 15,
+          "portionDescription": "slice",
+          "modifier": "slice",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 4
+        },
+        {
+          "gramWeight": 61,
+          "portionDescription": "small",
+          "modifier": "small",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 5
+        },
+        {
+          "gramWeight": 65,
+          "portionDescription": "cup, cubes",
+          "modifier": "cup, cubes",
+          "amount": 0.5,
+          "measureUnit": "undetermined",
+          "seqNum": 6
+        }
+      ]
+    },
+    "celeriac": {
+      "produceId": "celeriac",
+      "fdcId": 170400,
+      "ndbNumber": "11141",
+      "dataType": "sr_legacy_food",
+      "description": "Celeriac, raw",
+      "sourceAuthority": "USDA",
+      "sourceDataset": "SR Legacy (April 2018)",
+      "citationText": "USDA FoodData Central SR Legacy NDB 11141, Celeriac, raw (FDC ID 170400)",
+      "accessedDate": "2025-01-15",
+      "portions": [
+        {
+          "gramWeight": 156,
+          "portionDescription": "cup",
+          "modifier": "cup",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 1
+        }
+      ]
+    },
+    "jicama": {
+      "produceId": "jicama",
+      "fdcId": 170073,
+      "ndbNumber": "11603",
+      "dataType": "sr_legacy_food",
+      "description": "Yambean (jicama), raw",
+      "sourceAuthority": "USDA",
+      "sourceDataset": "SR Legacy (April 2018)",
+      "citationText": "USDA FoodData Central SR Legacy NDB 11603, Yambean (jicama), raw (FDC ID 170073)",
+      "accessedDate": "2025-01-15",
+      "portions": [
+        {
+          "gramWeight": 120,
+          "portionDescription": "cup slices",
+          "modifier": "cup slices",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 1
+        },
+        {
+          "gramWeight": 130,
+          "portionDescription": "cup",
+          "modifier": "cup",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 2
+        },
+        {
+          "gramWeight": 1200,
+          "portionDescription": "large",
+          "modifier": "large",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 3
+        },
+        {
+          "gramWeight": 659,
+          "portionDescription": "medium",
+          "modifier": "medium",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 4
+        },
+        {
+          "gramWeight": 6,
+          "portionDescription": "slice",
+          "modifier": "slice",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 5
+        },
+        {
+          "gramWeight": 365,
+          "portionDescription": "small",
+          "modifier": "small",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 6
+        }
+      ]
+    },
+    "zucchini": {
+      "produceId": "zucchini",
+      "fdcId": 169291,
+      "ndbNumber": "11477",
+      "dataType": "sr_legacy_food",
+      "description": "Squash, summer, zucchini, includes skin, raw",
+      "sourceAuthority": "USDA",
+      "sourceDataset": "SR Legacy (April 2018)",
+      "citationText": "USDA FoodData Central SR Legacy NDB 11477, Squash, summer, zucchini, includes skin, raw (FDC ID 169291)",
+      "accessedDate": "2025-01-15",
+      "portions": [
+        {
+          "gramWeight": 124,
+          "portionDescription": "cup, chopped",
+          "modifier": "cup, chopped",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 1
+        },
+        {
+          "gramWeight": 113,
+          "portionDescription": "cup, sliced",
+          "modifier": "cup, sliced",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 2
+        },
+        {
+          "gramWeight": 323,
+          "portionDescription": "large",
+          "modifier": "large",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 3
+        },
+        {
+          "gramWeight": 196,
+          "portionDescription": "medium",
+          "modifier": "medium",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 4
+        },
+        {
+          "gramWeight": 9.9,
+          "portionDescription": "slice",
+          "modifier": "slice",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 5
+        },
+        {
+          "gramWeight": 118,
+          "portionDescription": "small",
+          "modifier": "small",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 6
+        }
+      ]
+    },
+    "asparagus": {
+      "produceId": "asparagus",
+      "fdcId": 168389,
+      "ndbNumber": "11011",
+      "dataType": "sr_legacy_food",
+      "description": "Asparagus, raw",
+      "sourceAuthority": "USDA",
+      "sourceDataset": "SR Legacy (April 2018)",
+      "citationText": "USDA FoodData Central SR Legacy NDB 11011, Asparagus, raw (FDC ID 168389)",
+      "accessedDate": "2025-01-15",
+      "portions": [
+        {
+          "gramWeight": 134,
+          "portionDescription": "cup",
+          "modifier": "cup",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 1
+        },
+        {
+          "gramWeight": 12,
+          "portionDescription": "spear, small (5\" long or less)",
+          "modifier": "spear, small (5\" long or less)",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 2
+        },
+        {
+          "gramWeight": 16,
+          "portionDescription": "spear, medium (5-1/4\" to 7\" long)",
+          "modifier": "spear, medium (5-1/4\" to 7\" long)",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 3
+        },
+        {
+          "gramWeight": 20,
+          "portionDescription": "spear, large (7-1/4\" to 8-1/2\")",
+          "modifier": "spear, large (7-1/4\" to 8-1/2\")",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 4
+        },
+        {
+          "gramWeight": 24,
+          "portionDescription": "spear, extra large (8-3/4\" to 10\" long)",
+          "modifier": "spear, extra large (8-3/4\" to 10\" long)",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 5
+        },
+        {
+          "gramWeight": 3.5,
+          "portionDescription": "spear tip (2\" long or less)",
+          "modifier": "spear tip (2\" long or less)",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 6
+        }
+      ]
+    },
+    "radish": {
+      "produceId": "radish",
+      "fdcId": 169276,
+      "ndbNumber": "11429",
+      "dataType": "sr_legacy_food",
+      "description": "Radishes, raw",
+      "sourceAuthority": "USDA",
+      "sourceDataset": "SR Legacy (April 2018)",
+      "citationText": "USDA FoodData Central SR Legacy NDB 11429, Radishes, raw (FDC ID 169276)",
+      "accessedDate": "2025-01-15",
+      "portions": [
+        {
+          "gramWeight": 116,
+          "portionDescription": "cup slices",
+          "modifier": "cup slices",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 1
+        },
+        {
+          "gramWeight": 9,
+          "portionDescription": "large (1\" to 1-1/4\" dia)",
+          "modifier": "large (1\" to 1-1/4\" dia)",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 2
+        },
+        {
+          "gramWeight": 4.5,
+          "portionDescription": "medium (3/4\" to 1\" dia)",
+          "modifier": "medium (3/4\" to 1\" dia)",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 3
+        },
+        {
+          "gramWeight": 1,
+          "portionDescription": "slice",
+          "modifier": "slice",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 4
+        },
+        {
+          "gramWeight": 2,
+          "portionDescription": "small",
+          "modifier": "small",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 5
+        },
+        {
+          "gramWeight": 58,
+          "portionDescription": "cup slices",
+          "modifier": "cup slices",
+          "amount": 0.5,
+          "measureUnit": "undetermined",
+          "seqNum": 6
+        }
+      ]
+    },
+    "ginger": {
+      "produceId": "ginger",
+      "fdcId": 169231,
+      "ndbNumber": "11216",
+      "dataType": "sr_legacy_food",
+      "description": "Ginger root, raw",
+      "sourceAuthority": "USDA",
+      "sourceDataset": "SR Legacy (April 2018)",
+      "citationText": "USDA FoodData Central SR Legacy NDB 11216, Ginger root, raw (FDC ID 169231)",
+      "accessedDate": "2025-01-15",
+      "portions": [
+        {
+          "gramWeight": 2,
+          "portionDescription": "tsp",
+          "modifier": "tsp",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 1
+        },
+        {
+          "gramWeight": 24,
+          "portionDescription": "cup slices (1\" dia)",
+          "modifier": "cup slices (1\" dia)",
+          "amount": 0.25,
+          "measureUnit": "undetermined",
+          "seqNum": 2
+        },
+        {
+          "gramWeight": 11,
+          "portionDescription": "slices (1\" dia)",
+          "modifier": "slices (1\" dia)",
+          "amount": 5,
+          "measureUnit": "undetermined",
+          "seqNum": 3
+        }
+      ]
+    },
+    "garlic": {
+      "produceId": "garlic",
+      "fdcId": 169230,
+      "ndbNumber": "11215",
+      "dataType": "sr_legacy_food",
+      "description": "Garlic, raw",
+      "sourceAuthority": "USDA",
+      "sourceDataset": "SR Legacy (April 2018)",
+      "citationText": "USDA FoodData Central SR Legacy NDB 11215, Garlic, raw (FDC ID 169230)",
+      "accessedDate": "2025-01-15",
+      "portions": [
+        {
+          "gramWeight": 136,
+          "portionDescription": "cup",
+          "modifier": "cup",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 1
+        },
+        {
+          "gramWeight": 2.8,
+          "portionDescription": "tsp",
+          "modifier": "tsp",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 2
+        },
+        {
+          "gramWeight": 3,
+          "portionDescription": "clove",
+          "modifier": "clove",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 3
+        },
+        {
+          "gramWeight": 9,
+          "portionDescription": "cloves",
+          "modifier": "cloves",
+          "amount": 3,
+          "measureUnit": "undetermined",
+          "seqNum": 4
+        }
+      ]
+    },
+    "bell_pepper_red": {
+      "produceId": "bell_pepper_red",
+      "fdcId": 170108,
+      "ndbNumber": "11821",
+      "dataType": "sr_legacy_food",
+      "description": "Peppers, sweet, red, raw",
+      "sourceAuthority": "USDA",
+      "sourceDataset": "SR Legacy (April 2018)",
+      "citationText": "USDA FoodData Central SR Legacy NDB 11821, Peppers, sweet, red, raw (FDC ID 170108)",
+      "accessedDate": "2025-01-15",
+      "portions": [
+        {
+          "gramWeight": 149,
+          "portionDescription": "cup, chopped",
+          "modifier": "cup, chopped",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 1
+        },
+        {
+          "gramWeight": 92,
+          "portionDescription": "cup, sliced",
+          "modifier": "cup, sliced",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 2
+        },
+        {
+          "gramWeight": 9.3,
+          "portionDescription": "tablespoon",
+          "modifier": "tablespoon",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 3
+        },
+        {
+          "gramWeight": 164,
+          "portionDescription": "large (2-1/4 per pound, approx 3-3/4\" long, 3\" dia.)",
+          "modifier": "large (2-1/4 per pound, approx 3-3/4\" long, 3\" dia.)",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 4
+        },
+        {
+          "gramWeight": 119,
+          "portionDescription": "medium (approx 2-3/4\" long, 2-1/2 dia.)",
+          "modifier": "medium (approx 2-3/4\" long, 2-1/2 dia.)",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 5
+        },
+        {
+          "gramWeight": 74,
+          "portionDescription": "small",
+          "modifier": "small",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 6
+        },
+        {
+          "gramWeight": 10,
+          "portionDescription": "ring (3\" dia., 1/4\" thick)",
+          "modifier": "ring (3\" dia., 1/4\" thick)",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 7
+        }
+      ]
+    },
+    "bell_pepper_yellow": {
+      "produceId": "bell_pepper_yellow",
+      "fdcId": 169383,
+      "ndbNumber": "11951",
+      "dataType": "sr_legacy_food",
+      "description": "Peppers, sweet, yellow, raw",
+      "sourceAuthority": "USDA",
+      "sourceDataset": "SR Legacy (April 2018)",
+      "citationText": "USDA FoodData Central SR Legacy NDB 11951, Peppers, sweet, yellow, raw (FDC ID 169383)",
+      "accessedDate": "2025-01-15",
+      "portions": [
+        {
+          "gramWeight": 186,
+          "portionDescription": "pepper, large (3-3/4\" long, 3\" dia)",
+          "modifier": "pepper, large (3-3/4\" long, 3\" dia)",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 1
+        },
+        {
+          "gramWeight": 52,
+          "portionDescription": "strips",
+          "modifier": "strips",
+          "amount": 10,
+          "measureUnit": "undetermined",
+          "seqNum": 2
+        }
+      ]
+    },
+    "bell_pepper_green": {
+      "produceId": "bell_pepper_green",
+      "fdcId": 170427,
+      "ndbNumber": "11333",
+      "dataType": "sr_legacy_food",
+      "description": "Peppers, sweet, green, raw",
+      "sourceAuthority": "USDA",
+      "sourceDataset": "SR Legacy (April 2018)",
+      "citationText": "USDA FoodData Central SR Legacy NDB 11333, Peppers, sweet, green, raw (FDC ID 170427)",
+      "accessedDate": "2025-01-15",
+      "portions": [
+        {
+          "gramWeight": 149,
+          "portionDescription": "cup, chopped",
+          "modifier": "cup, chopped",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 1
+        },
+        {
+          "gramWeight": 92,
+          "portionDescription": "cup, sliced",
+          "modifier": "cup, sliced",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 2
+        },
+        {
+          "gramWeight": 9.3,
+          "portionDescription": "tbsp",
+          "modifier": "tbsp",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 3
+        },
+        {
+          "gramWeight": 164,
+          "portionDescription": "large (2-1/4 per lb, approx 3-3/4\" long, 3\" dia)",
+          "modifier": "large (2-1/4 per lb, approx 3-3/4\" long, 3\" dia)",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 4
+        },
+        {
+          "gramWeight": 119,
+          "portionDescription": "medium (approx 2-3/4\" long, 2-1/2\" dia)",
+          "modifier": "medium (approx 2-3/4\" long, 2-1/2\" dia)",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 5
+        },
+        {
+          "gramWeight": 10,
+          "portionDescription": "ring (3\" dia, 1/4\" thick)",
+          "modifier": "ring (3\" dia, 1/4\" thick)",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 6
+        },
+        {
+          "gramWeight": 74,
+          "portionDescription": "small",
+          "modifier": "small",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 7
+        },
+        {
+          "gramWeight": 27,
+          "portionDescription": "strips",
+          "modifier": "strips",
+          "amount": 10,
+          "measureUnit": "undetermined",
+          "seqNum": 8
+        }
+      ]
+    },
+    "jalapeno": {
+      "produceId": "jalapeno",
+      "fdcId": 168576,
+      "ndbNumber": "11979",
+      "dataType": "sr_legacy_food",
+      "description": "Peppers, jalapeno, raw",
+      "sourceAuthority": "USDA",
+      "sourceDataset": "SR Legacy (April 2018)",
+      "citationText": "USDA FoodData Central SR Legacy NDB 11979, Peppers, jalapeno, raw (FDC ID 168576)",
+      "accessedDate": "2025-01-15",
+      "portions": [
+        {
+          "gramWeight": 90,
+          "portionDescription": "cup, sliced",
+          "modifier": "cup, sliced",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 1
+        },
+        {
+          "gramWeight": 14,
+          "portionDescription": "pepper",
+          "modifier": "pepper",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 2
+        }
+      ]
+    },
+    "cayenne": {
+      "produceId": "cayenne",
+      "fdcId": 170106,
+      "ndbNumber": "11819",
+      "dataType": "sr_legacy_food",
+      "description": "Peppers, hot chili, red, raw",
+      "sourceAuthority": "USDA",
+      "sourceDataset": "SR Legacy (April 2018)",
+      "citationText": "USDA FoodData Central SR Legacy NDB 11819, Peppers, hot chili, red, raw (FDC ID 170106)",
+      "accessedDate": "2025-01-15",
+      "portions": [
+        {
+          "gramWeight": 45,
+          "portionDescription": "pepper",
+          "modifier": "pepper",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 1
+        },
+        {
+          "gramWeight": 75,
+          "portionDescription": "cup, chopped or diced",
+          "modifier": "cup, chopped or diced",
+          "amount": 0.5,
+          "measureUnit": "undetermined",
+          "seqNum": 2
+        }
+      ]
+    },
+    "tomato": {
+      "produceId": "tomato",
+      "fdcId": 170457,
+      "ndbNumber": "11529",
+      "dataType": "sr_legacy_food",
+      "description": "Tomatoes, red, ripe, raw, year round average",
+      "sourceAuthority": "USDA",
+      "sourceDataset": "SR Legacy (April 2018)",
+      "citationText": "USDA FoodData Central SR Legacy NDB 11529, Tomatoes, red, ripe, raw, year round average (FDC ID 170457)",
+      "accessedDate": "2025-01-15",
+      "portions": [
+        {
+          "gramWeight": 149,
+          "portionDescription": "cup cherry tomatoes",
+          "modifier": "cup cherry tomatoes",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 1
+        },
+        {
+          "gramWeight": 180,
+          "portionDescription": "cup, chopped or sliced",
+          "modifier": "cup, chopped or sliced",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 2
+        },
+        {
+          "gramWeight": 62,
+          "portionDescription": "Italian tomato",
+          "modifier": "Italian tomato",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 3
+        },
+        {
+          "gramWeight": 17,
+          "portionDescription": "cherry",
+          "modifier": "cherry",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 4
+        },
+        {
+          "gramWeight": 182,
+          "portionDescription": "large whole (3\" dia)",
+          "modifier": "large whole (3\" dia)",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 5
+        },
+        {
+          "gramWeight": 123,
+          "portionDescription": "medium whole (2-3/5\" dia)",
+          "modifier": "medium whole (2-3/5\" dia)",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 6
+        },
+        {
+          "gramWeight": 20,
+          "portionDescription": "slice, medium (1/4\" thick)",
+          "modifier": "slice, medium (1/4\" thick)",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 7
+        },
+        {
+          "gramWeight": 62,
+          "portionDescription": "plum tomato",
+          "modifier": "plum tomato",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 8
+        },
+        {
+          "gramWeight": 91,
+          "portionDescription": "small whole (2-2/5\" dia)",
+          "modifier": "small whole (2-2/5\" dia)",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 9
+        },
+        {
+          "gramWeight": 27,
+          "portionDescription": "slice, thick/large (1/2\" thick)",
+          "modifier": "slice, thick/large (1/2\" thick)",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 10
+        },
+        {
+          "gramWeight": 31,
+          "portionDescription": "wedge (1/4 of medium tomato)",
+          "modifier": "wedge (1/4 of medium tomato)",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 11
+        },
+        {
+          "gramWeight": 15,
+          "portionDescription": "slice, thin/small",
+          "modifier": "slice, thin/small",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 12
+        },
+        {
+          "gramWeight": 148,
+          "portionDescription": "NLEA serving",
+          "modifier": "NLEA serving",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 13
+        }
+      ]
+    },
+    "apple": {
+      "produceId": "apple",
+      "fdcId": 171688,
+      "ndbNumber": "9003",
+      "dataType": "sr_legacy_food",
+      "description": "Apples, raw, with skin (Includes foods for USDA's Food Distribution Program)",
+      "sourceAuthority": "USDA",
+      "sourceDataset": "SR Legacy (April 2018)",
+      "citationText": "USDA FoodData Central SR Legacy NDB 9003, Apples, raw, with skin (Includes foods for USDA's Food Distribution Program) (FDC ID 171688)",
+      "accessedDate": "2025-01-15",
+      "portions": [
+        {
+          "gramWeight": 125,
+          "portionDescription": "cup, quartered or chopped",
+          "modifier": "cup, quartered or chopped",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 1
+        },
+        {
+          "gramWeight": 109,
+          "portionDescription": "cup slices",
+          "modifier": "cup slices",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 2
+        },
+        {
+          "gramWeight": 223,
+          "portionDescription": "large (3-1/4\" dia)",
+          "modifier": "large (3-1/4\" dia)",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 3
+        },
+        {
+          "gramWeight": 182,
+          "portionDescription": "medium (3\" dia)",
+          "modifier": "medium (3\" dia)",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 4
+        },
+        {
+          "gramWeight": 149,
+          "portionDescription": "small (2-3/4\" dia)",
+          "modifier": "small (2-3/4\" dia)",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 5
+        },
+        {
+          "gramWeight": 101,
+          "portionDescription": "extra small (2-1/2\" dia)",
+          "modifier": "extra small (2-1/2\" dia)",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 6
+        },
+        {
+          "gramWeight": 242,
+          "portionDescription": "NLEA serving",
+          "modifier": "NLEA serving",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 7
+        }
+      ]
+    },
+    "lemon": {
+      "produceId": "lemon",
+      "fdcId": 167746,
+      "ndbNumber": "9150",
+      "dataType": "sr_legacy_food",
+      "description": "Lemons, raw, without peel",
+      "sourceAuthority": "USDA",
+      "sourceDataset": "SR Legacy (April 2018)",
+      "citationText": "USDA FoodData Central SR Legacy NDB 9150, Lemons, raw, without peel (FDC ID 167746)",
+      "accessedDate": "2025-01-15",
+      "portions": [
+        {
+          "gramWeight": 212,
+          "portionDescription": "cup, sections",
+          "modifier": "cup, sections",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 1
+        },
+        {
+          "gramWeight": 58,
+          "portionDescription": "fruit (2-1/8\" dia)",
+          "modifier": "fruit (2-1/8\" dia)",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 2
+        },
+        {
+          "gramWeight": 84,
+          "portionDescription": "fruit (2-3/8\" dia)",
+          "modifier": "fruit (2-3/8\" dia)",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 3
+        },
+        {
+          "gramWeight": 7,
+          "portionDescription": "wedge or slice (1/8 of one 2-1/8\" dia lemon)",
+          "modifier": "wedge or slice (1/8 of one 2-1/8\" dia lemon)",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 4
+        },
+        {
+          "gramWeight": 58,
+          "portionDescription": "NLEA serving",
+          "modifier": "NLEA serving",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 5
+        }
+      ]
+    },
+    "lime": {
+      "produceId": "lime",
+      "fdcId": 168155,
+      "ndbNumber": "9159",
+      "dataType": "sr_legacy_food",
+      "description": "Limes, raw",
+      "sourceAuthority": "USDA",
+      "sourceDataset": "SR Legacy (April 2018)",
+      "citationText": "USDA FoodData Central SR Legacy NDB 9159, Limes, raw (FDC ID 168155)",
+      "accessedDate": "2025-01-15",
+      "portions": [
+        {
+          "gramWeight": 67,
+          "portionDescription": "fruit (2\" dia)",
+          "modifier": "fruit (2\" dia)",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 1
+        },
+        {
+          "gramWeight": 67,
+          "portionDescription": "NLEA serving",
+          "modifier": "NLEA serving",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 2
+        }
+      ]
+    },
+    "orange": {
+      "produceId": "orange",
+      "fdcId": 169097,
+      "ndbNumber": "9200",
+      "dataType": "sr_legacy_food",
+      "description": "Oranges, raw, all commercial varieties",
+      "sourceAuthority": "USDA",
+      "sourceDataset": "SR Legacy (April 2018)",
+      "citationText": "USDA FoodData Central SR Legacy NDB 9200, Oranges, raw, all commercial varieties (FDC ID 169097)",
+      "accessedDate": "2025-01-15",
+      "portions": [
+        {
+          "gramWeight": 180,
+          "portionDescription": "cup, sections",
+          "modifier": "cup, sections",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 1
+        },
+        {
+          "gramWeight": 184,
+          "portionDescription": "large (3-1/16\" dia)",
+          "modifier": "large (3-1/16\" dia)",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 2
+        },
+        {
+          "gramWeight": 96,
+          "portionDescription": "small (2-3/8\" dia)",
+          "modifier": "small (2-3/8\" dia)",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 3
+        },
+        {
+          "gramWeight": 131,
+          "portionDescription": "fruit (2-5/8\" dia)",
+          "modifier": "fruit (2-5/8\" dia)",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 4
+        }
+      ]
+    },
+    "grapefruit": {
+      "produceId": "grapefruit",
+      "fdcId": 173033,
+      "ndbNumber": "9111",
+      "dataType": "sr_legacy_food",
+      "description": "Grapefruit, raw, pink and red and white, all areas",
+      "sourceAuthority": "USDA",
+      "sourceDataset": "SR Legacy (April 2018)",
+      "citationText": "USDA FoodData Central SR Legacy NDB 9111, Grapefruit, raw, pink and red and white, all areas (FDC ID 173033)",
+      "accessedDate": "2025-01-15",
+      "portions": [
+        {
+          "gramWeight": 230,
+          "portionDescription": "cup sections, with juice",
+          "modifier": "cup sections, with juice",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 1
+        },
+        {
+          "gramWeight": 166,
+          "portionDescription": "large (approx 4-1/2\" dia)",
+          "modifier": "large (approx 4-1/2\" dia)",
+          "amount": 0.5,
+          "measureUnit": "undetermined",
+          "seqNum": 2
+        },
+        {
+          "gramWeight": 128,
+          "portionDescription": "medium (approx 4\" dia)",
+          "modifier": "medium (approx 4\" dia)",
+          "amount": 0.5,
+          "measureUnit": "undetermined",
+          "seqNum": 3
+        },
+        {
+          "gramWeight": 100,
+          "portionDescription": "small (approx 3-1/2\" dia)",
+          "modifier": "small (approx 3-1/2\" dia)",
+          "amount": 0.5,
+          "measureUnit": "undetermined",
+          "seqNum": 4
+        }
+      ]
+    },
+    "pineapple": {
+      "produceId": "pineapple",
+      "fdcId": 168193,
+      "ndbNumber": "9429",
+      "dataType": "sr_legacy_food",
+      "description": "Pineapple, raw, traditional varieties",
+      "sourceAuthority": "USDA",
+      "sourceDataset": "SR Legacy (April 2018)",
+      "citationText": "USDA FoodData Central SR Legacy NDB 9429, Pineapple, raw, traditional varieties (FDC ID 168193)",
+      "accessedDate": "2025-01-15",
+      "portions": [
+        {
+          "gramWeight": 165,
+          "portionDescription": "cup, chunks",
+          "modifier": "cup, chunks",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 1
+        },
+        {
+          "gramWeight": 175,
+          "portionDescription": "slice (4-2/3\" dia x 3/4\" thick)",
+          "modifier": "slice (4-2/3\" dia x 3/4\" thick)",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 2
+        },
+        {
+          "gramWeight": 1002,
+          "portionDescription": "fruit",
+          "modifier": "fruit",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 3
+        },
+        {
+          "gramWeight": 112,
+          "portionDescription": "NLEA serving",
+          "modifier": "NLEA serving",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 4
+        }
+      ]
+    },
+    "watermelon": {
+      "produceId": "watermelon",
+      "fdcId": 167765,
+      "ndbNumber": "9326",
+      "dataType": "sr_legacy_food",
+      "description": "Watermelon, raw",
+      "sourceAuthority": "USDA",
+      "sourceDataset": "SR Legacy (April 2018)",
+      "citationText": "USDA FoodData Central SR Legacy NDB 9326, Watermelon, raw (FDC ID 167765)",
+      "accessedDate": "2025-01-15",
+      "portions": [
+        {
+          "gramWeight": 154,
+          "portionDescription": "cup, balls",
+          "modifier": "cup, balls",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 1
+        },
+        {
+          "gramWeight": 152,
+          "portionDescription": "cup, diced",
+          "modifier": "cup, diced",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 2
+        },
+        {
+          "gramWeight": 4518,
+          "portionDescription": "melon (15\" long x 7-1/2\" dia)",
+          "modifier": "melon (15\" long x 7-1/2\" dia)",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 3
+        },
+        {
+          "gramWeight": 286,
+          "portionDescription": "wedge (approx 1/16 of melon)",
+          "modifier": "wedge (approx 1/16 of melon)",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 4
+        },
+        {
+          "gramWeight": 122,
+          "portionDescription": "watermelon balls",
+          "modifier": "watermelon balls",
+          "amount": 10,
+          "measureUnit": "undetermined",
+          "seqNum": 5
+        },
+        {
+          "gramWeight": 280,
+          "portionDescription": "NLEA serving",
+          "modifier": "NLEA serving",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 6
+        }
+      ]
+    },
+    "pomegranate": {
+      "produceId": "pomegranate",
+      "fdcId": 169134,
+      "ndbNumber": "9286",
+      "dataType": "sr_legacy_food",
+      "description": "Pomegranates, raw",
+      "sourceAuthority": "USDA",
+      "sourceDataset": "SR Legacy (April 2018)",
+      "citationText": "USDA FoodData Central SR Legacy NDB 9286, Pomegranates, raw (FDC ID 169134)",
+      "accessedDate": "2025-01-15",
+      "portions": [
+        {
+          "gramWeight": 87,
+          "portionDescription": "cup arils (seed/juice sacs)",
+          "modifier": "cup arils (seed/juice sacs)",
+          "amount": 0.5,
+          "measureUnit": "undetermined",
+          "seqNum": 1
+        },
+        {
+          "gramWeight": 282,
+          "portionDescription": "pomegranate (4\" dia)",
+          "modifier": "pomegranate (4\" dia)",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 2
+        }
+      ]
+    },
+    "mango": {
+      "produceId": "mango",
+      "fdcId": 169910,
+      "ndbNumber": "9176",
+      "dataType": "sr_legacy_food",
+      "description": "Mangos, raw",
+      "sourceAuthority": "USDA",
+      "sourceDataset": "SR Legacy (April 2018)",
+      "citationText": "USDA FoodData Central SR Legacy NDB 9176, Mangos, raw (FDC ID 169910)",
+      "accessedDate": "2025-01-15",
+      "portions": [
+        {
+          "gramWeight": 165,
+          "portionDescription": "cup pieces",
+          "modifier": "cup pieces",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 1
+        },
+        {
+          "gramWeight": 336,
+          "portionDescription": "fruit without refuse",
+          "modifier": "fruit without refuse",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 2
+        }
+      ]
+    },
+    "papaya": {
+      "produceId": "papaya",
+      "fdcId": 169926,
+      "ndbNumber": "9226",
+      "dataType": "sr_legacy_food",
+      "description": "Papayas, raw",
+      "sourceAuthority": "USDA",
+      "sourceDataset": "SR Legacy (April 2018)",
+      "citationText": "USDA FoodData Central SR Legacy NDB 9226, Papayas, raw (FDC ID 169926)",
+      "accessedDate": "2025-01-15",
+      "portions": [
+        {
+          "gramWeight": 145,
+          "portionDescription": "cup 1\" pieces",
+          "modifier": "cup 1\" pieces",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 1
+        },
+        {
+          "gramWeight": 230,
+          "portionDescription": "cup, mashed",
+          "modifier": "cup, mashed",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 2
+        },
+        {
+          "gramWeight": 157,
+          "portionDescription": "fruit, small",
+          "modifier": "fruit, small",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 3
+        },
+        {
+          "gramWeight": 781,
+          "portionDescription": "fruit, large",
+          "modifier": "fruit, large",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 4
+        }
+      ]
+    },
+    "kiwi": {
+      "produceId": "kiwi",
+      "fdcId": 168153,
+      "ndbNumber": "9148",
+      "dataType": "sr_legacy_food",
+      "description": "Kiwifruit, green, raw",
+      "sourceAuthority": "USDA",
+      "sourceDataset": "SR Legacy (April 2018)",
+      "citationText": "USDA FoodData Central SR Legacy NDB 9148, Kiwifruit, green, raw (FDC ID 168153)",
+      "accessedDate": "2025-01-15",
+      "portions": [
+        {
+          "gramWeight": 180,
+          "portionDescription": "cup, sliced",
+          "modifier": "cup, sliced",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 1
+        },
+        {
+          "gramWeight": 69,
+          "portionDescription": "fruit (2\" dia)",
+          "modifier": "fruit (2\" dia)",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 2
+        },
+        {
+          "gramWeight": 148,
+          "portionDescription": "NLEA serving",
+          "modifier": "NLEA serving",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 3
+        }
+      ]
+    },
+    "pear": {
+      "produceId": "pear",
+      "fdcId": 169118,
+      "ndbNumber": "9252",
+      "dataType": "sr_legacy_food",
+      "description": "Pears, raw",
+      "sourceAuthority": "USDA",
+      "sourceDataset": "SR Legacy (April 2018)",
+      "citationText": "USDA FoodData Central SR Legacy NDB 9252, Pears, raw (FDC ID 169118)",
+      "accessedDate": "2025-01-15",
+      "portions": [
+        {
+          "gramWeight": 140,
+          "portionDescription": "cup, slices",
+          "modifier": "cup, slices",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 1
+        },
+        {
+          "gramWeight": 161,
+          "portionDescription": "cup, cubes",
+          "modifier": "cup, cubes",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 2
+        },
+        {
+          "gramWeight": 148,
+          "portionDescription": "small",
+          "modifier": "small",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 3
+        },
+        {
+          "gramWeight": 178,
+          "portionDescription": "medium",
+          "modifier": "medium",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 4
+        },
+        {
+          "gramWeight": 230,
+          "portionDescription": "large",
+          "modifier": "large",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 5
+        },
+        {
+          "gramWeight": 166,
+          "portionDescription": "NLEA serving",
+          "modifier": "NLEA serving",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 6
+        }
+      ]
+    },
+    "grape": {
+      "produceId": "grape",
+      "fdcId": 174683,
+      "ndbNumber": "9132",
+      "dataType": "sr_legacy_food",
+      "description": "Grapes, red or green (European type, such as Thompson seedless), raw",
+      "sourceAuthority": "USDA",
+      "sourceDataset": "SR Legacy (April 2018)",
+      "citationText": "USDA FoodData Central SR Legacy NDB 9132, Grapes, red or green (European type, such as Thompson seedless), raw (FDC ID 174683)",
+      "accessedDate": "2025-01-15",
+      "portions": [
+        {
+          "gramWeight": 151,
+          "portionDescription": "cup",
+          "modifier": "cup",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 1
+        },
+        {
+          "gramWeight": 49,
+          "portionDescription": "grapes",
+          "modifier": "grapes",
+          "amount": 10,
+          "measureUnit": "undetermined",
+          "seqNum": 2
+        },
+        {
+          "gramWeight": 126,
+          "portionDescription": "NLEA serving",
+          "modifier": "NLEA serving",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 3
+        }
+      ]
+    },
+    "strawberry": {
+      "produceId": "strawberry",
+      "fdcId": 167762,
+      "ndbNumber": "9316",
+      "dataType": "sr_legacy_food",
+      "description": "Strawberries, raw",
+      "sourceAuthority": "USDA",
+      "sourceDataset": "SR Legacy (April 2018)",
+      "citationText": "USDA FoodData Central SR Legacy NDB 9316, Strawberries, raw (FDC ID 167762)",
+      "accessedDate": "2025-01-15",
+      "portions": [
+        {
+          "gramWeight": 152,
+          "portionDescription": "cup, halves",
+          "modifier": "cup, halves",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 1
+        },
+        {
+          "gramWeight": 232,
+          "portionDescription": "cup, pureed",
+          "modifier": "cup, pureed",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 2
+        },
+        {
+          "gramWeight": 166,
+          "portionDescription": "cup, sliced",
+          "modifier": "cup, sliced",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 3
+        },
+        {
+          "gramWeight": 144,
+          "portionDescription": "cup, whole",
+          "modifier": "cup, whole",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 4
+        },
+        {
+          "gramWeight": 27,
+          "portionDescription": "extra large (1-5/8\" dia)",
+          "modifier": "extra large (1-5/8\" dia)",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 5
+        },
+        {
+          "gramWeight": 18,
+          "portionDescription": "large (1-3/8\" dia)",
+          "modifier": "large (1-3/8\" dia)",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 6
+        },
+        {
+          "gramWeight": 12,
+          "portionDescription": "medium (1-1/4\" dia)",
+          "modifier": "medium (1-1/4\" dia)",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 7
+        },
+        {
+          "gramWeight": 357,
+          "portionDescription": "pint as purchased, yields",
+          "modifier": "pint as purchased, yields",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 8
+        },
+        {
+          "gramWeight": 7,
+          "portionDescription": "small (1\" dia)",
+          "modifier": "small (1\" dia)",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 9
+        },
+        {
+          "gramWeight": 147,
+          "portionDescription": "NLEA serving",
+          "modifier": "NLEA serving",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 10
+        }
+      ]
+    },
+    "blueberry": {
+      "produceId": "blueberry",
+      "fdcId": 171711,
+      "ndbNumber": "9050",
+      "dataType": "sr_legacy_food",
+      "description": "Blueberries, raw",
+      "sourceAuthority": "USDA",
+      "sourceDataset": "SR Legacy (April 2018)",
+      "citationText": "USDA FoodData Central SR Legacy NDB 9050, Blueberries, raw (FDC ID 171711)",
+      "accessedDate": "2025-01-15",
+      "portions": [
+        {
+          "gramWeight": 148,
+          "portionDescription": "cup",
+          "modifier": "cup",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 1
+        },
+        {
+          "gramWeight": 68,
+          "portionDescription": "berries",
+          "modifier": "berries",
+          "amount": 50,
+          "measureUnit": "undetermined",
+          "seqNum": 2
+        }
+      ]
+    },
+    "raspberry": {
+      "produceId": "raspberry",
+      "fdcId": 167755,
+      "ndbNumber": "9302",
+      "dataType": "sr_legacy_food",
+      "description": "Raspberries, raw",
+      "sourceAuthority": "USDA",
+      "sourceDataset": "SR Legacy (April 2018)",
+      "citationText": "USDA FoodData Central SR Legacy NDB 9302, Raspberries, raw (FDC ID 167755)",
+      "accessedDate": "2025-01-15",
+      "portions": [
+        {
+          "gramWeight": 123,
+          "portionDescription": "cup",
+          "modifier": "cup",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 1
+        },
+        {
+          "gramWeight": 312,
+          "portionDescription": "pint as purchased, yields",
+          "modifier": "pint as purchased, yields",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 2
+        },
+        {
+          "gramWeight": 19,
+          "portionDescription": "raspberries",
+          "modifier": "raspberries",
+          "amount": 10,
+          "measureUnit": "undetermined",
+          "seqNum": 3
+        }
+      ]
+    },
+    "blackberry": {
+      "produceId": "blackberry",
+      "fdcId": 173946,
+      "ndbNumber": "9042",
+      "dataType": "sr_legacy_food",
+      "description": "Blackberries, raw",
+      "sourceAuthority": "USDA",
+      "sourceDataset": "SR Legacy (April 2018)",
+      "citationText": "USDA FoodData Central SR Legacy NDB 9042, Blackberries, raw (FDC ID 173946)",
+      "accessedDate": "2025-01-15",
+      "portions": [
+        {
+          "gramWeight": 144,
+          "portionDescription": "cup",
+          "modifier": "cup",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 1
+        }
+      ]
+    },
+    "cranberry": {
+      "produceId": "cranberry",
+      "fdcId": 171722,
+      "ndbNumber": "9078",
+      "dataType": "sr_legacy_food",
+      "description": "Cranberries, raw",
+      "sourceAuthority": "USDA",
+      "sourceDataset": "SR Legacy (April 2018)",
+      "citationText": "USDA FoodData Central SR Legacy NDB 9078, Cranberries, raw (FDC ID 171722)",
+      "accessedDate": "2025-01-15",
+      "portions": [
+        {
+          "gramWeight": 110,
+          "portionDescription": "cup, chopped",
+          "modifier": "cup, chopped",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 1
+        },
+        {
+          "gramWeight": 100,
+          "portionDescription": "cup, whole",
+          "modifier": "cup, whole",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 2
+        }
+      ]
+    },
+    "cherry": {
+      "produceId": "cherry",
+      "fdcId": 173954,
+      "ndbNumber": "9063",
+      "dataType": "sr_legacy_food",
+      "description": "Cherries, sour, red, raw",
+      "sourceAuthority": "USDA",
+      "sourceDataset": "SR Legacy (April 2018)",
+      "citationText": "USDA FoodData Central SR Legacy NDB 9063, Cherries, sour, red, raw (FDC ID 173954)",
+      "accessedDate": "2025-01-15",
+      "portions": [
+        {
+          "gramWeight": 155,
+          "portionDescription": "cup, without pits",
+          "modifier": "cup, without pits",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 1
+        },
+        {
+          "gramWeight": 103,
+          "portionDescription": "cup, with pits, yields",
+          "modifier": "cup, with pits, yields",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 2
+        }
+      ]
+    },
+    "cantaloupe": {
+      "produceId": "cantaloupe",
+      "fdcId": 169092,
+      "ndbNumber": "9181",
+      "dataType": "sr_legacy_food",
+      "description": "Melons, cantaloupe, raw",
+      "sourceAuthority": "USDA",
+      "sourceDataset": "SR Legacy (April 2018)",
+      "citationText": "USDA FoodData Central SR Legacy NDB 9181, Melons, cantaloupe, raw (FDC ID 169092)",
+      "accessedDate": "2025-01-15",
+      "portions": [
+        {
+          "gramWeight": 177,
+          "portionDescription": "cup, balls",
+          "modifier": "cup, balls",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 1
+        },
+        {
+          "gramWeight": 160,
+          "portionDescription": "cup, cubes",
+          "modifier": "cup, cubes",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 2
+        },
+        {
+          "gramWeight": 156,
+          "portionDescription": "cup, diced",
+          "modifier": "cup, diced",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 3
+        },
+        {
+          "gramWeight": 814,
+          "portionDescription": "melon, large (about 6-1/2\" dia)",
+          "modifier": "melon, large (about 6-1/2\" dia)",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 4
+        },
+        {
+          "gramWeight": 102,
+          "portionDescription": "wedge, large (1/8 of large melon)",
+          "modifier": "wedge, large (1/8 of large melon)",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 5
+        },
+        {
+          "gramWeight": 552,
+          "portionDescription": "melon, medium (about 5\" dia)",
+          "modifier": "melon, medium (about 5\" dia)",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 6
+        },
+        {
+          "gramWeight": 69,
+          "portionDescription": "wedge, medium (1/8 of medium melon)",
+          "modifier": "wedge, medium (1/8 of medium melon)",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 7
+        },
+        {
+          "gramWeight": 441,
+          "portionDescription": "melon, small (about 4-1/4\" dia)",
+          "modifier": "melon, small (about 4-1/4\" dia)",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 8
+        },
+        {
+          "gramWeight": 55,
+          "portionDescription": "wedge, small (1/8 of small melon)",
+          "modifier": "wedge, small (1/8 of small melon)",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 9
+        },
+        {
+          "gramWeight": 138,
+          "portionDescription": "cantaloupe balls",
+          "modifier": "cantaloupe balls",
+          "amount": 10,
+          "measureUnit": "undetermined",
+          "seqNum": 10
+        },
+        {
+          "gramWeight": 134,
+          "portionDescription": "NLEA serving",
+          "modifier": "NLEA serving",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 11
+        }
+      ]
+    },
+    "honeydew": {
+      "produceId": "honeydew",
+      "fdcId": 169911,
+      "ndbNumber": "9184",
+      "dataType": "sr_legacy_food",
+      "description": "Melons, honeydew, raw",
+      "sourceAuthority": "USDA",
+      "sourceDataset": "SR Legacy (April 2018)",
+      "citationText": "USDA FoodData Central SR Legacy NDB 9184, Melons, honeydew, raw (FDC ID 169911)",
+      "accessedDate": "2025-01-15",
+      "portions": [
+        {
+          "gramWeight": 170,
+          "portionDescription": "cup, diced (approx 20 pieces per cup)",
+          "modifier": "cup, diced (approx 20 pieces per cup)",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 1
+        },
+        {
+          "gramWeight": 177,
+          "portionDescription": "cup, balls",
+          "modifier": "cup, balls",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 2
+        },
+        {
+          "gramWeight": 1000,
+          "portionDescription": "melon (5-1/4\" dia)",
+          "modifier": "melon (5-1/4\" dia)",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 3
+        },
+        {
+          "gramWeight": 1280,
+          "portionDescription": "melon (6\" - 7\" dia)",
+          "modifier": "melon (6\" - 7\" dia)",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 4
+        },
+        {
+          "gramWeight": 125,
+          "portionDescription": "wedge (1/8 of 5-1/4\" dia melon)",
+          "modifier": "wedge (1/8 of 5-1/4\" dia melon)",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 5
+        },
+        {
+          "gramWeight": 160,
+          "portionDescription": "wedge (1/8 of 6\" to 7\" dia melon)",
+          "modifier": "wedge (1/8 of 6\" to 7\" dia melon)",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 6
+        },
+        {
+          "gramWeight": 138,
+          "portionDescription": "honeydew balls",
+          "modifier": "honeydew balls",
+          "amount": 10,
+          "measureUnit": "undetermined",
+          "seqNum": 7
+        },
+        {
+          "gramWeight": 134,
+          "portionDescription": "NLEA serving",
+          "modifier": "NLEA serving",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 8
+        }
+      ]
+    },
+    "coconut_water": {
+      "produceId": "coconut_water",
+      "fdcId": 170174,
+      "ndbNumber": "12119",
+      "dataType": "sr_legacy_food",
+      "description": "Nuts, coconut water (liquid from coconuts)",
+      "sourceAuthority": "USDA",
+      "sourceDataset": "SR Legacy (April 2018)",
+      "citationText": "USDA FoodData Central SR Legacy NDB 12119, Nuts, coconut water (liquid from coconuts) (FDC ID 170174)",
+      "accessedDate": "2025-01-15",
+      "portions": [
+        {
+          "gramWeight": 240,
+          "portionDescription": "cup",
+          "modifier": "cup",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 1
+        },
+        {
+          "gramWeight": 15,
+          "portionDescription": "tbsp",
+          "modifier": "tbsp",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 2
+        },
+        {
+          "gramWeight": 206,
+          "portionDescription": "coconut yields",
+          "modifier": "coconut yields",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 3
+        }
+      ]
+    },
+    "passion_fruit": {
+      "produceId": "passion_fruit",
+      "fdcId": 169108,
+      "ndbNumber": "9231",
+      "dataType": "sr_legacy_food",
+      "description": "Passion-fruit, (granadilla), purple, raw",
+      "sourceAuthority": "USDA",
+      "sourceDataset": "SR Legacy (April 2018)",
+      "citationText": "USDA FoodData Central SR Legacy NDB 9231, Passion-fruit, (granadilla), purple, raw (FDC ID 169108)",
+      "accessedDate": "2025-01-15",
+      "portions": [
+        {
+          "gramWeight": 236,
+          "portionDescription": "cup",
+          "modifier": "cup",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 1
+        },
+        {
+          "gramWeight": 18,
+          "portionDescription": "fruit without refuse",
+          "modifier": "fruit without refuse",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 2
+        }
+      ]
+    },
+    "peach": {
+      "produceId": "peach",
+      "fdcId": 169928,
+      "ndbNumber": "9236",
+      "dataType": "sr_legacy_food",
+      "description": "Peaches, yellow, raw",
+      "sourceAuthority": "USDA",
+      "sourceDataset": "SR Legacy (April 2018)",
+      "citationText": "USDA FoodData Central SR Legacy NDB 9236, Peaches, yellow, raw (FDC ID 169928)",
+      "accessedDate": "2025-01-15",
+      "portions": [
+        {
+          "gramWeight": 154,
+          "portionDescription": "cup slices",
+          "modifier": "cup slices",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 1
+        },
+        {
+          "gramWeight": 130,
+          "portionDescription": "small (2-1/2\" dia)",
+          "modifier": "small (2-1/2\" dia)",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 2
+        },
+        {
+          "gramWeight": 150,
+          "portionDescription": "medium (2-2/3\" dia)",
+          "modifier": "medium (2-2/3\" dia)",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 3
+        },
+        {
+          "gramWeight": 175,
+          "portionDescription": "large (2-3/4\" dia)",
+          "modifier": "large (2-3/4\" dia)",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 4
+        },
+        {
+          "gramWeight": 224,
+          "portionDescription": "extra large (3\" dia)",
+          "modifier": "extra large (3\" dia)",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 5
+        },
+        {
+          "gramWeight": 147,
+          "portionDescription": "NLEA serving",
+          "modifier": "NLEA serving",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 6
+        }
+      ]
+    },
+    "plum": {
+      "produceId": "plum",
+      "fdcId": 169949,
+      "ndbNumber": "9279",
+      "dataType": "sr_legacy_food",
+      "description": "Plums, raw",
+      "sourceAuthority": "USDA",
+      "sourceDataset": "SR Legacy (April 2018)",
+      "citationText": "USDA FoodData Central SR Legacy NDB 9279, Plums, raw (FDC ID 169949)",
+      "accessedDate": "2025-01-15",
+      "portions": [
+        {
+          "gramWeight": 165,
+          "portionDescription": "cup, sliced",
+          "modifier": "cup, sliced",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 1
+        },
+        {
+          "gramWeight": 66,
+          "portionDescription": "fruit (2-1/8\" dia)",
+          "modifier": "fruit (2-1/8\" dia)",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 2
+        },
+        {
+          "gramWeight": 151,
+          "portionDescription": "NLEA serving",
+          "modifier": "NLEA serving",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 3
+        }
+      ]
+    },
+    "nectarine": {
+      "produceId": "nectarine",
+      "fdcId": 169914,
+      "ndbNumber": "9191",
+      "dataType": "sr_legacy_food",
+      "description": "Nectarines, raw",
+      "sourceAuthority": "USDA",
+      "sourceDataset": "SR Legacy (April 2018)",
+      "citationText": "USDA FoodData Central SR Legacy NDB 9191, Nectarines, raw (FDC ID 169914)",
+      "accessedDate": "2025-01-15",
+      "portions": [
+        {
+          "gramWeight": 143,
+          "portionDescription": "cup slices",
+          "modifier": "cup slices",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 1
+        },
+        {
+          "gramWeight": 129,
+          "portionDescription": "small (2-1/3\" dia)",
+          "modifier": "small (2-1/3\" dia)",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 2
+        },
+        {
+          "gramWeight": 142,
+          "portionDescription": "medium (2-1/2\" dia)",
+          "modifier": "medium (2-1/2\" dia)",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 3
+        },
+        {
+          "gramWeight": 156,
+          "portionDescription": "large (2-3/4\" dia)",
+          "modifier": "large (2-3/4\" dia)",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 4
+        },
+        {
+          "gramWeight": 140,
+          "portionDescription": "NLEA serving",
+          "modifier": "NLEA serving",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 5
+        }
+      ]
+    },
+    "bok_choy": {
+      "produceId": "bok_choy",
+      "fdcId": 2685572,
+      "ndbNumber": "11116",
+      "dataType": "foundation_food",
+      "description": "Cabbage, bok choy, raw",
+      "sourceAuthority": "USDA",
+      "sourceDataset": "Foundation Foods",
+      "citationText": "USDA FoodData Central Foundation Foods FDC ID 2685572, Cabbage, bok choy, raw (NDB 11116)",
+      "accessedDate": "2025-01-15",
+      "portions": [
+        {
+          "gramWeight": 70,
+          "portionDescription": "1 cup, shredded",
+          "modifier": "cup, shredded",
+          "amount": 1,
+          "measureUnit": "undetermined"
+        }
+      ],
+      "confidence": "high",
+      "notes": "Bok choy is available in Foundation Foods (April 2026 release) but not in SR Legacy (April 2018). Portion weight from Foundation Foods measure data."
+    },
+    "wheatgrass": {
+      "produceId": "wheatgrass",
+      "fdcId": null,
+      "ndbNumber": null,
+      "dataType": null,
+      "description": "Wheatgrass, raw",
+      "sourceAuthority": "USDA",
+      "sourceDataset": "FNDDS 2021-2023",
+      "citationText": "USDA FoodData Central FNDDS 2021-2023 — wheatgrass has no standardized portion weight in SR Legacy, Foundation Foods, or FNDDS",
+      "accessedDate": "2025-01-15",
+      "portions": [],
+      "confidence": "low",
+      "notes": "Wheatgrass is typically juiced in small amounts measured by weight. No standardized USDA household measure exists in any FoodData Central data type."
+    },
+    "turmeric": {
+      "produceId": "turmeric",
+      "fdcId": 170556,
+      "ndbNumber": null,
+      "dataType": "foundation_food",
+      "description": "Turmeric, raw",
+      "sourceAuthority": "USDA",
+      "sourceDataset": "Foundation Foods",
+      "citationText": "USDA FoodData Central Foundation Foods FDC ID 170556, Turmeric, raw",
+      "accessedDate": "2025-01-15",
+      "portions": [
+        {
+          "gramWeight": 6,
+          "portionDescription": "1 tbsp, grated (estimated from ginger density)",
+          "modifier": "tbsp, grated",
+          "amount": 1,
+          "measureUnit": "undetermined"
+        }
+      ],
+      "confidence": "low",
+      "notes": "USDA Foundation Foods has turmeric raw (FDC 170556) but with limited household measure data. Tablespoon weight estimated from ginger SR Legacy density (NDB 11216, 1 tsp = 2g, so 1 tbsp ≈ 6g). 1-inch piece estimated at 25g from ginger root density."
+    },
+    "aloe_vera": {
+      "produceId": "aloe_vera",
+      "fdcId": null,
+      "ndbNumber": null,
+      "dataType": null,
+      "description": "Aloe vera, raw",
+      "sourceAuthority": "USDA",
+      "sourceDataset": "FNDDS 2021-2023",
+      "citationText": "USDA FoodData Central FNDDS 2021-2023 — aloe vera gel has no standardized USDA household portion weight",
+      "accessedDate": "2025-01-15",
+      "portions": [],
+      "confidence": "low",
+      "notes": "Aloe vera is typically used as extracted gel measured by weight. No standardized USDA household measure exists for raw aloe leaves in any FoodData Central data type."
+    },
+    "apple_green": {
+      "produceId": "apple_green",
+      "fdcId": 171688,
+      "ndbNumber": "9003",
+      "dataType": "sr_legacy_food",
+      "description": "Apples, raw, with skin (Includes foods for USDA's Food Distribution Program)",
+      "sourceAuthority": "USDA",
+      "sourceDataset": "SR Legacy (April 2018)",
+      "citationText": "USDA FoodData Central SR Legacy NDB 9003, Apples, raw, with skin (Includes foods for USDA's Food Distribution Program) (FDC ID 171688)",
+      "accessedDate": "2025-01-15",
+      "portions": [
+        {
+          "gramWeight": 125,
+          "portionDescription": "cup, quartered or chopped",
+          "modifier": "cup, quartered or chopped",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 1
+        },
+        {
+          "gramWeight": 109,
+          "portionDescription": "cup slices",
+          "modifier": "cup slices",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 2
+        },
+        {
+          "gramWeight": 223,
+          "portionDescription": "large (3-1/4\" dia)",
+          "modifier": "large (3-1/4\" dia)",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 3
+        },
+        {
+          "gramWeight": 182,
+          "portionDescription": "medium (3\" dia)",
+          "modifier": "medium (3\" dia)",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 4
+        },
+        {
+          "gramWeight": 149,
+          "portionDescription": "small (2-3/4\" dia)",
+          "modifier": "small (2-3/4\" dia)",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 5
+        },
+        {
+          "gramWeight": 101,
+          "portionDescription": "extra small (2-1/2\" dia)",
+          "modifier": "extra small (2-1/2\" dia)",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 6
+        },
+        {
+          "gramWeight": 242,
+          "portionDescription": "NLEA serving",
+          "modifier": "NLEA serving",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 7
+        }
+      ]
+    },
+    "apple_red": {
+      "produceId": "apple_red",
+      "fdcId": 171688,
+      "ndbNumber": "9003",
+      "dataType": "sr_legacy_food",
+      "description": "Apples, raw, with skin (Includes foods for USDA's Food Distribution Program)",
+      "sourceAuthority": "USDA",
+      "sourceDataset": "SR Legacy (April 2018)",
+      "citationText": "USDA FoodData Central SR Legacy NDB 9003, Apples, raw, with skin (Includes foods for USDA's Food Distribution Program) (FDC ID 171688)",
+      "accessedDate": "2025-01-15",
+      "portions": [
+        {
+          "gramWeight": 125,
+          "portionDescription": "cup, quartered or chopped",
+          "modifier": "cup, quartered or chopped",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 1
+        },
+        {
+          "gramWeight": 109,
+          "portionDescription": "cup slices",
+          "modifier": "cup slices",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 2
+        },
+        {
+          "gramWeight": 223,
+          "portionDescription": "large (3-1/4\" dia)",
+          "modifier": "large (3-1/4\" dia)",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 3
+        },
+        {
+          "gramWeight": 182,
+          "portionDescription": "medium (3\" dia)",
+          "modifier": "medium (3\" dia)",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 4
+        },
+        {
+          "gramWeight": 149,
+          "portionDescription": "small (2-3/4\" dia)",
+          "modifier": "small (2-3/4\" dia)",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 5
+        },
+        {
+          "gramWeight": 101,
+          "portionDescription": "extra small (2-1/2\" dia)",
+          "modifier": "extra small (2-1/2\" dia)",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 6
+        },
+        {
+          "gramWeight": 242,
+          "portionDescription": "NLEA serving",
+          "modifier": "NLEA serving",
+          "amount": 1,
+          "measureUnit": "undetermined",
+          "seqNum": 7
+        }
+      ]
+    }
+  }
+}

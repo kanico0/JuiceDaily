@@ -1,0 +1,691 @@
+{
+  "kale": {
+    "oldRecordId": "11215",
+    "newNdb": "11233",
+    "newFdcId": 168421,
+    "newRecordId": "11233",
+    "newCitation": "USDA FoodData Central SR Legacy NDB 11233, Kale, raw (FDC ID 168421)",
+    "dataset": "SR Legacy",
+    "description": "Kale, raw",
+    "oldCitation": "USDA FoodData Central SR Legacy NDB 11215, Kale, raw"
+  },
+  "spinach": {
+    "oldRecordId": "11457",
+    "newNdb": "11457",
+    "newFdcId": 168462,
+    "newRecordId": "11457",
+    "newCitation": "USDA FoodData Central SR Legacy NDB 11457, Spinach, raw (FDC ID 168462)",
+    "dataset": "SR Legacy",
+    "description": "Spinach, raw",
+    "oldCitation": "USDA FoodData Central SR Legacy NDB 11457, Spinach, raw"
+  },
+  "swiss_chard": {
+    "oldRecordId": "11161",
+    "newNdb": "11147",
+    "newFdcId": 169991,
+    "newRecordId": "11147",
+    "newCitation": "USDA FoodData Central SR Legacy NDB 11147, Chard, swiss, raw (FDC ID 169991)",
+    "dataset": "SR Legacy",
+    "description": "Chard, swiss, raw",
+    "oldCitation": "USDA FoodData Central SR Legacy NDB 11161, Chard, swiss, raw"
+  },
+  "collard_greens": {
+    "oldRecordId": "11174",
+    "newNdb": "11161",
+    "newFdcId": 170406,
+    "newRecordId": "11161",
+    "newCitation": "USDA FoodData Central SR Legacy NDB 11161, Collards, raw (FDC ID 170406)",
+    "dataset": "SR Legacy",
+    "description": "Collards, raw",
+    "oldCitation": "USDA FoodData Central SR Legacy NDB 11174, Collards, raw"
+  },
+  "dandelion_greens": {
+    "oldRecordId": "11207",
+    "newNdb": "11207",
+    "newFdcId": 169226,
+    "newRecordId": "11207",
+    "newCitation": "USDA FoodData Central SR Legacy NDB 11207, Dandelion greens, raw (FDC ID 169226)",
+    "dataset": "SR Legacy",
+    "description": "Dandelion greens, raw",
+    "oldCitation": "USDA FoodData Central SR Legacy NDB 11207, Dandelion greens, raw"
+  },
+  "arugula": {
+    "oldRecordId": "110365",
+    "newNdb": "11959",
+    "newFdcId": 169387,
+    "newRecordId": "11959",
+    "newCitation": "USDA FoodData Central SR Legacy NDB 11959, Arugula, raw (FDC ID 169387)",
+    "dataset": "SR Legacy",
+    "description": "Arugula, raw",
+    "oldCitation": "USDA FoodData Central FNDDS 2021-2023, Arugula, raw"
+  },
+  "romaine": {
+    "oldRecordId": "11251",
+    "newNdb": "11251",
+    "newFdcId": 169247,
+    "newRecordId": "11251",
+    "newCitation": "USDA FoodData Central SR Legacy NDB 11251, Lettuce, cos or romaine, raw (FDC ID 169247)",
+    "dataset": "SR Legacy",
+    "description": "Lettuce, cos or romaine, raw",
+    "oldCitation": "USDA FoodData Central SR Legacy NDB 11251, Lettuce, cos or romaine, raw"
+  },
+  "parsley": {
+    "oldRecordId": "11297",
+    "newNdb": "11297",
+    "newFdcId": 170416,
+    "newRecordId": "11297",
+    "newCitation": "USDA FoodData Central SR Legacy NDB 11297, Parsley, fresh (FDC ID 170416)",
+    "dataset": "SR Legacy",
+    "description": "Parsley, fresh",
+    "oldCitation": "USDA FoodData Central SR Legacy NDB 11297, Parsley, raw"
+  },
+  "cilantro": {
+    "oldRecordId": "11168",
+    "newNdb": "11165",
+    "newFdcId": 169997,
+    "newRecordId": "11165",
+    "newCitation": "USDA FoodData Central SR Legacy NDB 11165, Coriander (cilantro) leaves, raw (FDC ID 169997)",
+    "dataset": "SR Legacy",
+    "description": "Coriander (cilantro) leaves, raw",
+    "oldCitation": "USDA FoodData Central SR Legacy NDB 11168, Coriander (cilantro) leaves, raw"
+  },
+  "mint": {
+    "oldRecordId": "110207",
+    "newNdb": "2065",
+    "newFdcId": 173475,
+    "newRecordId": "2065",
+    "newCitation": "USDA FoodData Central SR Legacy NDB 2065, Spearmint, fresh (FDC ID 173475)",
+    "dataset": "SR Legacy",
+    "description": "Spearmint, fresh",
+    "oldCitation": "USDA FoodData Central SR Legacy NDB 110207, Spearmint, fresh"
+  },
+  "basil": {
+    "oldRecordId": "110204",
+    "newNdb": "2044",
+    "newFdcId": 172232,
+    "newRecordId": "2044",
+    "newCitation": "USDA FoodData Central SR Legacy NDB 2044, Basil, fresh (FDC ID 172232)",
+    "dataset": "SR Legacy",
+    "description": "Basil, fresh",
+    "oldCitation": "USDA FoodData Central SR Legacy NDB 110204, Basil, fresh"
+  },
+  "watercress": {
+    "oldRecordId": "110167",
+    "newNdb": "11591",
+    "newFdcId": 170068,
+    "newRecordId": "11591",
+    "newCitation": "USDA FoodData Central SR Legacy NDB 11591, Watercress, raw (FDC ID 170068)",
+    "dataset": "SR Legacy",
+    "description": "Watercress, raw",
+    "oldCitation": "USDA FoodData Central SR Legacy NDB 110167, Watercress, raw"
+  },
+  "broccoli": {
+    "oldRecordId": "11090",
+    "newNdb": "11090",
+    "newFdcId": 170379,
+    "newRecordId": "11090",
+    "newCitation": "USDA FoodData Central SR Legacy NDB 11090, Broccoli, raw (FDC ID 170379)",
+    "dataset": "SR Legacy",
+    "description": "Broccoli, raw",
+    "oldCitation": "USDA FoodData Central SR Legacy NDB 11090, Broccoli, raw"
+  },
+  "cabbage_green": {
+    "oldRecordId": "11101",
+    "newNdb": "11109",
+    "newFdcId": 169975,
+    "newRecordId": "11109",
+    "newCitation": "USDA FoodData Central SR Legacy NDB 11109, Cabbage, raw (FDC ID 169975)",
+    "dataset": "SR Legacy",
+    "description": "Cabbage, raw",
+    "oldCitation": "USDA FoodData Central SR Legacy NDB 11101, Cabbage, raw"
+  },
+  "cabbage_red": {
+    "oldRecordId": "11112",
+    "newNdb": "11112",
+    "newFdcId": 169977,
+    "newRecordId": "11112",
+    "newCitation": "USDA FoodData Central SR Legacy NDB 11112, Cabbage, red, raw (FDC ID 169977)",
+    "dataset": "SR Legacy",
+    "description": "Cabbage, red, raw",
+    "oldCitation": "USDA FoodData Central SR Legacy NDB 11112, Cabbage, red, raw"
+  },
+  "cauliflower": {
+    "oldRecordId": "11135",
+    "newNdb": "11135",
+    "newFdcId": 169986,
+    "newRecordId": "11135",
+    "newCitation": "USDA FoodData Central SR Legacy NDB 11135, Cauliflower, raw (FDC ID 169986)",
+    "dataset": "SR Legacy",
+    "description": "Cauliflower, raw",
+    "oldCitation": "USDA FoodData Central SR Legacy NDB 11135, Cauliflower, raw"
+  },
+  "kohlrabi": {
+    "oldRecordId": "11149",
+    "newNdb": "11241",
+    "newFdcId": 168424,
+    "newRecordId": "11241",
+    "newCitation": "USDA FoodData Central SR Legacy NDB 11241, Kohlrabi, raw (FDC ID 168424)",
+    "dataset": "SR Legacy",
+    "description": "Kohlrabi, raw",
+    "oldCitation": "USDA FoodData Central SR Legacy NDB 11149, Kohlrabi, raw"
+  },
+  "carrot": {
+    "oldRecordId": "170393",
+    "newNdb": "11124",
+    "newFdcId": 170393,
+    "newRecordId": "11124",
+    "newCitation": "USDA FoodData Central SR Legacy NDB 11124, Carrots, raw (FDC ID 170393)",
+    "dataset": "SR Legacy",
+    "description": "Carrots, raw",
+    "oldCitation": "USDA FoodData Central SR Legacy FDC ID 170393, Carrots, raw"
+  },
+  "celery": {
+    "oldRecordId": "170424",
+    "newNdb": "11143",
+    "newFdcId": 169988,
+    "newRecordId": "11143",
+    "newCitation": "USDA FoodData Central SR Legacy NDB 11143, Celery, raw (FDC ID 169988)",
+    "dataset": "SR Legacy",
+    "description": "Celery, raw",
+    "oldCitation": "USDA FoodData Central SR Legacy FDC ID 170424, Celery, raw"
+  },
+  "beet": {
+    "oldRecordId": "169145",
+    "newNdb": "11080",
+    "newFdcId": 169145,
+    "newRecordId": "11080",
+    "newCitation": "USDA FoodData Central SR Legacy NDB 11080, Beets, raw (FDC ID 169145)",
+    "dataset": "SR Legacy",
+    "description": "Beets, raw",
+    "oldCitation": "USDA FoodData Central SR Legacy FDC ID 169145, Beets, raw"
+  },
+  "cucumber": {
+    "oldRecordId": "168409",
+    "newNdb": "11205",
+    "newFdcId": 168409,
+    "newRecordId": "11205",
+    "newCitation": "USDA FoodData Central SR Legacy NDB 11205, Cucumber, with peel, raw (FDC ID 168409)",
+    "dataset": "SR Legacy",
+    "description": "Cucumber, with peel, raw",
+    "oldCitation": "USDA FoodData Central SR Legacy FDC ID 168409, Cucumber, with peel, raw"
+  },
+  "fennel": {
+    "oldRecordId": "170238",
+    "newNdb": "11957",
+    "newFdcId": 169385,
+    "newRecordId": "11957",
+    "newCitation": "USDA FoodData Central SR Legacy NDB 11957, Fennel, bulb, raw (FDC ID 169385)",
+    "dataset": "SR Legacy",
+    "description": "Fennel, bulb, raw",
+    "oldCitation": "USDA FoodData Central SR Legacy FDC ID 170238, Fennel, bulb, raw"
+  },
+  "sweet_potato": {
+    "oldRecordId": "170280",
+    "newNdb": "11507",
+    "newFdcId": 168482,
+    "newRecordId": "11507",
+    "newCitation": "USDA FoodData Central SR Legacy NDB 11507, Sweet potato, raw, unprepared (Includes foods for USDA's Food Distribution Program) (FDC ID 168482)",
+    "dataset": "SR Legacy",
+    "description": "Sweet potato, raw, unprepared (Includes foods for USDA's Food Distribution Program)",
+    "oldCitation": "USDA FoodData Central SR Legacy FDC ID 170280, Sweet potato, raw"
+  },
+  "turnip": {
+    "oldRecordId": "170465",
+    "newNdb": "11564",
+    "newFdcId": 170465,
+    "newRecordId": "11564",
+    "newCitation": "USDA FoodData Central SR Legacy NDB 11564, Turnips, raw (FDC ID 170465)",
+    "dataset": "SR Legacy",
+    "description": "Turnips, raw",
+    "oldCitation": "USDA FoodData Central SR Legacy FDC ID 170465, Turnips, raw"
+  },
+  "celeriac": {
+    "oldRecordId": "170425",
+    "newNdb": "11141",
+    "newFdcId": 170400,
+    "newRecordId": "11141",
+    "newCitation": "USDA FoodData Central SR Legacy NDB 11141, Celeriac, raw (FDC ID 170400)",
+    "dataset": "SR Legacy",
+    "description": "Celeriac, raw",
+    "oldCitation": "USDA FoodData Central SR Legacy FDC ID 170425, Celeriac, raw"
+  },
+  "jicama": {
+    "oldRecordId": "170434",
+    "newNdb": "11603",
+    "newFdcId": 170073,
+    "newRecordId": "11603",
+    "newCitation": "USDA FoodData Central SR Legacy NDB 11603, Yambean (jicama), raw (FDC ID 170073)",
+    "dataset": "SR Legacy",
+    "description": "Yambean (jicama), raw",
+    "oldCitation": "USDA FoodData Central SR Legacy FDC ID 170434, Jicama, raw"
+  },
+  "zucchini": {
+    "oldRecordId": "170416",
+    "newNdb": "11477",
+    "newFdcId": 169291,
+    "newRecordId": "11477",
+    "newCitation": "USDA FoodData Central SR Legacy NDB 11477, Squash, summer, zucchini, includes skin, raw (FDC ID 169291)",
+    "dataset": "SR Legacy",
+    "description": "Squash, summer, zucchini, includes skin, raw",
+    "oldCitation": "USDA FoodData Central SR Legacy FDC ID 170416, Squash, summer, zucchini, includes skin, raw"
+  },
+  "asparagus": {
+    "oldRecordId": "168389",
+    "newNdb": "11011",
+    "newFdcId": 168389,
+    "newRecordId": "11011",
+    "newCitation": "USDA FoodData Central SR Legacy NDB 11011, Asparagus, raw (FDC ID 168389)",
+    "dataset": "SR Legacy",
+    "description": "Asparagus, raw",
+    "oldCitation": "USDA FoodData Central SR Legacy FDC ID 168389, Asparagus, raw"
+  },
+  "radish": {
+    "oldRecordId": "169987",
+    "newNdb": "11429",
+    "newFdcId": 169276,
+    "newRecordId": "11429",
+    "newCitation": "USDA FoodData Central SR Legacy NDB 11429, Radishes, raw (FDC ID 169276)",
+    "dataset": "SR Legacy",
+    "description": "Radishes, raw",
+    "oldCitation": "USDA FoodData Central SR Legacy FDC ID 169987, Radishes, raw"
+  },
+  "ginger": {
+    "oldRecordId": "1104647",
+    "newNdb": "11216",
+    "newFdcId": 169231,
+    "newRecordId": "11216",
+    "newCitation": "USDA FoodData Central SR Legacy NDB 11216, Ginger root, raw (FDC ID 169231)",
+    "dataset": "SR Legacy",
+    "description": "Ginger root, raw",
+    "oldCitation": "USDA FoodData Central SR Legacy FDC ID 1104647, Ginger, raw"
+  },
+  "garlic": {
+    "oldRecordId": "1104647",
+    "newNdb": "11215",
+    "newFdcId": 169230,
+    "newRecordId": "11215",
+    "newCitation": "USDA FoodData Central SR Legacy NDB 11215, Garlic, raw (FDC ID 169230)",
+    "dataset": "SR Legacy",
+    "description": "Garlic, raw",
+    "oldCitation": "USDA FoodData Central SR Legacy FDC ID 1104647, Garlic, raw"
+  },
+  "bell_pepper_red": {
+    "oldRecordId": "1183295",
+    "newNdb": "11821",
+    "newFdcId": 170108,
+    "newRecordId": "11821",
+    "newCitation": "USDA FoodData Central SR Legacy NDB 11821, Peppers, sweet, red, raw (FDC ID 170108)",
+    "dataset": "SR Legacy",
+    "description": "Peppers, sweet, red, raw",
+    "oldCitation": "USDA FoodData Central SR Legacy FDC ID 1183295, Peppers, sweet, red, raw"
+  },
+  "bell_pepper_yellow": {
+    "oldRecordId": "1183295",
+    "newNdb": "11951",
+    "newFdcId": 169383,
+    "newRecordId": "11951",
+    "newCitation": "USDA FoodData Central SR Legacy NDB 11951, Peppers, sweet, yellow, raw (FDC ID 169383)",
+    "dataset": "SR Legacy",
+    "description": "Peppers, sweet, yellow, raw",
+    "oldCitation": "USDA FoodData Central SR Legacy — yellow bell pepper portion weights inferred from red/green bell pepper SR Legacy data"
+  },
+  "bell_pepper_green": {
+    "oldRecordId": "1104467",
+    "newNdb": "11333",
+    "newFdcId": 170427,
+    "newRecordId": "11333",
+    "newCitation": "USDA FoodData Central SR Legacy NDB 11333, Peppers, sweet, green, raw (FDC ID 170427)",
+    "dataset": "SR Legacy",
+    "description": "Peppers, sweet, green, raw",
+    "oldCitation": "USDA FoodData Central SR Legacy FDC ID 1104467, Peppers, jalapeño, raw"
+  },
+  "jalapeno": {
+    "oldRecordId": null,
+    "newNdb": "11979",
+    "newFdcId": 168576,
+    "newRecordId": "11979",
+    "newCitation": "USDA FoodData Central SR Legacy NDB 11979, Peppers, jalapeno, raw (FDC ID 168576)",
+    "dataset": "SR Legacy",
+    "description": "Peppers, jalapeno, raw"
+  },
+  "cayenne": {
+    "oldRecordId": "1104517",
+    "newNdb": "11819",
+    "newFdcId": 170106,
+    "newRecordId": "11819",
+    "newCitation": "USDA FoodData Central SR Legacy NDB 11819, Peppers, hot chili, red, raw (FDC ID 170106)",
+    "dataset": "SR Legacy",
+    "description": "Peppers, hot chili, red, raw",
+    "oldCitation": "USDA FoodData Central SR Legacy FDC ID 1104517, Peppers, hot chili, red, raw"
+  },
+  "tomato": {
+    "oldRecordId": "2709719",
+    "newNdb": "11529",
+    "newFdcId": 170457,
+    "newRecordId": "11529",
+    "newCitation": "USDA FoodData Central SR Legacy NDB 11529, Tomatoes, red, ripe, raw, year round average (FDC ID 170457)",
+    "dataset": "SR Legacy",
+    "description": "Tomatoes, red, ripe, raw, year round average",
+    "oldCitation": "USDA FoodData Central FNDDS 2021-2023, Tomatoes, raw"
+  },
+  "apple": {
+    "oldRecordId": "171688",
+    "newNdb": "9003",
+    "newFdcId": 171688,
+    "newRecordId": "9003",
+    "newCitation": "USDA FoodData Central SR Legacy NDB 9003, Apples, raw, with skin (Includes foods for USDA's Food Distribution Program) (FDC ID 171688)",
+    "dataset": "SR Legacy",
+    "description": "Apples, raw, with skin (Includes foods for USDA's Food Distribution Program)",
+    "oldCitation": "USDA FoodData Central SR Legacy FDC ID 171688, Apples, raw, with skin"
+  },
+  "lemon": {
+    "oldRecordId": "171705",
+    "newNdb": "9150",
+    "newFdcId": 167746,
+    "newRecordId": "9150",
+    "newCitation": "USDA FoodData Central SR Legacy NDB 9150, Lemons, raw, without peel (FDC ID 167746)",
+    "dataset": "SR Legacy",
+    "description": "Lemons, raw, without peel",
+    "oldCitation": "USDA FoodData Central SR Legacy FDC ID 171705, Lemons, raw, with peel"
+  },
+  "lime": {
+    "oldRecordId": "171908",
+    "newNdb": "9159",
+    "newFdcId": 168155,
+    "newRecordId": "9159",
+    "newCitation": "USDA FoodData Central SR Legacy NDB 9159, Limes, raw (FDC ID 168155)",
+    "dataset": "SR Legacy",
+    "description": "Limes, raw",
+    "oldCitation": "USDA FoodData Central SR Legacy FDC ID 171908, Limes, raw"
+  },
+  "orange": {
+    "oldRecordId": "171710",
+    "newNdb": "9200",
+    "newFdcId": 169097,
+    "newRecordId": "9200",
+    "newCitation": "USDA FoodData Central SR Legacy NDB 9200, Oranges, raw, all commercial varieties (FDC ID 169097)",
+    "dataset": "SR Legacy",
+    "description": "Oranges, raw, all commercial varieties",
+    "oldCitation": "USDA FoodData Central SR Legacy FDC ID 171710, Oranges, raw, all commercial varieties"
+  },
+  "grapefruit": {
+    "oldRecordId": "171711",
+    "newNdb": "9111",
+    "newFdcId": 173033,
+    "newRecordId": "9111",
+    "newCitation": "USDA FoodData Central SR Legacy NDB 9111, Grapefruit, raw, pink and red and white, all areas (FDC ID 173033)",
+    "dataset": "SR Legacy",
+    "description": "Grapefruit, raw, pink and red and white, all areas",
+    "oldCitation": "USDA FoodData Central SR Legacy FDC ID 171711, Grapefruit, raw, all varieties"
+  },
+  "pineapple": {
+    "oldRecordId": "171712",
+    "newNdb": "9429",
+    "newFdcId": 168193,
+    "newRecordId": "9429",
+    "newCitation": "USDA FoodData Central SR Legacy NDB 9429, Pineapple, raw, traditional varieties (FDC ID 168193)",
+    "dataset": "SR Legacy",
+    "description": "Pineapple, raw, traditional varieties",
+    "oldCitation": "USDA FoodData Central SR Legacy FDC ID 171712, Pineapple, raw, all varieties"
+  },
+  "watermelon": {
+    "oldRecordId": "171713",
+    "newNdb": "9326",
+    "newFdcId": 167765,
+    "newRecordId": "9326",
+    "newCitation": "USDA FoodData Central SR Legacy NDB 9326, Watermelon, raw (FDC ID 167765)",
+    "dataset": "SR Legacy",
+    "description": "Watermelon, raw",
+    "oldCitation": "USDA FoodData Central SR Legacy FDC ID 171713, Watermelon, raw"
+  },
+  "pomegranate": {
+    "oldRecordId": "171714",
+    "newNdb": "9286",
+    "newFdcId": 169134,
+    "newRecordId": "9286",
+    "newCitation": "USDA FoodData Central SR Legacy NDB 9286, Pomegranates, raw (FDC ID 169134)",
+    "dataset": "SR Legacy",
+    "description": "Pomegranates, raw",
+    "oldCitation": "USDA FoodData Central SR Legacy FDC ID 171714, Pomegranates, raw"
+  },
+  "mango": {
+    "oldRecordId": "171715",
+    "newNdb": "9176",
+    "newFdcId": 169910,
+    "newRecordId": "9176",
+    "newCitation": "USDA FoodData Central SR Legacy NDB 9176, Mangos, raw (FDC ID 169910)",
+    "dataset": "SR Legacy",
+    "description": "Mangos, raw",
+    "oldCitation": "USDA FoodData Central SR Legacy FDC ID 171715, Mangoes, raw"
+  },
+  "papaya": {
+    "oldRecordId": "171716",
+    "newNdb": "9226",
+    "newFdcId": 169926,
+    "newRecordId": "9226",
+    "newCitation": "USDA FoodData Central SR Legacy NDB 9226, Papayas, raw (FDC ID 169926)",
+    "dataset": "SR Legacy",
+    "description": "Papayas, raw",
+    "oldCitation": "USDA FoodData Central SR Legacy FDC ID 171716, Papayas, raw"
+  },
+  "kiwi": {
+    "oldRecordId": "171717",
+    "newNdb": "9148",
+    "newFdcId": 168153,
+    "newRecordId": "9148",
+    "newCitation": "USDA FoodData Central SR Legacy NDB 9148, Kiwifruit, green, raw (FDC ID 168153)",
+    "dataset": "SR Legacy",
+    "description": "Kiwifruit, green, raw",
+    "oldCitation": "USDA FoodData Central SR Legacy FDC ID 171717, Kiwifruit, green, raw"
+  },
+  "pear": {
+    "oldRecordId": "171719",
+    "newNdb": "9252",
+    "newFdcId": 169118,
+    "newRecordId": "9252",
+    "newCitation": "USDA FoodData Central SR Legacy NDB 9252, Pears, raw (FDC ID 169118)",
+    "dataset": "SR Legacy",
+    "description": "Pears, raw",
+    "oldCitation": "USDA FoodData Central SR Legacy FDC ID 171719, Pears, raw"
+  },
+  "grape": {
+    "oldRecordId": "171721",
+    "newNdb": "9132",
+    "newFdcId": 174683,
+    "newRecordId": "9132",
+    "newCitation": "USDA FoodData Central SR Legacy NDB 9132, Grapes, red or green (European type, such as Thompson seedless), raw (FDC ID 174683)",
+    "dataset": "SR Legacy",
+    "description": "Grapes, red or green (European type, such as Thompson seedless), raw",
+    "oldCitation": "USDA FoodData Central SR Legacy FDC ID 171721, Grapes, red or green, raw"
+  },
+  "strawberry": {
+    "oldRecordId": "171722",
+    "newNdb": "9316",
+    "newFdcId": 167762,
+    "newRecordId": "9316",
+    "newCitation": "USDA FoodData Central SR Legacy NDB 9316, Strawberries, raw (FDC ID 167762)",
+    "dataset": "SR Legacy",
+    "description": "Strawberries, raw",
+    "oldCitation": "USDA FoodData Central SR Legacy FDC ID 171722, Strawberries, raw"
+  },
+  "blueberry": {
+    "oldRecordId": "171723",
+    "newNdb": "9050",
+    "newFdcId": 171711,
+    "newRecordId": "9050",
+    "newCitation": "USDA FoodData Central SR Legacy NDB 9050, Blueberries, raw (FDC ID 171711)",
+    "dataset": "SR Legacy",
+    "description": "Blueberries, raw",
+    "oldCitation": "USDA FoodData Central SR Legacy FDC ID 171723, Blueberries, raw"
+  },
+  "raspberry": {
+    "oldRecordId": "171724",
+    "newNdb": "9302",
+    "newFdcId": 167755,
+    "newRecordId": "9302",
+    "newCitation": "USDA FoodData Central SR Legacy NDB 9302, Raspberries, raw (FDC ID 167755)",
+    "dataset": "SR Legacy",
+    "description": "Raspberries, raw",
+    "oldCitation": "USDA FoodData Central SR Legacy FDC ID 171724, Raspberries, raw"
+  },
+  "blackberry": {
+    "oldRecordId": "171725",
+    "newNdb": "9042",
+    "newFdcId": 173946,
+    "newRecordId": "9042",
+    "newCitation": "USDA FoodData Central SR Legacy NDB 9042, Blackberries, raw (FDC ID 173946)",
+    "dataset": "SR Legacy",
+    "description": "Blackberries, raw",
+    "oldCitation": "USDA FoodData Central SR Legacy FDC ID 171725, Blackberries, raw"
+  },
+  "cranberry": {
+    "oldRecordId": "171726",
+    "newNdb": "9078",
+    "newFdcId": 171722,
+    "newRecordId": "9078",
+    "newCitation": "USDA FoodData Central SR Legacy NDB 9078, Cranberries, raw (FDC ID 171722)",
+    "dataset": "SR Legacy",
+    "description": "Cranberries, raw",
+    "oldCitation": "USDA FoodData Central SR Legacy FDC ID 171726, Cranberries, raw"
+  },
+  "cherry": {
+    "oldRecordId": "171727",
+    "newNdb": "9063",
+    "newFdcId": 173954,
+    "newRecordId": "9063",
+    "newCitation": "USDA FoodData Central SR Legacy NDB 9063, Cherries, sour, red, raw (FDC ID 173954)",
+    "dataset": "SR Legacy",
+    "description": "Cherries, sour, red, raw",
+    "oldCitation": "USDA FoodData Central SR Legacy FDC ID 171727, Cherries, sour, red, raw"
+  },
+  "cantaloupe": {
+    "oldRecordId": "171706",
+    "newNdb": "9181",
+    "newFdcId": 169092,
+    "newRecordId": "9181",
+    "newCitation": "USDA FoodData Central SR Legacy NDB 9181, Melons, cantaloupe, raw (FDC ID 169092)",
+    "dataset": "SR Legacy",
+    "description": "Melons, cantaloupe, raw",
+    "oldCitation": "USDA FoodData Central SR Legacy FDC ID 171706, Cantaloupe, raw"
+  },
+  "honeydew": {
+    "oldRecordId": "171707",
+    "newNdb": "9184",
+    "newFdcId": 169911,
+    "newRecordId": "9184",
+    "newCitation": "USDA FoodData Central SR Legacy NDB 9184, Melons, honeydew, raw (FDC ID 169911)",
+    "dataset": "SR Legacy",
+    "description": "Melons, honeydew, raw",
+    "oldCitation": "USDA FoodData Central SR Legacy FDC ID 171707, Melons, honeydew, raw"
+  },
+  "coconut_water": {
+    "oldRecordId": "171788",
+    "newNdb": "12119",
+    "newFdcId": 170174,
+    "newRecordId": "12119",
+    "newCitation": "USDA FoodData Central SR Legacy NDB 12119, Nuts, coconut water (liquid from coconuts) (FDC ID 170174)",
+    "dataset": "SR Legacy",
+    "description": "Nuts, coconut water (liquid from coconuts)",
+    "oldCitation": "USDA FoodData Central SR Legacy FDC ID 171788, Nuts, coconut water (liquid from coconuts)"
+  },
+  "passion_fruit": {
+    "oldRecordId": "171728",
+    "newNdb": "9231",
+    "newFdcId": 169108,
+    "newRecordId": "9231",
+    "newCitation": "USDA FoodData Central SR Legacy NDB 9231, Passion-fruit, (granadilla), purple, raw (FDC ID 169108)",
+    "dataset": "SR Legacy",
+    "description": "Passion-fruit, (granadilla), purple, raw",
+    "oldCitation": "USDA FoodData Central SR Legacy FDC ID 171728, Passion fruit, (granadilla), raw"
+  },
+  "peach": {
+    "oldRecordId": "171720",
+    "newNdb": "9236",
+    "newFdcId": 169928,
+    "newRecordId": "9236",
+    "newCitation": "USDA FoodData Central SR Legacy NDB 9236, Peaches, yellow, raw (FDC ID 169928)",
+    "dataset": "SR Legacy",
+    "description": "Peaches, yellow, raw",
+    "oldCitation": "USDA FoodData Central SR Legacy FDC ID 171720, Peaches, raw"
+  },
+  "plum": {
+    "oldRecordId": "171724",
+    "newNdb": "9279",
+    "newFdcId": 169949,
+    "newRecordId": "9279",
+    "newCitation": "USDA FoodData Central SR Legacy NDB 9279, Plums, raw (FDC ID 169949)",
+    "dataset": "SR Legacy",
+    "description": "Plums, raw",
+    "oldCitation": "USDA FoodData Central SR Legacy FDC ID 171724, Plums, raw"
+  },
+  "nectarine": {
+    "oldRecordId": "171718",
+    "newNdb": "9191",
+    "newFdcId": 169914,
+    "newRecordId": "9191",
+    "newCitation": "USDA FoodData Central SR Legacy NDB 9191, Nectarines, raw (FDC ID 169914)",
+    "dataset": "SR Legacy",
+    "description": "Nectarines, raw",
+    "oldCitation": "USDA FoodData Central SR Legacy FDC ID 171718, Nectarines, raw"
+  },
+  "bok_choy": {
+    "oldRecordId": "11196",
+    "newNdb": "11116",
+    "newFdcId": 2685572,
+    "newRecordId": "11116",
+    "newCitation": "USDA FoodData Central Foundation Foods NDB 11116, Cabbage, bok choy, raw (FDC ID 2685572)",
+    "dataset": "Foundation Foods",
+    "description": "Cabbage, bok choy, raw",
+    "oldCitation": "USDA FoodData Central SR Legacy NDB 11196, Bok choy, raw"
+  },
+  "wheatgrass": {
+    "oldRecordId": "110366",
+    "newNdb": null,
+    "newFdcId": null,
+    "newRecordId": "null",
+    "newCitation": "USDA FoodData Central FNDDS 2021-2023 — wheatgrass has no standardized portion weight in SR Legacy, Foundation Foods, or FNDDS",
+    "dataset": "FNDDS",
+    "description": "Wheatgrass, raw",
+    "oldCitation": "USDA FoodData Central FNDDS 2021-2023 — wheatgrass has no standardized portion weight in SR Legacy or FNDDS"
+  },
+  "turmeric": {
+    "oldRecordId": "170556",
+    "newNdb": null,
+    "newFdcId": 170556,
+    "newRecordId": "170556",
+    "newCitation": "USDA FoodData Central Foundation Foods FDC ID 170556, Turmeric, raw",
+    "dataset": "Foundation Foods",
+    "description": "Turmeric, raw",
+    "oldCitation": "USDA FoodData Central Foundation Foods FDC ID 170556, Turmeric, raw"
+  },
+  "aloe_vera": {
+    "oldRecordId": "110368",
+    "newNdb": null,
+    "newFdcId": null,
+    "newRecordId": "null",
+    "newCitation": "USDA FoodData Central FNDDS 2021-2023 — aloe vera gel has no standardized USDA household portion weight",
+    "dataset": "FNDDS",
+    "description": "Aloe vera, raw",
+    "oldCitation": "USDA FoodData Central FNDDS 2021-2023 — aloe vera gel has no standardized USDA household portion weight"
+  },
+  "apple_green": {
+    "oldRecordId": "171688",
+    "newNdb": "9003",
+    "newFdcId": 171688,
+    "newRecordId": "9003",
+    "newCitation": "USDA FoodData Central SR Legacy NDB 9003, Apples, raw, with skin (Includes foods for USDA's Food Distribution Program) (FDC ID 171688)",
+    "dataset": "SR Legacy",
+    "description": "Apples, raw, with skin (Includes foods for USDA's Food Distribution Program)",
+    "oldCitation": "USDA FoodData Central SR Legacy FDC ID 171688, Apples, raw, with skin"
+  },
+  "apple_red": {
+    "oldRecordId": "171688",
+    "newNdb": "9003",
+    "newFdcId": 171688,
+    "newRecordId": "9003",
+    "newCitation": "USDA FoodData Central SR Legacy NDB 9003, Apples, raw, with skin (Includes foods for USDA's Food Distribution Program) (FDC ID 171688)",
+    "dataset": "SR Legacy",
+    "description": "Apples, raw, with skin (Includes foods for USDA's Food Distribution Program)",
+    "oldCitation": "USDA FoodData Central SR Legacy FDC ID 171688, Apples, raw, with skin"
+  }
+}

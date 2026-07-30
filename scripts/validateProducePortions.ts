@@ -23,10 +23,16 @@
  * 16. Authority valid — must be 'USDA', 'FDA', or 'peer-reviewed'
  * 17. Quantity-supported consistency — quantitySupported=true requires units.length > 0
  * 18. Weight-only consistency — quantitySupported=false requires units.length === 0
+ * 19. NDB number format — USDA SR Legacy records must have a numeric ndbNumber
+ * 20. FDC ID format — USDA records should have a numeric fdcId or null
+ * 21. recordId consistency — recordId must equal ndbNumber or String(fdcId)
+ * 22. Manifest reconciliation — every USDA record matches official-source-manifest.json
  */
 
 import { PRODUCE_PORTIONS } from '../src/constants/producePortions'
 import { PRODUCE_DATA } from '../src/services/JuiceEngine'
+import { readFileSync } from 'fs'
+import { join } from 'path'
 
 interface ValidationError {
   check: string
@@ -39,6 +45,15 @@ const warnings: ValidationError[] = []
 
 const produceDataKeys = Object.keys(PRODUCE_DATA)
 const portionKeys = Object.keys(PRODUCE_PORTIONS)
+
+// Load official source manifest for reconciliation
+let manifest: any = null
+try {
+  const manifestPath = join(__dirname, '..', 'Docs', 'generated', 'official-source-manifest.json')
+  manifest = JSON.parse(readFileSync(manifestPath, 'utf8'))
+} catch {
+  warnings.push({ check: 'manifest-load', produceId: '', message: 'Could not load official-source-manifest.json — skipping reconciliation check' })
+}
 
 // 1. Coverage
 for (const key of produceDataKeys) {
@@ -175,10 +190,55 @@ for (const [pid, record] of Object.entries(PRODUCE_PORTIONS)) {
   if (!record.quantitySupported && record.units.length > 0) {
     errors.push({ check: 'weight-only', produceId: pid, message: 'quantitySupported=false but units are defined' })
   }
+
+  // 19. NDB number format — USDA SR Legacy records must have a numeric ndbNumber
+  for (const sr of record.sourceRecords) {
+    if (sr.authority === 'USDA' && sr.dataset === 'SR Legacy') {
+      if (!sr.ndbNumber || !/^\d{1,6}$/.test(sr.ndbNumber)) {
+        errors.push({ check: 'ndb-format', produceId: pid, message: `SR Legacy record has invalid ndbNumber "${sr.ndbNumber}"` })
+      }
+    }
+  }
+
+  // 20. FDC ID format — USDA records should have a numeric fdcId or null
+  for (const sr of record.sourceRecords) {
+    if (sr.authority === 'USDA') {
+      if (sr.fdcId !== null && (typeof sr.fdcId !== 'number' || !Number.isFinite(sr.fdcId))) {
+        errors.push({ check: 'fdc-format', produceId: pid, message: `USDA record has invalid fdcId "${sr.fdcId}"` })
+      }
+    }
+  }
+
+  // 21. recordId consistency — recordId must equal ndbNumber or String(fdcId)
+  for (const sr of record.sourceRecords) {
+    const expected = sr.ndbNumber ?? (sr.fdcId != null ? String(sr.fdcId) : '')
+    if (sr.recordId !== expected) {
+      errors.push({ check: 'record-id', produceId: pid, message: `recordId "${sr.recordId}" should be "${expected}" (ndb=${sr.ndbNumber}, fdc=${sr.fdcId})` })
+    }
+  }
+
+  // 22. Manifest reconciliation — every USDA record matches official-source-manifest.json
+  if (manifest) {
+    const manifestRecord = manifest.records[pid]
+    if (manifestRecord) {
+      for (const sr of record.sourceRecords) {
+        if (sr.authority === 'USDA' && sr.ndbNumber && manifestRecord.ndbNumber) {
+          if (sr.ndbNumber !== manifestRecord.ndbNumber) {
+            errors.push({ check: 'manifest-ndb', produceId: pid, message: `NDB mismatch: registry=${sr.ndbNumber}, manifest=${manifestRecord.ndbNumber}` })
+          }
+        }
+        if (sr.authority === 'USDA' && sr.fdcId && manifestRecord.fdcId) {
+          if (sr.fdcId !== manifestRecord.fdcId) {
+            errors.push({ check: 'manifest-fdc', produceId: pid, message: `FDC ID mismatch: registry=${sr.fdcId}, manifest=${manifestRecord.fdcId}` })
+          }
+        }
+      }
+    }
+  }
 }
 
 // Summary
-const totalChecks = 18
+const totalChecks = 22
 const passedChecks = totalChecks // will adjust if errors
 
 console.log('=== Produce Portion Registry Validator ===\n')

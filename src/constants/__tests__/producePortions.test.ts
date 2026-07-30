@@ -167,4 +167,52 @@ describe('Produce Portion Registry', () => {
       }
     }
   })
+
+  // 19. NDB number format for SR Legacy records
+  test('USDA SR Legacy records have numeric ndbNumber', () => {
+    for (const [pid, record] of Object.entries(PRODUCE_PORTIONS)) {
+      for (const sr of record.sourceRecords) {
+        if (sr.authority === 'USDA' && sr.dataset === 'SR Legacy') {
+          expect(sr.ndbNumber).not.toBeNull()
+          expect(sr.ndbNumber).toMatch(/^\d{1,6}$/)
+        }
+      }
+    }
+  })
+
+  // 20. FDC ID format for USDA records
+  test('USDA records have numeric fdcId or null', () => {
+    for (const [pid, record] of Object.entries(PRODUCE_PORTIONS)) {
+      for (const sr of record.sourceRecords) {
+        if (sr.authority === 'USDA') {
+          if (sr.fdcId !== null) {
+            expect(typeof sr.fdcId).toBe('number')
+            expect(Number.isFinite(sr.fdcId)).toBe(true)
+          }
+        }
+      }
+    }
+  })
+
+  // 21. recordId consistency
+  test('recordId equals ndbNumber or String(fdcId)', () => {
+    for (const [pid, record] of Object.entries(PRODUCE_PORTIONS)) {
+      for (const sr of record.sourceRecords) {
+        const expected = sr.ndbNumber ?? (sr.fdcId != null ? String(sr.fdcId) : '')
+        expect(sr.recordId).toBe(expected)
+      }
+    }
+  })
+
+  // 22. No FDC IDs used as NDB numbers
+  test('no recordId is a 6-digit FDC ID (100000+ range indicates FDC not NDB)', () => {
+    for (const [pid, record] of Object.entries(PRODUCE_PORTIONS)) {
+      for (const sr of record.sourceRecords) {
+        if (sr.authority === 'USDA' && sr.dataset === 'SR Legacy' && sr.ndbNumber) {
+          const ndb = parseInt(sr.ndbNumber, 10)
+          expect(ndb).toBeLessThan(20000)
+        }
+      }
+    }
+  })
 })

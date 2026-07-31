@@ -11,6 +11,12 @@ import { SUPABASE_URL } from '../subscriptions/subscriptionConfig'
 import { isSupabaseConfigured } from '../supabase/supabaseClient'
 import { getAccessToken } from '../supabase/identity'
 import { isDurableUser, refreshSessionAndCheckDurable } from '../supabase/accountLink'
+import {
+  checkGuestJourney,
+  reserveGuestJourney,
+  releaseGuestJourney,
+  createJourneyId,
+} from './guestJourneyService'
 import type { ScanQuotaErrorCode, ScanQuotaSnapshot } from '../subscriptions/subscriptionTypes'
 
 export class ScanQuotaError extends Error {
@@ -92,6 +98,7 @@ async function performServerScan (
   mediaType: string,
   requestId: string,
   depthDataMm: number[] | null,
+  guestJourneyId?: string | null,
 ): Promise<ServerScanResponse> {
   const res = await authedFetch('analyze-scan', {
     method: 'POST',
@@ -100,6 +107,7 @@ async function performServerScan (
       mediaType,
       imageBase64,
       depthDataMm: depthDataMm && depthDataMm.length > 0 ? depthDataMm.slice(0, 100) : null,
+      guestJourneyId: guestJourneyId ?? undefined,
     }),
   })
 
@@ -115,8 +123,10 @@ async function performServerScan (
     throw new ScanQuotaError('unauthenticated', 'Authentication failed')
   }
   if (res.status === 403 && body.code === 'account_required') {
-    // Server-side gate: the token belongs to an anonymous user.
     throw new ScanQuotaError('account_required', body.message ?? 'Account required')
+  }
+  if (res.status === 403 && body.code === 'journey_already_used') {
+    throw new ScanQuotaError('account_required', 'Guest journey already used — registration required')
   }
   if (!res.ok) {
     throw new ScanQuotaError('server_error', body.message ?? `Scan failed (${res.status})`, quota)
@@ -138,12 +148,42 @@ export async function analyzeScanOnServer (
   // so the allowance can never be reset by reinstalling or clearing
   // storage. Checked BEFORE any request — no scan is reserved or
   // consumed until authentication succeeds.
+  //
+  // Guest exception: anonymous users with an available guest journey
+  // may perform exactly one scan. The guest journey is reserved on
+  // the server via the guest-journey Edge Function before the scan.
   const durable = await isDurableUser()
+
   if (!durable) {
-    throw new ScanQuotaError(
-      'account_required',
-      'A free account is required before your first scan',
-    )
+    // Check if the guest journey is available.
+    const guestState = await checkGuestJourney()
+    if (guestState.status !== 'available') {
+      throw new ScanQuotaError(
+        'account_required',
+        'A free account is required before your first scan',
+      )
+    }
+
+    // Reserve the guest journey for this scan.
+    const journeyId = createJourneyId()
+    const reserveResult = await reserveGuestJourney(journeyId, 'scan')
+    if (!reserveResult.ok) {
+      throw new ScanQuotaError(
+        'account_required',
+        'Guest journey already used — registration required',
+      )
+    }
+
+    try {
+      return await performServerScan(imageBase64, mediaType, requestId, depthDataMm, journeyId)
+    } catch (e) {
+      // If the scan failed, release the guest journey so the user
+      // can try again.
+      if (e instanceof ScanQuotaError && e.code !== 'account_required') {
+        await releaseGuestJourney(journeyId)
+      }
+      throw e
+    }
   }
 
   try {

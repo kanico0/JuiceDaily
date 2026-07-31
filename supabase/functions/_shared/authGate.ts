@@ -25,6 +25,7 @@ export interface VerifiedUser {
 
 export type GateResult =
   | { ok: true; userId: string }
+  | { ok: true; userId: string; isGuest: true; journeyId: string }
   | {
       ok: false
       status: 401 | 403
@@ -46,6 +47,7 @@ export function extractBearerToken (authHeader: string | null): string | null {
 export function evaluateScanUser (
   user: VerifiedUser | null,
   verifyError: { message: string } | null,
+  guestJourneyId?: string | null,
 ): GateResult {
   if (verifyError || !user || !user.id) {
     return {
@@ -57,6 +59,9 @@ export function evaluateScanUser (
   }
 
   if (user.is_anonymous === true) {
+    if (guestJourneyId) {
+      return { ok: true, userId: user.id, isGuest: true, journeyId: guestJourneyId }
+    }
     return {
       ok: false,
       status: 403,

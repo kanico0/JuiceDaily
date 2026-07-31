@@ -81,26 +81,34 @@ Deno.serve(async (req) => {
   const admin = createClient(supabaseUrl, serviceKey)
   const { data: userData, error: userError } = await admin.auth.getUser(jwt)
 
-  // ── Durable-account gate (server-authoritative) ────────────
-  // Anonymous Supabase users carry the 'authenticated' role, so
-  // the gate checks the server-trusted is_anonymous flag on the
-  // VERIFIED user record. Runs BEFORE body parsing, quota
-  // reservation, scan-record insertion, and the Anthropic call:
-  // an anonymous rejection consumes zero quota and creates no
-  // billable activity.
-  const gate = evaluateScanUser(userData?.user ?? null, userError)
-  if (!gate.ok) return json(gate.status, { code: gate.code, message: gate.message })
-
-  // Canonical user id comes exclusively from the verified token.
-  const userId = gate.userId
-
-  // ── Validate request ───────────────────────────────────────
+  // ── Validate request body first ────────────────────────────
+  // (Needed early to extract guestJourneyId for the auth gate.)
   let body: Record<string, unknown>
   try {
     body = await req.json()
   } catch {
     return json(400, { message: 'Invalid JSON body' })
   }
+
+  const guestJourneyId = body.guestJourneyId ? String(body.guestJourneyId) : null
+
+  // ── Durable-account gate (server-authoritative) ────────────
+  // Anonymous Supabase users carry the 'authenticated' role, so
+  // the gate checks the server-trusted is_anonymous flag on the
+  // VERIFIED user record. Runs BEFORE quota reservation,
+  // scan-record insertion, and the Anthropic call:
+  // an anonymous rejection consumes zero quota and creates no
+  // billable activity.
+  //
+  // Guest scans: if guestJourneyId is provided, the gate allows
+  // the anonymous user through. The guest journey reservation
+  // (reserve_guest_journey) is then checked atomically.
+  const gate = evaluateScanUser(userData?.user ?? null, userError, guestJourneyId)
+  if (!gate.ok) return json(gate.status, { code: gate.code, message: gate.message })
+
+  // Canonical user id comes exclusively from the verified token.
+  const userId = gate.userId
+  const isGuest = gate.isGuest === true
 
   const requestId = String(body.requestId ?? '')
   const imageBase64 = String(body.imageBase64 ?? '')
@@ -116,22 +124,42 @@ Deno.serve(async (req) => {
     return json(400, { message: 'Unsupported media type' })
   }
 
-  // ── Reserve quota (atomic + idempotent) ────────────────────
+  // ── Reserve quota or guest journey ─────────────────────────
   const imageHash = await sha256Hex(imageBase64)
-  const { data: reserveData, error: reserveError } = await admin.rpc('reserve_scan', {
-    p_user_id: userId,
-    p_request_id: requestId,
-    p_image_hash: imageHash,
-  })
-  if (reserveError) {
-    console.error('[analyze-scan] reserve failed:', reserveError.message)
-    return json(500, { message: 'Quota check failed' })
-  }
-  const reserve = reserveData as Record<string, unknown>
-  const quota = quotaFromRpc(reserve.quota)
-  if (!reserve.ok) {
-    const code = String(reserve.code ?? 'monthly_limit_reached')
-    return json(429, { code, message: 'Scan limit reached', quota })
+
+  if (isGuest) {
+    // Guest scan: reserve the guest journey (one per user).
+    const { data: guestReserve, error: guestError } = await admin.rpc('reserve_guest_journey', {
+      p_user_id: userId,
+      p_journey_id: guestJourneyId!,
+      p_journey_type: 'scan',
+    })
+    if (guestError) {
+      console.error('[analyze-scan] guest reserve failed:', guestError.message)
+      return json(500, { message: 'Guest journey check failed' })
+    }
+    const gReserve = guestReserve as Record<string, unknown>
+    if (!gReserve.ok) {
+      const code = String(gReserve.code ?? 'journey_already_used')
+      return json(403, { code, message: 'Guest journey already used' })
+    }
+  } else {
+    // Durable user: reserve from the monthly quota.
+    const { data: reserveData, error: reserveError } = await admin.rpc('reserve_scan', {
+      p_user_id: userId,
+      p_request_id: requestId,
+      p_image_hash: imageHash,
+    })
+    if (reserveError) {
+      console.error('[analyze-scan] reserve failed:', reserveError.message)
+      return json(500, { message: 'Quota check failed' })
+    }
+    const reserve = reserveData as Record<string, unknown>
+    const quota = quotaFromRpc(reserve.quota)
+    if (!reserve.ok) {
+      const code = String(reserve.code ?? 'monthly_limit_reached')
+      return json(429, { code, message: 'Scan limit reached', quota })
+    }
   }
 
   // ── Call Anthropic ─────────────────────────────────────────
@@ -172,6 +200,13 @@ Deno.serve(async (req) => {
 
     if (!anthropicRes.ok) {
       // Technical/provider failure → release, no credit spent.
+      if (isGuest) {
+        await admin.rpc('release_guest_journey', {
+          p_user_id: userId,
+          p_journey_id: guestJourneyId!,
+        })
+        return json(502, { message: 'Vision provider error', quota: null })
+      }
       const { data: releaseData } = await admin.rpc('release_scan', {
         p_user_id: userId,
         p_request_id: requestId,
@@ -185,6 +220,21 @@ Deno.serve(async (req) => {
     const rawText: string = data.content?.[0]?.text ?? '[]'
 
     // Usable result → commit the reservation.
+    if (isGuest) {
+      // Guest scan: finalize the guest scan stage.
+      // The scan counts as 1 of 5 monthly free scans once the user
+      // upgrades — but we don't create a scan_quotas row for an
+      // anonymous user (resolve_quota would reject it). Instead,
+      // we record the scan in the guest journey state. When the
+      // user upgrades, a migration or trigger can backfill the
+      // scan_quotas row with used=1.
+      await admin.rpc('finalize_guest_scan', {
+        p_user_id: userId,
+        p_journey_id: guestJourneyId!,
+      })
+      return json(200, { rawText, quota: null, isGuest: true })
+    }
+
     const { data: commitData, error: commitError } = await admin.rpc('commit_scan', {
       p_user_id: userId,
       p_request_id: requestId,
@@ -196,6 +246,14 @@ Deno.serve(async (req) => {
     return json(200, { rawText, quota: committedQuota })
   } catch (e) {
     // Timeout / network failure → release, no credit spent.
+    if (isGuest) {
+      await admin.rpc('release_guest_journey', {
+        p_user_id: userId,
+        p_journey_id: guestJourneyId!,
+      })
+      console.error('[analyze-scan] guest provider call failed:', (e as Error)?.message)
+      return json(504, { message: 'Vision provider timeout', quota: null })
+    }
     const { data: releaseData } = await admin.rpc('release_scan', {
       p_user_id: userId,
       p_request_id: requestId,

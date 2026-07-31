@@ -51,12 +51,12 @@ import { RECIPES, getRecipeById } from '../../constants/recipeData'
 describe('Issue 1 — Permanent search guidance paragraphs', () => {
 
   const PARAGRAPHS = [
-    'If no ingredients matched your search',
-    'Check the spelling carefully and try entering the ingredient again.',
-    'Try using a shorter or more general ingredient name.',
-    'For example, enter \'pepper\' instead of a longer or more specific variety name.',
-    'You can also try a familiar fruit or vegetable such as spinach, carrot, cucumber, apple, celery, or kale.',
-    'If the ingredient still does not appear, clear the search and try another ingredient.',
+    "If no ingredients matched your search, don't worry—the ingredient may be listed under a shorter, simpler, or more familiar name in the app.",
+    'Check the spelling carefully, remove any unnecessary words, and try entering the ingredient again using the name you would normally use while shopping.',
+    'Try using a shorter or more general ingredient name, especially if you entered a color, variety, brand, preparation style, or other descriptive wording.',
+    "For example, enter 'pepper' instead of a longer or more specific variety name, then review the available results for the closest matching ingredient.",
+    'You can also test the search with a familiar fruit or vegetable such as spinach, carrot, cucumber, apple, celery, or kale to confirm that ingredient matching is working.',
+    'If the ingredient still does not appear, clear the search completely, try another ingredient, and return later using a broader or more commonly recognized name.',
   ]
 
   // 1. All six exact paragraphs render with empty search

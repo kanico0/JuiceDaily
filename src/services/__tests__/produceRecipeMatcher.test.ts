@@ -107,13 +107,15 @@ describe('produceRecipeMatcher', () => {
     })
   })
 
-  describe('6. A ratio below 0.5 does not qualify as close_match', () => {
-    it('ratio < 0.5 is not close_match (unless fallback)', () => {
+  describe('6. A ratio below 0.5 does not qualify as close_match (multi-produce)', () => {
+    it('ratio < 0.5 is not close_match for multi-produce selection (unless fallback)', () => {
       const recipeId = findRecipeWithNIngredients(5)
       expect(recipeId).not.toBeNull()
       const produceIds = deriveProduceIds(recipeId!)
       const one = produceIds.slice(0, 1)
-      const result = getRecipesForProduce(one, { minUsefulResults: 100 })
+      const another = produceIds.slice(1, 2)
+      // Use two different produce IDs so isSingleFamily is false
+      const result = getRecipesForProduce([one[0], another[0]], { minUsefulResults: 100 })
       const match = result.matches.find((m) => m.recipeId === recipeId)
       if (match) {
         expect(match.rawMatchRatio).toBeLessThan(0.5)
@@ -122,17 +124,19 @@ describe('produceRecipeMatcher', () => {
     })
   })
 
-  describe('7. Raw ratio, not rounded display ratio, determines classification', () => {
-    it('uses raw ratio for tier boundary', () => {
-      const recipeId = findRecipeWithNIngredients(3)
+  describe('7. Raw ratio, not rounded display ratio, determines classification (multi-produce)', () => {
+    it('uses raw ratio for tier boundary with multi-produce selection', () => {
+      const recipeId = findRecipeWithNIngredients(5)
       expect(recipeId).not.toBeNull()
       const produceIds = deriveProduceIds(recipeId!)
-      const one = produceIds.slice(0, 1)
-      const result = getRecipesForProduce(one, { minUsefulResults: 100 })
+      const two = produceIds.slice(0, 2)
+      // Use two different produce IDs so isSingleFamily is false
+      // ratio = 2/5 = 0.4 < 0.5, should NOT be close_match
+      const result = getRecipesForProduce(two, { minUsefulResults: 100 })
       const match = result.matches.find((m) => m.recipeId === recipeId)
       if (match) {
-        expect(match.rawMatchRatio).toBeCloseTo(1 / 3, 5)
-        expect(match.displayMatchPct).toBe(33)
+        expect(match.rawMatchRatio).toBeCloseTo(0.4, 5)
+        expect(match.displayMatchPct).toBe(40)
         expect(match.tier).not.toBe('close_match')
       }
     })

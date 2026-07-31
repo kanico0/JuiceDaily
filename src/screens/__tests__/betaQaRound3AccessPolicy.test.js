@@ -28,9 +28,13 @@ import {
   getProduceFamilyKey,
   areProduceFamilyEquivalent,
   resolveQueryToProduceFamily,
+  resolveQueryToCanonicalProduce,
   recipeContainsProduceFamily,
   getRecipeIdsForProduceFamily,
   getUniqueSelectedFamilyKeys,
+  getUniqueSelectedCanonicalProduceKeys,
+  getCanonicalProduceKey,
+  getRecipeIdsForCanonicalProduce,
   applyRecipeVisibilityPolicy,
   PRODUCE_FAMILIES,
 } from '../../services/produceFamilies'
@@ -147,20 +151,19 @@ describe('QA Round 3 — Access-Policy Verification', () => {
     // Verify the matcher source has no hard-coded variant count
     expect(MATCHER_SRC).not.toContain('<= 3')
     expect(MATCHER_SRC).not.toContain('<=3')
-    expect(MATCHER_SRC).toContain('getUniqueSelectedFamilyKeys')
-    expect(MATCHER_SRC).toContain('selectedFamilyKeys.length === 1')
+    expect(MATCHER_SRC).toContain('getUniqueSelectedCanonicalProduceKeys')
+    expect(MATCHER_SRC).toContain('selectedCanonicalKeys.length === 1')
   })
 
-  // Test 7: Apple plus Carrot remains a two-family search
-  test('7. Apple plus Carrot remains a two-family search', () => {
-    // Carrot has no family group, so getUniqueSelectedFamilyKeys returns only ['apple']
-    // But the matcher should NOT treat apple+carrot as single-family
-    // because not all selected produce have family keys
-    const keys = getUniqueSelectedFamilyKeys(['apple', 'carrot'])
-    expect(keys.length).toBe(1) // only apple has a family key
+  // Test 7: Apple plus Carrot remains a two-canonical-key search
+  test('7. Apple plus Carrot remains a two-canonical-key search', () => {
+    // With canonical keys, carrot resolves to 'carrot' (its own canonical key)
+    const keys = getUniqueSelectedCanonicalProduceKeys(['apple', 'carrot'])
+    expect(keys.length).toBe(2)
     expect(keys).toContain('apple')
+    expect(keys).toContain('carrot')
 
-    // Multi-produce should still use the 10-result cap (not single-family)
+    // Multi-produce should still use the 10-result cap (not single-canonical)
     const result = getRecipesForProduce(['apple', 'carrot'])
     expect(result.matches.length).toBeLessThanOrEqual(10)
   })

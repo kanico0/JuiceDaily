@@ -65,7 +65,7 @@ import { checkAchievements } from '../services/achievements'
 import AchievementOverlay from '../components/AchievementOverlay'
 import { RECIPES, getCleanupLabel } from '../constants/recipeData'
 import { searchRecipes } from '../services/recipeSearch'
-import { resolveQueryToProduceFamily } from '../services/produceFamilies'
+import { resolveQueryToCanonicalProduce } from '../services/produceFamilies'
 import { usePro } from '../services/ProStore'
 import PaywallModal from '../components/PaywallModal'
 
@@ -257,8 +257,8 @@ function BrowseIdeasModal({ visible, onDismiss, onScanReady, isReduced, navigati
   const isPaywallForced = isEnabled('ff_dev_force_paywalls')
 
   const searchResults = useMemo(() => {
-    const family = resolveQueryToProduceFamily(searchQuery)
-    if (family) {
+    const canonicalKey = resolveQueryToCanonicalProduce(searchQuery)
+    if (canonicalKey) {
       return searchRecipes(searchQuery, undefined, 1000)
     }
     return searchRecipes(searchQuery, { collection: 'core', tier: 'free' }, 100)

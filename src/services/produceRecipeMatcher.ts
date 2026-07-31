@@ -1,6 +1,6 @@
 import { RECIPES, getRecipeById, getRecipeBlendType, countDistinctProduceIds } from '../constants/recipeData'
 import { PRODUCE_DATA } from './JuiceEngine'
-import { getProduceFamilyKey, getProduceFamilyMembers, areProduceFamilyEquivalent, getUniqueSelectedFamilyKeys } from './produceFamilies'
+import { getProduceFamilyKey, getProduceFamilyMembers, areProduceFamilyEquivalent, getUniqueSelectedCanonicalProduceKeys } from './produceFamilies'
 
 export type MatchTier = 'ready_now' | 'close_match' | 'closest_match'
 
@@ -197,14 +197,13 @@ export function getRecipesForProduce(
     return { status: 'empty_selection', matches: [], invalidIds: invalid }
   }
 
-  // Check if selection is a single produce family
-  // Uses unique family keys, not a hard-coded variant count,
-  // so future produce variants don't break single-family behavior.
-  // All selected produce must belong to the same family for
-  // single-family behavior to apply.
-  const selectedFamilyKeys = getUniqueSelectedFamilyKeys([...selectedSet])
-  const allHaveFamily = [...selectedSet].every((pid) => getProduceFamilyKey(pid) !== null)
-  const isSingleFamily = allHaveFamily && selectedFamilyKeys.length === 1
+  // Check if selection resolves to a single canonical produce key.
+  // This works for ALL produce, not just explicit variant families.
+  // e.g. ["carrot"] → ["carrot"] → single canonical
+  //      ["apple", "apple_red"] → ["apple"] → single canonical
+  //      ["apple", "carrot"] → ["apple", "carrot"] → multi canonical
+  const selectedCanonicalKeys = getUniqueSelectedCanonicalProduceKeys([...selectedSet])
+  const isSingleFamily = selectedCanonicalKeys.length === 1
 
   const minRatio = isSingleFamily ? 0 : (options?.minRatio ?? DEFAULT_MIN_RATIO)
 

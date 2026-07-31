@@ -88,6 +88,7 @@ export function getProduceVariantDisplayName(produceId: string): string | null {
 // to ensure identical recipe-ID sets for produce-family queries.
 
 import { RECIPES, getRecipeBlendType } from '../constants/recipeData'
+import { PRODUCE_DATA } from './JuiceEngine'
 
 export interface RecipeLike {
   id: string
@@ -221,4 +222,114 @@ export function getUniqueSelectedFamilyKeys(produceIds: string[]): string[] {
     if (fk) familyKeys.add(fk)
   }
   return [...familyKeys]
+}
+
+// ── Canonical produce key ────────────────────────────────────
+// Every known produce ID resolves to a canonical key:
+//   - Family members collapse to their family key
+//     (apple_red → apple, bell_pepper_green → bell_pepper)
+//   - Ordinary produce IDs are their own canonical key
+//     (carrot → carrot, celery → celery)
+//   - Unknown produce IDs return null
+// This allows single-produce inclusion behavior to work for ALL
+// produce, not just the three explicit variant families.
+
+/**
+ * Returns the canonical produce key for a produce ID.
+ * Family members collapse to their family key; ordinary produce
+ * IDs are their own canonical key; unknown IDs return null.
+ */
+export function getCanonicalProduceKey(produceId: string): string | null {
+  const pid = produceId.toLowerCase()
+  const familyKey = getProduceFamilyKey(pid)
+  if (familyKey) return familyKey
+  if (PRODUCE_DATA[pid]) return pid
+  return null
+}
+
+/**
+ * Returns the set of unique canonical produce keys for a list of produce IDs.
+ * Examples:
+ *   ["apple_red"] → ["apple"]
+ *   ["apple", "apple_red", "apple_green"] → ["apple"]
+ *   ["carrot"] → ["carrot"]
+ *   ["apple_red", "carrot"] → ["apple", "carrot"]
+ */
+export function getUniqueSelectedCanonicalProduceKeys(produceIds: string[]): string[] {
+  const keys = new Set<string>()
+  for (const pid of produceIds) {
+    const ck = getCanonicalProduceKey(pid)
+    if (ck) keys.add(ck)
+  }
+  return [...keys]
+}
+
+/**
+ * Returns true if the recipe contains any ingredient whose canonical
+ * produce key matches the given canonicalKey. This works for both
+ * family-grouped produce (apple covers apple, apple_red, apple_green)
+ * and ordinary produce (carrot covers carrot).
+ */
+export function recipeContainsCanonicalProduce(recipe: RecipeLike, canonicalKey: string): boolean {
+  const key = canonicalKey.toLowerCase()
+  for (const ing of recipe.ingredients) {
+    if (!ing.produceId) continue
+    const ck = getCanonicalProduceKey(ing.produceId)
+    if (ck === key) return true
+  }
+  return false
+}
+
+/**
+ * Returns all recipe IDs that contain the specified canonical produce.
+ * Uses structured ingredient IDs, not substring matching.
+ */
+export function getRecipeIdsForCanonicalProduce(canonicalKey: string): string[] {
+  const key = canonicalKey.toLowerCase()
+  const result: string[] = []
+  for (const recipe of RECIPES) {
+    if (recipeContainsCanonicalProduce(recipe, key)) {
+      result.push(recipe.id)
+    }
+  }
+  return result.sort()
+}
+
+/**
+ * Resolves a search query string to a canonical produce key if the query
+ * matches a known produce, produce variant alias, or ordinary produce ID.
+ * Returns null for unrecognized queries.
+ *
+ * Examples:
+ *   "apple" → "apple"
+ *   "red apple" → "apple"
+ *   "carrot" → "carrot"
+ *   "celery" → "celery"
+ *   "pineapple" → "pineapple"
+ *   "red bell pepper" → "bell_pepper"
+ */
+export function resolveQueryToCanonicalProduce(query: string): string | null {
+  const q = (query || '').trim().toLowerCase()
+  if (!q) return null
+
+  // 1. Direct family member match (apple, apple_red, bell_pepper_red, etc.)
+  const familyKey = getProduceFamilyKey(q)
+  if (familyKey) return familyKey
+
+  // 2. Check PRODUCE_SEARCH_ALIASES for variant queries like "red apple"
+  for (const [produceId, aliases] of Object.entries(PRODUCE_SEARCH_ALIASES)) {
+    for (const alias of aliases) {
+      if (alias.toLowerCase() === q) {
+        const ck = getCanonicalProduceKey(produceId)
+        if (ck) return ck
+      }
+    }
+  }
+
+  // 3. Direct produce ID match for ordinary produce (carrot, celery, etc.)
+  if (PRODUCE_DATA[q]) {
+    return getCanonicalProduceKey(q)
+  }
+
+  return null
 }

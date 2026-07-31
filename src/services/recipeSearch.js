@@ -5,8 +5,9 @@
 
 import { RECIPES } from '../constants/recipeData'
 import {
-  resolveQueryToProduceFamily,
-  recipeContainsProduceFamily,
+  resolveQueryToCanonicalProduce,
+  recipeContainsCanonicalProduce,
+  getCanonicalProduceKey,
 } from './produceFamilies'
 
 // ── Produce alias map ────────────────────────────────────────
@@ -171,16 +172,18 @@ function searchRecipes (query, filters, limit) {
     return results.slice(0, max).map((r) => RECIPES.find((recipe) => recipe.id === r.id))
   }
 
-  // Check if query resolves to a known produce family
-  const produceFamily = resolveQueryToProduceFamily(q)
+  // Check if query resolves to a known canonical produce key
+  const canonicalKey = resolveQueryToCanonicalProduce(q)
 
-  // Check if query matches a produce alias (for non-family produce)
+  // Also check recipeSearch aliases for common names (e.g. "carrots" → "carrot")
   const matchedProduceId = ALIAS_TO_PRODUCE_ID[q]
+  const aliasCanonicalKey = matchedProduceId ? getCanonicalProduceKey(matchedProduceId) : null
+  const effectiveCanonicalKey = canonicalKey || aliasCanonicalKey
 
-  if (produceFamily) {
-    // Use structured produce-family matching for recognized produce queries
+  if (effectiveCanonicalKey) {
+    // Use structured canonical produce matching for recognized produce queries
     // Inclusion is based solely on recipe ingredient IDs, not title text
-    const familyRecipes = getIndex()
+    const produceRecipes = getIndex()
       .filter((r) => {
         if (filters) {
           if (filters.collection && r.collection !== filters.collection) return false
@@ -192,9 +195,9 @@ function searchRecipes (query, filters, limit) {
         const recipe = RECIPES.find((rec) => rec.id === r.id)
         let score = 0
 
-        // Inclusion: recipe must contain the produce family
-        if (recipe && recipeContainsProduceFamily(recipe, produceFamily)) {
-          // Ranking: exact variant match > title match > family match
+        // Inclusion: recipe must contain the canonical produce
+        if (recipe && recipeContainsCanonicalProduce(recipe, effectiveCanonicalKey)) {
+          // Ranking: exact variant match > title match > canonical match
           let hasExactVariant = false
           for (const pid of r.ingredientProduceIds) {
             if (pid === q || pid === matchedProduceId) {
@@ -222,7 +225,7 @@ function searchRecipes (query, filters, limit) {
         return a.recipe.id.localeCompare(b.recipe.id)
       })
 
-    return familyRecipes.slice(0, max).map((entry) => entry.recipe)
+    return produceRecipes.slice(0, max).map((entry) => entry.recipe)
   }
 
   // Non-produce free-text search (unchanged path)

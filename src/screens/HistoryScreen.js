@@ -17,13 +17,13 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import * as Haptics from 'expo-haptics'
 import {
   ArrowLeft, ChevronDown, ChevronUp, X,
-  Camera, Keyboard, Eye, Trash2, Clock,
+  Camera, Keyboard, Eye, Trash2, Clock, Sparkles,
 } from 'lucide-react-native'
 import MeshGradientBg from '../components/MeshGradientBg'
 import { useJuiceLog } from '../services/JuiceLogStore'
 import { PRODUCE_DATA } from '../services/JuiceEngine'
 import { USDA_RDA } from '../constants/nutrition'
-import { BRAND, FONT_SIZE, FONT_WEIGHT, SPACE, RADIUS } from '../constants/tokens'
+import { BRAND, FONT_SIZE, FONT_WEIGHT, SPACE, RADIUS, LINE_HEIGHT } from '../constants/tokens'
 import { getDevNow, onDevClockChange } from '../utils/DevClock'
 
 // ── Source icon helper ───────────────────────────────────────
@@ -48,6 +48,63 @@ function formatDateKey(d) {
   const m = String(d.getMonth() + 1).padStart(2, '0')
   const day = String(d.getDate()).padStart(2, '0')
   return `${y}-${m}-${day}`
+}
+
+// ── Encouragement Card Data ─────────────────────────────────
+export const ENCOURAGEMENT_COPY = [
+  {
+    title: 'Start your juice journey',
+    body: 'Your juice history will appear here as you begin logging. Tracking your juices can help you notice progress, build consistency, and learn which fruits, vegetables, and juice combinations work best for your routine.',
+  },
+  {
+    title: 'Great start',
+    body: 'You\u2019ve logged your first day. That first step gives your journey a beginning. Keep adding your juices so your history can gradually show your habits, favorites, and progress over time.',
+  },
+  {
+    title: 'You\u2019re building momentum',
+    body: 'Two logged days is a strong beginning. Each new entry adds more meaning to your history and gives you a clearer picture of how raw fruits and vegetables are becoming part of your routine.',
+  },
+  {
+    title: 'A habit is taking shape',
+    body: 'Three days of logging is meaningful progress. Staying aware of what you juice can make consistency easier and help you recognize the combinations you enjoy and return to most often.',
+  },
+  {
+    title: 'You\u2019re creating consistency',
+    body: 'Four logged days shows that you are continuing to make room for fresh produce in your routine. Keep recording your juices so this screen becomes a useful, personal record of your progress.',
+  },
+  {
+    title: 'Nice progress',
+    body: 'Five days of history gives you a solid foundation to build on. As you continue, your juice log can help you remember favorites, notice patterns, and celebrate the simple steps you are taking.',
+  },
+]
+
+export function countDistinctLoggedDays (entries) {
+  const validKeys = new Set()
+  for (const e of entries) {
+    if (!e || typeof e !== 'object') continue
+    const key = e.dateKey
+    if (typeof key !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(key)) continue
+    validKeys.add(key)
+  }
+  return validKeys.size
+}
+
+export function getEncouragementCopy (distinctDays) {
+  if (distinctDays < 0 || distinctDays > 5) return null
+  return ENCOURAGEMENT_COPY[distinctDays]
+}
+
+// ── Encouragement Card ───────────────────────────────────────
+function EncouragementCard ({ title, body }) {
+  return (
+    <View style={s.encouragementCard} accessibilityRole="summary">
+      <View style={s.encouragementHeader}>
+        <Sparkles size={16} color={BRAND.cta.primary} />
+        <Text style={s.encouragementTitle}>{title}</Text>
+      </View>
+      <Text style={s.encouragementBody}>{body}</Text>
+    </View>
+  )
 }
 
 function formatTime(isoStr) {
@@ -222,6 +279,8 @@ export default function HistoryScreen({ navigation }) {
 
   const totalEntries = entries.length
   const totalDays = groupedDays.length
+  const distinctLoggedDays = useMemo(() => countDistinctLoggedDays(entries), [entries])
+  const encouragement = useMemo(() => getEncouragementCopy(distinctLoggedDays), [distinctLoggedDays])
 
   return (
     <View style={s.root}>
@@ -243,6 +302,9 @@ export default function HistoryScreen({ navigation }) {
         </View>
 
         <ScrollView style={s.scroll} contentContainerStyle={s.scrollContent} showsVerticalScrollIndicator={false}>
+          {encouragement && (
+            <EncouragementCard title={encouragement.title} body={encouragement.body} />
+          )}
           {groupedDays.length === 0 ? (
             <View style={s.emptyState}>
               <Clock size={32} color={BRAND.text.muted} />
@@ -498,5 +560,32 @@ const s = StyleSheet.create({
     fontSize: FONT_SIZE.sm,
     fontWeight: FONT_WEIGHT.medium,
     color: BRAND.text.muted,
+  },
+  encouragementCard: {
+    backgroundColor: BRAND.glass.surfaceElevated,
+    borderRadius: RADIUS.lg,
+    borderWidth: 0.5,
+    borderColor: BRAND.glass.border,
+    paddingHorizontal: SPACE.lg,
+    paddingVertical: SPACE.md,
+    marginBottom: SPACE.xs,
+  },
+  encouragementHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACE.sm,
+    marginBottom: SPACE.xs,
+  },
+  encouragementTitle: {
+    fontSize: FONT_SIZE.md,
+    fontWeight: FONT_WEIGHT.bold,
+    color: BRAND.text.primary,
+    flex: 1,
+  },
+  encouragementBody: {
+    fontSize: FONT_SIZE.sm,
+    fontWeight: FONT_WEIGHT.regular,
+    color: BRAND.text.secondary,
+    lineHeight: LINE_HEIGHT.relaxed * FONT_SIZE.sm,
   },
 })

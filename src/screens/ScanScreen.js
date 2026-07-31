@@ -297,7 +297,7 @@ function BrowseIdeasModal({ visible, onDismiss, onScanReady, isReduced, navigati
 
   const renderItem = ({ item: r }) => {
     const isLocked = isRecipeLockedForUser(r, { isProActive: hasFeatureAccess('proRecipes') })
-    const showProBadge = r.tier === 'pro' && !isLocked
+    const showProBadge = isLocked
     return (
     <TouchableOpacity
       key={r.id}

@@ -13,6 +13,8 @@ import * as Haptics from 'expo-haptics'
 import { ArrowLeft, ChevronRight, Check, Sparkles, Lock } from 'lucide-react-native'
 import MeshGradientBg from '../components/MeshGradientBg'
 import { getRecipesForProduce } from '../services/produceRecipeMatcher'
+import { FREE_BROWSE_COLLECTIONS } from '../services/produceFamilies'
+import { getRecipeById } from '../constants/recipeData'
 import { PRODUCE_DATA } from '../services/JuiceEngine'
 import { SEMANTIC_COLORS, SEMANTIC_TYPOGRAPHY, SEMANTIC_SPACE, SEMANTIC_RADIUS } from '../constants/tokens'
 
@@ -50,6 +52,9 @@ function ProduceChip({ id, name }) {
 const MemoizedRecipeCard = memo(function RecipeCard({ match, onPress }) {
   const config = TIER_CONFIG[match.tier]
   const isPro = match.tier_label === 'pro'
+  const recipe = getRecipeById(match.recipeId)
+  const isFreeBrowse = recipe && FREE_BROWSE_COLLECTIONS.has(recipe.collection)
+  const showProBadge = isPro && !isFreeBrowse
 
   return (
     <TouchableOpacity
@@ -82,7 +87,7 @@ const MemoizedRecipeCard = memo(function RecipeCard({ match, onPress }) {
               <Text style={styles.weakBadgeText}>{match.displayMatchPct}% match</Text>
             </View>
           )}
-          {isPro && (
+          {showProBadge && (
             <View style={styles.proBadge}>
               <Lock size={10} color="#FFD54F" />
               <Text style={styles.proBadgeText}>Pro</Text>

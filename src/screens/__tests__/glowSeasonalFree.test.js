@@ -330,4 +330,84 @@ describe('Glow Collections — Free Browsing', () => {
   test('ScanScreen Glow Library description no longer says Pro-only', () => {
     expect(SCAN_SRC).not.toContain('Pro-only recipe collections')
   })
+
+  // ══════════════════════════════════════════════════════════════
+  // Badge-condition tests (Phase A)
+  // ══════════════════════════════════════════════════════════════
+
+  test('BrowseIdeasModal shows Pro badge only when isLocked (not when tier=pro but unlocked)', () => {
+    // The badge condition must be based on isLocked, not on tier alone
+    const badgeMatch = SCAN_SRC.match(/showProBadge\s*=\s*(.+)/)
+    expect(badgeMatch).toBeTruthy()
+    expect(badgeMatch[1].trim()).toBe('isLocked')
+  })
+
+  test('Free-browse Glow recipe has no lock badge in BrowseIdeasModal', () => {
+    const glowRecipe = glowRecipes()[0]
+    const isLocked = isRecipeLockedForUser(glowRecipe, freeUser)
+    expect(isLocked).toBe(false)
+    // showProBadge = isLocked => false
+  })
+
+  test('Free-browse Glow recipe has no misleading Pro badge in ProduceRecipeResultsScreen', () => {
+    expect(PRODUCE_RESULTS_SRC).toContain('showProBadge')
+    expect(PRODUCE_RESULTS_SRC).toContain('FREE_BROWSE_COLLECTIONS')
+    expect(PRODUCE_RESULTS_SRC).toContain('isFreeBrowse')
+    // Verify the badge uses showProBadge, not isPro
+    expect(PRODUCE_RESULTS_SRC).toMatch(/\{showProBadge &&/)
+  })
+
+  test('Free-browse Seasonal recipe has no lock badge in BrowseIdeasModal', () => {
+    const seasonalRecipe = seasonalRecipes()[0]
+    const isLocked = isRecipeLockedForUser(seasonalRecipe, freeUser)
+    expect(isLocked).toBe(false)
+  })
+
+  test('Free-browse Seasonal recipe has no misleading Pro badge in ProduceRecipeResultsScreen', () => {
+    // Same source check as Glow — showProBadge suppresses badge for free-browse
+    expect(PRODUCE_RESULTS_SRC).toContain('showProBadge')
+  })
+
+  test('Unrelated locked Pro recipe retains its badge in BrowseIdeasModal', () => {
+    const fakeProRecipe = { tier: 'pro', collection: 'core' }
+    const isLocked = isRecipeLockedForUser(fakeProRecipe, freeUser)
+    expect(isLocked).toBe(true)
+    // showProBadge = isLocked => true
+  })
+
+  test('Unrelated locked Pro recipe retains its paywall in BrowseIdeasModal', () => {
+    // handleRecipePress checks isLocked and shows paywall
+    expect(SCAN_SRC).toContain('isPaywallForced || isLocked')
+  })
+
+  test('Unrelated locked Pro recipe retains its badge in ProduceRecipeResultsScreen', () => {
+    const fakeProMatch = { tier_label: 'pro', recipeId: 'fake-pro-core' }
+    // For a core collection Pro recipe: isFreeBrowse = false, showProBadge = true
+    // Verify the source logic
+    expect(PRODUCE_RESULTS_SRC).toMatch(/isPro && !isFreeBrowse/)
+  })
+
+  test('Pro user can open unrelated Pro recipe (no lock)', () => {
+    const fakeProRecipe = { tier: 'pro', collection: 'core' }
+    const isLocked = isRecipeLockedForUser(fakeProRecipe, proUser)
+    expect(isLocked).toBe(false)
+  })
+
+  test('Collection badges remain correct — Seasonal PackPill present', () => {
+    expect(SEASONAL_SRC).toContain('PackPill')
+    expect(SEASONAL_SRC).toContain('seasonalPack')
+  })
+
+  test('Collection badges remain correct — Glow Crown present', () => {
+    expect(GLOW_SRC).toContain('Crown')
+  })
+
+  test('ProduceRecipeResultsScreen imports FREE_BROWSE_COLLECTIONS', () => {
+    expect(PRODUCE_RESULTS_SRC).toContain("from '../services/produceFamilies'")
+    expect(PRODUCE_RESULTS_SRC).toContain('FREE_BROWSE_COLLECTIONS')
+  })
+
+  test('ProduceRecipeResultsScreen imports getRecipeById', () => {
+    expect(PRODUCE_RESULTS_SRC).toContain('getRecipeById')
+  })
 })

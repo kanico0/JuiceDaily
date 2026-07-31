@@ -268,8 +268,13 @@ function RootNavigator() {
           <JuicingExperienceScreen
             navigation={navigation}
             onSelect={(value) => {
-              recordIntroDismissed()
               setExperienceLevel(value)
+              const isReturning = activation.introDismissed || activation.totalLogsCount > 0 || totalLogCount > 0
+              if (isReturning) {
+                navigation.goBack()
+                return
+              }
+              recordIntroDismissed()
               if (value === 'experienced') {
                 navigation.dispatch(
                   CommonActions.reset({

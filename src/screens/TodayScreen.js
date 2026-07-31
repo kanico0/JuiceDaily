@@ -27,6 +27,7 @@ import {
   ChevronRight,
   Heart,
   Edit3,
+  Sparkles,
 } from 'lucide-react-native'
 import MeshGradientBg from '../components/MeshGradientBg'
 import NutrientHaloCard from '../components/NutrientHaloCard'
@@ -705,6 +706,35 @@ export default function TodayScreen({ navigation }) {
 
                 {/* Today's Focus Nutrient (pre-log) */}
                 <FocusNutrientCard onScan={handleScan} isReduced={isReduced} />
+
+                {/* New to Juicing? discovery card */}
+                <TouchableOpacity
+                  style={styles.juicingDiscoveryCard}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+                    const parent = navigation.getParent()
+                    if (parent) {
+                      parent.navigate('JuicingExperience')
+                    } else {
+                      navigation.navigate('JuicingExperience')
+                    }
+                  }}
+                  activeOpacity={0.7}
+                  accessibilityRole="button"
+                  accessibilityLabel="New to Juicing? Choose my juicing level"
+                >
+                  <View style={styles.juicingDiscoveryIconWrap}>
+                    <Sparkles size={18} color={BRAND.accent?.vitaminC || '#FFB74D'} />
+                  </View>
+                  <View style={styles.juicingDiscoveryContent}>
+                    <Text style={styles.juicingDiscoveryTitle}>New to Juicing?</Text>
+                    <Text style={styles.juicingDiscoveryBody}>
+                      Choose the level of guidance that fits your juicing experience.
+                    </Text>
+                    <Text style={styles.juicingDiscoveryCta}>Choose My Juicing Level</Text>
+                  </View>
+                  <ChevronRight size={16} color={SEMANTIC_COLORS.textMuted} />
+                </TouchableOpacity>
               </>
             )}
 
@@ -1139,5 +1169,41 @@ const styles = StyleSheet.create({
     fontWeight: SEMANTIC_TYPOGRAPHY.body.fontWeight,
     color: SEMANTIC_COLORS.textMuted,
     lineHeight: 16,
+  },
+  juicingDiscoveryCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SEMANTIC_SPACE.md,
+    ...standardCard,
+    marginBottom: SEMANTIC_SPACE.md,
+  },
+  juicingDiscoveryIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,183,77,0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  juicingDiscoveryContent: {
+    flex: 1,
+  },
+  juicingDiscoveryTitle: {
+    fontSize: SEMANTIC_TYPOGRAPHY.bodyStrong.fontSize,
+    fontWeight: SEMANTIC_TYPOGRAPHY.bodyStrong.fontWeight,
+    color: SEMANTIC_COLORS.textPrimary,
+    marginBottom: 2,
+  },
+  juicingDiscoveryBody: {
+    fontSize: SEMANTIC_TYPOGRAPHY.caption.fontSize,
+    fontWeight: SEMANTIC_TYPOGRAPHY.body.fontWeight,
+    color: SEMANTIC_COLORS.textMuted,
+    lineHeight: 16,
+    marginBottom: 4,
+  },
+  juicingDiscoveryCta: {
+    fontSize: SEMANTIC_TYPOGRAPHY.caption.fontSize,
+    fontWeight: '700',
+    color: SEMANTIC_COLORS.accentSecondary,
   },
 })

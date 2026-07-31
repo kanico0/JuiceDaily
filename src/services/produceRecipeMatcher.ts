@@ -1,5 +1,6 @@
 import { RECIPES, getRecipeById, getRecipeBlendType, countDistinctProduceIds } from '../constants/recipeData'
 import { PRODUCE_DATA } from './JuiceEngine'
+import { getProduceFamilyKey, getProduceFamilyMembers, areProduceFamilyEquivalent } from './produceFamilies'
 
 export type MatchTier = 'ready_now' | 'close_match' | 'closest_match'
 
@@ -15,6 +16,7 @@ export interface ProduceMatch {
   distinctIngredientCount: number
   tier_label: 'free' | 'pro'
   blendType: 'simple' | 'advanced'
+  exactMatchCount: number
 }
 
 export interface ProduceMatchResult {
@@ -126,20 +128,34 @@ function normalizeSelectedIds(selectedProduceIds: string[]): { valid: Set<string
 function computeMatch(
   entry: RecipeIndexEntry,
   selectedSet: Set<string>
-): { matched: string[], missing: string[], rawRatio: number } {
+): { matched: string[], missing: string[], rawRatio: number, exactMatchCount: number } {
   const matched: string[] = []
   const missing: string[] = []
+  let exactMatchCount = 0
 
   for (const pid of entry.distinctProduceIds) {
     if (selectedSet.has(pid)) {
       matched.push(pid)
+      exactMatchCount++
     } else {
-      missing.push(pid)
+      // Check family-equivalent match
+      let familyMatched = false
+      for (const selectedId of selectedSet) {
+        if (areProduceFamilyEquivalent(selectedId, pid)) {
+          familyMatched = true
+          break
+        }
+      }
+      if (familyMatched) {
+        matched.push(pid)
+      } else {
+        missing.push(pid)
+      }
     }
   }
 
   const rawRatio = entry.distinctCount > 0 ? matched.length / entry.distinctCount : 0
-  return { matched, missing, rawRatio }
+  return { matched, missing, rawRatio, exactMatchCount }
 }
 
 function sortMatches(a: ProduceMatch, b: ProduceMatch): number {
@@ -149,6 +165,9 @@ function sortMatches(a: ProduceMatch, b: ProduceMatch): number {
   }
   if (b.rawMatchRatio !== a.rawMatchRatio) {
     return b.rawMatchRatio - a.rawMatchRatio
+  }
+  if (b.exactMatchCount !== a.exactMatchCount) {
+    return b.exactMatchCount - a.exactMatchCount
   }
   if (a.missingProduceIds.length !== b.missingProduceIds.length) {
     return a.missingProduceIds.length - b.missingProduceIds.length
@@ -186,7 +205,7 @@ export function getRecipesForProduce(
   const positiveOverlap: ProduceMatch[] = []
 
   for (const entry of index) {
-    const { matched, missing, rawRatio } = computeMatch(entry, selectedSet)
+    const { matched, missing, rawRatio, exactMatchCount } = computeMatch(entry, selectedSet)
 
     if (matched.length === 0) continue
 
@@ -211,6 +230,7 @@ export function getRecipesForProduce(
       distinctIngredientCount: entry.distinctCount,
       tier_label: entry.tier,
       blendType: entry.blendType,
+      exactMatchCount,
     }
 
     if (missing.length === 0) {

@@ -4,6 +4,7 @@
 // ─────────────────────────────────────────────────────────────
 
 import { createContext, useContext, useReducer, useCallback, useMemo } from 'react'
+import { FREE_MONTHLY_SCAN_LIMIT } from './subscriptions/subscriptionConfig'
 
 // ── Subscription Plans ──────────────────────────────────────
 
@@ -107,7 +108,7 @@ export const PRO_FEATURES = {
 
 // ── Constants ───────────────────────────────────────────────
 
-const FREE_MONTHLY_SNAPS = 3
+const FREE_MONTHLY_SNAPS = FREE_MONTHLY_SCAN_LIMIT
 const SNAP_PACK_BONUS = 10
 
 // ── State ───────────────────────────────────────────────────

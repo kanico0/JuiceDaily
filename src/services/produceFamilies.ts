@@ -82,3 +82,84 @@ export const PRODUCE_VARIANT_DISPLAY_NAMES: Record<string, string> = {
 export function getProduceVariantDisplayName(produceId: string): string | null {
   return PRODUCE_VARIANT_DISPLAY_NAMES[produceId.toLowerCase()] ?? null
 }
+
+// ── Shared canonical recipe-family matching ──────────────────
+// Both Browse Juice Ideas and Produce-First use these functions
+// to ensure identical recipe-ID sets for produce-family queries.
+
+import { RECIPES } from '../constants/recipeData'
+
+export interface RecipeLike {
+  id: string
+  ingredients: Array<{ produceId: string }>
+}
+
+/**
+ * Returns the set of produce-family keys that a recipe contains.
+ * Recipes with no family-grouped produce return an empty set.
+ */
+export function getRecipeProduceFamilyKeys(recipe: RecipeLike): Set<string> {
+  const families = new Set<string>()
+  for (const ing of recipe.ingredients) {
+    if (!ing.produceId) continue
+    const familyKey = getProduceFamilyKey(ing.produceId)
+    if (familyKey) {
+      families.add(familyKey)
+    }
+  }
+  return families
+}
+
+/**
+ * Returns true if the recipe contains any ingredient belonging to
+ * the specified produce family (e.g. 'apple' covers apple, apple_red,
+ * apple_green but NOT pineapple).
+ */
+export function recipeContainsProduceFamily(recipe: RecipeLike, familyKey: string): boolean {
+  const families = getRecipeProduceFamilyKeys(recipe)
+  return families.has(familyKey.toLowerCase())
+}
+
+/**
+ * Resolves a search query string to a produce family key if the query
+ * matches a known produce or produce variant alias.
+ * Returns null for unrecognized queries.
+ */
+export function resolveQueryToProduceFamily(query: string): string | null {
+  const q = (query || '').trim().toLowerCase()
+  if (!q) return null
+
+  // Direct produce ID match
+  const directFamily = getProduceFamilyKey(q)
+  if (directFamily) return directFamily
+
+  // Check PRODUCE_SEARCH_ALIASES for variant queries like "red apple"
+  for (const [produceId, aliases] of Object.entries(PRODUCE_SEARCH_ALIASES)) {
+    for (const alias of aliases) {
+      if (alias.toLowerCase() === q) {
+        const family = getProduceFamilyKey(produceId)
+        if (family) return family
+      }
+    }
+  }
+
+  // Check the recipeSearch PRODUCE_ALIASES via dynamic import is not
+  // possible here (circular dep), so we check common alias patterns.
+  // The PRODUCE_SEARCH_ALIASES already cover the variant word-order cases.
+  return null
+}
+
+/**
+ * Returns all recipe IDs that contain the specified produce family.
+ * Uses structured ingredient IDs, not substring matching.
+ */
+export function getRecipeIdsForProduceFamily(familyKey: string): string[] {
+  const key = familyKey.toLowerCase()
+  const result: string[] = []
+  for (const recipe of RECIPES) {
+    if (recipeContainsProduceFamily(recipe, key)) {
+      result.push(recipe.id)
+    }
+  }
+  return result.sort()
+}

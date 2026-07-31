@@ -184,7 +184,6 @@ export function getRecipesForProduce(
   selectedProduceIds: string[],
   options?: ProduceMatchOptions
 ): ProduceMatchResult {
-  const minRatio = options?.minRatio ?? DEFAULT_MIN_RATIO
   const maxResults = options?.maxResults ?? DEFAULT_MAX_RESULTS
   const minUsefulResults = options?.minUsefulResults ?? DEFAULT_MIN_USEFUL_RESULTS
 
@@ -197,6 +196,16 @@ export function getRecipesForProduce(
   if (selectedSet.size === 0) {
     return { status: 'empty_selection', matches: [], invalidIds: invalid }
   }
+
+  // Check if selection is a single produce family
+  const selectedFamilyKeys = new Set<string>()
+  for (const pid of selectedSet) {
+    const fk = getProduceFamilyKey(pid)
+    if (fk) selectedFamilyKeys.add(fk)
+  }
+  const isSingleFamily = selectedFamilyKeys.size === 1 && selectedSet.size <= 3
+
+  const minRatio = isSingleFamily ? 0 : (options?.minRatio ?? DEFAULT_MIN_RATIO)
 
   const index = buildIndex()
 
@@ -259,7 +268,9 @@ export function getRecipesForProduce(
   }
 
   const allResults = [...strongResults, ...closestMatch]
-  const trimmed = allResults.slice(0, maxResults)
+
+  // For single-family selection, return all family-matched recipes without cap
+  const trimmed = isSingleFamily ? allResults : allResults.slice(0, maxResults)
 
   if (trimmed.length === 0) {
     return { status: 'zero_overlap', matches: [], invalidIds: invalid }

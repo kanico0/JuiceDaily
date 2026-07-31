@@ -4,6 +4,10 @@
 // All searches are case-insensitive and return recipes in ranked order.
 
 import { RECIPES } from '../constants/recipeData'
+import {
+  resolveQueryToProduceFamily,
+  recipeContainsProduceFamily,
+} from './produceFamilies'
 
 // ── Produce alias map ────────────────────────────────────────
 // Maps common names and aliases to produceId keys.
@@ -167,9 +171,61 @@ function searchRecipes (query, filters, limit) {
     return results.slice(0, max).map((r) => RECIPES.find((recipe) => recipe.id === r.id))
   }
 
-  // Check if query matches a produce alias
+  // Check if query resolves to a known produce family
+  const produceFamily = resolveQueryToProduceFamily(q)
+
+  // Check if query matches a produce alias (for non-family produce)
   const matchedProduceId = ALIAS_TO_PRODUCE_ID[q]
 
+  if (produceFamily) {
+    // Use structured produce-family matching for recognized produce queries
+    // Inclusion is based solely on recipe ingredient IDs, not title text
+    const familyRecipes = getIndex()
+      .filter((r) => {
+        if (filters) {
+          if (filters.collection && r.collection !== filters.collection) return false
+          if (filters.tier && r.tier !== filters.tier) return false
+        }
+        return true
+      })
+      .map((r) => {
+        const recipe = RECIPES.find((rec) => rec.id === r.id)
+        let score = 0
+
+        // Inclusion: recipe must contain the produce family
+        if (recipe && recipeContainsProduceFamily(recipe, produceFamily)) {
+          // Ranking: exact variant match > title match > family match
+          let hasExactVariant = false
+          for (const pid of r.ingredientProduceIds) {
+            if (pid === q || pid === matchedProduceId) {
+              hasExactVariant = true
+              break
+            }
+          }
+
+          if (hasExactVariant) {
+            score = 55
+          } else if (r.titleLower === q) {
+            score = 54
+          } else if (r.titleLower.startsWith(q)) {
+            score = 53
+          } else {
+            score = 50
+          }
+        }
+
+        return { recipe, score }
+      })
+      .filter((entry) => entry.score > 0)
+      .sort((a, b) => {
+        if (b.score !== a.score) return b.score - a.score
+        return a.recipe.id.localeCompare(b.recipe.id)
+      })
+
+    return familyRecipes.slice(0, max).map((entry) => entry.recipe)
+  }
+
+  // Non-produce free-text search (unchanged path)
   const scored = getIndex()
     .filter((r) => {
       if (filters) {
@@ -202,12 +258,10 @@ function searchRecipes (query, filters, limit) {
           }
         }
 
-        // Check produceId match
+        // Check produceId match (exact only, no substring)
         for (const pid of r.ingredientProduceIds) {
           if (pid === q) {
             score = Math.max(score, 45)
-          } else if (pid.includes(q)) {
-            score = Math.max(score, 20)
           }
         }
 

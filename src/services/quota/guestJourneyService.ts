@@ -48,31 +48,37 @@ function functionUrl (action: string): string {
   return `${SUPABASE_URL}/functions/v1/guest-journey?action=${action}`
 }
 
-// Fallback: if the Edge Function doesn't exist yet, use a local
-// AsyncStorage-based flag so the app doesn't hard-block.
-// The server remains authoritative when available.
-let localGuestState: GuestJourneyStatus | null = null
-const LOCAL_KEY = '@guest_journey_status'
+// ── AsyncStorage cache (display-only) ─────────────────────────
+// The cache stores the last known server response for UI display.
+// It must NEVER be used to authorize a scan or log when the server
+// is unreachable. All authorization decisions require a live server
+// response. When the server is unreachable, operations fail with
+// 'network_error' — no local fallback grants access.
+const CACHE_KEY = '@guest_journey_cache'
+let cachedState: GuestJourneyState | null = null
 
-async function readLocalState (): Promise<GuestJourneyStatus> {
-  if (localGuestState) return localGuestState
+async function readCache (): Promise<GuestJourneyState | null> {
+  if (cachedState) return cachedState
   try {
     const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default
-    const raw = await AsyncStorage.getItem(LOCAL_KEY)
-    localGuestState = (raw as GuestJourneyStatus) || 'available'
-    return localGuestState
+    const raw = await AsyncStorage.getItem(CACHE_KEY)
+    if (raw) {
+      cachedState = JSON.parse(raw) as GuestJourneyState
+      return cachedState
+    }
   } catch {
-    return 'available'
+    // Best-effort cache read.
   }
+  return null
 }
 
-async function writeLocalState (status: GuestJourneyStatus): Promise<void> {
-  localGuestState = status
+async function writeCache (state: GuestJourneyState): Promise<void> {
+  cachedState = state
   try {
     const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default
-    await AsyncStorage.setItem(LOCAL_KEY, status)
+    await AsyncStorage.setItem(CACHE_KEY, JSON.stringify(state))
   } catch {
-    // Best-effort.
+    // Best-effort cache write.
   }
 }
 
@@ -80,29 +86,23 @@ export function createJourneyId (): string {
   return `guest-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
 }
 
+const UNAVAILABLE_STATE: GuestJourneyState = {
+  status: 'available',
+  journeyId: null,
+  scanRequestId: null,
+  logOperationId: null,
+  scanCompletedAt: null,
+  logCompletedAt: null,
+}
+
 export async function checkGuestJourney (): Promise<GuestJourneyState> {
   if (!SUPABASE_CONFIGURED) {
-    const status = await readLocalState()
-    return {
-      status,
-      journeyId: null,
-      scanRequestId: null,
-      logOperationId: null,
-      scanCompletedAt: null,
-      logCompletedAt: null,
-    }
+    return UNAVAILABLE_STATE
   }
 
   const token = await getAccessToken()
   if (!token) {
-    return {
-      status: 'available',
-      journeyId: null,
-      scanRequestId: null,
-      logOperationId: null,
-      scanCompletedAt: null,
-      logCompletedAt: null,
-    }
+    return UNAVAILABLE_STATE
   }
 
   try {
@@ -110,18 +110,14 @@ export async function checkGuestJourney (): Promise<GuestJourneyState> {
       headers: { Authorization: `Bearer ${token}` },
     })
     if (!res.ok) {
-      const status = await readLocalState()
-      return {
-        status,
-        journeyId: null,
-        scanRequestId: null,
-        logOperationId: null,
-        scanCompletedAt: null,
-        logCompletedAt: null,
-      }
+      // Server error: return cached state for display, but do NOT
+      // authorize any operation. Callers must check the 'code'
+      // from reserve/finalize/release to determine authorization.
+      const cached = await readCache()
+      return cached ?? UNAVAILABLE_STATE
     }
     const body = await res.json()
-    return {
+    const state: GuestJourneyState = {
       status: body.status as GuestJourneyStatus,
       journeyId: body.journey_id ?? null,
       scanRequestId: body.scan_request_id ?? null,
@@ -129,16 +125,15 @@ export async function checkGuestJourney (): Promise<GuestJourneyState> {
       scanCompletedAt: body.scan_completed_at ?? null,
       logCompletedAt: body.log_completed_at ?? null,
     }
+    await writeCache(state)
+    return state
   } catch {
-    const status = await readLocalState()
-    return {
-      status,
-      journeyId: null,
-      scanRequestId: null,
-      logOperationId: null,
-      scanCompletedAt: null,
-      logCompletedAt: null,
-    }
+    // Network error: return cached state for display only.
+    // Authorization is never granted from cache — reserve/finalize/
+    // release will return 'network_error' when the server is
+    // unreachable.
+    const cached = await readCache()
+    return cached ?? UNAVAILABLE_STATE
   }
 }
 
@@ -147,13 +142,7 @@ export async function reserveGuestJourney (
   type: GuestJourneyType,
 ): Promise<GuestJourneyResult> {
   if (!SUPABASE_CONFIGURED) {
-    const status = await readLocalState()
-    if (status !== 'available') {
-      return { ok: false, code: 'journey_already_used', status }
-    }
-    const newStatus: GuestJourneyStatus = type === 'scan' ? 'scan_reserved' : 'log_reserved'
-    await writeLocalState(newStatus)
-    return { ok: true, code: 'reserved', status: newStatus, journeyId }
+    return { ok: false, code: 'server_not_configured' }
   }
 
   const token = await getAccessToken()
@@ -182,12 +171,7 @@ export async function reserveGuestJourney (
 
 export async function finalizeGuestScan (journeyId: string): Promise<GuestJourneyResult> {
   if (!SUPABASE_CONFIGURED) {
-    const status = await readLocalState()
-    if (status === 'scan_reserved') {
-      await writeLocalState('scan_completed')
-      return { ok: true, code: 'scan_completed', status: 'scan_completed', journeyId }
-    }
-    return { ok: false, code: 'invalid_state', status }
+    return { ok: false, code: 'server_not_configured' }
   }
 
   const token = await getAccessToken()
@@ -219,8 +203,7 @@ export async function finalizeGuestLog (
   logOperationId?: string,
 ): Promise<GuestJourneyResult> {
   if (!SUPABASE_CONFIGURED) {
-    await writeLocalState('completed')
-    return { ok: true, code: 'completed', status: 'completed', journeyId }
+    return { ok: false, code: 'server_not_configured' }
   }
 
   const token = await getAccessToken()
@@ -249,12 +232,7 @@ export async function finalizeGuestLog (
 
 export async function releaseGuestJourney (journeyId: string): Promise<GuestJourneyResult> {
   if (!SUPABASE_CONFIGURED) {
-    const status = await readLocalState()
-    if (status === 'scan_reserved' || status === 'log_reserved') {
-      await writeLocalState('available')
-      return { ok: true, code: 'released', status: 'available', journeyId }
-    }
-    return { ok: true, code: 'no_op', status, journeyId }
+    return { ok: false, code: 'server_not_configured' }
   }
 
   const token = await getAccessToken()

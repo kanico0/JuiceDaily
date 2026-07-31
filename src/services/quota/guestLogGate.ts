@@ -63,6 +63,13 @@ export async function authorizeGuestLog (
     if (result.ok) {
       return { allowed: true, journeyId, isDurable: false, wasScanBased: true }
     }
+    if (result.code === 'network_error') {
+      return {
+        allowed: false,
+        reason: 'error',
+        message: 'Network error. Please check your connection and try again.',
+      }
+    }
     return {
       allowed: false,
       reason: 'error',
@@ -75,6 +82,13 @@ export async function authorizeGuestLog (
     const journeyId = createJourneyId()
     const reserveResult = await reserveGuestJourney(journeyId, 'manual')
     if (!reserveResult.ok) {
+      if (reserveResult.code === 'network_error') {
+        return {
+          allowed: false,
+          reason: 'error',
+          message: 'Network error. Please check your connection and try again.',
+        }
+      }
       return {
         allowed: false,
         reason: 'journey_completed',
@@ -87,6 +101,13 @@ export async function authorizeGuestLog (
     }
     // If finalize failed, release the reservation.
     await releaseGuestJourney(journeyId)
+    if (finalizeResult.code === 'network_error') {
+      return {
+        allowed: false,
+        reason: 'error',
+        message: 'Network error. Please check your connection and try again.',
+      }
+    }
     return {
       allowed: false,
       reason: 'error',

@@ -29,6 +29,7 @@ import {
   Flame,
   Film,
   Keyboard,
+  KeyboardAvoidingView,
   Search,
   Crown,
   Sparkles,
@@ -1251,6 +1252,23 @@ export default function JuiceSnapScreen({ navigation, route }) {
               />
             ))}
             <AddProducePicker onAdd={handleAddProduce} />
+
+            {hasItems && !isLogged && (
+              <TouchableOpacity
+                style={styles.findRecipesBtn}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+                  const ids = (batch.scannedIngredients || []).map((i) => i.produceId)
+                  navigation.navigate('ProduceRecipeResults', { selectedProduceIds: ids })
+                }}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel="Find recipes with my produce"
+              >
+                <BookOpen size={18} color="#64B5F6" />
+                <Text style={styles.findRecipesBtnText}>Find Recipes With My Produce</Text>
+              </TouchableOpacity>
+            )}
           </View>
         )}
 
@@ -1295,6 +1313,16 @@ export default function JuiceSnapScreen({ navigation, route }) {
             onAdd={handleManualAdd}
             addedIds={batch.scannedIngredients.map((i) => i.produceId)}
           />
+
+          {/* Permanent Search Tips — always visible */}
+          <View style={manualStyles.searchTipsCard} accessibilityLabel="Search tips">
+            <Text style={manualStyles.searchTipsTitle}>If no ingredients matched your search…</Text>
+            <Text style={manualStyles.searchTipsText}>Check the spelling carefully and try entering the ingredient again.</Text>
+            <Text style={manualStyles.searchTipsText}>Try using a shorter or more general ingredient name.</Text>
+            <Text style={manualStyles.searchTipsText}>For example, enter 'pepper' instead of a longer or more specific variety name.</Text>
+            <Text style={manualStyles.searchTipsText}>You can also try a familiar fruit or vegetable such as spinach, carrot, cucumber, apple, celery, or kale.</Text>
+            <Text style={manualStyles.searchTipsText}>If the ingredient still does not appear, clear the search and try another ingredient.</Text>
+          </View>
         </View>
 
         {/* ── Pro Upsell Nudge (7+ manual ingredients) ────────── */}
@@ -1317,23 +1345,6 @@ export default function JuiceSnapScreen({ navigation, route }) {
               </Text>
             </View>
             <Crown size={16} color="#FFD54F" />
-          </TouchableOpacity>
-        )}
-
-        {hasItems && !isLogged && (
-          <TouchableOpacity
-            style={styles.findRecipesBtn}
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-              const ids = (batch.scannedIngredients || []).map((i) => i.produceId)
-              navigation.navigate('ProduceRecipeResults', { selectedProduceIds: ids })
-            }}
-            activeOpacity={0.7}
-            accessibilityRole="button"
-            accessibilityLabel="Find recipes with my produce"
-          >
-            <BookOpen size={18} color="#64B5F6" />
-            <Text style={styles.findRecipesBtnText}>Find Recipes With My Produce</Text>
           </TouchableOpacity>
         )}
 
@@ -1971,5 +1982,25 @@ const manualStyles = StyleSheet.create({
     fontSize: 12,
     color: '#8B949E',
     lineHeight: 17,
+  },
+  searchTipsCard: {
+    marginTop: 12,
+    padding: 14,
+    borderRadius: 16,
+    borderWidth: 0.5,
+    borderColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: 'rgba(255,255,255,0.02)',
+  },
+  searchTipsTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#8B949E',
+    marginBottom: 8,
+  },
+  searchTipsText: {
+    fontSize: 11,
+    color: '#484F58',
+    lineHeight: 16,
+    marginBottom: 6,
   },
 })

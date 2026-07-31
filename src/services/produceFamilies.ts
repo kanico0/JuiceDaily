@@ -87,7 +87,7 @@ export function getProduceVariantDisplayName(produceId: string): string | null {
 // Both Browse Juice Ideas and Produce-First use these functions
 // to ensure identical recipe-ID sets for produce-family queries.
 
-import { RECIPES } from '../constants/recipeData'
+import { RECIPES, getRecipeBlendType } from '../constants/recipeData'
 
 export interface RecipeLike {
   id: string
@@ -162,4 +162,63 @@ export function getRecipeIdsForProduceFamily(familyKey: string): string[] {
     }
   }
   return result.sort()
+}
+
+// ── Shared visibility policy ─────────────────────────────────
+// The app's established policy (Policy A) is to show all recipes,
+// including Pro/locked ones, with correct lock/badge treatment.
+// GlowLibraryScreen and ProduceRecipeResultsScreen both follow this.
+// This function ensures both Browse and Produce-First apply the same
+// visibility logic for recognized-produce queries.
+
+export interface UserAccessContext {
+  isProActive: boolean
+}
+
+export interface VisibleRecipe {
+  id: string
+  title: string
+  tier: string
+  collection: string
+  blendType: string
+  isLocked: boolean
+}
+
+/**
+ * Applies the shared recipe visibility policy to a list of recipe IDs.
+ * Returns all recipes with isLocked flag — does NOT filter out Pro recipes.
+ * Both Browse and Produce-First must use this to ensure identical visible sets.
+ */
+export function applyRecipeVisibilityPolicy(
+  recipeIds: string[],
+  userAccess: UserAccessContext,
+): VisibleRecipe[] {
+  const result: VisibleRecipe[] = []
+  for (const id of recipeIds) {
+    const recipe = RECIPES.find((r) => r.id === id)
+    if (!recipe) continue
+    const isLocked = recipe.tier === 'pro' && !userAccess.isProActive
+    result.push({
+      id: recipe.id,
+      title: recipe.title,
+      tier: recipe.tier,
+      collection: recipe.collection,
+      blendType: getRecipeBlendType(recipe),
+      isLocked,
+    })
+  }
+  return result
+}
+
+/**
+ * Returns the set of unique family keys for a list of selected produce IDs.
+ * Used to determine if a selection is a single-family search.
+ */
+export function getUniqueSelectedFamilyKeys(produceIds: string[]): string[] {
+  const familyKeys = new Set<string>()
+  for (const pid of produceIds) {
+    const fk = getProduceFamilyKey(pid.toLowerCase())
+    if (fk) familyKeys.add(fk)
+  }
+  return [...familyKeys]
 }

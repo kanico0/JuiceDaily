@@ -1,6 +1,6 @@
 import { RECIPES, getRecipeById, getRecipeBlendType, countDistinctProduceIds } from '../constants/recipeData'
 import { PRODUCE_DATA } from './JuiceEngine'
-import { getProduceFamilyKey, getProduceFamilyMembers, areProduceFamilyEquivalent } from './produceFamilies'
+import { getProduceFamilyKey, getProduceFamilyMembers, areProduceFamilyEquivalent, getUniqueSelectedFamilyKeys } from './produceFamilies'
 
 export type MatchTier = 'ready_now' | 'close_match' | 'closest_match'
 
@@ -198,12 +198,13 @@ export function getRecipesForProduce(
   }
 
   // Check if selection is a single produce family
-  const selectedFamilyKeys = new Set<string>()
-  for (const pid of selectedSet) {
-    const fk = getProduceFamilyKey(pid)
-    if (fk) selectedFamilyKeys.add(fk)
-  }
-  const isSingleFamily = selectedFamilyKeys.size === 1 && selectedSet.size <= 3
+  // Uses unique family keys, not a hard-coded variant count,
+  // so future produce variants don't break single-family behavior.
+  // All selected produce must belong to the same family for
+  // single-family behavior to apply.
+  const selectedFamilyKeys = getUniqueSelectedFamilyKeys([...selectedSet])
+  const allHaveFamily = [...selectedSet].every((pid) => getProduceFamilyKey(pid) !== null)
+  const isSingleFamily = allHaveFamily && selectedFamilyKeys.length === 1
 
   const minRatio = isSingleFamily ? 0 : (options?.minRatio ?? DEFAULT_MIN_RATIO)
 

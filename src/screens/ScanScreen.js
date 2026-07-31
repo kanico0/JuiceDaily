@@ -46,6 +46,7 @@ import {
   AlertCircle,
   Settings,
   Heart,
+  Lock,
 } from 'lucide-react-native'
 import MeshGradientBg from '../components/MeshGradientBg'
 import LiquidNutrientOrb from '../components/LiquidNutrientOrb'
@@ -65,6 +66,8 @@ import AchievementOverlay from '../components/AchievementOverlay'
 import { RECIPES, getCleanupLabel } from '../constants/recipeData'
 import { searchRecipes } from '../services/recipeSearch'
 import { resolveQueryToProduceFamily } from '../services/produceFamilies'
+import { usePro } from '../services/ProStore'
+import PaywallModal from '../components/PaywallModal'
 
 const GOALS = [
   { id: 'energy', label: 'More Energy', emoji: '⚡' },
@@ -247,11 +250,16 @@ const secStyles = StyleSheet.create({
 function BrowseIdeasModal({ visible, onDismiss, onScanReady, isReduced, navigation }) {
   const fadeAnim = useRef(new Animated.Value(0)).current
   const [searchQuery, setSearchQuery] = useState('')
+  const [showPaywall, setShowPaywall] = useState(false)
+  const { hasFeatureAccess } = usePro()
+  const { isEnabled } = useFlags()
+  const isPaywallDisabled = isEnabled('ff_dev_disable_paywalls')
+  const isPaywallForced = isEnabled('ff_dev_force_paywalls')
 
   const searchResults = useMemo(() => {
     const family = resolveQueryToProduceFamily(searchQuery)
     if (family) {
-      return searchRecipes(searchQuery, undefined, 100)
+      return searchRecipes(searchQuery, undefined, 1000)
     }
     return searchRecipes(searchQuery, { collection: 'core', tier: 'free' }, 100)
   }, [searchQuery])
@@ -270,30 +278,55 @@ function BrowseIdeasModal({ visible, onDismiss, onScanReady, isReduced, navigati
 
   if (!visible) return null
 
-  const renderItem = ({ item: r }) => (
+  const handleRecipePress = useCallback((recipe) => {
+    const isProRecipe = recipe.tier === 'pro'
+    const isLocked = isProRecipe && !hasFeatureAccess('proRecipes')
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    trackEvent('browse_recipe_opened', { recipe_id: recipe.id })
+    if (isPaywallDisabled) {
+      onDismiss()
+      navigation.navigate('RecipeDetail', { recipeId: recipe.id })
+      return
+    }
+    if (isPaywallForced || isLocked) {
+      setShowPaywall(true)
+      return
+    }
+    onDismiss()
+    navigation.navigate('RecipeDetail', { recipeId: recipe.id })
+  }, [navigation, onDismiss, hasFeatureAccess, isPaywallDisabled, isPaywallForced])
+
+  const renderItem = ({ item: r }) => {
+    const isProRecipe = r.tier === 'pro'
+    const isLocked = isProRecipe && !hasFeatureAccess('proRecipes')
+    return (
     <TouchableOpacity
       key={r.id}
       style={browseStyles.templateCard}
-      onPress={() => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-        trackEvent('browse_recipe_opened', { recipe_id: r.id })
-        onDismiss()
-        navigation.navigate('RecipeDetail', { recipeId: r.id })
-      }}
+      onPress={() => handleRecipePress(r)}
       activeOpacity={0.7}
       accessibilityRole="button"
-      accessibilityLabel={`${r.title}: ${r.ingredients.map((i) => i.name).join(', ')}`}
+      accessibilityLabel={`${r.title}: ${r.ingredients.map((i) => i.name).join(', ')}${isLocked ? ', Pro' : ''}`}
     >
       <View style={[browseStyles.templateDot, { backgroundColor: r.vibeColor }]} />
       <View style={browseStyles.templateContent}>
-        <Text style={browseStyles.templateName}>{r.title}</Text>
+        <View style={browseStyles.templateTitleRow}>
+          <Text style={browseStyles.templateName}>{r.title}</Text>
+          {isProRecipe && (
+            <View style={browseStyles.proBadge}>
+              <Lock size={10} color="#FFD54F" />
+              <Text style={browseStyles.proBadgeText}>Pro</Text>
+            </View>
+          )}
+        </View>
         <Text style={browseStyles.templateIng} numberOfLines={1}>
           {r.vibeTag} · {r.ingredients.length} ingredients · {getCleanupLabel(r.cleanupScore)}
         </Text>
       </View>
       <ChevronRight size={14} color={DARK.textMuted} />
     </TouchableOpacity>
-  )
+    )
+  }
 
   return (
     <Modal visible transparent animationType="none" statusBarTranslucent>
@@ -382,6 +415,11 @@ function BrowseIdeasModal({ visible, onDismiss, onScanReady, isReduced, navigati
           </View>
         </SafeAreaView>
       </Animated.View>
+      <PaywallModal
+        visible={!isPaywallDisabled && showPaywall}
+        onDismiss={() => setShowPaywall(false)}
+        trigger="pro_recipes"
+      />
     </Modal>
   )
 }
@@ -474,11 +512,31 @@ const browseStyles = StyleSheet.create({
   templateContent: {
     flex: 1,
   },
+  templateTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 2,
+  },
   templateName: {
+    flex: 1,
     fontSize: FONT_SIZE.md,
     fontWeight: FONT_WEIGHT.bold,
     color: DARK.textPrimary,
-    marginBottom: 2,
+  },
+  proBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: 'rgba(255,213,79,0.12)',
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  proBadgeText: {
+    fontSize: 10,
+    fontWeight: FONT_WEIGHT.bold,
+    color: '#FFD54F',
   },
   templateIng: {
     fontSize: FONT_SIZE.xs,

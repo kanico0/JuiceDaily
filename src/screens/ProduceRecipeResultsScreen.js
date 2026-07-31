@@ -249,6 +249,10 @@ export default function ProduceRecipeResultsScreen({ route, navigation }) {
             contentContainerStyle={styles.listContent}
             showsVerticalScrollIndicator={false}
             stickySectionHeadersEnabled={false}
+            initialNumToRender={20}
+            maxToRenderPerBatch={20}
+            windowSize={5}
+            removeClippedSubviews
           />
         )}
       </SafeAreaView>

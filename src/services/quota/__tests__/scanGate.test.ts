@@ -9,6 +9,10 @@
 
 const mockIsDurableUser = jest.fn()
 const mockRefreshDurable = jest.fn()
+const mockCheckGuestJourney = jest.fn()
+const mockReserveGuestJourney = jest.fn()
+const mockReleaseGuestJourney = jest.fn()
+
 jest.mock('../../supabase/accountLink', () => ({
   isDurableUser: () => mockIsDurableUser(),
   refreshSessionAndCheckDurable: () => mockRefreshDurable(),
@@ -26,6 +30,18 @@ jest.mock('../../subscriptions/subscriptionConfig', () => ({
   SUPABASE_URL: 'https://test-project.supabase.co',
 }))
 
+jest.mock('../guestJourneyService', () => ({
+  isDurableUser: () => mockIsDurableUser(),
+  checkGuestJourney: () => mockCheckGuestJourney(),
+  reserveGuestJourney: (...args: unknown[]) => mockReserveGuestJourney(...args),
+  releaseGuestJourney: (...args: unknown[]) => mockReleaseGuestJourney(...args),
+  createJourneyId: jest.fn(() => 'guest-test-journey-id'),
+  finalizeGuestScan: jest.fn(),
+  finalizeGuestLog: jest.fn(),
+  isGuestJourneyAvailable: jest.fn(),
+  isGuestJourneyCompleted: jest.fn(),
+}))
+
 import { analyzeScanOnServer, ScanQuotaError } from '../quotaService'
 
 const originalFetch = global.fetch
@@ -33,6 +49,15 @@ const originalFetch = global.fetch
 beforeEach(() => {
   jest.clearAllMocks()
   global.fetch = jest.fn()
+  // Default: guest journey is completed (no free scan available).
+  mockCheckGuestJourney.mockResolvedValue({
+    status: 'completed',
+    journeyId: 'past',
+    scanRequestId: null,
+    logOperationId: null,
+    scanCompletedAt: null,
+    logCompletedAt: null,
+  })
 })
 
 afterAll(() => {
@@ -40,16 +65,98 @@ afterAll(() => {
 })
 
 describe('durable-account scan gate', () => {
-  it('anonymous users cannot start a funded scan', async () => {
+  it('anonymous users cannot start a funded scan when guest journey is completed', async () => {
     mockIsDurableUser.mockResolvedValue(false)
+    mockCheckGuestJourney.mockResolvedValue({
+      status: 'completed',
+      journeyId: 'past',
+      scanRequestId: null,
+      logOperationId: null,
+      scanCompletedAt: null,
+      logCompletedAt: null,
+    })
 
     await expect(
       analyzeScanOnServer('base64data', 'image/jpeg', 'req-1')
     ).rejects.toMatchObject({ name: 'ScanQuotaError', code: 'account_required' })
   })
 
+  it('anonymous users with available guest journey can scan once', async () => {
+    mockIsDurableUser.mockResolvedValue(false)
+    mockCheckGuestJourney.mockResolvedValue({
+      status: 'available',
+      journeyId: null,
+      scanRequestId: null,
+      logOperationId: null,
+      scanCompletedAt: null,
+      logCompletedAt: null,
+    })
+    mockReserveGuestJourney.mockResolvedValue({ ok: true, code: 'reserved' })
+    ;(global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ rawText: '[]', quota: null, isGuest: true }),
+    })
+
+    const result = await analyzeScanOnServer('base64data', 'image/jpeg', 'req-guest-1')
+
+    expect(result.rawText).toBe('[]')
+    expect(mockReserveGuestJourney).toHaveBeenCalledWith(expect.any(String), 'scan')
+  })
+
+  it('guest scan failure releases the journey', async () => {
+    mockIsDurableUser.mockResolvedValue(false)
+    mockCheckGuestJourney.mockResolvedValue({
+      status: 'available',
+      journeyId: null,
+      scanRequestId: null,
+      logOperationId: null,
+      scanCompletedAt: null,
+      logCompletedAt: null,
+    })
+    mockReserveGuestJourney.mockResolvedValue({ ok: true, code: 'reserved' })
+    ;(global.fetch as jest.Mock).mockResolvedValue({
+      ok: false,
+      status: 502,
+      json: async () => ({ message: 'Vision provider error' }),
+    })
+
+    await expect(
+      analyzeScanOnServer('base64data', 'image/jpeg', 'req-guest-fail')
+    ).rejects.toMatchObject({ code: 'server_error' })
+
+    expect(mockReleaseGuestJourney).toHaveBeenCalled()
+  })
+
+  it('guest scan with journey_already_used does not call fetch', async () => {
+    mockIsDurableUser.mockResolvedValue(false)
+    mockCheckGuestJourney.mockResolvedValue({
+      status: 'available',
+      journeyId: null,
+      scanRequestId: null,
+      logOperationId: null,
+      scanCompletedAt: null,
+      logCompletedAt: null,
+    })
+    mockReserveGuestJourney.mockResolvedValue({ ok: false, code: 'journey_already_used' })
+
+    await expect(
+      analyzeScanOnServer('base64data', 'image/jpeg', 'req-guest-blocked')
+    ).rejects.toMatchObject({ code: 'account_required' })
+
+    expect(global.fetch).not.toHaveBeenCalled()
+  })
+
   it('no scan is reserved or consumed before authentication', async () => {
     mockIsDurableUser.mockResolvedValue(false)
+    mockCheckGuestJourney.mockResolvedValue({
+      status: 'completed',
+      journeyId: 'past',
+      scanRequestId: null,
+      logOperationId: null,
+      scanCompletedAt: null,
+      logCompletedAt: null,
+    })
 
     await expect(
       analyzeScanOnServer('base64data', 'image/jpeg', 'req-2')
@@ -65,6 +172,14 @@ describe('durable-account scan gate', () => {
     // the user is anonymous again, so funded scans stay blocked and
     // the server-side quota (keyed to the durable UUID) is untouched.
     mockIsDurableUser.mockResolvedValue(false)
+    mockCheckGuestJourney.mockResolvedValue({
+      status: 'completed',
+      journeyId: 'past',
+      scanRequestId: null,
+      logOperationId: null,
+      scanCompletedAt: null,
+      logCompletedAt: null,
+    })
 
     await expect(
       analyzeScanOnServer('base64data', 'image/jpeg', 'req-3')
@@ -193,6 +308,14 @@ describe('stale-token session refresh (post email upgrade)', () => {
 
   it('local anonymous gate never triggers a network call or refresh', async () => {
     mockIsDurableUser.mockResolvedValue(false)
+    mockCheckGuestJourney.mockResolvedValue({
+      status: 'completed',
+      journeyId: 'past',
+      scanRequestId: null,
+      logOperationId: null,
+      scanCompletedAt: null,
+      logCompletedAt: null,
+    })
 
     await expect(
       analyzeScanOnServer('base64data', 'image/jpeg', 'req-stale-4')

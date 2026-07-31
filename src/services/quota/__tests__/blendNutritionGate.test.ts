@@ -14,6 +14,17 @@ jest.mock('../../subscriptions/subscriptionConfig', () => ({
   SUPABASE_CONFIGURED: false,
   MONETIZATION_ENABLED: false,
 }))
+jest.mock('../guestJourneyService', () => ({
+  isDurableUser: jest.fn().mockResolvedValue(true),
+  checkGuestJourney: jest.fn(),
+  reserveGuestJourney: jest.fn(),
+  releaseGuestJourney: jest.fn(),
+  createJourneyId: jest.fn(() => 'test-journey'),
+  finalizeGuestScan: jest.fn(),
+  finalizeGuestLog: jest.fn(),
+  isGuestJourneyAvailable: jest.fn(),
+  isGuestJourneyCompleted: jest.fn(),
+}))
 import { authorizeAndProcessBatch } from '../blendNutritionGate'
 import { createOperationId } from '../blendAllowanceService'
 import { processJuiceBatch, type ScannedIngredient } from '../../JuiceEngine'

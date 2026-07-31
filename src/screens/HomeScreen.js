@@ -79,7 +79,6 @@ import {
   getSupportedSizes,
   estimateRawWeightGrams,
   createQuantityMetadata,
-  applyManualWeightOverride,
   recomputeFromQuantityChange,
   restoreQuantityMetadata,
   getPortionRegistryRecord,
@@ -89,6 +88,7 @@ import {
 } from '../services/portionEntryPreference'
 import PortionEntryModeToggle from '../components/PortionEntryModeToggle'
 import QuantityPortionEditor from '../components/QuantityPortionEditor'
+import { PRODUCE_SEARCH_ALIASES, getProduceVariantDisplayName } from '../services/produceFamilies'
 
 const JUICE_METHOD_STORAGE_KEY = '@juicing_juice_method_v1'
 
@@ -156,7 +156,6 @@ function ProduceEditRow({
   onUnitChange,
   onSizeChange,
   onEstimatedWeightChange,
-  onOverrideWeight,
   juiceMethod,
 }) {
   const [isPickerOpen, setIsPickerOpen] = useState(false)
@@ -177,7 +176,6 @@ function ProduceEditRow({
   const currentQuantity = qtyMeta?.enteredQuantity || ''
   const currentUnitKey = qtyMeta?.unitKey || getDefaultPortionUnit(item.produceId)?.unitKey || null
   const currentSizeKey = qtyMeta?.sizeKey || null
-  const wasOverridden = qtyMeta?.wasEstimateOverridden || false
 
   return (
     <View style={styles.editRow}>
@@ -194,7 +192,7 @@ function ProduceEditRow({
             <View style={[styles.editPillarDot, { backgroundColor: '#484F58' }]} />
           )}
         </View>
-        <Text style={styles.editName} numberOfLines={1} ellipsizeMode="tail">{entry?.name || item.produceId}</Text>
+        <Text style={styles.editName} numberOfLines={1} ellipsizeMode="tail">{getProduceVariantDisplayName(item.produceId) || entry?.name || item.produceId}</Text>
         <ChevronDown size={14} color="#484F58" />
       </TouchableOpacity>
 
@@ -301,8 +299,6 @@ function ProduceEditRow({
             onSizeChange={(sizeKey) => onSizeChange(index, sizeKey)}
             onEstimatedWeightChange={(weightG) => onEstimatedWeightChange(index, weightG)}
             confidence={confidence}
-            wasOverridden={wasOverridden}
-            onOverrideWeight={(deltaG) => onOverrideWeight(index, deltaG)}
           />
         </View>
       )}
@@ -428,11 +424,21 @@ const CATEGORY_COLORS = {
 
 const SORTED_NUTRIENT_LIBRARY = [...NUTRIENT_LIBRARY].sort((a, b) => a.name.localeCompare(b.name))
 
+function matchesProduceSearch(item, query) {
+  const q = query.toLowerCase()
+  if (item.name.toLowerCase().includes(q)) return true
+  const aliases = PRODUCE_SEARCH_ALIASES[item.id]
+  if (aliases) {
+    for (const alias of aliases) {
+      if (alias.toLowerCase().includes(q)) return true
+    }
+  }
+  return false
+}
+
 function IngredientCloud({ searchQuery, onAdd, addedIds }) {
   const filtered = searchQuery.length > 0
-    ? SORTED_NUTRIENT_LIBRARY.filter((item) =>
-        item.name.toLowerCase().includes(searchQuery.toLowerCase())
-      )
+    ? SORTED_NUTRIENT_LIBRARY.filter((item) => matchesProduceSearch(item, searchQuery))
     : SORTED_NUTRIENT_LIBRARY
 
   return (
@@ -440,6 +446,7 @@ function IngredientCloud({ searchQuery, onAdd, addedIds }) {
       <View style={manualStyles.cloudGrid}>
         {filtered.map((item) => {
           const isAdded = addedIds.includes(item.id)
+          const displayName = getProduceVariantDisplayName(item.id) || item.name
           return (
             <TouchableOpacity
               key={item.id}
@@ -460,7 +467,7 @@ function IngredientCloud({ searchQuery, onAdd, addedIds }) {
               <Text style={[
                 manualStyles.bubbleName,
                 isAdded && { color: CATEGORY_COLORS[item.category] },
-              ]}>{item.name}</Text>
+              ]}>{displayName}</Text>
               {isAdded && <Text style={manualStyles.bubbleCheck}>✓</Text>}
             </TouchableOpacity>
           )
@@ -919,23 +926,6 @@ export default function JuiceSnapScreen({ navigation, route }) {
     setIsLogged(false)
   }, [juiceMethod])
 
-  const handleOverrideWeight = useCallback((index, deltaG) => {
-    setBatch((prev) => {
-      const updated = [...prev.scannedIngredients]
-      const item = updated[index]
-      if (!item.portionMetadata || item.portionMetadata.inputMode !== 'quantity') return prev
-      const newWeight = Math.max(10, item.weightG + deltaG)
-      const result = applyManualWeightOverride(item.portionMetadata, newWeight)
-      updated[index] = {
-        ...item,
-        weightG: result.weightG,
-        portionMetadata: result.metadata,
-      }
-      return buildBatch(updated, juiceMethod)
-    })
-    setIsLogged(false)
-  }, [juiceMethod])
-
   const handleAddProduce = useCallback((produceId) => {
     LayoutAnimation.configureNext(LayoutAnimation.create(
       300,
@@ -1247,7 +1237,6 @@ export default function JuiceSnapScreen({ navigation, route }) {
                 onUnitChange={handleUnitChange}
                 onSizeChange={handleSizeChange}
                 onEstimatedWeightChange={handleEstimatedWeightChange}
-                onOverrideWeight={handleOverrideWeight}
                 juiceMethod={juiceMethod}
               />
             ))}
@@ -1317,11 +1306,11 @@ export default function JuiceSnapScreen({ navigation, route }) {
           {/* Permanent Search Tips — always visible */}
           <View style={manualStyles.searchTipsCard} accessibilityLabel="Search tips">
             <Text style={manualStyles.searchTipsTitle}>If no ingredients matched your search…</Text>
-            <Text style={manualStyles.searchTipsText}>Check the spelling carefully and try entering the ingredient again.</Text>
-            <Text style={manualStyles.searchTipsText}>Try using a shorter or more general ingredient name.</Text>
-            <Text style={manualStyles.searchTipsText}>For example, enter 'pepper' instead of a longer or more specific variety name.</Text>
-            <Text style={manualStyles.searchTipsText}>You can also try a familiar fruit or vegetable such as spinach, carrot, cucumber, apple, celery, or kale.</Text>
-            <Text style={manualStyles.searchTipsText}>If the ingredient still does not appear, clear the search and try another ingredient.</Text>
+            <Text style={manualStyles.searchTipsParagraph}>Check the spelling carefully and try entering the ingredient again.</Text>
+            <Text style={manualStyles.searchTipsParagraph}>Try using a shorter or more general ingredient name.</Text>
+            <Text style={manualStyles.searchTipsParagraph}>For example, enter 'pepper' instead of a longer or more specific variety name.</Text>
+            <Text style={manualStyles.searchTipsParagraph}>You can also try a familiar fruit or vegetable such as spinach, carrot, cucumber, apple, celery, or kale.</Text>
+            <Text style={manualStyles.searchTipsLastParagraph}>If the ingredient still does not appear, clear the search and try another ingredient.</Text>
           </View>
         </View>
 
@@ -1995,12 +1984,17 @@ const manualStyles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     color: '#8B949E',
-    marginBottom: 8,
+    marginBottom: 16,
   },
-  searchTipsText: {
+  searchTipsParagraph: {
     fontSize: 11,
     color: '#484F58',
     lineHeight: 16,
-    marginBottom: 6,
+    marginBottom: 16,
+  },
+  searchTipsLastParagraph: {
+    fontSize: 11,
+    color: '#484F58',
+    lineHeight: 16,
   },
 })

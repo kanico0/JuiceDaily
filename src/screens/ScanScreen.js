@@ -64,6 +64,7 @@ import { checkAchievements } from '../services/achievements'
 import AchievementOverlay from '../components/AchievementOverlay'
 import { RECIPES, getCleanupLabel } from '../constants/recipeData'
 import { searchRecipes } from '../services/recipeSearch'
+import { resolveQueryToProduceFamily } from '../services/produceFamilies'
 
 const GOALS = [
   { id: 'energy', label: 'More Energy', emoji: '⚡' },
@@ -248,6 +249,10 @@ function BrowseIdeasModal({ visible, onDismiss, onScanReady, isReduced, navigati
   const [searchQuery, setSearchQuery] = useState('')
 
   const searchResults = useMemo(() => {
+    const family = resolveQueryToProduceFamily(searchQuery)
+    if (family) {
+      return searchRecipes(searchQuery, undefined, 100)
+    }
     return searchRecipes(searchQuery, { collection: 'core', tier: 'free' }, 100)
   }, [searchQuery])
 

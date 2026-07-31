@@ -11,6 +11,8 @@ import {
   LayoutAnimation,
   UIManager,
   Platform,
+  Keyboard,
+  KeyboardAvoidingView,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import AsyncStorage from '@react-native-async-storage/async-storage'
@@ -28,8 +30,6 @@ import {
   Zap,
   Flame,
   Film,
-  Keyboard,
-  KeyboardAvoidingView,
   Search,
   Crown,
   Sparkles,
@@ -565,6 +565,20 @@ export default function JuiceSnapScreen({ navigation, route }) {
   const [showUpsellNudge, setShowUpsellNudge] = useState(false)
   const [juiceMethod, setJuiceMethod] = useState('centrifugal')
   const [globalPortionMode, setGlobalPortionMode] = useState('weight')
+  const [keyboardHeight, setKeyboardHeight] = useState(0)
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener('keyboardDidShow', (e) => {
+      setKeyboardHeight(e.endCoordinates.height)
+    })
+    const hideSub = Keyboard.addListener('keyboardDidHide', () => {
+      setKeyboardHeight(0)
+    })
+    return () => {
+      showSub.remove()
+      hideSub.remove()
+    }
+  }, [])
 
   // Hydrate persisted juicer type (cold_pressed | centrifugal)
   // Re-hydrates on focus so changes made in Settings are picked up.
@@ -1148,10 +1162,16 @@ export default function JuiceSnapScreen({ navigation, route }) {
         </View>
       </View>
 
-      <ScrollView
+      <KeyboardAvoidingView
         style={styles.scroll}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardShouldPersistTaps="handled"
+      >
+      <ScrollView
+        style={{ flex: 1 }}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
         {/* Pillar preview badges */}
         {hasItems && (
@@ -1306,11 +1326,12 @@ export default function JuiceSnapScreen({ navigation, route }) {
           {/* Permanent Search Tips — always visible */}
           <View style={manualStyles.searchTipsCard} accessibilityLabel="Search tips">
             <Text style={manualStyles.searchTipsTitle}>If no ingredients matched your search…</Text>
-            <Text style={manualStyles.searchTipsParagraph}>Check the spelling carefully and try entering the ingredient again.</Text>
-            <Text style={manualStyles.searchTipsParagraph}>Try using a shorter or more general ingredient name.</Text>
-            <Text style={manualStyles.searchTipsParagraph}>For example, enter 'pepper' instead of a longer or more specific variety name.</Text>
-            <Text style={manualStyles.searchTipsParagraph}>You can also try a familiar fruit or vegetable such as spinach, carrot, cucumber, apple, celery, or kale.</Text>
-            <Text style={manualStyles.searchTipsLastParagraph}>If the ingredient still does not appear, clear the search and try another ingredient.</Text>
+            <Text style={manualStyles.searchTipsParagraph}>If no ingredients matched your search, don't worry—the ingredient may be listed under a shorter, simpler, or more familiar name in the app.</Text>
+            <Text style={manualStyles.searchTipsParagraph}>Check the spelling carefully, remove any unnecessary words, and try entering the ingredient again using the name you would normally use while shopping.</Text>
+            <Text style={manualStyles.searchTipsParagraph}>Try using a shorter or more general ingredient name, especially if you entered a color, variety, brand, preparation style, or other descriptive wording.</Text>
+            <Text style={manualStyles.searchTipsParagraph}>For example, enter 'pepper' instead of a longer or more specific variety name, then review the available results for the closest matching ingredient.</Text>
+            <Text style={manualStyles.searchTipsParagraph}>You can also test the search with a familiar fruit or vegetable such as spinach, carrot, cucumber, apple, celery, or kale to confirm that ingredient matching is working.</Text>
+            <Text style={manualStyles.searchTipsLastParagraph}>If the ingredient still does not appear, clear the search completely, try another ingredient, and return later using a broader or more commonly recognized name.</Text>
           </View>
         </View>
 
@@ -1376,6 +1397,8 @@ export default function JuiceSnapScreen({ navigation, route }) {
           </TouchableOpacity>
         )}
       </ScrollView>
+      {keyboardHeight > 0 && <View style={{ height: keyboardHeight }} />}
+      </KeyboardAvoidingView>
 
       <Modal
         visible={isCameraOpen}

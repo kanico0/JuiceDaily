@@ -33,9 +33,7 @@ as $$
     true  -- unknown users are treated as not-permanent
   )
 $$;
-
 revoke execute on function public._is_anonymous_user (uuid) from public, anon, authenticated;
-
 -- Recreate reserve_scan with the permanent-account guard as the
 -- FIRST check — an anonymous attempt writes nothing: no quota row,
 -- no reservation, no usage event.
@@ -45,7 +43,6 @@ revoke execute on function public._is_anonymous_user (uuid) from public, anon, a
 -- The migration runs in a transaction, so callers never observe a
 -- missing function.
 drop function if exists public.reserve_scan (uuid, text, text);
-
 create function public.reserve_scan (
   p_user_id uuid,
   p_request_id text,
@@ -101,6 +98,5 @@ begin
   return jsonb_build_object('ok', true, 'code', 'reserved', 'quota', to_jsonb(q));
 end;
 $$;
-
 -- Re-assert client lockdown after create-or-replace.
 revoke execute on function public.reserve_scan (uuid, text, text) from public, anon, authenticated;

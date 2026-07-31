@@ -571,7 +571,7 @@ describe('Required Tests — Quota Carry-Forward and Advanced Blend', () => {
     // commit_scan for guest scans, incrementing scan_quotas.used.
     // The quota is keyed to the Supabase UUID, preserved across upgrade.
     // After registration: used=1, remaining=4 (limit=5 for Free).
-    // This is verified by the SQL migration 0005_guest_scan_quota.sql
+    // This is verified by the SQL migration 0010_guest_scan_quota.sql
     // which calls resolve_quota (same table) and commit_scan (same
     // commit function) for guest scans.
     //

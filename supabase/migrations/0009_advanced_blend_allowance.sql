@@ -1,5 +1,5 @@
 -- ─────────────────────────────────────────────────────────────
--- 0002_advanced_blend_allowance.sql — Freemium Advanced Blend
+-- 0009_advanced_blend_allowance.sql — Freemium Advanced Blend
 -- analysis allowance for Juicing Daily.
 --
 -- Design:

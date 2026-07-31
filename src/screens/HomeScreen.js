@@ -55,6 +55,7 @@ import { processJuiceBatch, PRODUCE_DATA } from '../services/JuiceEngine'
 import AdvancedBlendModal from '../components/AdvancedBlendModal'
 import { countDistinctProduceIds, classifyBlend, BlendAllowanceError, FREE_ADVANCED_BLEND_ALLOWANCE, createOperationId } from '../services/quota/blendAllowanceService'
 import { authorizeAndProcessBatch } from '../services/quota/blendNutritionGate'
+import { authorizeGuestLog } from '../services/quota/guestLogGate'
 import { trackEvent } from '../services/AnalyticsService'
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -1091,6 +1092,13 @@ export default function JuiceSnapScreen({ navigation, route }) {
       setBlendCheckInProgress(false)
     }
 
+    // ── Guest log gate: authorize before writing ───────────
+    const logGate = await authorizeGuestLog()
+    if (!logGate.allowed) {
+      setShowAccountGate(true)
+      return
+    }
+
     logJuice(ingredients, { ...batch, totals })
 
     // Record to Nutrition Score system
@@ -1419,6 +1427,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
           visible={showAccountGate}
           onClose={() => setShowAccountGate(false)}
           onAuthenticated={() => setShowAccountGate(false)}
+          initialMode="guest"
         />
       </Modal>
 

@@ -45,6 +45,8 @@ import LivingBackground from '../components/LivingBackground'
 import { useUserProfile } from '../services/UserProfileStore'
 import { processJuiceBatch } from '../services/JuiceEngine'
 import { authorizeAndProcessBatch, BlendAllowanceError, countDistinctProduceIds, classifyBlend } from '../services/quota/blendNutritionGate'
+import { authorizeGuestLog } from '../services/quota/guestLogGate'
+import AccountGateModal from '../components/AccountGateModal'
 import { createOperationId } from '../services/quota/blendAllowanceService'
 import { generateSuggestions } from '../services/AISuggestionService'
 import {
@@ -152,6 +154,7 @@ function ClinkToast({ visible, userName }) {
 // ── Main Dashboard ───────────────────────────────────────────
 
 export default function DashboardScreen({ navigation, route }) {
+  const [showAccountGate, setShowAccountGate] = useState(false)
   const { challenge, todayLog, vitalityScore, weeklyDiversity, weeklyStats, useFreezerPass, completeOnboarding, logJuice } = useChallenge()
   const { isPro, hasFeatureAccess, pro } = usePro()
   const { isEnabled } = useFlags()
@@ -258,11 +261,18 @@ export default function DashboardScreen({ navigation, route }) {
   }, [route?.params?.openQuickLog, navigation, isEnabled])
 
   const handleQuickLogComplete = useCallback((scannedIngredients, batchResult) => {
-    logJuice(scannedIngredients, batchResult)
-    markFirstLaunchDone()
-    if (isEnabled('ff_reward_splash')) {
-      setShowRewardSplash(true)
-    }
+    // Guest log gate: check before logging
+    authorizeGuestLog().then((gate) => {
+      if (!gate.allowed) {
+        setShowAccountGate(true)
+        return
+      }
+      logJuice(scannedIngredients, batchResult)
+      markFirstLaunchDone()
+      if (isEnabled('ff_reward_splash')) {
+        setShowRewardSplash(true)
+      }
+    })
   }, [logJuice, isEnabled])
 
   const handleFirstLaunchLog = useCallback(async (scannedIngredients) => {
@@ -278,6 +288,14 @@ export default function DashboardScreen({ navigation, route }) {
       if (err instanceof BlendAllowanceError) {
         if (__DEV__) console.warn('[Dashboard] Advanced Blend allowance error:', err.code)
       }
+      markFirstLaunchDone()
+      return
+    }
+
+    // Guest log gate: check before logging
+    const logGate = await authorizeGuestLog()
+    if (!logGate.allowed) {
+      setShowAccountGate(true)
       markFirstLaunchDone()
       return
     }
@@ -713,6 +731,7 @@ export default function DashboardScreen({ navigation, route }) {
         visible={showQuickLogger}
         onDismiss={() => setShowQuickLogger(false)}
         onLogComplete={handleQuickLogComplete}
+        onAccountRequired={() => setShowAccountGate(true)}
         onCustomIngredients={(mode) => {
           if (mode === 'camera') {
             navigation.navigate('ScanFlow', { screen: 'ScanHome', params: { openCamera: true } })
@@ -733,6 +752,13 @@ export default function DashboardScreen({ navigation, route }) {
         visible={!isPaywallDisabled && showPaywall}
         onDismiss={() => setShowPaywall(false)}
         trigger={challenge.streak >= 3 ? 'streak_3' : 'feature_gate'}
+      />
+
+      <AccountGateModal
+        visible={showAccountGate}
+        onClose={() => setShowAccountGate(false)}
+        onAuthenticated={() => setShowAccountGate(false)}
+        initialMode="guest"
       />
     </View>
   )

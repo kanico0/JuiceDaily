@@ -113,7 +113,7 @@ function functionUrl (): string {
 
 // ── Dev bypass: only in __DEV__ when Supabase is not configured ──
 
-function isDevBypass (): boolean {
+export function isDevBypass (): boolean {
   return __DEV__ && !SUPABASE_CONFIGURED
 }
 

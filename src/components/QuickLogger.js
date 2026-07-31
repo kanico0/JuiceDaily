@@ -29,6 +29,7 @@ import { DARK, RADIUS, SPACE, FONT_SIZE, FONT_WEIGHT } from '../constants/tokens
 import { useReducedMotion, DURATION, EASING } from '../utils/motion'
 import { processJuiceBatch, PRODUCE_DATA } from '../services/JuiceEngine'
 import { authorizeAndProcessBatch, BlendAllowanceError, countDistinctProduceIds, classifyBlend } from '../services/quota/blendNutritionGate'
+import { authorizeGuestLog } from '../services/quota/guestLogGate'
 import { createOperationId } from '../services/quota/blendAllowanceService'
 import { trackEvent } from '../services/AnalyticsService'
 import { useFlags } from '../services/FeatureFlags'
@@ -181,7 +182,7 @@ const stepStyles = StyleSheet.create({
 
 // ── Main QuickLogger Component ───────────────────────────────
 
-export default function QuickLogger({ visible, onDismiss, onLogComplete, onCustomIngredients }) {
+export default function QuickLogger({ visible, onDismiss, onLogComplete, onCustomIngredients, onAccountRequired }) {
   const [step, setStep] = useState(0)
   const [selectedType, setSelectedType] = useState(null)
   const [editIngredients, setEditIngredients] = useState([])
@@ -312,6 +313,14 @@ export default function QuickLogger({ visible, onDismiss, onLogComplete, onCusto
       if (err instanceof BlendAllowanceError) {
         if (__DEV__) console.warn('[QuickLogger] Advanced Blend allowance error:', err.code)
       }
+      onDismiss()
+      return
+    }
+
+    // ── Guest log gate: authorize before writing ───────────
+    const logGate = await authorizeGuestLog()
+    if (!logGate.allowed) {
+      if (onAccountRequired) onAccountRequired()
       onDismiss()
       return
     }

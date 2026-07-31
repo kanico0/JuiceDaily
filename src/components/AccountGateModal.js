@@ -39,6 +39,13 @@ const COPY = {
       'Create a free account to save your scan history and keep your monthly scan allowance — so your streaks, achievements, and plan are never lost.',
     cta: 'Send code',
   },
+  guest: {
+    title: 'Keep your juice journey going',
+    subtitle:
+      'You\'ve completed your first juice. Create your free account to continue scanning, logging, and building your progress.',
+    supporting: 'Your first activity and current progress will carry over.',
+    cta: 'Create Free Account',
+  },
   signin: {
     title: 'Welcome back',
     subtitle:
@@ -156,7 +163,7 @@ export default function AccountGateModal ({ visible, onClose, onAuthenticated, i
   }, [code, email, mode, onAuthenticated, onClose])
 
   const switchMode = useCallback(() => {
-    setMode((m) => (m === 'protect' ? 'signin' : 'protect'))
+    setMode((m) => (m === 'protect' || m === 'guest' ? 'signin' : 'protect'))
     setStep('email')
     setCode('')
     setError(null)
@@ -184,6 +191,9 @@ export default function AccountGateModal ({ visible, onClose, onAuthenticated, i
 
             <Text style={styles.title}>{copy.title}</Text>
             <Text style={styles.subtitle}>{copy.subtitle}</Text>
+            {mode === 'guest' && copy.supporting && (
+              <Text style={styles.supporting}>{copy.supporting}</Text>
+            )}
 
             {step === 'email' ? (
               <>
@@ -266,7 +276,7 @@ export default function AccountGateModal ({ visible, onClose, onAuthenticated, i
 
             <TouchableOpacity onPress={switchMode} disabled={busy} accessibilityRole="button">
               <Text style={styles.link}>
-                {mode === 'protect'
+                {mode === 'protect' || mode === 'guest'
                   ? 'Already have an account? Sign in'
                   : 'New here? Create your free account'}
               </Text>
@@ -320,6 +330,13 @@ const styles = StyleSheet.create({
     color: '#8B949E',
     fontSize: 14,
     lineHeight: 20,
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  supporting: {
+    color: '#81C784',
+    fontSize: 13,
+    lineHeight: 18,
     textAlign: 'center',
     marginBottom: 20,
   },

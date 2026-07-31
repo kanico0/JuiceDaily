@@ -28,8 +28,10 @@ import {
   classifyBlend,
   countDistinctProduceIds,
   BlendAllowanceError,
+  isDevBypass,
   type BlendAllowanceResult,
 } from './blendAllowanceService'
+import { isDurableUser } from './guestJourneyService'
 
 export interface AuthorizedJuiceResult extends JuiceResult {
   allowance: BlendAllowanceResult | null
@@ -52,6 +54,34 @@ export async function authorizeAndProcessBatch (
   // Advanced Blends: reserve → process → finalize/release.
   // operationId is required for Advanced Blends — the caller must
   // create it via createOperationId() at confirmation time.
+
+  // Guest bypass: if the user is anonymous (guest journey), skip the
+  // server-authoritative allowance check. The analyze-blend Edge
+  // Function is not deployed, and the guest journey allows exactly
+  // one juice regardless of blend type. The allowance will be
+  // enforced after registration once the backend is available.
+  // Skip guest bypass in dev mode (dev bypass handles it instead).
+  if (!isDevBypass()) {
+    const durable = await isDurableUser()
+    if (!durable) {
+      const result = processJuiceBatch(scannedItems, juiceMethod)
+      return {
+        ...result,
+        allowance: {
+          allowed: true,
+          code: 'guest_bypass',
+          remaining: 0,
+          used: 0,
+          reserved: 0,
+          limit: 0,
+          plan: 'free',
+          blendType: 'advanced',
+          requestId: operationId ?? 'guest',
+        },
+      }
+    }
+  }
+
   const requestId = operationId ?? `advanced-blend-fallback-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
   const reservation = await reserveBlendAllowance(scannedItems, requestId)
 

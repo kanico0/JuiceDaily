@@ -41,6 +41,8 @@ import { useGlowStreak, getGlowTodayKey } from '../services/glowStreak'
 import { useActivation } from '../services/ActivationStore'
 import { useUserProfile } from '../services/UserProfileStore'
 import { useJuiceLog } from '../services/JuiceLogStore'
+import { authorizeGuestLog } from '../services/quota/guestLogGate'
+import AccountGateModal from '../components/AccountGateModal'
 import { useNutritionScore } from '../services/NutritionScoreStore'
 import { USDA_RDA } from '../constants/nutrition'
 import { getGreeting } from '../constants/motivationData'
@@ -93,6 +95,7 @@ export default function TodayScreen({ navigation }) {
   const { momentum, streak: nutritionStreak } = useNutritionScore()
   const [showQuickLogger, setShowQuickLogger] = useState(false)
   const [showRewardSplash, setShowRewardSplash] = useState(false)
+  const [showAccountGate, setShowAccountGate] = useState(false)
   const [usageRefreshTrigger, setUsageRefreshTrigger] = useState(0)
   const [showSpotlightDetails, setShowSpotlightDetails] = useState(false)
   const [pendingAchievement, setPendingAchievement] = useState(null)
@@ -214,9 +217,15 @@ export default function TodayScreen({ navigation }) {
   }, [navigation, isEnabled])
 
   const handleQuickLogComplete = useCallback((scannedIngredients, batchResult) => {
-    logJuice(scannedIngredients, batchResult)
-    recordLog()
-    if (isEnabled('ff_reward_splash')) setShowRewardSplash(true)
+    authorizeGuestLog().then((gate) => {
+      if (!gate.allowed) {
+        setShowAccountGate(true)
+        return
+      }
+      logJuice(scannedIngredients, batchResult)
+      recordLog()
+      if (isEnabled('ff_reward_splash')) setShowRewardSplash(true)
+    })
   }, [logJuice, recordLog, isEnabled])
 
   const hasLoggedToday = todayLog.juices.length > 0
@@ -754,6 +763,7 @@ export default function TodayScreen({ navigation }) {
         visible={showQuickLogger}
         onDismiss={() => setShowQuickLogger(false)}
         onLogComplete={handleQuickLogComplete}
+        onAccountRequired={() => setShowAccountGate(true)}
         onCustomIngredients={(mode) => {
           if (mode === 'camera') {
             navigation.navigate('ScanFlow', { screen: 'ScanHome', params: { openCamera: true } })
@@ -774,6 +784,13 @@ export default function TodayScreen({ navigation }) {
         achievement={pendingAchievement}
         visible={!!pendingAchievement}
         onDismiss={() => setPendingAchievement(null)}
+      />
+
+      <AccountGateModal
+        visible={showAccountGate}
+        onClose={() => setShowAccountGate(false)}
+        onAuthenticated={() => setShowAccountGate(false)}
+        initialMode="guest"
       />
     </View>
   )

@@ -36,23 +36,24 @@ export default function JuicingExperienceScreen({ navigation, onSelect }) {
         </View>
 
         <View style={s.content}>
-          <Text style={s.title}>What kind of juicer are you?</Text>
-          <Text style={s.subtitle}>We’ll tailor your first week.</Text>
+          <Text style={s.title}>Where are you on your juicing journey?</Text>
+          <Text style={s.subtitle}>Choose the level of guidance that feels right for you. There is no wrong answer, and you can change it anytime.</Text>
 
           <View style={s.cardList}>
             <Pressable
               onPress={() => handleSelect('new')}
               style={({ pressed }) => [s.cardPress, pressed && { opacity: 0.85 }]}
               accessibilityRole="button"
-              accessibilityLabel="I’m new to juicing"
+              accessibilityLabel="New to Juicing — Help me get started"
             >
               <GlassSurface style={s.card} borderRadius={RADIUS.xl}>
                 <View style={s.cardIconWrap}>
                   <Sparkles size={18} color={BRAND.accent.vitaminC} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={s.cardTitle}>New to juicing</Text>
-                  <Text style={s.cardDesc}>Start with the essentials and a simple education path.</Text>
+                  <Text style={s.cardTitle}>New to Juicing</Text>
+                  <Text style={s.cardDesc}>Start with simple blends, familiar produce, and step-by-step guidance.</Text>
+                  <Text style={s.cardCta}>Help Me Get Started</Text>
                 </View>
               </GlassSurface>
             </Pressable>
@@ -61,15 +62,16 @@ export default function JuicingExperienceScreen({ navigation, onSelect }) {
               onPress={() => handleSelect('casual')}
               style={({ pressed }) => [s.cardPress, pressed && { opacity: 0.85 }]}
               accessibilityRole="button"
-              accessibilityLabel="I’m a casual juicer"
+              accessibilityLabel="Casual Juicer — Keep it simple"
             >
               <GlassSurface style={s.card} borderRadius={RADIUS.xl}>
                 <View style={s.cardIconWrap}>
                   <BookOpen size={18} color={BRAND.accent.chlorophyll} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={s.cardTitle}>Casual juicer</Text>
-                  <Text style={s.cardDesc}>Get quick refreshers and upgrade your consistency.</Text>
+                  <Text style={s.cardTitle}>Casual Juicer</Text>
+                  <Text style={s.cardDesc}>Get practical ideas and helpful nutrition insights for your everyday routine.</Text>
+                  <Text style={s.cardCta}>Keep It Simple</Text>
                 </View>
               </GlassSurface>
             </Pressable>
@@ -78,15 +80,16 @@ export default function JuicingExperienceScreen({ navigation, onSelect }) {
               onPress={() => handleSelect('experienced')}
               style={({ pressed }) => [s.cardPress, pressed && { opacity: 0.85 }]}
               accessibilityRole="button"
-              accessibilityLabel="I’m an experienced juicer"
+              accessibilityLabel="Experienced Juicer — Show me more"
             >
               <GlassSurface style={s.card} borderRadius={RADIUS.xl}>
                 <View style={s.cardIconWrap}>
                   <Zap size={18} color={BRAND.accent.potassium} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={s.cardTitle}>Experienced juicer</Text>
-                  <Text style={s.cardDesc}>Skip the basics and jump straight into tracking.</Text>
+                  <Text style={s.cardTitle}>Experienced Juicer</Text>
+                  <Text style={s.cardDesc}>Explore advanced blends, broader produce variety, and more detailed nutrition guidance.</Text>
+                  <Text style={s.cardCta}>Show Me More</Text>
                 </View>
               </GlassSurface>
             </Pressable>
@@ -169,6 +172,12 @@ const s = StyleSheet.create({
     fontWeight: FONT_WEIGHT.medium,
     color: BRAND.text.muted,
     lineHeight: 20,
+    marginBottom: 6,
+  },
+  cardCta: {
+    fontSize: FONT_SIZE.sm,
+    fontWeight: FONT_WEIGHT.bold,
+    color: BRAND.accent.vitaminC,
   },
   note: {
     marginTop: SPACE.xl,

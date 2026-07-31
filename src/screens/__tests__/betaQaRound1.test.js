@@ -27,40 +27,39 @@ const SCAN_SRC = readSrc('../screens/ScanScreen.js')
 const APP_SRC = path.join(__dirname, '..', '..', '..', 'App.js')
 const APP_TEXT = fs.readFileSync(APP_SRC, 'utf8')
 
-// ── Issue 1: Clarify 'Adjust' → 'Adjust raw weight' ─────────
+// ── Issue 1: Adjust raw weight labeling (Round 2: UI removed) ─
 
-describe('Issue 1: Adjust raw weight labeling', () => {
-  it('1.1 — QuantityPortionEditor renders "Adjust raw weight" button text', () => {
-    expect(QPE_SRC).toContain('Adjust raw weight')
+describe('Issue 1: Adjust raw weight labeling (Round 2: UI removed)', () => {
+  it('1.1 — QuantityPortionEditor no longer renders "Adjust raw weight" button text', () => {
+    expect(QPE_SRC).not.toContain('Adjust raw weight')
   })
 
   it('1.2 — QuantityPortionEditor no longer uses bare "Adjust" as button label', () => {
     expect(QPE_SRC).not.toContain("'Adjust'")
   })
 
-  it('1.3 — Shows "Adjusted raw weight" when wasOverridden is true', () => {
-    expect(QPE_SRC).toContain('Adjusted raw weight')
+  it('1.3 — Does not show "Adjusted raw weight" (UI removed)', () => {
+    expect(QPE_SRC).not.toContain('Adjusted raw weight')
   })
 
-  it('1.4 — Has accessibilityLabel "Adjust raw produce weight"', () => {
-    expect(QPE_SRC).toContain('Adjust raw produce weight')
+  it('1.4 — Does not have accessibilityLabel "Adjust raw produce weight"', () => {
+    expect(QPE_SRC).not.toContain('Adjust raw produce weight')
   })
 
-  it('1.5 — Includes inline weight editor with Apply button', () => {
-    expect(QPE_SRC).toContain('adjustEditor')
-    expect(QPE_SRC).toContain('Apply')
+  it('1.5 — Does not include inline weight editor with Apply button', () => {
+    expect(QPE_SRC).not.toContain('adjustEditor')
   })
 
-  it('1.6 — Includes helper text explaining weight does not change quantity/unit/size', () => {
-    expect(QPE_SRC).toContain('does not change the quantity, unit, or produce size')
+  it('1.6 — Includes helper text explaining how to change the estimate', () => {
+    expect(QPE_SRC).toContain('To change this estimate, adjust the quantity, unit, or size.')
   })
 
-  it('1.7 — Has "Reset to estimate" button for overridden state', () => {
-    expect(QPE_SRC).toContain('Reset to estimate')
+  it('1.7 — Does not have "Reset to estimate" button (UI removed)', () => {
+    expect(QPE_SRC).not.toContain('Reset to estimate')
   })
 
-  it('1.8 — Estimate label changes to "Adjusted raw weight:" when overridden', () => {
-    expect(QPE_SRC).toContain('Adjusted raw weight:')
+  it('1.8 — Shows read-only "Estimated raw produce weight:" label', () => {
+    expect(QPE_SRC).toContain('Estimated raw produce weight:')
   })
 })
 
@@ -328,8 +327,8 @@ describe('Regression: Data and formula preservation', () => {
     expect(HOME_SRC).toContain('handleQuantityChange')
   })
 
-  it('R8 — HomeScreen still has handleOverrideWeight for weight override', () => {
-    expect(HOME_SRC).toContain('handleOverrideWeight')
+  it('R8 — HomeScreen no longer has handleOverrideWeight (removed in Round 2)', () => {
+    expect(HOME_SRC).not.toContain('handleOverrideWeight')
   })
 
   it('R9 — JuicingExperienceScreen still exports default component', () => {

@@ -18,6 +18,7 @@ import {
   Animated,
   FlatList,
   TextInput,
+  BackHandler,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { LinearGradient } from 'expo-linear-gradient'
@@ -2450,6 +2451,22 @@ export default function ScanScreen({ navigation }) {
     })
     return unsubscribe
   }, [navigation, unlocks.totalLogsCount, trackingDismissedThisSession])
+
+  // Android hardware Back — close modals instead of exiting
+  useEffect(() => {
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (showBrowseModal) {
+        setShowBrowseModal(false)
+        return true
+      }
+      if (showExample) {
+        setShowExample(false)
+        return true
+      }
+      return false
+    })
+    return () => backHandler.remove()
+  }, [showBrowseModal, showExample])
 
   // ── Navigation handlers ──────────────────────────────────────
 

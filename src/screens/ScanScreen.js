@@ -276,8 +276,6 @@ function BrowseIdeasModal({ visible, onDismiss, onScanReady, isReduced, navigati
     }
   }, [visible])
 
-  if (!visible) return null
-
   const handleRecipePress = useCallback((recipe) => {
     const isProRecipe = recipe.tier === 'pro'
     const isLocked = isProRecipe && !hasFeatureAccess('proRecipes')
@@ -295,6 +293,8 @@ function BrowseIdeasModal({ visible, onDismiss, onScanReady, isReduced, navigati
     onDismiss()
     navigation.navigate('RecipeDetail', { recipeId: recipe.id })
   }, [navigation, onDismiss, hasFeatureAccess, isPaywallDisabled, isPaywallForced])
+
+  if (!visible) return null
 
   const renderItem = ({ item: r }) => {
     const isProRecipe = r.tier === 'pro'

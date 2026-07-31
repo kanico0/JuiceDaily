@@ -305,7 +305,12 @@ function ProduceEditRow({
       )}
 
       {/* Produce picker modal */}
-      <Modal visible={isPickerOpen} transparent animationType="fade">
+      <Modal
+        visible={isPickerOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setIsPickerOpen(false)}
+      >
         <TouchableOpacity
           style={styles.pickerOverlay}
           activeOpacity={1}
@@ -368,11 +373,22 @@ function AddProducePicker({ onAdd }) {
         <Text style={styles.addBtnText}>Add Produce</Text>
       </TouchableOpacity>
 
-      <Modal visible={isOpen} transparent animationType="fade">
+      <Modal
+        visible={isOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          Keyboard.dismiss()
+          setIsOpen(false)
+        }}
+      >
         <TouchableOpacity
           style={styles.pickerOverlay}
           activeOpacity={1}
-          onPress={() => setIsOpen(false)}
+          onPress={() => {
+            Keyboard.dismiss()
+            setIsOpen(false)
+          }}
         >
           <View style={styles.pickerCard}>
             <Text style={styles.pickerTitle}>Add Produce</Text>
@@ -1414,6 +1430,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
         visible={isCameraOpen}
         animationType="slide"
         presentationStyle="fullScreen"
+        onRequestClose={handleCameraClose}
       >
         <CameraScreen
           onClose={handleCameraClose}

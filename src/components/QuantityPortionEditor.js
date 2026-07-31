@@ -1,13 +1,11 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react'
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, LayoutAnimation, Platform, UIManager } from 'react-native'
+import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native'
 import * as Haptics from 'expo-haptics'
 import {
   isQuantitySupported,
   getSupportedPortionUnits,
-  getDefaultPortionUnit,
   getSupportedSizes,
   estimateRawWeightGrams,
-  formatQuantityDescription,
   GRAMS_PER_OZ,
 } from '../services/producePortionConversion'
 import { PRODUCE_DATA } from '../services/JuiceEngine'
@@ -28,13 +26,9 @@ export default function QuantityPortionEditor({
   onSizeChange,
   onEstimatedWeightChange,
   confidence = 'high',
-  wasOverridden = false,
-  onOverrideWeight,
 }) {
   const [localQuantity, setLocalQuantity] = useState(String(quantity || ''))
   const [validationError, setValidationError] = useState('')
-  const [isAdjustOpen, setIsAdjustOpen] = useState(false)
-  const [adjustText, setAdjustText] = useState('')
 
   const supported = isQuantitySupported(produceId)
   const units = useMemo(() => getSupportedPortionUnits(produceId), [produceId])
@@ -108,50 +102,6 @@ export default function QuantityPortionEditor({
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
     onSizeChange(newSizeKey)
   }, [onSizeChange])
-
-  const handleOverrideWeight = useCallback((deltaG) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-    onOverrideWeight(deltaG)
-  }, [onOverrideWeight])
-
-  const handleToggleAdjust = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-    if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
-      UIManager.setLayoutAnimationEnabledExperimental(true)
-    }
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut)
-    setIsAdjustOpen((prev) => {
-      if (!prev && estimateResult?.ok) {
-        setAdjustText((estimateResult.estimatedRawWeightG / G_PER_OZ).toFixed(1))
-      }
-      return !prev
-    })
-  }, [estimateResult])
-
-  const handleAdjustSubmit = useCallback(() => {
-    const oz = parseFloat(adjustText)
-    if (isNaN(oz) || oz <= 0) {
-      setValidationError('Enter a weight greater than zero')
-      return
-    }
-    const targetG = oz * G_PER_OZ
-    const currentG = estimateResult?.ok ? estimateResult.estimatedRawWeightG : 0
-    const deltaG = targetG - currentG
-    if (Math.abs(deltaG) >= 0.5) {
-      onOverrideWeight(deltaG)
-    }
-  }, [adjustText, estimateResult, onOverrideWeight])
-
-  const handleResetToEstimate = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-    if (estimateResult?.ok) {
-      const currentG = estimateResult.estimatedRawWeightG
-      const overriddenG = currentG
-      const originalEstimateG = currentG
-      onOverrideWeight(-overriddenG + originalEstimateG)
-      setAdjustText((originalEstimateG / G_PER_OZ).toFixed(1))
-    }
-  }, [estimateResult, onOverrideWeight])
 
   if (!supported) {
     return (
@@ -254,82 +204,16 @@ export default function QuantityPortionEditor({
         </View>
       )}
 
-      {/* Estimated weight display */}
+      {/* Read-only estimated weight display */}
       <View style={styles.estimateRow} accessibilityLiveRegion="polite">
         <Text style={styles.estimateLabel}>
-          {wasOverridden ? 'Adjusted raw weight:' : 'Estimated raw produce weight:'}
+          Estimated raw produce weight: {estimateOz}
         </Text>
-        <Text style={styles.estimateValue}>{estimateOz}</Text>
       </View>
-
-      {/* Quantity context above adjust editor */}
-      {qty > 0 && !isNaN(qty) && currentUnit && (
-        <Text style={styles.quantityContext}>
-          Quantity: {localQuantity} {isSingular ? currentUnit.displaySingular : currentUnit.displayPlural}
-          {hasMultipleSizes && sizeKey ? ` (${sizes.find((s) => s.sizeKey === sizeKey)?.displaySize || ''})` : ''}
-        </Text>
-      )}
-
-      {/* Adjust raw weight button */}
-      <TouchableOpacity
-        onPress={handleToggleAdjust}
-        style={styles.adjustBtn}
-        activeOpacity={0.7}
-        accessibilityRole="button"
-        accessibilityLabel="Adjust raw produce weight"
-      >
-        <Text style={styles.adjustBtnText}>
-          {wasOverridden ? 'Adjusted raw weight' : 'Adjust raw weight'}
-        </Text>
-        <Text style={styles.adjustBtnArrow}>{isAdjustOpen ? '▲' : '▼'}</Text>
-      </TouchableOpacity>
-
-      {/* Inline raw weight editor */}
-      {isAdjustOpen && (
-        <View style={styles.adjustEditor} accessibilityLabel="Raw produce weight editor">
-          <Text style={styles.adjustEditorLabel}>Raw produce weight (oz)</Text>
-          <View style={styles.adjustInputRow}>
-            <TextInput
-              style={styles.adjustInput}
-              value={adjustText}
-              onChangeText={setAdjustText}
-              onEndEditing={handleAdjustSubmit}
-              keyboardType="decimal-pad"
-              placeholder="0.0"
-              placeholderTextColor="#484F58"
-              accessibilityLabel="Raw produce weight in ounces"
-              accessibilityHint="Changing this weight updates the estimated calories and nutrition"
-            />
-            <TouchableOpacity
-              onPress={handleAdjustSubmit}
-              style={styles.adjustApplyBtn}
-              accessibilityRole="button"
-              accessibilityLabel="Apply adjusted raw weight"
-            >
-              <Text style={styles.adjustApplyBtnText}>Apply</Text>
-            </TouchableOpacity>
-          </View>
-          <Text style={styles.adjustHelperText}>
-            Changing this weight updates the estimated calories and nutrition. It does not change the quantity, unit, or produce size you selected.
-          </Text>
-          {wasOverridden && (
-            <TouchableOpacity
-              onPress={handleResetToEstimate}
-              style={styles.resetBtn}
-              accessibilityRole="button"
-              accessibilityLabel="Reset to estimated raw weight"
-            >
-              <Text style={styles.resetBtnText}>Reset to estimate</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      )}
 
       {/* Helper text */}
       <Text style={styles.helperText}>
-        {confidence === 'medium'
-          ? 'Average portion estimate. Size can vary; adjust the raw weight if needed.'
-          : 'Estimated from average produce size. Actual weight may vary.'}
+        To change this estimate, adjust the quantity, unit, or size. To enter a specific weight, switch to Weight (oz).
       </Text>
 
       {/* Validation error */}
@@ -430,102 +314,6 @@ const styles = StyleSheet.create({
   },
   estimateLabel: {
     fontSize: 11,
-    color: '#8B949E',
-  },
-  estimateValue: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#C9D1D9',
-  },
-  quantityContext: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#8B949E',
-  },
-  adjustBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderRadius: 10,
-    borderWidth: 0.5,
-    borderColor: 'rgba(255,255,255,0.1)',
-    backgroundColor: 'rgba(255,255,255,0.04)',
-    minHeight: 40,
-  },
-  adjustBtnText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#C9D1D9',
-  },
-  adjustBtnArrow: {
-    fontSize: 10,
-    color: '#8B949E',
-  },
-  adjustEditor: {
-    flexDirection: 'column',
-    gap: 8,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderRadius: 10,
-    borderWidth: 0.5,
-    borderColor: 'rgba(255,255,255,0.06)',
-    backgroundColor: 'rgba(255,255,255,0.02)',
-  },
-  adjustEditorLabel: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#C9D1D9',
-  },
-  adjustInputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  adjustInput: {
-    flex: 1,
-    height: 38,
-    borderRadius: 10,
-    borderWidth: 0.5,
-    borderColor: 'rgba(255,255,255,0.1)',
-    backgroundColor: 'rgba(255,255,255,0.04)',
-    color: '#C9D1D9',
-    fontSize: 15,
-    fontWeight: '700',
-    textAlign: 'center',
-    paddingHorizontal: 8,
-  },
-  adjustApplyBtn: {
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 10,
-    backgroundColor: 'rgba(129,199,132,0.15)',
-    borderWidth: 0.5,
-    borderColor: 'rgba(129,199,132,0.3)',
-  },
-  adjustApplyBtnText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#81C784',
-  },
-  adjustHelperText: {
-    fontSize: 11,
-    color: '#484F58',
-    lineHeight: 16,
-  },
-  resetBtn: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    borderWidth: 0.5,
-    borderColor: 'rgba(255,255,255,0.1)',
-    backgroundColor: 'rgba(255,255,255,0.03)',
-    alignSelf: 'flex-start',
-  },
-  resetBtnText: {
-    fontSize: 11,
-    fontWeight: '600',
     color: '#8B949E',
   },
   helperText: {

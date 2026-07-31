@@ -65,7 +65,7 @@ import { checkAchievements } from '../services/achievements'
 import AchievementOverlay from '../components/AchievementOverlay'
 import { RECIPES, getCleanupLabel } from '../constants/recipeData'
 import { searchRecipes } from '../services/recipeSearch'
-import { resolveQueryToCanonicalProduce } from '../services/produceFamilies'
+import { resolveQueryToCanonicalProduce, isRecipeLockedForUser } from '../services/produceFamilies'
 import { usePro } from '../services/ProStore'
 import PaywallModal from '../components/PaywallModal'
 
@@ -277,8 +277,7 @@ function BrowseIdeasModal({ visible, onDismiss, onScanReady, isReduced, navigati
   }, [visible])
 
   const handleRecipePress = useCallback((recipe) => {
-    const isProRecipe = recipe.tier === 'pro'
-    const isLocked = isProRecipe && !hasFeatureAccess('proRecipes')
+    const isLocked = isRecipeLockedForUser(recipe, { isProActive: hasFeatureAccess('proRecipes') })
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
     trackEvent('browse_recipe_opened', { recipe_id: recipe.id })
     if (isPaywallDisabled) {
@@ -297,8 +296,8 @@ function BrowseIdeasModal({ visible, onDismiss, onScanReady, isReduced, navigati
   if (!visible) return null
 
   const renderItem = ({ item: r }) => {
-    const isProRecipe = r.tier === 'pro'
-    const isLocked = isProRecipe && !hasFeatureAccess('proRecipes')
+    const isLocked = isRecipeLockedForUser(r, { isProActive: hasFeatureAccess('proRecipes') })
+    const showProBadge = r.tier === 'pro' && !isLocked
     return (
     <TouchableOpacity
       key={r.id}
@@ -312,7 +311,7 @@ function BrowseIdeasModal({ visible, onDismiss, onScanReady, isReduced, navigati
       <View style={browseStyles.templateContent}>
         <View style={browseStyles.templateTitleRow}>
           <Text style={browseStyles.templateName}>{r.title}</Text>
-          {isProRecipe && (
+          {showProBadge && (
             <View style={browseStyles.proBadge}>
               <Lock size={10} color="#FFD54F" />
               <Text style={browseStyles.proBadgeText}>Pro</Text>
@@ -1798,7 +1797,7 @@ function BrowseHome({ onScan, onBrowse, onExample, onExplore, onViewToday, onGlo
               <Crown size={20} color="#FFD54F" />
               <View style={browseHomeStyles.actionContent}>
                 <Text style={browseHomeStyles.actionTitle}>Glow Library</Text>
-                <Text style={browseHomeStyles.actionDesc}>Pro-only recipe collections</Text>
+                <Text style={browseHomeStyles.actionDesc}>Curated recipe collections</Text>
               </View>
               <ChevronRight size={16} color={DARK.textMuted} />
             </Pressable>

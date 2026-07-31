@@ -186,6 +186,27 @@ export interface VisibleRecipe {
 }
 
 /**
+ * Collections whose recipes are free to browse for all users.
+ * Membership in these collections overrides Pro-tier discovery locks.
+ * Scan quotas and Advanced Blend allowances are NOT affected.
+ */
+export const FREE_BROWSE_COLLECTIONS = new Set(['glow_library', 'seasonal'])
+
+/**
+ * Centralized recipe access policy.
+ * Returns true if the recipe should be locked for this user.
+ * Recipes in FREE_BROWSE_COLLECTIONS are never locked for browsing.
+ * Pro-tier recipes outside those collections are locked for Free users.
+ */
+export function isRecipeLockedForUser(
+  recipe: { tier: string; collection: string },
+  userAccess: UserAccessContext,
+): boolean {
+  if (FREE_BROWSE_COLLECTIONS.has(recipe.collection)) return false
+  return recipe.tier === 'pro' && !userAccess.isProActive
+}
+
+/**
  * Applies the shared recipe visibility policy to a list of recipe IDs.
  * Returns all recipes with isLocked flag — does NOT filter out Pro recipes.
  * Both Browse and Produce-First must use this to ensure identical visible sets.
@@ -198,7 +219,7 @@ export function applyRecipeVisibilityPolicy(
   for (const id of recipeIds) {
     const recipe = RECIPES.find((r) => r.id === id)
     if (!recipe) continue
-    const isLocked = recipe.tier === 'pro' && !userAccess.isProActive
+    const isLocked = isRecipeLockedForUser(recipe, userAccess)
     result.push({
       id: recipe.id,
       title: recipe.title,

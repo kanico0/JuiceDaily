@@ -272,9 +272,10 @@ describe('Shared visibility policy function', () => {
     const appleIds = getRecipeIdsForProduceFamily('apple')
     const visible = applyRecipeVisibilityPolicy(appleIds, { isProActive: false })
     expect(visible.length).toBe(appleIds.length)
+    // All Pro recipes in Apple results are in glow_library collection,
+    // which is free to browse — so none should be locked
     const lockedCount = visible.filter((v) => v.isLocked).length
-    const proCount = appleIds.filter((id) => getRecipeById(id)?.tier === 'pro').length
-    expect(lockedCount).toBe(proCount)
+    expect(lockedCount).toBe(0)
   })
 
   test('applyRecipeVisibilityPolicy shows all recipes unlocked for Pro user', () => {

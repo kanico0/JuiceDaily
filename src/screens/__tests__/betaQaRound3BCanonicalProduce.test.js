@@ -286,13 +286,13 @@ describe('QA Round 3B — Canonical Produce Search', () => {
     const browseVisible = applyRecipeVisibilityPolicy([...browse], freeUser)
     const produceVisible = applyRecipeVisibilityPolicy([...produce], freeUser)
 
-    // Both should have the Pro recipe marked as locked
+    // Glow Library recipes are free to browse — not locked for Free users
     const browsePro = browseVisible.find((v) => v.id === proInApple)
     const producePro = produceVisible.find((v) => v.id === proInApple)
     expect(browsePro).toBeTruthy()
     expect(producePro).toBeTruthy()
-    expect(browsePro.isLocked).toBe(true)
-    expect(producePro.isLocked).toBe(true)
+    expect(browsePro.isLocked).toBe(false)
+    expect(producePro.isLocked).toBe(false)
 
     // For Pro user, the recipe should NOT be locked
     const proUser = { isProActive: true }

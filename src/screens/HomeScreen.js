@@ -1339,7 +1339,9 @@ export default function JuiceSnapScreen({ navigation, route }) {
             <Text style={manualStyles.searchTipsParagraph}>Try using a shorter or more general ingredient name, especially if you entered a color, variety, brand, preparation style, or other descriptive wording.</Text>
             <Text style={manualStyles.searchTipsParagraph}>For example, enter 'pepper' instead of a longer or more specific variety name, then review the available results for the closest matching ingredient.</Text>
             <Text style={manualStyles.searchTipsParagraph}>You can also test the search with a familiar fruit or vegetable such as spinach, carrot, cucumber, apple, celery, or kale to confirm that ingredient matching is working.</Text>
-            <Text style={manualStyles.searchTipsLastParagraph}>If the ingredient still does not appear, clear the search completely, try another ingredient, and return later using a broader or more commonly recognized name.</Text>
+            <Text style={manualStyles.searchTipsParagraph}>If the ingredient still does not appear, clear the search completely, try another ingredient, and return later using a broader or more commonly recognized name.</Text>
+            <Text style={manualStyles.searchTipsParagraph}>If you are not seeing the exact ingredient you expected, try thinking of the most common everyday name that shoppers usually use in stores, kitchens, or recipes. A simpler name often makes it easier for the app to find the closest supported fruit, vegetable, herb, or ingredient.</Text>
+            <Text style={manualStyles.searchTipsLastParagraph}>Once you find the closest match, add it to your ingredient list and continue building your juice. You can review the full list before continuing, making the produce-entry process practical, flexible, and easier to complete even when an ingredient uses a slightly different name.</Text>
           </View>
         </View>
 
@@ -1525,7 +1527,7 @@ const styles = StyleSheet.create({
   content: {
     paddingHorizontal: 20,
     paddingTop: 8,
-    paddingBottom: 40,
+    paddingBottom: 80,
   },
 
   // ── Pillar Preview ─────────────────────────────────────────

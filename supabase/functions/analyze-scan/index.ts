@@ -143,6 +143,35 @@ Deno.serve(async (req) => {
       const code = String(gReserve.code ?? 'journey_already_used')
       return json(403, { code, message: 'Guest journey already used' })
     }
+
+    // Also reserve from the monthly scan quota so the guest scan
+    // counts as 1 of 5 free scans. The quota is keyed to the
+    // Supabase UUID, which is preserved across email upgrade.
+    const { data: quotaReserve, error: quotaError } = await admin.rpc('reserve_guest_scan', {
+      p_user_id: userId,
+      p_request_id: requestId,
+      p_image_hash: imageHash,
+      p_journey_id: guestJourneyId!,
+    })
+    if (quotaError) {
+      console.error('[analyze-scan] guest quota reserve failed:', quotaError.message)
+      // Release the journey reservation since we can't reserve quota.
+      await admin.rpc('release_guest_journey', {
+        p_user_id: userId,
+        p_journey_id: guestJourneyId!,
+      })
+      return json(500, { message: 'Quota check failed' })
+    }
+    const qReserve = quotaReserve as Record<string, unknown>
+    if (!qReserve.ok) {
+      const code = String(qReserve.code ?? 'monthly_limit_reached')
+      const quota = quotaFromRpc(qReserve.quota)
+      await admin.rpc('release_guest_journey', {
+        p_user_id: userId,
+        p_journey_id: guestJourneyId!,
+      })
+      return json(429, { code, message: 'Scan limit reached', quota })
+    }
   } else {
     // Durable user: reserve from the monthly quota.
     const { data: reserveData, error: reserveError } = await admin.rpc('reserve_scan', {
@@ -201,6 +230,11 @@ Deno.serve(async (req) => {
     if (!anthropicRes.ok) {
       // Technical/provider failure → release, no credit spent.
       if (isGuest) {
+        await admin.rpc('release_guest_scan', {
+          p_user_id: userId,
+          p_request_id: requestId,
+          p_failure_category: `provider_${anthropicRes.status}`,
+        })
         await admin.rpc('release_guest_journey', {
           p_user_id: userId,
           p_journey_id: guestJourneyId!,
@@ -221,18 +255,19 @@ Deno.serve(async (req) => {
 
     // Usable result → commit the reservation.
     if (isGuest) {
-      // Guest scan: finalize the guest scan stage.
-      // The scan counts as 1 of 5 monthly free scans once the user
-      // upgrades — but we don't create a scan_quotas row for an
-      // anonymous user (resolve_quota would reject it). Instead,
-      // we record the scan in the guest journey state. When the
-      // user upgrades, a migration or trigger can backfill the
-      // scan_quotas row with used=1.
+      // Guest scan: commit the scan quota (counts as 1 of 5 free
+      // monthly scans) and finalize the guest scan stage.
+      const { data: commitData } = await admin.rpc('commit_scan', {
+        p_user_id: userId,
+        p_request_id: requestId,
+        p_estimated_cost: null,
+      })
+      const committedQuota = quotaFromRpc((commitData as Record<string, unknown>)?.quota)
       await admin.rpc('finalize_guest_scan', {
         p_user_id: userId,
         p_journey_id: guestJourneyId!,
       })
-      return json(200, { rawText, quota: null, isGuest: true })
+      return json(200, { rawText, quota: committedQuota, isGuest: true })
     }
 
     const { data: commitData, error: commitError } = await admin.rpc('commit_scan', {
@@ -247,6 +282,11 @@ Deno.serve(async (req) => {
   } catch (e) {
     // Timeout / network failure → release, no credit spent.
     if (isGuest) {
+      await admin.rpc('release_guest_scan', {
+        p_user_id: userId,
+        p_request_id: requestId,
+        p_failure_category: 'provider_timeout',
+      })
       await admin.rpc('release_guest_journey', {
         p_user_id: userId,
         p_journey_id: guestJourneyId!,

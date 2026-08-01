@@ -138,7 +138,7 @@ export default function CameraScreen({ onClose, onProduceIdentified, onManualEnt
           <TouchableOpacity style={styles.closeButton} onPress={onClose}>
             <X size={24} color={colors.white} />
           </TouchableOpacity>
-          <Text style={styles.topTitle}>Scan Produce</Text>
+          <Text style={styles.topTitle}>Scan Produce{'\n'}or Exit to Enter Manually</Text>
           <View style={{ width: 40 }} />
         </View>
 
@@ -263,8 +263,11 @@ const styles = StyleSheet.create({
   },
   topTitle: {
     color: colors.white,
-    fontSize: 17,
+    fontSize: 14,
     fontWeight: '700',
+    flex: 1,
+    textAlign: 'center',
+    lineHeight: 18,
   },
   guideContainer: {
     alignItems: 'center',

@@ -1,11 +1,10 @@
-import React, { useMemo, useCallback, memo } from 'react'
+import React, { useMemo, useCallback, memo, useState, useRef, useEffect } from 'react'
 import {
   View,
   Text,
   StyleSheet,
-  SectionList,
+  FlatList,
   TouchableOpacity,
-  ActivityIndicator,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { LinearGradient } from 'expo-linear-gradient'
@@ -17,6 +16,8 @@ import { FREE_BROWSE_COLLECTIONS } from '../services/produceFamilies'
 import { getRecipeById } from '../constants/recipeData'
 import { PRODUCE_DATA } from '../services/JuiceEngine'
 import { SEMANTIC_COLORS, SEMANTIC_TYPOGRAPHY, SEMANTIC_SPACE, SEMANTIC_RADIUS } from '../constants/tokens'
+
+const PAGE_SIZE = 25
 
 const TIER_CONFIG = {
   ready_now: {
@@ -132,6 +133,9 @@ export default function ProduceRecipeResultsScreen({ route, navigation }) {
   const primaryProduceId = route?.params?.primaryProduceId || null
   const otherSelectedProduceIds = route?.params?.otherSelectedProduceIds || []
 
+  const [currentPage, setCurrentPage] = useState(1)
+  const listRef = useRef(null)
+
   const produceNames = useMemo(() => {
     return selectedProduceIds.map((id) => ({
       id: id.toLowerCase(),
@@ -154,43 +158,39 @@ export default function ProduceRecipeResultsScreen({ route, navigation }) {
     return getRecipesForProduce(selectedProduceIds)
   }, [primaryProduceId, otherSelectedProduceIds, selectedProduceIds])
 
-  const sections = useMemo(() => {
+  // Reset to page 1 when any search input changes
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [primaryProduceId, otherSelectedProduceIds, selectedProduceIds])
+
+  const totalCount = result.status === 'results' ? result.matches.length : 0
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE))
+  const safePage = Math.min(currentPage, totalPages)
+  const startIndex = (safePage - 1) * PAGE_SIZE
+  const endIndex = startIndex + PAGE_SIZE
+
+  const pagedMatches = useMemo(() => {
     if (result.status !== 'results') return []
-    const grouped = {
-      ready_now: [],
-      close_match: [],
-      closest_match: [],
+    return result.matches.slice(startIndex, endIndex)
+  }, [result, startIndex, endIndex])
+
+  const handlePrevPage = useCallback(() => {
+    if (safePage <= 1) return
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    setCurrentPage((p) => Math.max(1, p - 1))
+    if (listRef.current) {
+      listRef.current.scrollToOffset({ offset: 0, animated: false })
     }
-    for (const m of result.matches) {
-      grouped[m.tier].push(m)
+  }, [safePage])
+
+  const handleNextPage = useCallback(() => {
+    if (safePage >= totalPages) return
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    setCurrentPage((p) => Math.min(totalPages, p + 1))
+    if (listRef.current) {
+      listRef.current.scrollToOffset({ offset: 0, animated: false })
     }
-    const secs = []
-    if (grouped.ready_now.length > 0) {
-      secs.push({
-        title: TIER_CONFIG.ready_now.title,
-        subtitle: TIER_CONFIG.ready_now.subtitle,
-        tier: 'ready_now',
-        data: grouped.ready_now,
-      })
-    }
-    if (grouped.close_match.length > 0) {
-      secs.push({
-        title: TIER_CONFIG.close_match.title,
-        subtitle: TIER_CONFIG.close_match.subtitle,
-        tier: 'close_match',
-        data: grouped.close_match,
-      })
-    }
-    if (grouped.closest_match.length > 0) {
-      secs.push({
-        title: TIER_CONFIG.closest_match.title,
-        subtitle: TIER_CONFIG.closest_match.subtitle,
-        tier: 'closest_match',
-        data: grouped.closest_match,
-      })
-    }
-    return secs
-  }, [result])
+  }, [safePage, totalPages])
 
   const handleBack = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
@@ -206,16 +206,21 @@ export default function ProduceRecipeResultsScreen({ route, navigation }) {
     <MemoizedRecipeCard match={item} onPress={handleOpenRecipe} />
   ), [handleOpenRecipe])
 
-  const renderSectionHeader = useCallback(({ section }) => (
-    <View style={styles.sectionHeader}>
-      <Text style={styles.sectionTitle}>{section.title}</Text>
-      {section.subtitle && (
-        <Text style={styles.sectionSubtitle}>{section.subtitle}</Text>
-      )}
-    </View>
-  ), [])
-
   const keyExtractor = useCallback((item) => item.recipeId, [])
+
+  const renderListHeader = useCallback(() => {
+    if (pagedMatches.length === 0) return null
+    const firstMatch = pagedMatches[0]
+    const config = TIER_CONFIG[firstMatch.tier]
+    return (
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>{config.title}</Text>
+        {config.subtitle && (
+          <Text style={styles.sectionSubtitle}>{config.subtitle}</Text>
+        )}
+      </View>
+    )
+  }, [pagedMatches])
 
   return (
     <View style={styles.root}>
@@ -258,19 +263,49 @@ export default function ProduceRecipeResultsScreen({ route, navigation }) {
         )}
 
         {result.status === 'results' && (
-          <SectionList
-            sections={sections}
-            keyExtractor={keyExtractor}
-            renderItem={renderCard}
-            renderSectionHeader={renderSectionHeader}
-            contentContainerStyle={styles.listContent}
-            showsVerticalScrollIndicator={false}
-            stickySectionHeadersEnabled={false}
-            initialNumToRender={20}
-            maxToRenderPerBatch={20}
-            windowSize={5}
-            removeClippedSubviews
-          />
+          <>
+            <FlatList
+              ref={listRef}
+              data={pagedMatches}
+              keyExtractor={keyExtractor}
+              renderItem={renderCard}
+              ListHeaderComponent={renderListHeader}
+              contentContainerStyle={styles.listContent}
+              showsVerticalScrollIndicator={false}
+              initialNumToRender={20}
+              maxToRenderPerBatch={20}
+              windowSize={5}
+              removeClippedSubviews
+            />
+
+            {totalCount > PAGE_SIZE && (
+              <View style={styles.paginationBar}>
+                <TouchableOpacity
+                  onPress={handlePrevPage}
+                  style={[styles.pageBtn, safePage <= 1 && styles.pageBtnDisabled]}
+                  disabled={safePage <= 1}
+                  accessibilityRole="button"
+                  accessibilityLabel="Previous page"
+                  accessibilityState={{ disabled: safePage <= 1 }}
+                >
+                  <Text style={[styles.pageBtnText, safePage <= 1 && styles.pageBtnTextDisabled]}>Previous</Text>
+                </TouchableOpacity>
+                <Text style={styles.pageIndicator}>
+                  Page {safePage} of {totalPages}
+                </Text>
+                <TouchableOpacity
+                  onPress={handleNextPage}
+                  style={[styles.pageBtn, safePage >= totalPages && styles.pageBtnDisabled]}
+                  disabled={safePage >= totalPages}
+                  accessibilityRole="button"
+                  accessibilityLabel="Next page"
+                  accessibilityState={{ disabled: safePage >= totalPages }}
+                >
+                  <Text style={[styles.pageBtnText, safePage >= totalPages && styles.pageBtnTextDisabled]}>Next</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </>
         )}
       </SafeAreaView>
     </View>
@@ -463,5 +498,38 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#6E7681',
     marginTop: 6,
+  },
+  paginationBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: 'rgba(13,17,23,0.95)',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.06)',
+  },
+  pageBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 10,
+    backgroundColor: 'rgba(100,181,246,0.10)',
+  },
+  pageBtnDisabled: {
+    backgroundColor: 'rgba(72,79,88,0.06)',
+    opacity: 0.4,
+  },
+  pageBtnText: {
+    color: '#64B5F6',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  pageBtnTextDisabled: {
+    color: '#484F58',
+  },
+  pageIndicator: {
+    color: '#8B949E',
+    fontSize: 13,
+    fontWeight: '500',
   },
 })

@@ -35,6 +35,8 @@ import {
   Sparkles,
   Leaf,
   BookOpen,
+  Star,
+  Check,
 } from 'lucide-react-native'
 import colors from '../constants/colors'
 import NUTRIENT_LIBRARY from '../constants/NutrientLibrary.json'
@@ -157,6 +159,8 @@ function ProduceEditRow({
   onSizeChange,
   onEstimatedWeightChange,
   juiceMethod,
+  isPrimary,
+  onSetPrimary,
 }) {
   const [isPickerOpen, setIsPickerOpen] = useState(false)
   const { fmtG } = useFormatWeight()
@@ -195,6 +199,29 @@ function ProduceEditRow({
         <Text style={styles.editName} numberOfLines={1} ellipsizeMode="tail">{getProduceVariantDisplayName(item.produceId) || entry?.name || item.produceId}</Text>
         <ChevronDown size={14} color="#484F58" />
       </TouchableOpacity>
+
+      {/* Row 1a: Primary produce control */}
+      <View style={styles.primaryRow}>
+        <TouchableOpacity
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+            onSetPrimary(index)
+          }}
+          style={[styles.primaryBtn, isPrimary && styles.primaryBtnActive]}
+          accessibilityRole="radio"
+          accessibilityState={{ selected: isPrimary }}
+          accessibilityLabel={isPrimary ? 'Primary produce' : `Make ${entry?.name || item.produceId} the primary produce`}
+        >
+          {isPrimary ? (
+            <Check size={10} color="#64B5F6" />
+          ) : (
+            <Star size={10} color="#8B949E" />
+          )}
+          <Text style={[styles.primaryLabel, { color: isPrimary ? '#64B5F6' : '#8B949E' }]}>
+            {isPrimary ? 'Primary' : 'Make Primary'}
+          </Text>
+        </TouchableOpacity>
+      </View>
 
       {/* Row 1b: Entry mode toggle */}
       <View style={styles.editModeRow}>
@@ -588,6 +615,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
   const [juiceMethod, setJuiceMethod] = useState('centrifugal')
   const [globalPortionMode, setGlobalPortionMode] = useState('quantity')
   const [keyboardHeight, setKeyboardHeight] = useState(0)
+  const [primaryProduceId, setPrimaryProduceId] = useState(null)
 
   useEffect(() => {
     const showSub = Keyboard.addListener('keyboardDidShow', (e) => {
@@ -709,6 +737,9 @@ export default function JuiceSnapScreen({ navigation, route }) {
     }
     setBatch((prev) => {
       const updated = [...prev.scannedIngredients, newIngredient]
+      if (!primaryProduceId) {
+        setPrimaryProduceId(item.id)
+      }
       // Show upsell nudge at 7+ manual ingredients
       if (updated.length >= 7 && !isPro) {
         setShowUpsellNudge(true)
@@ -733,7 +764,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
       return buildBatch(updated, juiceMethod)
     })
     setIsLogged(false)
-  }, [isPro, blendNoticeShown, globalPortionMode, organicMode])
+  }, [isPro, blendNoticeShown, globalPortionMode, organicMode, primaryProduceId])
 
   const handleCameraClose = useCallback(() => {
     setIsCameraOpen(false)
@@ -772,6 +803,9 @@ export default function JuiceSnapScreen({ navigation, route }) {
       return ing
     })
     setBatch(buildBatch(enriched, juiceMethod))
+    if (enriched.length > 0 && enriched[0].produceId) {
+      setPrimaryProduceId(enriched[0].produceId)
+    }
     setIsCameraOpen(false)
     setIsLogged(false)
     // Check for Advanced Blend threshold from photo scan
@@ -822,12 +856,29 @@ export default function JuiceSnapScreen({ navigation, route }) {
     ))
     setBatch((prev) => {
       const updated = [...prev.scannedIngredients]
+      const removedItem = updated[index]
       updated.splice(index, 1)
-      if (updated.length === 0) return { ...EMPTY_BATCH, scannedIngredients: [] }
+      if (updated.length === 0) {
+        setPrimaryProduceId(null)
+        return { ...EMPTY_BATCH, scannedIngredients: [] }
+      }
+      if (removedItem && removedItem.produceId === primaryProduceId) {
+        setPrimaryProduceId(updated[0].produceId)
+      }
       return buildBatch(updated, juiceMethod)
     })
     setIsLogged(false)
-  }, [juiceMethod])
+  }, [juiceMethod, primaryProduceId])
+
+  const handleSetPrimary = useCallback((index) => {
+    setBatch((prev) => {
+      const item = prev.scannedIngredients[index]
+      if (item) {
+        setPrimaryProduceId(item.produceId)
+      }
+      return prev
+    })
+  }, [])
 
   const handleWeightChange = useCallback((index, newWeight) => {
     setBatch((prev) => {
@@ -1277,24 +1328,34 @@ export default function JuiceSnapScreen({ navigation, route }) {
                 onSizeChange={handleSizeChange}
                 onEstimatedWeightChange={handleEstimatedWeightChange}
                 juiceMethod={juiceMethod}
+                isPrimary={item.produceId === primaryProduceId}
+                onSetPrimary={handleSetPrimary}
               />
             ))}
             <AddProducePicker onAdd={handleAddProduce} />
 
             {hasItems && !isLogged && (
               <TouchableOpacity
-                style={styles.findRecipesBtn}
+                style={[styles.findRecipesBtn, !primaryProduceId && styles.findRecipesBtnDisabled]}
                 onPress={() => {
+                  if (!primaryProduceId) return
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
                   const ids = (batch.scannedIngredients || []).map((i) => i.produceId)
-                  navigation.navigate('ProduceRecipeResults', { selectedProduceIds: ids })
+                  const otherIds = ids.filter((id) => id !== primaryProduceId)
+                  navigation.navigate('ProduceRecipeResults', {
+                    primaryProduceId,
+                    otherSelectedProduceIds: otherIds,
+                    selectedProduceIds: ids,
+                  })
                 }}
                 activeOpacity={0.7}
                 accessibilityRole="button"
-                accessibilityLabel="Find recipes with my produce"
+                accessibilityLabel={primaryProduceId ? 'Find recipes with my primary produce' : 'Select a primary produce to find recipes'}
               >
-                <BookOpen size={18} color="#64B5F6" />
-                <Text style={styles.findRecipesBtnText}>Find Recipes With My Produce</Text>
+                <BookOpen size={18} color={primaryProduceId ? '#64B5F6' : '#484F58'} />
+                <Text style={[styles.findRecipesBtnText, !primaryProduceId && styles.findRecipesBtnTextDisabled]}>
+                  {primaryProduceId ? 'Find Recipes with My Primary Produce' : 'Select a Primary Produce First'}
+                </Text>
               </TouchableOpacity>
             )}
           </View>
@@ -1780,6 +1841,36 @@ const styles = StyleSheet.create({
   findRecipesBtnText: {
     color: '#64B5F6',
     fontSize: 15,
+    fontWeight: '600',
+  },
+  findRecipesBtnDisabled: {
+    borderColor: 'rgba(72,79,88,0.3)',
+    backgroundColor: 'rgba(72,79,88,0.04)',
+    opacity: 0.6,
+  },
+  findRecipesBtnTextDisabled: {
+    color: '#484F58',
+  },
+  primaryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+    marginBottom: 4,
+  },
+  primaryBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 3,
+    paddingHorizontal: 8,
+    borderRadius: 10,
+    backgroundColor: 'rgba(72,79,88,0.08)',
+  },
+  primaryBtnActive: {
+    backgroundColor: 'rgba(100,181,246,0.12)',
+  },
+  primaryLabel: {
+    fontSize: 11,
     fontWeight: '600',
   },
   logButton: {

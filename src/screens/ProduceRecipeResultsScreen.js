@@ -12,7 +12,7 @@ import { LinearGradient } from 'expo-linear-gradient'
 import * as Haptics from 'expo-haptics'
 import { ArrowLeft, ChevronRight, Check, Sparkles, Lock } from 'lucide-react-native'
 import MeshGradientBg from '../components/MeshGradientBg'
-import { getRecipesForProduce } from '../services/produceRecipeMatcher'
+import { getRecipesForProduce, getRecipesForPrimaryProduce } from '../services/produceRecipeMatcher'
 import { FREE_BROWSE_COLLECTIONS } from '../services/produceFamilies'
 import { getRecipeById } from '../constants/recipeData'
 import { PRODUCE_DATA } from '../services/JuiceEngine'
@@ -129,6 +129,8 @@ const MemoizedRecipeCard = memo(function RecipeCard({ match, onPress }) {
 
 export default function ProduceRecipeResultsScreen({ route, navigation }) {
   const selectedProduceIds = route?.params?.selectedProduceIds || []
+  const primaryProduceId = route?.params?.primaryProduceId || null
+  const otherSelectedProduceIds = route?.params?.otherSelectedProduceIds || []
 
   const produceNames = useMemo(() => {
     return selectedProduceIds.map((id) => ({
@@ -137,12 +139,20 @@ export default function ProduceRecipeResultsScreen({ route, navigation }) {
     }))
   }, [selectedProduceIds])
 
+  const primaryName = useMemo(() => {
+    if (!primaryProduceId) return null
+    return getProduceName(primaryProduceId)
+  }, [primaryProduceId])
+
   const result = useMemo(() => {
+    if (primaryProduceId) {
+      return getRecipesForPrimaryProduce(primaryProduceId, otherSelectedProduceIds)
+    }
     if (selectedProduceIds.length === 0) {
       return { status: 'empty_selection', matches: [], invalidIds: [] }
     }
     return getRecipesForProduce(selectedProduceIds)
-  }, [selectedProduceIds])
+  }, [primaryProduceId, otherSelectedProduceIds, selectedProduceIds])
 
   const sections = useMemo(() => {
     if (result.status !== 'results') return []
@@ -215,7 +225,9 @@ export default function ProduceRecipeResultsScreen({ route, navigation }) {
           <TouchableOpacity onPress={handleBack} style={styles.backBtn} accessibilityRole="button" accessibilityLabel="Back">
             <ArrowLeft size={22} color="#FFFFFF" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle} numberOfLines={1}>Recipe Matches</Text>
+          <Text style={styles.headerTitle} numberOfLines={1}>
+            {primaryName ? `Recipes featuring ${primaryName}` : 'Recipe Matches'}
+          </Text>
           <View style={{ width: 36 }} />
         </View>
 

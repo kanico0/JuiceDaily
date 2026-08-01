@@ -41,10 +41,10 @@ beforeEach(() => {
 
 describe('Portion Entry Preference', () => {
 
-  // 1. Missing stored preference returns weight
-  test('1. missing stored preference returns weight', async () => {
+  // 1. Missing stored preference returns quantity (default for new users)
+  test('1. missing stored preference returns quantity', async () => {
     const mode = await getPreferredPortionEntryMode()
-    expect(mode).toBe('weight')
+    expect(mode).toBe('quantity')
   })
 
   // 2. Stored weight returns weight
@@ -61,8 +61,8 @@ describe('Portion Entry Preference', () => {
     expect(mode).toBe('quantity')
   })
 
-  // 4. Invalid value returns weight
-  test('4. invalid stored value returns weight', async () => {
+  // 4. Invalid value returns quantity (default fallback)
+  test('4. invalid stored value returns quantity', async () => {
     // Manually inject invalid data
     mockStore[PORTION_ENTRY_PREF_KEY] = JSON.stringify({
       schemaVersion: 2,
@@ -70,7 +70,7 @@ describe('Portion Entry Preference', () => {
       payload: 'invalid_mode',
     })
     const mode = await getPreferredPortionEntryMode()
-    expect(mode).toBe('weight')
+    expect(mode).toBe('quantity')
   })
 
   // 5. Setter persists weight
@@ -90,10 +90,10 @@ describe('Portion Entry Preference', () => {
   })
 
   // 7. Invalid setter input is rejected/normalized safely
-  test('7. invalid setter input is normalized to weight', async () => {
+  test('7. invalid setter input is normalized to quantity', async () => {
     await setPreferredPortionEntryMode('invalid' as any)
     const parsed = JSON.parse(mockStore[PORTION_ENTRY_PREF_KEY])
-    expect(parsed.payload).toBe('weight')
+    expect(parsed.payload).toBe('quantity')
   })
 
   // 8. Preference key appears in reset key list
@@ -110,21 +110,21 @@ describe('Portion Entry Preference', () => {
   })
 
   // 10. Storage read failure falls back safely
-  test('10. storage read failure falls back to weight', async () => {
+  test('10. storage read failure falls back to quantity', async () => {
     // Corrupt JSON in storage
     mockStore[PORTION_ENTRY_PREF_KEY] = 'not-valid-json{{'
     const mode = await getPreferredPortionEntryMode()
-    expect(mode).toBe('weight')
+    expect(mode).toBe('quantity')
   })
 
   // 11. Storage write failure is reported according to storage conventions
   test('11. normalizePreferredPortionEntryMode handles various inputs', () => {
     expect(normalizePreferredPortionEntryMode('weight')).toBe('weight')
     expect(normalizePreferredPortionEntryMode('quantity')).toBe('quantity')
-    expect(normalizePreferredPortionEntryMode(null)).toBe('weight')
-    expect(normalizePreferredPortionEntryMode(undefined)).toBe('weight')
-    expect(normalizePreferredPortionEntryMode('invalid')).toBe('weight')
-    expect(normalizePreferredPortionEntryMode(123)).toBe('weight')
+    expect(normalizePreferredPortionEntryMode(null)).toBe('quantity')
+    expect(normalizePreferredPortionEntryMode(undefined)).toBe('quantity')
+    expect(normalizePreferredPortionEntryMode('invalid')).toBe('quantity')
+    expect(normalizePreferredPortionEntryMode(123)).toBe('quantity')
   })
 
   // Bonus: reset clears the preference

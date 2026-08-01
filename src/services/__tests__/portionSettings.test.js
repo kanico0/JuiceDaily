@@ -28,10 +28,10 @@ describe('Settings — Preferred Portion Entry', () => {
     AsyncStorage.setItem.mockResolvedValue(undefined)
   })
 
-  it('1. getPreferredPortionEntryMode returns weight by default', async () => {
+  it('1. getPreferredPortionEntryMode returns quantity by default', async () => {
     AsyncStorage.getItem.mockResolvedValue(null)
     const mode = await getPreferredPortionEntryMode()
-    expect(mode).toBe('weight')
+    expect(mode).toBe('quantity')
   })
 
   it('2. getPreferredPortionEntryMode returns stored weight', async () => {
@@ -62,10 +62,10 @@ describe('Settings — Preferred Portion Entry', () => {
     )
   })
 
-  it('5. invalid stored preference falls back to weight', async () => {
+  it('5. invalid stored preference falls back to quantity', async () => {
     AsyncStorage.getItem.mockResolvedValue('"invalid_mode"')
     const mode = await getPreferredPortionEntryMode()
-    expect(mode).toBe('weight')
+    expect(mode).toBe('quantity')
   })
 
   it('6. preference persists across calls', async () => {
@@ -110,8 +110,8 @@ describe('Settings — Preferred Portion Entry', () => {
   it('10. normalizePreferredPortionEntryMode validates correctly', () => {
     expect(normalizePreferredPortionEntryMode('weight')).toBe('weight')
     expect(normalizePreferredPortionEntryMode('quantity')).toBe('quantity')
-    expect(normalizePreferredPortionEntryMode('invalid')).toBe('weight')
-    expect(normalizePreferredPortionEntryMode(null)).toBe('weight')
-    expect(normalizePreferredPortionEntryMode(undefined)).toBe('weight')
+    expect(normalizePreferredPortionEntryMode('invalid')).toBe('quantity')
+    expect(normalizePreferredPortionEntryMode(null)).toBe('quantity')
+    expect(normalizePreferredPortionEntryMode(undefined)).toBe('quantity')
   })
 })

@@ -738,11 +738,39 @@ export default function JuiceSnapScreen({ navigation, route }) {
 
   const handleProduceIdentified = useCallback((visionResult) => {
     console.log('[SCAN] handleProduceIdentified —', visionResult.scannedIngredients.length, 'items')
-    setBatch(buildBatch(visionResult.scannedIngredients, juiceMethod))
+    const enriched = visionResult.scannedIngredients.map((ing) => {
+      if (isProduceQuantitySupported(ing.produceId)) {
+        const defaultUnit = getDefaultPortionUnit(ing.produceId)
+        if (defaultUnit) {
+          const hasSML = defaultUnit.sizes.some((s) => s.sizeKey !== 'standard')
+          const defaultSize = hasSML
+            ? (defaultUnit.sizes.find((s) => s.sizeKey === 'medium') || defaultUnit.sizes[0])
+            : null
+          const initialResult = recomputeFromQuantityChange({
+            produceId: ing.produceId,
+            quantity: 1,
+            unitKey: defaultUnit.unitKey,
+            sizeKey: defaultSize?.sizeKey || undefined,
+          })
+          if (initialResult) {
+            return {
+              ...ing,
+              weightG: initialResult.weightG,
+              portionMetadata: initialResult.metadata,
+              portionEntryMode: 'quantity',
+              pendingUnitKey: defaultUnit.unitKey,
+              pendingSizeKey: defaultSize?.sizeKey || null,
+            }
+          }
+        }
+      }
+      return ing
+    })
+    setBatch(buildBatch(enriched, juiceMethod))
     setIsCameraOpen(false)
     setIsLogged(false)
     // Check for Advanced Blend threshold from photo scan
-    const distinctCount = countDistinctProduceIds(visionResult.scannedIngredients)
+    const distinctCount = countDistinctProduceIds(enriched)
     if (distinctCount >= 5 && !isPro) {
       setAdvancedBlendStage('fifth_ingredient_notice')
       setAdvancedBlendRemaining(FREE_ADVANCED_BLEND_ALLOWANCE)
@@ -864,12 +892,13 @@ export default function JuiceSnapScreen({ navigation, route }) {
   }, [juiceMethod])
 
   const handleQuantityChange = useCallback((index, qty) => {
+    const safeQty = Math.max(0, qty)
     setBatch((prev) => {
       const updated = [...prev.scannedIngredients]
       const item = updated[index]
       const unitKey = item.portionMetadata?.unitKey || item.pendingUnitKey || getDefaultPortionUnit(item.produceId)?.unitKey
       const sizeKey = item.portionMetadata?.sizeKey || item.pendingSizeKey || null
-      const input = { produceId: item.produceId, quantity: qty, unitKey, sizeKey: sizeKey || undefined }
+      const input = { produceId: item.produceId, quantity: safeQty, unitKey, sizeKey: sizeKey || undefined }
       const result = recomputeFromQuantityChange(input)
       if (!result) return prev
       updated[index] = {
@@ -979,6 +1008,17 @@ export default function JuiceSnapScreen({ navigation, route }) {
             : null
           newIngredient.pendingUnitKey = defaultUnit.unitKey
           newIngredient.pendingSizeKey = defaultSize?.sizeKey || null
+
+          const initialResult = recomputeFromQuantityChange({
+            produceId,
+            quantity: 1,
+            unitKey: defaultUnit.unitKey,
+            sizeKey: defaultSize?.sizeKey || undefined,
+          })
+          if (initialResult) {
+            newIngredient.weightG = initialResult.weightG
+            newIngredient.portionMetadata = initialResult.metadata
+          }
         }
       }
       const updated = [...prev.scannedIngredients, newIngredient]

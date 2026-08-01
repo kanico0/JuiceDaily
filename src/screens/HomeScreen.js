@@ -57,6 +57,7 @@ import AdvancedBlendModal from '../components/AdvancedBlendModal'
 import { countDistinctProduceIds, classifyBlend, BlendAllowanceError, FREE_ADVANCED_BLEND_ALLOWANCE, createOperationId } from '../services/quota/blendAllowanceService'
 import { authorizeAndProcessBatch } from '../services/quota/blendNutritionGate'
 import { authorizeGuestLog } from '../services/quota/guestLogGate'
+import { checkCameraEligibility } from '../services/cameraEligibilityCoordinator'
 import { trackEvent } from '../services/AnalyticsService'
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -602,6 +603,8 @@ export default function JuiceSnapScreen({ navigation, route }) {
   const { checkSnapEligibility, useSnap, snapInfo, isPro } = usePro()
   const [showSnapGate, setShowSnapGate] = useState(false)
   const [showAccountGate, setShowAccountGate] = useState(false)
+  const [accountGateMode, setAccountGateMode] = useState('guest')
+  const pendingCameraOpenRef = useRef(false)
   const [showAdvancedBlendModal, setShowAdvancedBlendModal] = useState(false)
   const [advancedBlendStage, setAdvancedBlendStage] = useState('fifth_ingredient_notice')
   const [advancedBlendRemaining, setAdvancedBlendRemaining] = useState(FREE_ADVANCED_BLEND_ALLOWANCE)
@@ -683,14 +686,45 @@ export default function JuiceSnapScreen({ navigation, route }) {
     }
   }, [route?.params?.preloadIngredients]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Unified camera open attempt via eligibility coordinator
+  const attemptCameraOpen = useCallback(async (isAutoOpen = false) => {
+    const snapElig = checkSnapEligibility()
+    const result = await checkCameraEligibility(snapElig)
+
+    if (result.action === 'open_camera') {
+      useSnap()
+      setIsCameraOpen(true)
+      if (!isAutoOpen) setIsLogged(false)
+      return
+    }
+
+    if (result.action === 'show_snap_gate') {
+      setShowSnapGate(true)
+      return
+    }
+
+    if (result.action === 'show_account_gate') {
+      setAccountGateMode('guest')
+      setShowAccountGate(true)
+      pendingCameraOpenRef.current = true
+      return
+    }
+
+    if (result.action === 'show_auth_resume') {
+      setAccountGateMode('signin')
+      setShowAccountGate(true)
+      pendingCameraOpenRef.current = true
+      return
+    }
+
+    // error — fall back to snap gate as a safe default
+    setShowSnapGate(true)
+  }, [checkSnapEligibility, useSnap])
+
   // Auto-open camera when navigated with openCamera: true
   useEffect(() => {
     if (shouldAutoOpenCamera && !isCameraOpen) {
-      const eligibility = checkSnapEligibility()
-      if (eligibility.eligible) {
-        useSnap()
-        setIsCameraOpen(true)
-      }
+      attemptCameraOpen(true)
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -698,15 +732,9 @@ export default function JuiceSnapScreen({ navigation, route }) {
   const effectiveManualMode = isManualMode || isSnapDepleted
 
   const handleSnap = useCallback(() => {
-    const eligibility = checkSnapEligibility()
-    if (!eligibility.eligible) {
-      setShowSnapGate(true)
-      return
-    }
-    useSnap()
-    setIsCameraOpen(true)
-    setIsLogged(false)
-  }, [checkSnapEligibility, useSnap])
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+    attemptCameraOpen(false)
+  }, [attemptCameraOpen])
 
   // Manual entry: add from NutrientLibrary (no credit consumed)
   const handleManualAdd = useCallback((item) => {
@@ -1508,9 +1536,18 @@ export default function JuiceSnapScreen({ navigation, route }) {
 
         <AccountGateModal
           visible={showAccountGate}
-          onClose={() => setShowAccountGate(false)}
-          onAuthenticated={() => setShowAccountGate(false)}
-          initialMode="guest"
+          onClose={() => {
+            setShowAccountGate(false)
+            pendingCameraOpenRef.current = false
+          }}
+          onAuthenticated={() => {
+            setShowAccountGate(false)
+            if (pendingCameraOpenRef.current) {
+              pendingCameraOpenRef.current = false
+              attemptCameraOpen(false)
+            }
+          }}
+          initialMode={accountGateMode}
         />
       </Modal>
 

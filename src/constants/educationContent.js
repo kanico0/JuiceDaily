@@ -107,6 +107,11 @@ export const HIGH_SUGAR_PRODUCE = [
  * Green:  Organic + Cold-pressed + Low-sugar
  * Orange: Conventional (Clean 15) OR Centrifugal-made
  * Red:    Dirty Dozen conventional OR High-sugar
+ *
+ * Returns { status, color, hex, label, reason }
+ * - status: 'caution' | 'good' | 'excellent'
+ * - reason: 'high-sugar' | 'conventional-dirty-dozen' | null
+ * - label:  user-facing display text
  */
 export function getTrafficLight(produceId, { isOrganic = false, juiceMethod = 'cold_pressed' } = {}) {
   const isDirty = DIRTY_DOZEN.includes(produceId)
@@ -114,18 +119,23 @@ export function getTrafficLight(produceId, { isOrganic = false, juiceMethod = 'c
   const isHighSugar = HIGH_SUGAR_PRODUCE.includes(produceId)
   const isColdPressed = juiceMethod === 'cold_pressed'
 
-  // Red: Dirty Dozen + not organic, or high-sugar
-  if ((isDirty && !isOrganic) || isHighSugar) {
-    return { color: 'red', hex: '#E57373', label: 'Caution' }
+  // Red: High-sugar (always, regardless of organic status)
+  if (isHighSugar) {
+    return { status: 'caution', color: 'red', hex: '#E57373', label: 'High Sugar', reason: 'high-sugar' }
+  }
+
+  // Red: Dirty Dozen + not organic
+  if (isDirty && !isOrganic) {
+    return { status: 'caution', color: 'red', hex: '#E57373', label: 'Conventional Concern', reason: 'conventional-dirty-dozen' }
   }
 
   // Green: Organic + Cold-pressed + not high-sugar
   if (isOrganic && isColdPressed && !isHighSugar) {
-    return { color: 'green', hex: '#81C784', label: 'Excellent' }
+    return { status: 'excellent', color: 'green', hex: '#81C784', label: 'Excellent', reason: null }
   }
 
   // Orange: everything else (conventional Clean 15, centrifugal, etc.)
-  return { color: 'orange', hex: '#FFB74D', label: 'Good' }
+  return { status: 'good', color: 'orange', hex: '#FFB74D', label: 'Good', reason: null }
 }
 
 // ── Gamification ─────────────────────────────────────────────

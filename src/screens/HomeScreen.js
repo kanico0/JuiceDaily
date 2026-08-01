@@ -1308,10 +1308,6 @@ export default function JuiceSnapScreen({ navigation, route }) {
           <View style={styles.editCard}>
             <View style={styles.editCardHeader}>
               <Text style={styles.editCardTitle}>Identified Produce</Text>
-              <View style={styles.organicLegend}>
-                <Leaf size={10} color="#81C784" />
-                <Text style={styles.organicLegendText}>= organic</Text>
-              </View>
             </View>
             {batch.scannedIngredients.map((item, i) => (
               <ProduceEditRow
@@ -1669,16 +1665,6 @@ const styles = StyleSheet.create({
     color: '#484F58',
     textTransform: 'uppercase',
     letterSpacing: 1,
-  },
-  organicLegend: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  organicLegendText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#81C784',
   },
   editRow: {
     flexDirection: 'column',

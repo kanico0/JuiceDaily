@@ -581,7 +581,7 @@ export default function SettingsScreen({ navigation }) {
   const [nudgeSettings, setNudgeSettingsLocal] = useState(null)
   const [nudgePermDenied, setNudgePermDenied] = useState(false)
   const [juicerType, setJuicerType] = useState('centrifugal')
-  const [portionEntryMode, setPortionEntryMode] = useState('weight')
+  const [portionEntryMode, setPortionEntryMode] = useState('quantity')
 
   const clearActivationStorage = useCallback(async () => {
     try {

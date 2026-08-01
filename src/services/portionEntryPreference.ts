@@ -4,8 +4,8 @@
 // Preference persistence for the Preferred Portion Entry setting.
 // Uses the existing storage.ts module — no second storage framework.
 //
-// Default: 'weight'
-// Invalid/corrupted values safely fall back to 'weight'.
+// Default: 'quantity'
+// Invalid/corrupted values safely fall back to 'quantity'.
 //
 // The preference determines only the initial mode for newly created
 // ingredient rows. It must not alter existing rows, recipes, or
@@ -19,7 +19,7 @@ import type { PortionEntryMode } from './producePortionConversion'
 
 export const PORTION_ENTRY_PREF_KEY = '@juicing_portion_entry_mode_v1'
 const PREF_SCHEMA_VERSION = 2
-const DEFAULT_MODE: PortionEntryMode = 'weight'
+const DEFAULT_MODE: PortionEntryMode = 'quantity'
 
 // Verify key is registered for nuclear reset
 if (!ALL_STORAGE_KEYS.includes(PORTION_ENTRY_PREF_KEY as any)) {

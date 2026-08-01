@@ -581,7 +581,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
   const [manualSearch, setManualSearch] = useState('')
   const [showUpsellNudge, setShowUpsellNudge] = useState(false)
   const [juiceMethod, setJuiceMethod] = useState('centrifugal')
-  const [globalPortionMode, setGlobalPortionMode] = useState('weight')
+  const [globalPortionMode, setGlobalPortionMode] = useState('quantity')
   const [keyboardHeight, setKeyboardHeight] = useState(0)
 
   useEffect(() => {

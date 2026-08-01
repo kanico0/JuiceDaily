@@ -2,7 +2,7 @@
   "expo": {
     "name": "RawLifeFlow: Juicing Daily",
     "slug": "JuicingApp",
-    "version": "1.0.10",
+    "version": "1.0.11",
     "scheme": "juicingapp",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -23,7 +23,7 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "versionCode": 9,
+      "versionCode": 10,
       "useNextNotificationsApi": true
     },
     "plugins": [

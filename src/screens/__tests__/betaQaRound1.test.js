@@ -341,12 +341,12 @@ describe('Regression: Data and formula preservation', () => {
     expect(EXP_SRC).toContain("handleSelect('experienced')")
   })
 
-  it('R11 — App version bumped to 1.0.10', () => {
+  it('R11 — App version bumped to 1.0.11', () => {
     const appJson = fs.readFileSync(
       path.join(__dirname, '..', '..', '..', 'app.json'),
       'utf8'
     )
-    expect(appJson).toContain('"version": "1.0.10"')
+    expect(appJson).toContain('"version": "1.0.11"')
   })
 
   it('R12 — ScanScreen still has BrowseIdeasModal and ExampleScanModal', () => {

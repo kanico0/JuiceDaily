@@ -34,7 +34,6 @@ import {
   Crown,
   Sparkles,
   Leaf,
-  Cog,
   BookOpen,
 } from 'lucide-react-native'
 import colors from '../constants/colors'
@@ -848,20 +847,6 @@ export default function JuiceSnapScreen({ navigation, route }) {
     setIsLogged(false)
   }, [juiceMethod])
 
-  const handleToggleJuiceMethod = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
-    setJuiceMethod((prev) => {
-      const next = prev === 'cold_pressed' ? 'centrifugal' : 'cold_pressed'
-      AsyncStorage.setItem(JUICE_METHOD_STORAGE_KEY, next).catch(() => {})
-      setBatch((prevBatch) => {
-        if ((prevBatch.scannedIngredients || []).length === 0) return prevBatch
-        return buildBatch(prevBatch.scannedIngredients, next)
-      })
-      return next
-    })
-    setIsLogged(false)
-  }, [])
-
   // ── Portion entry handlers ──────────────────────────────────
 
   const handleModeChange = useCallback((index, newMode) => {
@@ -1271,38 +1256,6 @@ export default function JuiceSnapScreen({ navigation, route }) {
           </View>
         )}
 
-        {/* Juice Method Toggle */}
-        <View style={styles.juiceMethodRow}>
-          <TouchableOpacity
-            style={[
-              styles.juiceMethodBtn,
-              juiceMethod === 'cold_pressed' && styles.juiceMethodBtnActive,
-            ]}
-            onPress={() => juiceMethod !== 'cold_pressed' && handleToggleJuiceMethod()}
-            activeOpacity={0.7}
-          >
-            <Cog size={14} color={juiceMethod === 'cold_pressed' ? '#81C784' : '#484F58'} />
-            <Text style={[
-              styles.juiceMethodText,
-              juiceMethod === 'cold_pressed' && styles.juiceMethodTextActive,
-            ]}>Cold Pressed</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.juiceMethodBtn,
-              juiceMethod === 'centrifugal' && styles.juiceMethodBtnActive,
-            ]}
-            onPress={() => juiceMethod !== 'centrifugal' && handleToggleJuiceMethod()}
-            activeOpacity={0.7}
-          >
-            <Cog size={14} color={juiceMethod === 'centrifugal' ? '#FFB74D' : '#484F58'} />
-            <Text style={[
-              styles.juiceMethodText,
-              juiceMethod === 'centrifugal' && styles.juiceMethodTextActive,
-            ]}>Centrifugal</Text>
-          </TouchableOpacity>
-        </View>
-
         {/* Editable produce list */}
         {hasItems && (
           <View style={styles.editCard}>
@@ -1611,37 +1564,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     color: '#484F58',
-  },
-
-  // ── Juice Method Toggle ───────────────────────────────────
-  juiceMethodRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 12,
-  },
-  juiceMethodBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 10,
-    borderRadius: 24,
-    backgroundColor: 'rgba(255,255,255,0.04)',
-    borderWidth: 0.5,
-    borderColor: 'rgba(255,255,255,0.06)',
-  },
-  juiceMethodBtnActive: {
-    backgroundColor: 'rgba(129,199,132,0.08)',
-    borderColor: 'rgba(129,199,132,0.2)',
-  },
-  juiceMethodText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#484F58',
-  },
-  juiceMethodTextActive: {
-    color: '#81C784',
   },
 
   // ── Editable Produce Card ──────────────────────────────────

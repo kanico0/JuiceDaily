@@ -53,6 +53,7 @@ import ScanSuccessScreen from './src/screens/ScanSuccessScreen'
 import HistoryScreen from './src/screens/HistoryScreen'
 import IntroLaunchScreen from './src/screens/IntroLaunchScreen'
 import JuicingExperienceScreen from './src/screens/JuicingExperienceScreen'
+import LessonScreen from './src/screens/LessonScreen'
 import PaywallScreen from './src/screens/PaywallScreen'
 import JuicerGuideScreen from './src/screens/JuicerGuideScreen'
 import ProduceRecipeResultsScreen from './src/screens/ProduceRecipeResultsScreen'
@@ -113,6 +114,7 @@ function addSharedScreens(StackNav) {
       <StackNav.Screen name="Paywall" component={PaywallScreen} options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
       <StackNav.Screen name="JuicerGuide" component={JuicerGuideScreen} />
       <StackNav.Screen name="ProduceRecipeResults" component={ProduceRecipeResultsScreen} />
+      <StackNav.Screen name="Lesson" component={LessonScreen} />
     </>
   )
 }
@@ -271,50 +273,18 @@ function RootNavigator() {
               setExperienceLevel(value)
               const isReturning = activation.introDismissed || activation.totalLogsCount > 0 || totalLogCount > 0
               if (isReturning) {
-                navigation.goBack()
+                // Returning user from Today — show the lesson they selected
+                navigation.navigate('Lesson', { level: value, isReplay: true })
                 return
               }
               recordIntroDismissed()
-              if (value === 'experienced') {
-                navigation.dispatch(
-                  CommonActions.reset({
-                    index: 0,
-                    routes: [{ name: 'Main' }],
-                  })
-                )
-                return
-              }
-              navigation.dispatch(
-                CommonActions.reset({
-                  index: 0,
-                  routes: [
-                    {
-                      name: 'Main',
-                      state: {
-                        index: 2,
-                        routes: [
-                          { name: 'TodayTab' },
-                          { name: 'HistoryTab' },
-                          {
-                            name: 'ExploreTab',
-                            state: {
-                              index: 1,
-                              routes: [
-                                { name: 'ExploreHome' },
-                                { name: 'NoviceJourney' },
-                              ],
-                            },
-                          },
-                        ],
-                      },
-                    },
-                  ],
-                })
-              )
+              // New user — show the lesson, then navigate to Main on finish
+              navigation.navigate('Lesson', { level: value, isReplay: false })
             }}
           />
         )}
       </RootStack.Screen>
+      <RootStack.Screen name="Lesson" component={LessonScreen} />
       <RootStack.Screen name="Main" component={MainTabs} />
       <RootStack.Screen
         name="ScanFlow"

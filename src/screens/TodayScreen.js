@@ -716,7 +716,7 @@ export default function TodayScreen({ navigation }) {
                 {/* Today's Focus Nutrient (pre-log) */}
                 <FocusNutrientCard onScan={handleScan} isReduced={isReduced} />
 
-                {/* New to Juicing? discovery card */}
+                {/* Explore Juicing Lessons discovery card */}
                 <TouchableOpacity
                   style={styles.juicingDiscoveryCard}
                   onPress={() => {
@@ -730,17 +730,17 @@ export default function TodayScreen({ navigation }) {
                   }}
                   activeOpacity={0.7}
                   accessibilityRole="button"
-                  accessibilityLabel="New to Juicing? Choose my juicing level"
+                  accessibilityLabel="Explore Juicing Lessons"
                 >
                   <View style={styles.juicingDiscoveryIconWrap}>
                     <Sparkles size={18} color={BRAND.accent?.vitaminC || '#FFB74D'} />
                   </View>
                   <View style={styles.juicingDiscoveryContent}>
-                    <Text style={styles.juicingDiscoveryTitle}>New to Juicing?</Text>
+                    <Text style={styles.juicingDiscoveryTitle}>Explore Juicing Lessons</Text>
                     <Text style={styles.juicingDiscoveryBody}>
-                      Choose the level of guidance that fits your juicing experience.
+                      New to juicing, casual, or experienced — choose a lesson that fits you.
                     </Text>
-                    <Text style={styles.juicingDiscoveryCta}>Choose My Juicing Level</Text>
+                    <Text style={styles.juicingDiscoveryCta}>Browse Lessons</Text>
                   </View>
                   <ChevronRight size={16} color={SEMANTIC_COLORS.textMuted} />
                 </TouchableOpacity>

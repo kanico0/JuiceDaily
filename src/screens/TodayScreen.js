@@ -630,7 +630,7 @@ export default function TodayScreen({ navigation }) {
                         .map(i => i.name)
                         .filter(Boolean))]
                         .slice(0, 4)
-                        .join(' · ')}}
+                        .join(' · ')}
                     </Text>
                     <View style={styles.simpleBlendCtaRow}>
                       <Text style={styles.simpleBlendCtaText}>View Recipe</Text>

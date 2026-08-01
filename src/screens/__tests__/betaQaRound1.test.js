@@ -101,12 +101,12 @@ describe('Issue 2: Vertical size selector', () => {
 
 describe('Issue 3: Find Recipes button placement', () => {
   it('3.1 — Find Recipes button exists in HomeScreen', () => {
-    expect(HOME_SRC).toContain('Find Recipes With My Produce')
+    expect(HOME_SRC).toContain('Find Recipes with My Primary Produce')
   })
 
   it('3.2 — Find Recipes appears after AddProducePicker in source order', () => {
     const addProduceIdx = HOME_SRC.indexOf('AddProducePicker onAdd={handleAddProduce}')
-    const findRecipesIdx = HOME_SRC.indexOf('Find Recipes With My Produce')
+    const findRecipesIdx = HOME_SRC.indexOf('Find Recipes with My Primary Produce')
     expect(addProduceIdx).toBeGreaterThan(-1)
     expect(findRecipesIdx).toBeGreaterThan(-1)
     expect(findRecipesIdx).toBeGreaterThan(addProduceIdx)
@@ -114,7 +114,7 @@ describe('Issue 3: Find Recipes button placement', () => {
 
   it('3.3 — Find Recipes appears before NutritionSummary in source order', () => {
     const addProduceIdx = HOME_SRC.indexOf('AddProducePicker onAdd={handleAddProduce}')
-    const findRecipesIdx = HOME_SRC.indexOf('Find Recipes With My Produce', addProduceIdx)
+    const findRecipesIdx = HOME_SRC.indexOf('Find Recipes with My Primary Produce', addProduceIdx)
     const nutritionIdx = HOME_SRC.indexOf('<NutritionSummary')
     expect(findRecipesIdx).toBeGreaterThan(-1)
     expect(nutritionIdx).toBeGreaterThan(-1)
@@ -122,12 +122,12 @@ describe('Issue 3: Find Recipes button placement', () => {
   })
 
   it('3.4 — Only one Find Recipes button block exists (no duplicate)', () => {
-    const matches = HOME_SRC.match(/Find Recipes With My Produce/g)
+    const matches = HOME_SRC.match(/Find Recipes with My Primary Produce/g)
     expect(matches).toHaveLength(1)
   })
 
   it('3.5 — Find Recipes has accessibilityLabel', () => {
-    expect(HOME_SRC).toContain('accessibilityLabel="Find recipes with my produce"')
+    expect(HOME_SRC).toContain('accessibilityLabel={primaryProduceId ? \'Find recipes with my primary produce\' : \'Select a primary produce to find recipes\'}')
   })
 })
 

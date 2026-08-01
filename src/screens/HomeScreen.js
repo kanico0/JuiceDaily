@@ -803,7 +803,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
       return ing
     })
     setBatch(buildBatch(enriched, juiceMethod))
-    if (enriched.length > 0 && enriched[0].produceId) {
+    if (!primaryProduceId && enriched.length > 0 && enriched[0].produceId) {
       setPrimaryProduceId(enriched[0].produceId)
     }
     setIsCameraOpen(false)
@@ -821,20 +821,25 @@ export default function JuiceSnapScreen({ navigation, route }) {
         source: 'photo',
       })
     }
-  }, [juiceMethod, isPro])
+  }, [juiceMethod, isPro, primaryProduceId])
 
   const handleUpdateItem = useCallback((index, newProduceId, newWeightG) => {
     setBatch((prev) => {
       const updated = [...prev.scannedIngredients]
+      const oldItem = updated[index]
       updated[index] = { ...updated[index], produceId: newProduceId, weightG: newWeightG }
+      if (oldItem && oldItem.produceId === primaryProduceId && newProduceId !== primaryProduceId) {
+        setPrimaryProduceId(newProduceId)
+      }
       return buildBatch(updated, juiceMethod)
     })
     setIsLogged(false)
-  }, [juiceMethod])
+  }, [juiceMethod, primaryProduceId])
 
   const handleReplace = useCallback((index, newProduceId) => {
     setBatch((prev) => {
       const updated = [...prev.scannedIngredients]
+      const replacedItem = updated[index]
       updated[index] = {
         ...updated[index],
         produceId: newProduceId,
@@ -843,10 +848,13 @@ export default function JuiceSnapScreen({ navigation, route }) {
         pendingUnitKey: undefined,
         pendingSizeKey: undefined,
       }
+      if (replacedItem && replacedItem.produceId === primaryProduceId) {
+        setPrimaryProduceId(newProduceId)
+      }
       return buildBatch(updated, juiceMethod)
     })
     setIsLogged(false)
-  }, [juiceMethod])
+  }, [juiceMethod, primaryProduceId])
 
   const handleRemove = useCallback((index) => {
     LayoutAnimation.configureNext(LayoutAnimation.create(

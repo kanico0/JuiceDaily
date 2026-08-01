@@ -224,9 +224,12 @@ function ProduceEditRow({
             style={[styles.organicBtn, isOrganic && styles.organicBtnActive]}
             accessibilityRole="switch"
             accessibilityState={{ checked: isOrganic }}
-            accessibilityLabel="Organic toggle"
+            accessibilityLabel={isOrganic ? 'Organic' : 'Non-Organic'}
           >
-            <Leaf size={12} color={isOrganic ? '#81C784' : '#484F58'} />
+            <Leaf size={10} color={isOrganic ? '#81C784' : '#484F58'} />
+            <Text style={[styles.organicLabel, { color: isOrganic ? '#81C784' : '#484F58' }]}>
+              {isOrganic ? 'Organic' : 'Non-Organic'}
+            </Text>
           </TouchableOpacity>
 
           <View style={styles.editWeightRow}>
@@ -275,9 +278,12 @@ function ProduceEditRow({
               style={[styles.organicBtn, isOrganic && styles.organicBtnActive]}
               accessibilityRole="switch"
               accessibilityState={{ checked: isOrganic }}
-              accessibilityLabel="Organic toggle"
+              accessibilityLabel={isOrganic ? 'Organic' : 'Non-Organic'}
             >
-              <Leaf size={12} color={isOrganic ? '#81C784' : '#484F58'} />
+              <Leaf size={10} color={isOrganic ? '#81C784' : '#484F58'} />
+              <Text style={[styles.organicLabel, { color: isOrganic ? '#81C784' : '#484F58' }]}>
+                {isOrganic ? 'Organic' : 'Non-Organic'}
+              </Text>
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => {
@@ -1711,12 +1717,13 @@ const styles = StyleSheet.create({
     paddingLeft: 16,
   },
   organicBtn: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: 'rgba(255,255,255,0.04)',
-    justifyContent: 'center',
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 4,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.04)',
     marginRight: 6,
     borderWidth: 0.5,
     borderColor: 'rgba(255,255,255,0.06)',
@@ -1724,6 +1731,12 @@ const styles = StyleSheet.create({
   organicBtnActive: {
     backgroundColor: 'rgba(129,199,132,0.12)',
     borderColor: 'rgba(129,199,132,0.25)',
+  },
+  organicLabel: {
+    fontSize: 9,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
   },
   editWeightRow: {
     flexDirection: 'row',

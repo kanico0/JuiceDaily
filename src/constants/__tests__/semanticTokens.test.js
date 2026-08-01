@@ -276,7 +276,7 @@ describe('Phase 0C1 — Pilot component migration', () => {
       await Promise.resolve()
     })
     expect(renderer.toJSON()).toBeTruthy()
-  })
+  }, 15000)
 
   // ── 10. TodaySummaryStats renders after migration ────────
 

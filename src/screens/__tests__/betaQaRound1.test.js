@@ -134,12 +134,12 @@ describe('Issue 3: Find Recipes button placement', () => {
 // ── Issue 4: Return path to juicing experience from Today ───
 
 describe('Issue 4: Today screen discovery card for juicing experience', () => {
-  it('4.1 — TodayScreen has "New to Juicing?" card', () => {
-    expect(TODAY_SRC).toContain('New to Juicing?')
+  it('4.1 — TodayScreen has "Explore Juicing Lessons" card', () => {
+    expect(TODAY_SRC).toContain('Explore Juicing Lessons')
   })
 
-  it('4.2 — TodayScreen has "Choose My Juicing Level" CTA', () => {
-    expect(TODAY_SRC).toContain('Choose My Juicing Level')
+  it('4.2 — TodayScreen has "Browse Lessons" CTA', () => {
+    expect(TODAY_SRC).toContain('Browse Lessons')
   })
 
   it('4.3 — TodayScreen navigates to JuicingExperience via getParent', () => {
@@ -147,16 +147,16 @@ describe('Issue 4: Today screen discovery card for juicing experience', () => {
   })
 
   it('4.4 — Discovery card has accessibilityLabel', () => {
-    expect(TODAY_SRC).toContain('New to Juicing? Choose my juicing level')
+    expect(TODAY_SRC).toContain('accessibilityLabel="Explore Juicing Lessons"')
   })
 
   it('4.5 — JuicingExperienceScreen has styles for discovery card', () => {
     expect(TODAY_SRC).toContain('juicingDiscoveryCard')
   })
 
-  it('4.6 — App.js handles returning users with goBack instead of reset', () => {
+  it('4.6 — App.js handles returning users by showing lesson via navigate', () => {
     expect(APP_TEXT).toContain('isReturning')
-    expect(APP_TEXT).toContain('navigation.goBack()')
+    expect(APP_TEXT).toContain("navigation.navigate('Lesson'")
   })
 })
 

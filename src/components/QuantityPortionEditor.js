@@ -3,7 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-nativ
 import * as Haptics from 'expo-haptics'
 import {
   isQuantitySupported,
-  getSupportedPortionUnits,
+  getSupportedCountUnits,
   getSupportedSizes,
   estimateRawWeightGrams,
   GRAMS_PER_OZ,
@@ -31,7 +31,7 @@ export default function QuantityPortionEditor({
   const [validationError, setValidationError] = useState('')
 
   const supported = isQuantitySupported(produceId)
-  const units = useMemo(() => getSupportedPortionUnits(produceId), [produceId])
+  const units = useMemo(() => getSupportedCountUnits(produceId), [produceId])
   const currentUnit = useMemo(
     () => units.find((u) => u.unitKey === unitKey) || units[0] || null,
     [units, unitKey],
@@ -213,7 +213,7 @@ export default function QuantityPortionEditor({
 
       {/* Helper text */}
       <Text style={styles.helperText}>
-        To change this estimate, adjust the quantity, unit, or size. To enter a specific weight, switch to Weight (oz).
+        To change this estimate, adjust the quantity, unit, or size. To enter a specific volume, switch to Volume.
       </Text>
 
       {/* Validation error */}

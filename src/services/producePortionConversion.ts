@@ -109,6 +109,14 @@ export function getSupportedPortionUnits(produceId: string): readonly PortionUni
   return record.units
 }
 
+const VOLUME_FAMILIES = new Set(['packed_cup', 'loose_cup', 'tablespoon'])
+
+export function getSupportedCountUnits(produceId: string): readonly PortionUnit[] {
+  const record = getPortionRegistryRecord(produceId)
+  if (!record) return []
+  return record.units.filter((u) => !VOLUME_FAMILIES.has(u.family))
+}
+
 export function getDefaultPortionUnit(produceId: string): PortionUnit | null {
   const record = getPortionRegistryRecord(produceId)
   if (!record || !record.quantitySupported || !record.defaultUnitKey) return null

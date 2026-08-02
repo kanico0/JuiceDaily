@@ -3,8 +3,8 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native'
 import * as Haptics from 'expo-haptics'
 
 const MODES = [
-  { key: 'weight', label: 'Weight (oz)' },
-  { key: 'quantity', label: 'Quantity' },
+  { key: 'quantity', label: 'Count' },
+  { key: 'weight', label: 'Volume' },
 ]
 
 export default function PortionEntryModeToggle({
@@ -12,7 +12,7 @@ export default function PortionEntryModeToggle({
   onModeChange,
   quantityDisabled = false,
   quantityDisabledReason = '',
-  accessibilityLabelPrefix = 'Portion entry mode',
+  accessibilityLabelPrefix = 'Measurement method',
 }) {
   return (
     <View style={styles.container}>

@@ -232,14 +232,14 @@ function ProduceEditRow({
           quantityDisabled={!quantitySupported}
           quantityDisabledReason={
             !quantitySupported
-              ? 'Quantity estimates are not available for this ingredient yet. Enter its raw weight instead.'
+              ? 'Count estimates are not available for this ingredient yet. Enter its volume instead.'
               : ''
           }
           accessibilityLabelPrefix={`Portion entry for ${entry?.name || item.produceId}`}
         />
       </View>
 
-      {/* Row 2: Controls — Weight mode */}
+      {/* Row 2: Controls — Volume mode */}
       {entryMode === 'weight' && (
         <View style={styles.editControlsRow}>
           <TrafficLightBadge produceId={item.produceId} isOrganic={isOrganic} juiceMethod={juiceMethod} />
@@ -292,7 +292,7 @@ function ProduceEditRow({
         </View>
       )}
 
-      {/* Row 2: Controls — Quantity mode */}
+      {/* Row 2: Controls — Count mode */}
       {entryMode === 'quantity' && quantitySupported && (
         <View style={styles.editQuantityContainer}>
           <View style={styles.editControlsRow}>

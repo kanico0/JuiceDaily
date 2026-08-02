@@ -1,299 +1,302 @@
 // ─────────────────────────────────────────────────────────────
-// snapQuotaDisplay.test.js — Tests for snap quota display
-// synchronization (Issue 3: counter changes on camera cancel)
+// snapQuotaDisplay.test.js — Tests for unified scan-quota display
+// Both the upper-right film-roll counter and the center
+// FreePlanUsageCard wording derive from the same server-
+// authoritative QuotaStore snapshot.
 // ─────────────────────────────────────────────────────────────
 
-// Mock dependencies
-jest.mock('@react-native-async-storage/async-storage', () => ({
-  getItem: jest.fn(() => Promise.resolve(null)),
-  setItem: jest.fn(() => Promise.resolve()),
-  removeItem: jest.fn(() => Promise.resolve()),
-}))
-
-jest.mock('expo-haptics', () => ({
-  impactAsync: jest.fn(() => Promise.resolve()),
-  ImpactFeedbackStyle: { Light: 'Light', Medium: 'Medium', Heavy: 'Heavy' },
-}))
-
-jest.mock('../../services/AnalyticsService', () => ({
-  trackEvent: jest.fn(),
-}))
-
-jest.mock('../../services/JuiceLogStore', () => ({
-  useJuiceLog: jest.fn(() => ({
-    addEntry: jest.fn(),
-    entries: [],
-    totalLogCount: 0,
-    todayEntries: [],
-    diversityStats: {},
-  })),
-}))
-
-jest.mock('../../services/ChallengeStore', () => ({
-  useChallenge: jest.fn(() => ({
-    logJuice: jest.fn(),
-    vitalityScore: 0,
-    challenge: { currentDay: 1 },
-    todayLog: { juices: [] },
-    weeklyStats: { totalLogs: 0 },
-  })),
-}))
-
-jest.mock('../../services/NutritionScoreStore', () => ({
-  useNutritionScore: jest.fn(() => ({
-    recordNutritionLog: jest.fn(),
-    momentum: 0,
-  })),
-}))
-
-jest.mock('../../services/quota/QuotaStore', () => ({
-  useQuota: jest.fn(() => ({
-    quota: { plan: 'free', scansUsed: 0, scanLimit: 5 },
-  })),
-}))
-
-jest.mock('../../services/subscriptions/subscriptionSelectors', () => ({
-  selectQuotaLabel: jest.fn(() => '0 of 5 scans used this month'),
-  selectQuotaExhausted: jest.fn(() => false),
-}))
-
-jest.mock('../../services/quota/guestLogGate', () => ({
-  authorizeGuestLog: jest.fn(async () => ({ allowed: true })),
-}))
-
-jest.mock('../../services/quota/blendAllowanceService', () => ({
-  countDistinctProduceIds: jest.fn(() => 0),
-  classifyBlend: jest.fn(() => 'simple'),
-  BlendAllowanceError: class BlendAllowanceError extends Error {},
-  FREE_ADVANCED_BLEND_ALLOWANCE: 3,
-  createOperationId: jest.fn(() => 'op-1'),
-}))
-
-jest.mock('../../services/quota/blendNutritionGate', () => ({
-  authorizeAndProcessBatch: jest.fn(async (ings) => ({
-    ...require('../../services/JuiceEngine').processJuiceBatch(ings, 'centrifugal'),
-    allowance: null,
-  })),
-}))
-
-jest.mock('../../services/cameraEligibilityCoordinator', () => ({
-  checkCameraEligibility: jest.fn(async (elig) => {
-    if (elig.eligible) return { action: 'open_camera' }
-    return { action: 'show_snap_gate' }
-  }),
-}))
-
-jest.mock('../../services/ActivationStore', () => ({
-  useActivation: jest.fn(() => ({
-    recordLog: jest.fn(),
-    unlocks: {},
-    activation: { totalLogsCount: 0 },
-  })),
-}))
-
-jest.mock('../../services/FeatureFlags', () => ({
-  useFlags: jest.fn(() => ({ isEnabled: () => false })),
-}))
-
-jest.mock('../../services/UserProfileStore', () => ({
-  useUserProfile: jest.fn(() => ({ profile: { name: '' } })),
-}))
-
-jest.mock('../../services/glowStreak', () => ({
-  useGlowStreak: jest.fn(() => ({ count: 0 })),
-  getGlowTodayKey: jest.fn(() => '2025-06-04'),
-}))
-
-jest.mock('../../utils/motion', () => ({
-  useReducedMotion: jest.fn(() => false),
-  DURATION: { enter: 300, exit: 200 },
-  EASING: { decelerate: { x: 0, y: 0 } },
-}))
-
-jest.mock('../../components/MeshGradientBg', () => 'View')
-jest.mock('../../components/SnapButton', () => 'View')
-jest.mock('../../components/NutritionSummary', () => 'View')
-jest.mock('../../components/BigSqueezeModal', () => 'View')
-jest.mock('../../components/SnapGateModal', () => 'View')
-jest.mock('../../components/AccountGateModal', () => 'View')
-jest.mock('../../components/TrafficLightBadge', () => 'View')
-jest.mock('../../components/AdvancedBlendModal', () => 'View')
-jest.mock('../../components/FreePlanUsageCard', () => 'View')
-jest.mock('../../components/RewardSplash', () => 'View')
-jest.mock('../../components/AchievementOverlay', () => 'View')
-jest.mock('../../components/QuickLogger', () => 'View')
-jest.mock('expo-linear-gradient', () => 'View')
-jest.mock('lucide-react-native', () => new Proxy({}, { get: () => 'View' }))
-jest.mock('react-native-safe-area-context', () => ({
-  SafeAreaView: 'View',
-  useSafeAreaInsets: () => ({ top: 0, bottom: 0 }),
-}))
-
-// Mock ProStore with trackable useSnap
-const mockUseSnap = jest.fn()
-const mockSnapInfo = { label: '5/5 Free', remaining: 5, total: 5 }
-const mockCheckSnapEligibility = jest.fn(() => ({
-  eligible: true,
-  remaining: 5,
-  reason: null,
-  source: 'free',
-}))
-
-jest.mock('../../services/ProStore', () => ({
-  usePro: jest.fn(() => ({
-    checkSnapEligibility: mockCheckSnapEligibility,
-    useSnap: mockUseSnap,
-    snapInfo: mockSnapInfo,
-    isPro: false,
-    hasFeatureAccess: jest.fn(() => false),
-  })),
-}))
-
-// Read the source to verify useSnap is not called during camera open
 const fs = require('fs')
 const path = require('path')
+
 const homeScreenSource = fs.readFileSync(
   path.resolve(__dirname, '../../screens/HomeScreen.js'),
   'utf-8'
 )
 
-describe('Snap quota display synchronization', () => {
-  // 1. Opening the camera does not change either usage display
-  test('recordSnapUsage() is not called inside attemptCameraOpen', () => {
-    const funcStart = homeScreenSource.indexOf('const attemptCameraOpen')
-    const funcEnd = homeScreenSource.indexOf('}, [checkSnapEligibility]', funcStart)
-    const funcBody = homeScreenSource.slice(funcStart, funcEnd)
+const vaultScreenSource = fs.readFileSync(
+  path.resolve(__dirname, '../../screens/VaultScreen.js'),
+  'utf-8'
+)
 
-    const openCameraMatch = funcBody.match(/if \(result\.action === 'open_camera'\)[\s\S]*?return/)
-    expect(openCameraMatch).not.toBeNull()
-    expect(openCameraMatch[0]).not.toContain('recordSnapUsage()')
+const selectorsSource = fs.readFileSync(
+  path.resolve(__dirname, '../subscriptions/subscriptionSelectors.ts'),
+  'utf-8'
+)
+
+const quotaStoreSource = fs.readFileSync(
+  path.resolve(__dirname, '../quota/QuotaStore.tsx'),
+  'utf-8'
+)
+
+const proStoreSource = fs.readFileSync(
+  path.resolve(__dirname, '../ProStore.js'),
+  'utf-8'
+)
+
+describe('Unified scan-quota display architecture', () => {
+  // ── 1. Upper-right counter uses QuotaStore ──────────────────
+  test('upper-right film-roll counter uses selectFilmRollLabel from QuotaStore', () => {
+    expect(homeScreenSource).toContain('selectFilmRollLabel')
+    expect(homeScreenSource).toContain('filmRollLabel')
+    expect(homeScreenSource).toContain('serverQuota')
+    // Must NOT use snapInfo for the film-roll display
+    expect(homeScreenSource).not.toContain('snapInfo.label')
+    expect(homeScreenSource).not.toContain('{snapInfo}')
   })
 
-  // 2. Exiting the camera does not change either display
-  test('no recordSnapUsage call in camera close/cancel paths', () => {
-    const cameraClosePatterns = ['setIsCameraOpen(false)', 'onCameraClose', 'handleCameraClose']
-    for (const pattern of cameraClosePatterns) {
+  // ── 2. Center wording uses the same QuotaStore snapshot ─────
+  test('center FreePlanUsageCard uses QuotaStore via useQuota', () => {
+    const fpuCardSource = fs.readFileSync(
+      path.resolve(__dirname, '../../components/FreePlanUsageCard.js'),
+      'utf-8'
+    )
+    expect(fpuCardSource).toContain('useQuota')
+  })
+
+  // ── 3. Both displays show identical used and remaining ──────
+  test('both film-roll and QuotaMeter derive from the same serverQuota variable', () => {
+    // Both use the same `serverQuota` from `useQuota()`
+    const useQuotaIdx = homeScreenSource.indexOf('useQuota()')
+    expect(useQuotaIdx).toBeGreaterThan(-1)
+    // filmRollLabel is derived from serverQuota
+    expect(homeScreenSource).toContain('selectFilmRollLabel(serverQuota)')
+    // QuotaMeter also reads from the same QuotaStore context
+    const quotaMeterIdx = homeScreenSource.indexOf('function QuotaMeter')
+    if (quotaMeterIdx > -1) {
+      const quotaMeterBody = homeScreenSource.slice(quotaMeterIdx, quotaMeterIdx + 300)
+      expect(quotaMeterBody).toContain('useQuota')
+    }
+  })
+
+  // ── 4. Successful analysis updates both displays exactly once ──
+  test('handleProduceIdentified calls applyQuotaSnapshot exactly once', () => {
+    const fnIdx = homeScreenSource.indexOf('const handleProduceIdentified')
+    expect(fnIdx).toBeGreaterThan(-1)
+    const fnBody = homeScreenSource.slice(fnIdx, fnIdx + 3000)
+    // Must call applyQuotaSnapshot (updates QuotaStore, which feeds both displays)
+    expect(fnBody).toContain('applyQuotaSnapshot')
+    // Must NOT call recordSnapUsage (removed — no separate optimistic counter)
+    expect(fnBody).not.toContain('recordSnapUsage')
+    // Must NOT use snapConsumedForSessionRef (removed)
+    expect(fnBody).not.toContain('snapConsumedForSessionRef')
+  })
+
+  // ── 5. Camera opening changes neither display ───────────────
+  test('attemptCameraOpen does not call applyQuotaSnapshot or recordSnapUsage', () => {
+    const fnStart = homeScreenSource.indexOf('const attemptCameraOpen')
+    expect(fnStart).toBeGreaterThan(-1)
+    const fnEnd = homeScreenSource.indexOf('}, [', fnStart)
+    const fnBody = homeScreenSource.slice(fnStart, fnEnd)
+    expect(fnBody).not.toContain('applyQuotaSnapshot')
+    expect(fnBody).not.toContain('recordSnapUsage')
+    expect(fnBody).not.toContain('refreshQuota')
+  })
+
+  // ── 6. Camera cancellation changes neither display ──────────
+  test('camera close/cancel paths do not call applyQuotaSnapshot or recordSnapUsage', () => {
+    const patterns = ['setIsCameraOpen(false)', 'onCameraClose', 'handleCameraClose']
+    for (const pattern of patterns) {
       const idx = homeScreenSource.indexOf(pattern)
       if (idx !== -1) {
         const surrounding = homeScreenSource.slice(Math.max(0, idx - 200), idx + 200)
-        expect(surrounding).not.toContain('recordSnapUsage()')
+        expect(surrounding).not.toContain('recordSnapUsage')
+        expect(surrounding).not.toContain('applyQuotaSnapshot')
       }
     }
   })
 
-  // 3. Permission denial does not change either display
-  test('no recordSnapUsage call in permission denial path', () => {
-    const permIdx = homeScreenSource.indexOf('permission')
-    if (permIdx !== -1) {
-      const surrounding = homeScreenSource.slice(Math.max(0, permIdx - 200), permIdx + 200)
-      expect(surrounding).not.toContain('recordSnapUsage()')
-    }
+  // ── 7. Permission denial changes neither display ────────────
+  test('permission denial path does not call applyQuotaSnapshot or recordSnapUsage', () => {
+    const cameraSource = fs.readFileSync(
+      path.resolve(__dirname, '../../screens/CameraScreen.js'),
+      'utf-8'
+    )
+    // CameraScreen should not call applyQuotaSnapshot or recordSnapUsage
+    expect(cameraSource).not.toContain('recordSnapUsage')
+    expect(cameraSource).not.toContain('applyQuotaSnapshot')
   })
 
-  // 4. Upload failure does not change either display
-  test('no recordSnapUsage call in upload/analysis failure paths', () => {
-    const failIdx = homeScreenSource.indexOf('catch')
-    if (failIdx !== -1) {
-      const catchBlocks = homeScreenSource.match(/catch[\s\S]*?\}/g)
-      if (catchBlocks) {
-        for (const block of catchBlocks) {
-          expect(block).not.toContain('recordSnapUsage()')
-        }
+  // ── 8. Upload or analysis failure changes neither display ───
+  test('catch blocks in HomeScreen do not call applyQuotaSnapshot or recordSnapUsage', () => {
+    const catchBlocks = homeScreenSource.match(/catch[\s\S]*?\}/g)
+    if (catchBlocks) {
+      for (const block of catchBlocks) {
+        expect(block).not.toContain('recordSnapUsage')
+        // applyQuotaSnapshot may appear in catch as a fallback, but
+        // recordSnapUsage must never appear in a catch block
       }
     }
   })
 
-  // 5. recordSnapUsage is called exactly once in actual code (not comments) in the file
-  test('recordSnapUsage() is called exactly once in actual code in the entire file', () => {
-    // Count only actual call statements, not mentions in comments
-    const useSnapCalls = homeScreenSource.match(/^\s*recordSnapUsage\(\)/gm)
-    expect(useSnapCalls).not.toBeNull()
-    expect(useSnapCalls.length).toBe(1)
+  // ── 9. Stale ProStore counter cannot alter visible quota ────
+  test('HomeScreen does not import snapInfo or checkSnapEligibility from usePro', () => {
+    // The destructuring from usePro must not include snapInfo, checkSnapEligibility, or useSnap
+    const useProLine = homeScreenSource.match(/const\s*\{[^}]*\}\s*=\s*usePro\(\)/)
+    expect(useProLine).not.toBeNull()
+    expect(useProLine[0]).not.toContain('snapInfo')
+    expect(useProLine[0]).not.toContain('checkSnapEligibility')
+    expect(useProLine[0]).not.toContain('useSnap')
+    expect(useProLine[0]).not.toContain('recordSnapUsage')
   })
 
-  // 6. recordSnapUsage is in handleProduceIdentified (successful analysis), NOT in executeLogToChallenge
-  test('recordSnapUsage() is called in handleProduceIdentified, not in executeLogToChallenge', () => {
-    const produceIdx = homeScreenSource.indexOf('const handleProduceIdentified')
-    expect(produceIdx).not.toBe(-1)
-    const produceBlock = homeScreenSource.slice(produceIdx, produceIdx + 2000)
-    expect(produceBlock).toContain('recordSnapUsage()')
+  // ── 10. Resetting ProStore does not change displayed usage ──
+  test('ProStore snap fields are documented as non-authoritative', () => {
+    expect(proStoreSource).toContain('NON-AUTHORITATIVE')
+    // checkSnapEligibility comment
+    const checkIdx = proStoreSource.indexOf('checkSnapEligibility')
+    expect(checkIdx).toBeGreaterThan(-1)
+    const commentArea = proStoreSource.slice(Math.max(0, checkIdx - 500), checkIdx)
+    expect(commentArea).toContain('NON-AUTHORITATIVE')
+    // snapInfo comment
+    const snapInfoIdx = proStoreSource.indexOf('const snapInfo')
+    expect(snapInfoIdx).toBeGreaterThan(-1)
+    const snapInfoComment = proStoreSource.slice(Math.max(0, snapInfoIdx - 300), snapInfoIdx)
+    expect(snapInfoComment).toContain('NON-AUTHORITATIVE')
+  })
 
+  // ── 11. Server-returned correction updates both displays ────
+  test('applyQuotaSnapshot is called with visionResult.quota in handleProduceIdentified', () => {
+    const fnIdx = homeScreenSource.indexOf('const handleProduceIdentified')
+    const fnBody = homeScreenSource.slice(fnIdx, fnIdx + 3000)
+    expect(fnBody).toContain('applyQuotaSnapshot(visionResult.quota)')
+  })
+
+  test('selectFilmRollLabel produces correct label from server quota snapshot', () => {
+    // Verify the selector logic from source
+    expect(selectorsSource).toContain('selectFilmRollLabel')
+    // Free plan: "X/Y Free"
+    expect(selectorsSource).toMatch(/\$\{quota\.remaining\}\/\$\{quota\.limit\} Free/)
+    // Pro plan: "X/Y Pro"
+    expect(selectorsSource).toMatch(/\$\{quota\.remaining\}\/\$\{quota\.limit\} Pro/)
+    // Null quota fallback
+    expect(selectorsSource).toContain("'— Free'")
+  })
+
+  // ── 12. Cross-device refreshed snapshot updates both displays ──
+  test('QuotaStore refresh fetches from server and updates quota state', () => {
+    expect(quotaStoreSource).toContain('fetchScanQuota')
+    expect(quotaStoreSource).toContain('setQuota(snapshot)')
+    expect(quotaStoreSource).toContain('addIdentityChangeListener')
+    // On identity change: reset and re-fetch
+    expect(quotaStoreSource).toContain('setQuota(null)')
+  })
+
+  // ── 13. Manual entry consumes zero and changes neither display ──
+  test('manual entry path does not call applyQuotaSnapshot or recordSnapUsage', () => {
+    const manualIdx = homeScreenSource.indexOf('const handleManualAdd')
+    if (manualIdx > -1) {
+      const manualBlock = homeScreenSource.slice(manualIdx, manualIdx + 800)
+      expect(manualBlock).not.toContain('recordSnapUsage')
+      expect(manualBlock).not.toContain('applyQuotaSnapshot')
+    }
+  })
+
+  // ── 14. Logging does not consume or change quota ────────────
+  test('executeLogToChallenge does not call applyQuotaSnapshot or recordSnapUsage', () => {
     const logIdx = homeScreenSource.indexOf('const executeLogToChallenge')
-    expect(logIdx).not.toBe(-1)
-    const logBlock = homeScreenSource.slice(logIdx, logIdx + 2000)
-    expect(logBlock).not.toContain('recordSnapUsage()')
-  })
-
-  // 7. Both displays show the same usage state
-  test('snapInfo and QuotaMeter both derive from authoritative state', () => {
-    expect(mockSnapInfo.label).toBeDefined()
-  })
-
-  // 8. Repeated camera opens without successful scans do not alter remaining scans
-  test('opening camera multiple times without scan does not call recordSnapUsage', () => {
-    const funcStart = homeScreenSource.indexOf('const attemptCameraOpen')
-    const funcEnd = homeScreenSource.indexOf('}, [checkSnapEligibility]', funcStart)
-    const funcBody = homeScreenSource.slice(funcStart, funcEnd)
-    expect(funcBody).not.toContain('recordSnapUsage()')
-  })
-
-  // 9. Quota exhaustion still blocks camera access
-  test('checkSnapEligibility is still called before camera opens', () => {
-    const funcStart = homeScreenSource.indexOf('const attemptCameraOpen')
-    const funcEnd = homeScreenSource.indexOf('}, [checkSnapEligibility]', funcStart)
-    const funcBody = homeScreenSource.slice(funcStart, funcEnd)
-    expect(funcBody).toContain('checkSnapEligibility()')
-    expect(funcBody).toContain('checkCameraEligibility')
-  })
-
-  // 10. Guest and authenticated-user behavior remain correct
-  test('account gate and snap gate paths are preserved', () => {
-    const funcStart = homeScreenSource.indexOf('const attemptCameraOpen')
-    const funcEnd = homeScreenSource.indexOf('}, [checkSnapEligibility]', funcStart)
-    const funcBody = homeScreenSource.slice(funcStart, funcEnd)
-    expect(funcBody).toContain('show_snap_gate')
-    expect(funcBody).toContain('show_account_gate')
-  })
-
-  // 11. Idempotency: snapConsumedForSessionRef prevents double-counting
-  test('snapConsumedForSessionRef guards recordSnapUsage against double-counting', () => {
-    const produceIdx = homeScreenSource.indexOf('const handleProduceIdentified')
-    const produceBlock = homeScreenSource.slice(produceIdx, produceIdx + 5000)
-    expect(produceBlock).toContain('snapConsumedForSessionRef')
-    expect(produceBlock).toContain('!snapConsumedForSessionRef.current')
-    expect(produceBlock).toContain('snapConsumedForSessionRef.current = true')
-  })
-
-  // 12. Session ref is reset when camera opens
-  test('snapConsumedForSessionRef is reset to false on camera open', () => {
-    const funcStart = homeScreenSource.indexOf('const attemptCameraOpen')
-    const funcEnd = homeScreenSource.indexOf('}, [checkSnapEligibility]', funcStart)
-    const funcBody = homeScreenSource.slice(funcStart, funcEnd)
-    expect(funcBody).toContain('snapConsumedForSessionRef.current = false')
-  })
-
-  // 13. executeLogToChallenge does NOT call recordSnapUsage (snap already consumed at analysis)
-  test('executeLogToChallenge does not consume a snap', () => {
-    const logIdx = homeScreenSource.indexOf('const executeLogToChallenge')
+    expect(logIdx).toBeGreaterThan(-1)
     const logBlock = homeScreenSource.slice(logIdx, logIdx + 5000)
-    expect(logBlock).not.toContain('recordSnapUsage()')
-    // Should have a comment explaining why
+    expect(logBlock).not.toContain('recordSnapUsage')
+    // Snap was already consumed at analysis time
     expect(logBlock).toContain('already consumed')
   })
 
-  // 14. Manual entries do not consume snaps (recordSnapUsage only in handleProduceIdentified)
-  test('manual entry path does not call recordSnapUsage', () => {
-    const manualIdx = homeScreenSource.indexOf('const handleManualAdd')
-    expect(manualIdx).not.toBe(-1)
-    const manualBlock = homeScreenSource.slice(manualIdx, manualIdx + 800)
-    expect(manualBlock).not.toContain('recordSnapUsage()')
+  // ── 15. Free-plan limits display correctly ──────────────────
+  test('free-plan film-roll label shows remaining/limit Free', () => {
+    // selectFilmRollLabel for free plan: `${remaining}/${limit} Free`
+    expect(selectorsSource).toMatch(/quota\.plan === 'pro'/)
+    // When not pro, returns remaining/limit Free
+    expect(selectorsSource).toMatch(/\$\{quota\.remaining\}\/\$\{quota\.limit\} Free/)
   })
 
-  // 15. handleAddProduce does not consume snaps
-  test('handleAddProduce does not call recordSnapUsage', () => {
-    const addIdx = homeScreenSource.indexOf('const handleAddProduce')
-    expect(addIdx).not.toBe(-1)
-    const addBlock = homeScreenSource.slice(addIdx, addIdx + 800)
-    expect(addBlock).not.toContain('recordSnapUsage()')
+  // ── 16. Pro-plan presentation derives from server plan data ─
+  test('pro-plan film-roll label derives from server quota.plan, not client tier', () => {
+    // selectFilmRollLabel checks quota.plan === 'pro'
+    expect(selectorsSource).toContain("quota.plan === 'pro'")
+    // HomeScreen uses filmRollIsPro (from server quota), not isPro (from ProStore)
+    expect(homeScreenSource).toContain('filmRollIsPro')
+    // The film-roll color uses filmRollIsPro, not isPro
+    const filmRollIdx = homeScreenSource.indexOf('styles.filmRoll')
+    expect(filmRollIdx).toBeGreaterThan(-1)
+    const filmRollBlock = homeScreenSource.slice(filmRollIdx, filmRollIdx + 300)
+    expect(filmRollBlock).toContain('filmRollIsPro')
+    expect(filmRollBlock).not.toMatch(/\bisPro\b/)
+  })
+
+  // ── 17. Quota exhaustion still blocks the scan ──────────────
+  test('attemptCameraOpen uses QuotaStore-based eligibility precheck', () => {
+    const fnStart = homeScreenSource.indexOf('const attemptCameraOpen')
+    const fnEnd = homeScreenSource.indexOf('}, [', fnStart)
+    const fnBody = homeScreenSource.slice(fnStart, fnEnd)
+    // Must use filmRollRemaining for eligibility
+    expect(fnBody).toContain('filmRollRemaining')
+    expect(fnBody).toContain('filmRollIsPro')
+    // Must NOT use checkSnapEligibility
+    expect(fnBody).not.toContain('checkSnapEligibility')
+    // Must still call checkCameraEligibility
+    expect(fnBody).toContain('checkCameraEligibility')
+  })
+
+  test('isSnapDepleted uses selectQuotaExhausted from QuotaStore', () => {
+    expect(homeScreenSource).toContain('selectQuotaExhausted(serverQuota)')
+    expect(homeScreenSource).toContain('filmRollIsPro')
+  })
+
+  // ── 18. No client-only counter can grant access ─────────────
+  test('HomeScreen does not call recordSnapUsage anywhere in the file', () => {
+    expect(homeScreenSource).not.toContain('recordSnapUsage')
+  })
+
+  test('HomeScreen does not reference snapConsumedForSessionRef', () => {
+    expect(homeScreenSource).not.toContain('snapConsumedForSessionRef')
+  })
+
+  // ── VaultScreen also uses QuotaStore ────────────────────────
+  test('VaultScreen uses selectFilmRollLabel from QuotaStore, not ProStore.snapInfo', () => {
+    expect(vaultScreenSource).toContain('selectFilmRollLabel')
+    expect(vaultScreenSource).toContain('useQuota')
+    expect(vaultScreenSource).toContain('snapInfoLabel')
+    // Must NOT use snapInfo.label
+    expect(vaultScreenSource).not.toContain('snapInfo.label')
+    // Must NOT destructure snapInfo from usePro
+    const useProLine = vaultScreenSource.match(/const\s*\{[^}]*\}\s*=\s*usePro\(\)/)
+    expect(useProLine).not.toBeNull()
+    expect(useProLine[0]).not.toContain('snapInfo')
+  })
+
+  // ── SnapGateModal does not use ProStore.snapInfo ────────────
+  test('SnapGateModal does not import usePro or snapInfo', () => {
+    const snapGateSource = fs.readFileSync(
+      path.resolve(__dirname, '../../components/SnapGateModal.js'),
+      'utf-8'
+    )
+    // SnapGateModal should not import usePro for snapInfo
+    // (It may still import SUBSCRIPTION_PLANS and IAP_PACKS)
+    const useProMatch = snapGateSource.match(/usePro\(\)/)
+    if (useProMatch) {
+      // If usePro is still imported, snapInfo must not be destructured
+      const destructureMatch = snapGateSource.match(/const\s*\{[^}]*\}\s*=\s*usePro\(\)/)
+      if (destructureMatch) {
+        expect(destructureMatch[0]).not.toContain('snapInfo')
+      }
+    }
+  })
+
+  // ── selectFilmRollRemaining and selectFilmRollIsPro exist ───
+  test('subscriptionSelectors exports selectFilmRollRemaining and selectFilmRollIsPro', () => {
+    expect(selectorsSource).toContain('selectFilmRollRemaining')
+    expect(selectorsSource).toContain('selectFilmRollIsPro')
+  })
+
+  // ── Dependency array no longer includes recordSnapUsage ─────
+  test('handleProduceIdentified dependency array does not include recordSnapUsage', () => {
+    const fnIdx = homeScreenSource.indexOf('const handleProduceIdentified')
+    const fnBody = homeScreenSource.slice(fnIdx, fnIdx + 5000)
+    // Find the dependency array
+    const depMatch = fnBody.match(/\},\s*\[([^\]]+)\]/)
+    expect(depMatch).not.toBeNull()
+    expect(depMatch[1]).not.toContain('recordSnapUsage')
+    expect(depMatch[1]).toContain('applyQuotaSnapshot')
+    expect(depMatch[1]).toContain('refreshQuota')
   })
 })

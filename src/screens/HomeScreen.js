@@ -43,7 +43,13 @@ import NUTRIENT_LIBRARY from '../constants/NutrientLibrary.json'
 import { EMPTY_BATCH, USDA_RDA } from '../constants/nutrition'
 import SnapButton from '../components/SnapButton'
 import { useQuota } from '../services/quota/QuotaStore'
-import { selectQuotaLabel, selectQuotaExhausted } from '../services/subscriptions/subscriptionSelectors'
+import {
+  selectQuotaLabel,
+  selectQuotaExhausted,
+  selectFilmRollLabel,
+  selectFilmRollRemaining,
+  selectFilmRollIsPro,
+} from '../services/subscriptions/subscriptionSelectors'
 import NutritionSummary from '../components/NutritionSummary'
 import BigSqueezeModal from '../components/BigSqueezeModal'
 import SnapGateModal from '../components/SnapGateModal'
@@ -600,8 +606,11 @@ export default function JuiceSnapScreen({ navigation, route }) {
   const { logJuice, vitalityScore } = useChallenge()
   const { recordNutritionLog, momentum: preMomentum } = useNutritionScore()
   const { addEntry: addLogEntry } = useJuiceLog()
-  const { checkSnapEligibility, useSnap: recordSnapUsage, snapInfo, isPro } = usePro()
-  const { applySnapshot: applyQuotaSnapshot, refresh: refreshQuota } = useQuota()
+  const { isPro } = usePro()
+  const { quota: serverQuota, applySnapshot: applyQuotaSnapshot, refresh: refreshQuota } = useQuota()
+  const filmRollLabel = selectFilmRollLabel(serverQuota)
+  const filmRollRemaining = selectFilmRollRemaining(serverQuota)
+  const filmRollIsPro = selectFilmRollIsPro(serverQuota)
   const [showSnapGate, setShowSnapGate] = useState(false)
   const [showAccountGate, setShowAccountGate] = useState(false)
   const [accountGateMode, setAccountGateMode] = useState('guest')
@@ -612,7 +621,6 @@ export default function JuiceSnapScreen({ navigation, route }) {
   const [blendNoticeShown, setBlendNoticeShown] = useState(false)
   const [blendCheckInProgress, setBlendCheckInProgress] = useState(false)
   const blendOperationIdRef = useRef(null)
-  const snapConsumedForSessionRef = useRef(false)
   const [showPaywall, setShowPaywall] = useState(false)
   const [isManualMode, setIsManualMode] = useState(route?.params?.manualEntry === true)
   const [manualSearch, setManualSearch] = useState('')
@@ -668,8 +676,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
   }, [navigation])
 
   const hasItems = (batch.scannedIngredients || []).length > 0
-  const snapEligibility = checkSnapEligibility()
-  const isSnapDepleted = !snapEligibility.eligible && !isPro
+  const isSnapDepleted = selectQuotaExhausted(serverQuota) && !filmRollIsPro
 
   // Open manual entry when navigated with manualEntry: true
   useEffect(() => {
@@ -688,13 +695,20 @@ export default function JuiceSnapScreen({ navigation, route }) {
     }
   }, [route?.params?.preloadIngredients]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Unified camera open attempt via eligibility coordinator
+  // Unified camera open attempt via eligibility coordinator.
+  // Uses the server-authoritative QuotaStore snapshot for the snap
+  // eligibility precheck. A stale client cache cannot grant or block
+  // access — the server makes the final decision in analyze-scan.
   const attemptCameraOpen = useCallback(async (isAutoOpen = false) => {
-    const snapElig = checkSnapEligibility()
+    const snapElig = {
+      eligible: filmRollRemaining > 0,
+      remaining: filmRollRemaining,
+      reason: filmRollRemaining > 0 ? null : 'Scan limit reached for this period',
+      isPro: filmRollIsPro,
+    }
     const result = await checkCameraEligibility(snapElig)
 
     if (result.action === 'open_camera') {
-      snapConsumedForSessionRef.current = false
       setIsCameraOpen(true)
       if (!isAutoOpen) setIsLogged(false)
       return
@@ -721,7 +735,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
 
     // error — fall back to snap gate as a safe default
     setShowSnapGate(true)
-  }, [checkSnapEligibility])
+  }, [filmRollRemaining, filmRollIsPro])
 
   // Auto-open camera when navigated with openCamera: true
   useEffect(() => {
@@ -850,21 +864,11 @@ export default function JuiceSnapScreen({ navigation, route }) {
     setIsCameraOpen(false)
     setIsLogged(false)
 
-    // Consume one snap on successful image analysis (not on log finalization).
-    // Idempotent: if already consumed for this session, do not double-count.
     // The server has already committed the scan quota via the analyze-scan
-    // Edge Function (reserve → vision → commit). recordSnapUsage() is an
-    // optimistic client-side update for the film-roll counter; the
-    // server-returned quota snapshot is applied to QuotaStore for the
-    // authoritative display.
-    if (!snapConsumedForSessionRef.current) {
-      recordSnapUsage()
-      snapConsumedForSessionRef.current = true
-    }
-
-    // Apply the server-returned quota snapshot to QuotaStore so both the
-    // upper-right QuotaMeter and the FreePlanUsageCard reconcile from the
-    // same authoritative source. Falls back to refresh() if no snapshot.
+    // Edge Function (reserve → vision → commit). The server-returned
+    // quota snapshot is applied to QuotaStore for the authoritative
+    // display. No client-side optimistic counter is needed — both the
+    // film-roll counter and QuotaMeter derive from QuotaStore.
     if (visionResult.quota) {
       applyQuotaSnapshot(visionResult.quota)
     } else {
@@ -884,7 +888,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
         source: 'photo',
       })
     }
-  }, [juiceMethod, isPro, primaryProduceId, recordSnapUsage, applyQuotaSnapshot, refreshQuota])
+  }, [juiceMethod, isPro, primaryProduceId, applyQuotaSnapshot, refreshQuota])
 
   const handleUpdateItem = useCallback((index, newProduceId, newWeightG) => {
     setBatch((prev) => {
@@ -1367,9 +1371,9 @@ export default function JuiceSnapScreen({ navigation, route }) {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Juice Snap</Text>
         <View style={styles.filmRoll}>
-          <Film size={14} color={isPro ? '#FFD54F' : '#64B5F6'} />
-          <Text style={[styles.filmRollText, isPro && { color: '#FFD54F' }]}>
-            {snapInfo.label}
+          <Film size={14} color={filmRollIsPro ? '#FFD54F' : '#64B5F6'} />
+          <Text style={[styles.filmRollText, filmRollIsPro && { color: '#FFD54F' }]}>
+            {filmRollLabel}
           </Text>
         </View>
       </View>

@@ -279,6 +279,11 @@ export function ProProvider({ children }) {
   }, [])
 
   // ── Snap Eligibility Check ──────────────────────────────────
+  // NON-AUTHORITATIVE: This is a client-side pre-check only. The
+  // server (analyze-scan Edge Function + reserve_scan RPC) is the
+  // real authority. HomeScreen now uses QuotaStore for the precheck.
+  // Retained for legacy compatibility — do not use for quota
+  // enforcement or visible authoritative scan usage.
 
   const checkSnapEligibility = useCallback(() => {
     if (isPro) return { eligible: true, remaining: Infinity, reason: null }
@@ -333,6 +338,10 @@ export function ProProvider({ children }) {
   }, [isPro, state.purchasedPacks])
 
   // ── Snap Display Info ───────────────────────────────────────
+  // NON-AUTHORITATIVE: This is a legacy client-side display helper.
+  // HomeScreen and VaultScreen now use QuotaStore + selectFilmRollLabel()
+  // for the authoritative film-roll display. Retained for legacy
+  // compatibility — do not use for visible authoritative scan usage.
 
   const snapInfo = useMemo(() => {
     if (isPro) return { label: '∞ Pro', remaining: Infinity, total: Infinity }

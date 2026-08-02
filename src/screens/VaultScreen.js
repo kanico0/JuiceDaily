@@ -36,6 +36,8 @@ import {
   PRO_FEATURES,
   usePro,
 } from '../services/ProStore'
+import { useQuota } from '../services/quota/QuotaStore'
+import { selectFilmRollLabel } from '../services/subscriptions/subscriptionSelectors'
 import MeshGradientBg from '../components/MeshGradientBg'
 
 const PLAN_KEYS = ['monthly', 'annual', 'lifetime']
@@ -100,8 +102,10 @@ function PackCard({ pack, onBuy, isPurchased }) {
 export default function VaultScreen({ navigation }) {
   const {
     pro, isPro, subscribe, buySnapPack, buyFreezerPack,
-    buyRecipePack, hasRecipePack, snapInfo,
+    buyRecipePack, hasRecipePack,
   } = usePro()
+  const { quota: serverQuota } = useQuota()
+  const snapInfoLabel = selectFilmRollLabel(serverQuota)
   const [selectedPlan, setSelectedPlan] = useState('annual')
   const fadeAnim = useRef(new Animated.Value(0)).current
 
@@ -272,7 +276,7 @@ export default function VaultScreen({ navigation }) {
             <View style={styles.snapBalanceCard}>
               <Camera size={16} color="#64B5F6" />
               <Text style={styles.snapBalanceText}>
-                AI Snaps: <Text style={styles.snapBalanceValue}>{snapInfo.label}</Text>
+                AI Snaps: <Text style={styles.snapBalanceValue}>{snapInfoLabel}</Text>
               </Text>
             </View>
 

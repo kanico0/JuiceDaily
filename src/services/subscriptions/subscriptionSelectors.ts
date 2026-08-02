@@ -56,6 +56,25 @@ export function selectQuotaExhausted (quota: ScanQuotaSnapshot | null): boolean 
   return quota.remaining <= 0
 }
 
+export function selectFilmRollLabel (quota: ScanQuotaSnapshot | null): string {
+  if (!quota) return '— Free'
+  if (quota.plan === 'pro') {
+    if (quota.limit === 0) return '∞ Pro'
+    return `${quota.remaining}/${quota.limit} Pro`
+  }
+  return `${quota.remaining}/${quota.limit} Free`
+}
+
+export function selectFilmRollRemaining (quota: ScanQuotaSnapshot | null): number {
+  if (!quota) return 0
+  return quota.remaining
+}
+
+export function selectFilmRollIsPro (quota: ScanQuotaSnapshot | null): boolean {
+  if (!quota) return false
+  return quota.plan === 'pro'
+}
+
 export function selectNextRefreshLabel (quota: ScanQuotaSnapshot | null): string | null {
   if (!quota || !quota.periodEnd) return null
   const date = new Date(quota.periodEnd)

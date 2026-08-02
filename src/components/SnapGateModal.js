@@ -24,10 +24,9 @@ import {
   Zap,
   ShoppingBag,
 } from 'lucide-react-native'
-import { SUBSCRIPTION_PLANS, IAP_PACKS, usePro } from '../services/ProStore'
+import { SUBSCRIPTION_PLANS, IAP_PACKS } from '../services/ProStore'
 
 export default function SnapGateModal({ visible, onDismiss, onUpgrade, onBuyPack }) {
-  const { snapInfo } = usePro()
   const scaleAnim = useRef(new Animated.Value(0.9)).current
   const opacityAnim = useRef(new Animated.Value(0)).current
 

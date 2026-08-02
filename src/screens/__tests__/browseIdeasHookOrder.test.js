@@ -144,8 +144,8 @@ describe('BrowseIdeasModal — Hook Order Regression (14 tests)', () => {
 
   // ── Tests 13–14: Hook order stability across re-renders ────
 
-  test('13. hook call order is deterministic (useRef → useState → useState → usePro → useFlags → useMemo → useEffect → useCallback)', () => {
-    const expectedOrder = ['useRef', 'useState', 'useState', 'usePro', 'useFlags', 'useMemo', 'useEffect', 'useCallback']
+  test('13. hook call order is deterministic (useRef → useState → useState → useState → useRef → usePro → useFlags → useMemo → useMemo → useEffect → useCallback → useCallback → useEffect → useCallback)', () => {
+    const expectedOrder = ['useRef', 'useState', 'useState', 'useState', 'useRef', 'usePro', 'useFlags', 'useMemo', 'useMemo', 'useEffect', 'useCallback', 'useCallback', 'useEffect', 'useCallback']
     const hookCalls = []
     let searchIdx = 0
     while (searchIdx < earlyReturnIdx) {

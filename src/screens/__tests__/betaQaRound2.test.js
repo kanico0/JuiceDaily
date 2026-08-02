@@ -372,7 +372,7 @@ describe('Issue 3 — Removal of adjustment UI', () => {
   // 35. Quantity helper explains how to change the estimate
   test('35. helper text explains how to change the estimate', () => {
     expect(QPE_SRC).toContain('To change this estimate, adjust the quantity, unit, or size.')
-    expect(QPE_SRC).toContain('switch to Weight (oz)')
+    expect(QPE_SRC).toContain('switch to Volume')
   })
 
   // 36. Quantity change recalculates raw weightG

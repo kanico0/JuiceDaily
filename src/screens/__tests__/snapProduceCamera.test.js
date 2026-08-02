@@ -1,12 +1,13 @@
 // Snap Produce camera eligibility tests
-// Verifies the corrected attemptCameraOpen behavior:
+// Verifies the deterministic attemptCameraOpen behavior:
 //   - Confirmed eligible quota opens camera
 //   - Confirmed exhausted quota shows snap gate
-//   - Null quota invokes refreshQuota()
+//   - Null quota invokes refreshQuota() and uses returned snapshot
 //   - Successful refresh with remaining quota opens camera
 //   - Successful refresh showing exhaustion displays snap gate
 //   - Failed quota refresh shows network/retry alert (not snap gate)
 //   - Eligibility network failure shows network/retry alert (not snap gate)
+//   - No setTimeout(0) or ref synchronization for quota
 //   - In-flight guard prevents duplicate taps and resets in finally
 //   - Camera open/cancel/permission denial consumes zero scans
 //   - Manual entry unaffected
@@ -70,13 +71,21 @@ describe('Snap Produce: null quota invokes refreshQuota', () => {
     expect(section).toContain('SUPABASE_CONFIGURED')
   })
 
-  test('6. After refresh, latestQuotaRef is read for updated quota', () => {
-    expect(section).toContain('latestQuotaRef.current')
+  test('6. After refresh, returned snapshot is used directly (no ref, no setTimeout)', () => {
+    expect(section).toContain('currentQuota = await refreshQuota()')
+    expect(homeSource).not.toContain('latestQuotaRef')
+    // Check that setTimeout is not used for quota sync (it may appear in comments)
+    expect(section).not.toMatch(/await\s+new\s+Promise.*setTimeout/)
   })
 
   test('7. Does not invent remaining usage (no optimistic effectiveRemaining = 1)', () => {
     expect(section).not.toContain('effectiveRemaining')
     expect(section).not.toContain('quotaLoaded ? filmRollRemaining : 1')
+  })
+
+  test('7a. No setTimeout(0) for quota synchronization', () => {
+    // Check that no setTimeout-based promise is used for quota sync
+    expect(section).not.toMatch(/await\s+new\s+Promise.*setTimeout/)
   })
 })
 
@@ -231,8 +240,8 @@ describe('Snap Produce: coordinator actions preserved', () => {
 })
 
 describe('Snap Produce: QuotaStore refresh behavior', () => {
-  test('33. refreshQuota returns Promise<void> and updates quota state', () => {
-    expect(quotaStoreSource).toContain('refresh: () => Promise<void>')
+  test('33. refreshQuota returns Promise<ScanQuotaSnapshot | null> and updates quota state', () => {
+    expect(quotaStoreSource).toContain('Promise<ScanQuotaSnapshot | null>')
   })
 
   test('34. refreshQuota calls fetchScanQuota and setQuota', () => {
@@ -245,7 +254,19 @@ describe('Snap Produce: QuotaStore refresh behavior', () => {
   })
 
   test('36. refreshQuota returns early if SUPABASE_CONFIGURED is false', () => {
-    expect(quotaStoreSource).toContain('if (!SUPABASE_CONFIGURED) return')
+    expect(quotaStoreSource).toContain('if (!SUPABASE_CONFIGURED) return null')
+  })
+
+  test('36a. refreshQuota returns the fetched snapshot on success', () => {
+    expect(quotaStoreSource).toContain('return snapshot || null')
+  })
+
+  test('36b. refreshQuota returns null on catch failure', () => {
+    expect(quotaStoreSource).toContain('return null')
+  })
+
+  test('36c. refreshQuota return type is declared in interface', () => {
+    expect(quotaStoreSource).toContain('refresh: () => Promise<ScanQuotaSnapshot | null>')
   })
 })
 
@@ -259,14 +280,13 @@ describe('Snap Produce: selectors return defaults for null quota', () => {
   })
 })
 
-describe('Snap Produce: latestQuotaRef for async state access', () => {
-  test('39. latestQuotaRef is declared and synced with serverQuota', () => {
-    expect(homeSource).toContain('latestQuotaRef')
-    expect(homeSource).toContain('latestQuotaRef.current = serverQuota')
+describe('Snap Produce: latestQuotaRef removed (deterministic refresh)', () => {
+  test('39. latestQuotaRef is not present in HomeScreen', () => {
+    expect(homeSource).not.toContain('latestQuotaRef')
   })
 
-  test('40. latestQuotaRef is a useRef', () => {
-    expect(homeSource).toContain('useRef(serverQuota)')
+  test('40. No useRef for serverQuota synchronization', () => {
+    expect(homeSource).not.toContain('useRef(serverQuota)')
   })
 })
 

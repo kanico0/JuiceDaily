@@ -610,8 +610,6 @@ export default function JuiceSnapScreen({ navigation, route }) {
   const { addEntry: addLogEntry } = useJuiceLog()
   const { isPro } = usePro()
   const { quota: serverQuota, applySnapshot: applyQuotaSnapshot, refresh: refreshQuota } = useQuota()
-  const latestQuotaRef = useRef(serverQuota)
-  latestQuotaRef.current = serverQuota
   const filmRollLabel = selectFilmRollLabel(serverQuota)
   const filmRollRemaining = selectFilmRollRemaining(serverQuota)
   const filmRollIsPro = selectFilmRollIsPro(serverQuota)
@@ -749,17 +747,10 @@ export default function JuiceSnapScreen({ navigation, route }) {
     try {
       let currentQuota = serverQuota
 
-      // If quota hasn't loaded yet and Supabase is configured, try to refresh
-      // once before making any eligibility decision.  Do not invent remaining
-      // usage — show a network/retry alert if the refresh fails or remains
-      // unresolved.
+      // If quota hasn't loaded yet and Supabase is configured, refresh once
+      // and use the returned snapshot directly — no setTimeout, no ref sync.
       if (currentQuota === null && SUPABASE_CONFIGURED) {
-        await refreshQuota()
-        // Yield to allow React to flush the state update from setQuota
-        // so latestQuotaRef.current reflects the refreshed snapshot.
-        // eslint-disable-next-line no-undef
-        await new Promise((resolve) => setTimeout(resolve, 0))
-        currentQuota = latestQuotaRef.current
+        currentQuota = await refreshQuota()
       }
 
       // If quota is still null after refresh (or Supabase not configured),

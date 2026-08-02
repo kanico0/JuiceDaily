@@ -30,7 +30,7 @@ interface QuotaContextValue {
   quota: ScanQuotaSnapshot | null
   loading: boolean
   warningLevel: QuotaWarningLevel
-  refresh: () => Promise<void>
+  refresh: () => Promise<ScanQuotaSnapshot | null>
   applySnapshot: (snapshot: ScanQuotaSnapshot | null) => void
 }
 
@@ -50,14 +50,16 @@ export function QuotaProvider ({ children }: { children: React.ReactNode }) {
   const [quota, setQuota] = useState<ScanQuotaSnapshot | null>(null)
   const [loading, setLoading] = useState(false)
 
-  const refresh = useCallback(async () => {
-    if (!SUPABASE_CONFIGURED) return
+  const refresh = useCallback(async (): Promise<ScanQuotaSnapshot | null> => {
+    if (!SUPABASE_CONFIGURED) return null
     setLoading(true)
     try {
       const snapshot = await fetchScanQuota()
       if (snapshot) setQuota(snapshot)
+      return snapshot || null
     } catch {
       // Keep the last known snapshot on failure.
+      return null
     } finally {
       setLoading(false)
     }
@@ -101,7 +103,7 @@ export function useQuota (): QuotaContextValue {
       quota: null,
       loading: false,
       warningLevel: 'none',
-      refresh: async () => {},
+      refresh: async () => null,
       applySnapshot: () => {},
     }
   }

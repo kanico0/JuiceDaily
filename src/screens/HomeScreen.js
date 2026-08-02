@@ -13,6 +13,7 @@ import {
   Platform,
   Keyboard,
   KeyboardAvoidingView,
+  Alert,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import AsyncStorage from '@react-native-async-storage/async-storage'
@@ -686,12 +687,48 @@ export default function JuiceSnapScreen({ navigation, route }) {
   }, [route?.params?.manualEntry])
 
   // Reseed batch when navigated with new preloadIngredients (e.g. recipe hand-off)
+  // Protects unsaved drafts: if the current batch has items, asks for confirmation.
+  const pendingPreloadRef = useRef(null)
   useEffect(() => {
     const preload = route?.params?.preloadIngredients
-    if (preload && preload.length > 0) {
-      const seeded = seedPreloadIngredients(preload, organicMode)
+    if (!preload || preload.length === 0) return
+
+    const currentItems = batch.scannedIngredients || []
+    const hasUnsavedDraft = currentItems.length > 0 && !isLogged
+
+    const seedBatch = (items) => {
+      const seeded = seedPreloadIngredients(items, organicMode)
       setBatch(buildBatch(seeded, juiceMethod))
       setIsLogged(false)
+    }
+
+    if (hasUnsavedDraft) {
+      // Avoid showing multiple alerts for the same preload payload
+      if (pendingPreloadRef.current === preload) return
+      pendingPreloadRef.current = preload
+      Alert.alert(
+        'Replace your current draft?',
+        'Starting from this past juice will replace the ingredients currently in your unsaved batch.',
+        [
+          {
+            text: 'Keep Current Draft',
+            style: 'cancel',
+            onPress: () => {
+              pendingPreloadRef.current = null
+            },
+          },
+          {
+            text: 'Use Past Juice',
+            style: 'destructive',
+            onPress: () => {
+              seedBatch(preload)
+              pendingPreloadRef.current = null
+            },
+          },
+        ],
+      )
+    } else {
+      seedBatch(preload)
     }
   }, [route?.params?.preloadIngredients]) // eslint-disable-line react-hooks/exhaustive-deps
 

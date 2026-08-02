@@ -21,7 +21,6 @@ export function isValidHistoryEntry(entry) {
   if (!entry || typeof entry !== 'object') return false
   if (typeof entry.id !== 'string' || !entry.id) return false
   if (typeof entry.createdAt !== 'string' || !entry.createdAt) return false
-  if (typeof entry.dateKey !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(entry.dateKey)) return false
   return true
 }
 
@@ -37,11 +36,20 @@ export function isValidHistoryEntry(entry) {
  */
 export function sortHistoryNewestFirst(entries) {
   if (!Array.isArray(entries)) return []
-  return [...entries].filter(isValidHistoryEntry).sort((a, b) => {
-    const dateCmp = (b.dateKey || '').localeCompare(a.dateKey || '')
-    if (dateCmp !== 0) return dateCmp
-    return (b.createdAt || '').localeCompare(a.createdAt || '')
-  })
+  return [...entries].filter(isValidHistoryEntry).sort(stableCompare)
+}
+
+/**
+ * Tie-breaker for entries with identical dateKey and createdAt.
+ * Falls back to id comparison for deterministic ordering.
+ * @private
+ */
+function stableCompare(a, b) {
+  const dateCmp = (b.dateKey || '').localeCompare(a.dateKey || '')
+  if (dateCmp !== 0) return dateCmp
+  const createdCmp = (b.createdAt || '').localeCompare(a.createdAt || '')
+  if (createdCmp !== 0) return createdCmp
+  return (b.id || '').localeCompare(a.id || '')
 }
 
 /**

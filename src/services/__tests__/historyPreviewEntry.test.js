@@ -68,9 +68,9 @@ describe('historyPreviewEntry — getAdvancedPreviewEntryId', () => {
     expect(getAdvancedPreviewEntryId(undefined)).toBeNull()
   })
 
-  test('8. Filters out invalid entries', () => {
+  test('8. Entry without dateKey sorts after entries with dateKey', () => {
     const entries = [
-      { id: 'bad', createdAt: '2026-07-15T10:00:00' }, // missing dateKey
+      { id: 'noDate', createdAt: '2026-07-15T10:00:00' },
       makeEntry('good', '2026-07-14', '2026-07-14T10:00:00'),
     ]
     expect(getAdvancedPreviewEntryId(entries)).toBe('good')
@@ -78,8 +78,8 @@ describe('historyPreviewEntry — getAdvancedPreviewEntryId', () => {
 
   test('9. Returns null when all entries are invalid', () => {
     const entries = [
-      { id: 'bad1', createdAt: 'no-date' },
-      { id: 'bad2' },
+      { id: 'bad1' },
+      { id: 123, createdAt: '2026-07-15T10:00:00' },
     ]
     expect(getAdvancedPreviewEntryId(entries)).toBeNull()
   })
@@ -194,12 +194,12 @@ describe('historyPreviewEntry — isValidHistoryEntry', () => {
     expect(isValidHistoryEntry({ dateKey: '2026-07-15', createdAt: '2026-07-15T10:00:00' })).toBe(false)
   })
 
-  test('24. Missing dateKey returns false', () => {
-    expect(isValidHistoryEntry({ id: 'e1', createdAt: '2026-07-15T10:00:00' })).toBe(false)
+  test('24. Missing dateKey returns true (legacy compat)', () => {
+    expect(isValidHistoryEntry({ id: 'e1', createdAt: '2026-07-15T10:00:00' })).toBe(true)
   })
 
-  test('25. Malformed dateKey returns false', () => {
-    expect(isValidHistoryEntry({ id: 'e1', dateKey: 'invalid', createdAt: '2026-07-15T10:00:00' })).toBe(false)
+  test('25. Malformed dateKey returns true (dateKey not validated)', () => {
+    expect(isValidHistoryEntry({ id: 'e1', dateKey: 'invalid', createdAt: '2026-07-15T10:00:00' })).toBe(true)
   })
 })
 

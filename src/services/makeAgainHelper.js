@@ -62,10 +62,18 @@ function resolveProduceId(rawId) {
     }
   }
 
-  // 3. Check if any PRODUCE_DATA key matches by name
+  // 3. Check if any PRODUCE_DATA key matches by exact display name
+  //    Reject if multiple entries share the same name (ambiguous)
+  let nameMatch = null
+  let matchCount = 0
   for (const [key, entry] of Object.entries(PRODUCE_DATA)) {
-    if (entry.name && entry.name.toLowerCase() === normalized) return key
+    if (entry.name && entry.name.toLowerCase() === normalized) {
+      nameMatch = key
+      matchCount++
+      if (matchCount > 1) return null // ambiguous — reject
+    }
   }
+  if (matchCount === 1) return nameMatch
 
   return null
 }
@@ -163,14 +171,21 @@ export function createEditableDraftFromHistoryEntry(entry, catalog) {
             }
           }
         }
-        // Try name match
+        // Try exact name match (reject if ambiguous)
         if (!resolvedId) {
+          let nameMatch = null
+          let matchCount = 0
           for (const [key, val] of Object.entries(produceData)) {
             if (val && val.name && val.name.toLowerCase() === normalized) {
-              resolvedId = key
-              break
+              nameMatch = key
+              matchCount++
+              if (matchCount > 1) {
+                nameMatch = null
+                break
+              }
             }
           }
+          if (matchCount === 1) resolvedId = nameMatch
         }
       }
     }

@@ -161,7 +161,7 @@ function AdvancedPreviewBanner({ onUpgrade }) {
   return (
     <View style={ms.previewBanner}>
       <View style={ms.previewBannerHeader}>
-        <Sparkles size={16} color={SEMANTIC_COLORS.warning} />
+        <Sparkles size={16} color={SEMANTIC_COLORS.accentPrimary} />
         <Text style={ms.previewBannerTitle}>Your Advanced History Preview</Text>
       </View>
       <Text style={ms.previewBannerBody}>
@@ -508,7 +508,7 @@ function DaySection({ dateKey, entries, onEntryPress, devClockTick, previewEntry
                     </Text>
                     {isPreview && (
                       <View style={s.previewBadge}>
-                        <Sparkles size={10} color={SEMANTIC_COLORS.warning} />
+                        <Sparkles size={10} color={SEMANTIC_COLORS.accentPrimary} />
                         <Text style={s.previewBadgeText}>ADVANCED PREVIEW</Text>
                       </View>
                     )}
@@ -535,12 +535,16 @@ function DaySection({ dateKey, entries, onEntryPress, devClockTick, previewEntry
 
 export default function HistoryScreen({ navigation }) {
   const { entries, deleteEntry } = useJuiceLog()
-  const { isPro } = useSubscription()
+  const { isPro: isProActive, state: subState } = useSubscription()
+  // During entitlement loading, treat as Pro to avoid flashing locked content
+  // for paying users. Once initialized, use the actual entitlement.
+  const isPro = !subState.initialized ? true : isProActive
   const [selectedEntry, setSelectedEntry] = useState(null)
   const [devClockTick, setDevClockTick] = useState(0)
   const [makeAgainInProgress, setMakeAgainInProgress] = useState(false)
   const makeAgainRef = useRef(false)
   const historyViewedRef = useRef(false)
+  const wasProRef = useRef(isPro)
 
   useEffect(() => {
     return onDevClockChange(() => setDevClockTick((t) => t + 1))
@@ -561,6 +565,16 @@ export default function HistoryScreen({ navigation }) {
       history_entry_count_bucket: getEntryCountBucket(entries.length),
     })
   }, [entries.length])
+
+  // Fire advanced_history_unlocked when entitlement transitions free → Pro
+  useEffect(() => {
+    if (!wasProRef.current && isPro && subState.initialized) {
+      trackEvent('advanced_history_unlocked', {
+        access_type: 'pro',
+      })
+    }
+    wasProRef.current = isPro
+  }, [isPro, subState.initialized])
 
   // Group entries by dateKey, descending
   const groupedDays = useMemo(() => {
@@ -879,10 +893,10 @@ const ms = StyleSheet.create({
   },
   // ── Advanced Preview Banner ────────────────────────────────
   previewBanner: {
-    backgroundColor: 'rgba(255,183,77,0.08)',
+    backgroundColor: 'rgba(61,139,64,0.08)',
     borderRadius: RADIUS.md,
     borderWidth: 0.5,
-    borderColor: 'rgba(255,183,77,0.15)',
+    borderColor: 'rgba(61,139,64,0.15)',
     paddingHorizontal: SPACE.md,
     paddingVertical: SPACE.md,
     marginBottom: SPACE.lg,
@@ -896,7 +910,7 @@ const ms = StyleSheet.create({
   previewBannerTitle: {
     fontSize: FONT_SIZE.sm,
     fontWeight: FONT_WEIGHT.bold,
-    color: SEMANTIC_COLORS.warning,
+    color: SEMANTIC_COLORS.accentPrimary,
   },
   previewBannerBody: {
     fontSize: FONT_SIZE.xs,
@@ -1125,18 +1139,18 @@ const s = StyleSheet.create({
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: RADIUS.sm,
-    backgroundColor: 'rgba(255,183,77,0.12)',
+    backgroundColor: 'rgba(61,139,64,0.12)',
   },
   previewBadgeText: {
     fontSize: 9,
     fontWeight: FONT_WEIGHT.bold,
-    color: SEMANTIC_COLORS.warning,
+    color: SEMANTIC_COLORS.accentPrimary,
     letterSpacing: 0.3,
   },
   previewHint: {
     fontSize: FONT_SIZE.xs,
     fontWeight: FONT_WEIGHT.medium,
-    color: SEMANTIC_COLORS.warning,
+    color: SEMANTIC_COLORS.accentPrimary,
     marginTop: 3,
   },
   entryMeta: {

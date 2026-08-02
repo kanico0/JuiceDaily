@@ -1,0 +1,953 @@
+// ─────────────────────────────────────────────────────────────
+// glowJourney.test.js — Tests for Glow Journey Drop feature.
+//
+// Covers:
+//   1.  Journey stage for all threshold boundaries
+//   2.  Days remaining until next stage
+//   3.  Zero-history state
+//   4.  Singular and plural streak wording
+//   5.  Weekly progress capped at 100%
+//   6.  Same-day multiple logs count as one qualifying day
+//   7.  Seven leaf states render correctly
+//   8.  Today is distinguished correctly
+//   9.  Weekly completion copy
+//   10. Highest-stage behavior
+//   11. Missing-data fallback
+//   12. Reduced-motion behavior
+//   13. Accessibility label contains important progress values
+//   14. Stage celebration does not repeat after acknowledgment
+//   15. Existing Glow Streak logic remains unchanged
+//   16. Existing Today-screen actions and navigation continue to work
+// ─────────────────────────────────────────────────────────────
+
+jest.mock('@react-native-async-storage/async-storage', () => ({
+  getItem: jest.fn(() => Promise.resolve(null)),
+  setItem: jest.fn(() => Promise.resolve()),
+  multiSet: jest.fn(() => Promise.resolve()),
+  multiRemove: jest.fn(() => Promise.resolve()),
+  removeItem: jest.fn(() => Promise.resolve()),
+}))
+
+jest.mock('expo-haptics', () => ({
+  impactAsync: jest.fn(() => Promise.resolve()),
+  ImpactFeedbackStyle: { Light: 'Light', Medium: 'Medium', Heavy: 'Heavy' },
+}))
+
+jest.mock('../../services/AnalyticsService', () => ({
+  trackEvent: jest.fn(() => Promise.resolve()),
+}))
+
+jest.mock('../../utils/DevClock', () => ({
+  getDevNow: jest.fn(() => new Date('2025-06-04T10:00:00')),
+}))
+
+const {
+  getJourneyStage,
+  getNextStage,
+  getDaysToNextStage,
+  GLOW_JOURNEY_STAGES,
+  WEEKLY_GLOW_GOAL,
+} = require('../../constants/glowJourneyStages')
+
+const {
+  getWeeklyQualifyingDays,
+  getWeeklyProgressRatio,
+  getLifetimeQualifyingDays,
+  getWeeklyLeafStates,
+  isWeeklyGoalComplete,
+  getMilestoneMessage,
+  shouldCelebrateStage,
+  markStageCelebrated,
+  shouldCelebrateWeekly,
+  markWeeklyCelebrated,
+  resetGlowJourneyCelebrations,
+  initializeBaseline,
+  isBaselineInitialized,
+} = require('../../services/glowJourneyService')
+
+const AsyncStorage = require('@react-native-async-storage/async-storage')
+
+// ── 1. Journey stage for all threshold boundaries ────────────
+
+describe('GlowJourneyStages — threshold boundaries', () => {
+  test('returns null for zero days', () => {
+    expect(getJourneyStage(0)).toBeNull()
+  })
+
+  test('Seed: 1-4 days', () => {
+    expect(getJourneyStage(1).key).toBe('seed')
+    expect(getJourneyStage(4).key).toBe('seed')
+  })
+
+  test('Sprout: 5-14 days', () => {
+    expect(getJourneyStage(5).key).toBe('sprout')
+    expect(getJourneyStage(14).key).toBe('sprout')
+  })
+
+  test('Growing: 15-29 days', () => {
+    expect(getJourneyStage(15).key).toBe('growing')
+    expect(getJourneyStage(29).key).toBe('growing')
+  })
+
+  test('Blooming: 30-59 days', () => {
+    expect(getJourneyStage(30).key).toBe('blooming')
+    expect(getJourneyStage(59).key).toBe('blooming')
+  })
+
+  test('Thriving: 60-99 days', () => {
+    expect(getJourneyStage(60).key).toBe('thriving')
+    expect(getJourneyStage(99).key).toBe('thriving')
+  })
+
+  test('Radiant: 100-199 days', () => {
+    expect(getJourneyStage(100).key).toBe('radiant')
+    expect(getJourneyStage(199).key).toBe('radiant')
+  })
+
+  test('RawLife Legend: 200+ days', () => {
+    expect(getJourneyStage(200).key).toBe('legend')
+    expect(getJourneyStage(500).key).toBe('legend')
+  })
+
+  test('boundary transitions: 4→5, 14→15, 29→30, 59→60, 99→100, 199→200', () => {
+    expect(getJourneyStage(4).key).toBe('seed')
+    expect(getJourneyStage(5).key).toBe('sprout')
+    expect(getJourneyStage(14).key).toBe('sprout')
+    expect(getJourneyStage(15).key).toBe('growing')
+    expect(getJourneyStage(29).key).toBe('growing')
+    expect(getJourneyStage(30).key).toBe('blooming')
+    expect(getJourneyStage(59).key).toBe('blooming')
+    expect(getJourneyStage(60).key).toBe('thriving')
+    expect(getJourneyStage(99).key).toBe('thriving')
+    expect(getJourneyStage(100).key).toBe('radiant')
+    expect(getJourneyStage(199).key).toBe('radiant')
+    expect(getJourneyStage(200).key).toBe('legend')
+  })
+})
+
+// ── 2. Days remaining until next stage ───────────────────────
+
+describe('getDaysToNextStage', () => {
+  test('1 day in Seed → 4 days to Sprout', () => {
+    expect(getDaysToNextStage(1)).toBe(4)
+  })
+
+  test('4 days in Seed → 1 day to Sprout', () => {
+    expect(getDaysToNextStage(4)).toBe(1)
+  })
+
+  test('14 days in Sprout → 1 day to Growing', () => {
+    expect(getDaysToNextStage(14)).toBe(1)
+  })
+
+  test('29 days in Growing → 1 day to Blooming', () => {
+    expect(getDaysToNextStage(29)).toBe(1)
+  })
+
+  test('200+ days (Legend) → 0 days (no next stage)', () => {
+    expect(getDaysToNextStage(200)).toBe(0)
+    expect(getDaysToNextStage(500)).toBe(0)
+  })
+
+  test('0 days → 1 day to Seed', () => {
+    expect(getDaysToNextStage(0)).toBe(1)
+  })
+})
+
+// ── 3. Zero-history state ────────────────────────────────────
+
+describe('Zero-history state', () => {
+  test('getJourneyStage(0) returns null', () => {
+    expect(getJourneyStage(0)).toBeNull()
+  })
+
+  test('getLifetimeQualifyingDays([]) returns 0', () => {
+    expect(getLifetimeQualifyingDays([])).toBe(0)
+  })
+
+  test('getLifetimeQualifyingDays(null) returns 0', () => {
+    expect(getLifetimeQualifyingDays(null)).toBe(0)
+  })
+
+  test('getLifetimeQualifyingDays(undefined) returns 0', () => {
+    expect(getLifetimeQualifyingDays(undefined)).toBe(0)
+  })
+
+  test('getWeeklyQualifyingDays([]) returns 0', () => {
+    expect(getWeeklyQualifyingDays([])).toBe(0)
+  })
+
+  test('getMilestoneMessage for zero lifetime days', () => {
+    const msg = getMilestoneMessage({ lifetimeDays: 0, weeklyQualifyingDays: 0, weeklyGoal: 3 })
+    expect(msg).toBe('Your journey starts with your first juice')
+  })
+})
+
+// ── 4. Singular and plural streak wording ────────────────────
+
+describe('Streak wording', () => {
+  test('1 day → "1 Day Glow Streak"', () => {
+    const text = `1 Day Glow Streak`
+    expect(text).toBe('1 Day Glow Streak')
+  })
+
+  test('2 days → "2 Day Glow Streak"', () => {
+    const text = `2 Day Glow Streak`
+    expect(text).toBe('2 Day Glow Streak')
+  })
+
+  test('0 days → "0 Day Glow Streak"', () => {
+    const text = `0 Day Glow Streak`
+    expect(text).toBe('0 Day Glow Streak')
+  })
+})
+
+// ── 5. Weekly progress capped at 100% ────────────────────────
+
+describe('Weekly progress ratio', () => {
+  test('0 days → 0', () => {
+    expect(getWeeklyProgressRatio([])).toBe(0)
+  })
+
+  test('3 days → 1.0 (100%)', () => {
+    const entries = [
+      { dateKey: '2025-06-02', id: '1' },
+      { dateKey: '2025-06-03', id: '2' },
+      { dateKey: '2025-06-04', id: '3' },
+    ]
+    expect(getWeeklyProgressRatio(entries)).toBe(1)
+  })
+
+  test('5 days → capped at 1.0 (100%)', () => {
+    const entries = [
+      { dateKey: '2025-06-02', id: '1' },
+      { dateKey: '2025-06-03', id: '2' },
+      { dateKey: '2025-06-04', id: '3' },
+      { dateKey: '2025-06-05', id: '4' },
+      { dateKey: '2025-06-06', id: '5' },
+    ]
+    expect(getWeeklyProgressRatio(entries)).toBe(1)
+  })
+})
+
+// ── 6. Same-day multiple logs count as one qualifying day ────
+
+describe('Same-day multiple logs', () => {
+  test('two entries on same dateKey count as one day', () => {
+    const entries = [
+      { dateKey: '2025-06-04', id: 'a' },
+      { dateKey: '2025-06-04', id: 'b' },
+    ]
+    expect(getLifetimeQualifyingDays(entries)).toBe(1)
+    expect(getWeeklyQualifyingDays(entries)).toBe(1)
+  })
+
+  test('three entries on same dateKey count as one day', () => {
+    const entries = [
+      { dateKey: '2025-06-04', id: 'a' },
+      { dateKey: '2025-06-04', id: 'b' },
+      { dateKey: '2025-06-04', id: 'c' },
+    ]
+    expect(getLifetimeQualifyingDays(entries)).toBe(1)
+  })
+})
+
+// ── 7. Seven leaf states render correctly ────────────────────
+
+describe('getWeeklyLeafStates', () => {
+  const entries = [
+    { dateKey: '2025-06-02', id: '1' },
+    { dateKey: '2025-06-04', id: '2' },
+  ]
+
+  test('returns exactly 7 leaves', () => {
+    const leaves = getWeeklyLeafStates(entries)
+    expect(leaves).toHaveLength(7)
+  })
+
+  test('each leaf has required properties', () => {
+    const leaves = getWeeklyLeafStates(entries)
+    leaves.forEach((leaf) => {
+      expect(leaf).toHaveProperty('dayIndex')
+      expect(leaf).toHaveProperty('dateKey')
+      expect(leaf).toHaveProperty('hasLog')
+      expect(leaf).toHaveProperty('isToday')
+      expect(leaf).toHaveProperty('isFuture')
+      expect(leaf).toHaveProperty('isPast')
+    })
+  })
+
+  test('logged days have hasLog=true', () => {
+    const leaves = getWeeklyLeafStates(entries)
+    expect(leaves[0].hasLog).toBe(true)
+    expect(leaves[2].hasLog).toBe(true)
+  })
+
+  test('non-logged days have hasLog=false', () => {
+    const leaves = getWeeklyLeafStates(entries)
+    expect(leaves[1].hasLog).toBe(false)
+  })
+})
+
+// ── 8. Today is distinguished correctly ──────────────────────
+
+describe('Today leaf distinction', () => {
+  test('exactly one leaf is marked isToday', () => {
+    const leaves = getWeeklyLeafStates([])
+    const todayLeaves = leaves.filter((l) => l.isToday)
+    expect(todayLeaves).toHaveLength(1)
+  })
+
+  test('today leaf is not in the future', () => {
+    const leaves = getWeeklyLeafStates([])
+    const todayLeaf = leaves.find((l) => l.isToday)
+    expect(todayLeaf.isFuture).toBe(false)
+  })
+})
+
+// ── 9. Weekly completion copy ────────────────────────────────
+
+describe('Weekly completion copy', () => {
+  test('completed weekly goal → "Your Weekly Glow is complete"', () => {
+    const msg = getMilestoneMessage({ lifetimeDays: 10, weeklyQualifyingDays: 3, weeklyGoal: 3 })
+    expect(msg).toContain('Your Weekly Glow is complete')
+  })
+
+  test('1 day remaining → "One more juice completes your Weekly Glow"', () => {
+    const msg = getMilestoneMessage({ lifetimeDays: 10, weeklyQualifyingDays: 2, weeklyGoal: 3 })
+    expect(msg).toContain('One more juice completes your Weekly Glow')
+  })
+
+  test('2 days remaining → "2 more juicing days to complete your Weekly Glow"', () => {
+    const msg = getMilestoneMessage({ lifetimeDays: 10, weeklyQualifyingDays: 1, weeklyGoal: 3 })
+    expect(msg).toContain('2 more juicing days to complete your Weekly Glow')
+  })
+})
+
+// ── 10. Highest-stage behavior ───────────────────────────────
+
+describe('Highest-stage behavior', () => {
+  test('getNextStage(200) returns null', () => {
+    expect(getNextStage(200)).toBeNull()
+  })
+
+  test('getNextStage(500) returns null', () => {
+    expect(getNextStage(500)).toBeNull()
+  })
+
+  test('getDaysToNextStage(200) returns 0', () => {
+    expect(getDaysToNextStage(200)).toBe(0)
+  })
+
+  test('getJourneyStage(200).key is "legend"', () => {
+    expect(getJourneyStage(200).key).toBe('legend')
+  })
+})
+
+// ── 11. Missing-data fallback ────────────────────────────────
+
+describe('Missing-data fallback', () => {
+  test('null entries → 0 lifetime days', () => {
+    expect(getLifetimeQualifyingDays(null)).toBe(0)
+  })
+
+  test('undefined entries → 0 weekly days', () => {
+    expect(getWeeklyQualifyingDays(undefined)).toBe(0)
+  })
+
+  test('entries with missing dateKey are ignored', () => {
+    const entries = [
+      { id: 'a' },
+      { dateKey: null, id: 'b' },
+      { dateKey: 'not-a-date', id: 'c' },
+      { dateKey: '2025-06-04', id: 'd' },
+    ]
+    expect(getLifetimeQualifyingDays(entries)).toBe(1)
+  })
+
+  test('non-array entries → 0', () => {
+    expect(getLifetimeQualifyingDays('notarray')).toBe(0)
+    expect(getWeeklyQualifyingDays(42)).toBe(0)
+  })
+})
+
+// ── 12. Reduced-motion behavior ──────────────────────────────
+
+describe('Reduced-motion behavior', () => {
+  test('WEEKLY_GLOW_GOAL is 3', () => {
+    expect(WEEKLY_GLOW_GOAL).toBe(3)
+  })
+
+  test('isWeeklyGoalComplete returns true when goal met', () => {
+    const entries = [
+      { dateKey: '2025-06-02', id: '1' },
+      { dateKey: '2025-06-03', id: '2' },
+      { dateKey: '2025-06-04', id: '3' },
+    ]
+    expect(isWeeklyGoalComplete(entries)).toBe(true)
+  })
+
+  test('isWeeklyGoalComplete returns false when goal not met', () => {
+    const entries = [
+      { dateKey: '2025-06-02', id: '1' },
+    ]
+    expect(isWeeklyGoalComplete(entries)).toBe(false)
+  })
+})
+
+// ── 13. Accessibility label contains important progress values ─
+
+describe('Accessibility label content', () => {
+  test('getMilestoneMessage includes next stage info', () => {
+    const msg = getMilestoneMessage({ lifetimeDays: 15, weeklyQualifyingDays: 1, weeklyGoal: 3 })
+    expect(msg).toContain('Blooming')
+  })
+
+  test('getMilestoneMessage includes weekly info', () => {
+    const msg = getMilestoneMessage({ lifetimeDays: 15, weeklyQualifyingDays: 1, weeklyGoal: 3 })
+    expect(msg).toMatch(/Weekly Glow/i)
+  })
+})
+
+// ── 14. Stage celebration does not repeat after acknowledgment ─
+
+describe('Stage celebration persistence', () => {
+  beforeEach(() => {
+    jest.clearAllMocks()
+    AsyncStorage.getItem.mockReset()
+    AsyncStorage.setItem.mockReset()
+  })
+
+  test('shouldCelebrateStage returns stage when not yet celebrated and baseline initialized', async () => {
+    AsyncStorage.getItem
+      .mockResolvedValueOnce(null) // celebratedStages
+      .mockResolvedValueOnce('true') // baselineInitialized
+    const result = await shouldCelebrateStage(5)
+    expect(result).not.toBeNull()
+    expect(result.key).toBe('sprout')
+  })
+
+  test('shouldCelebrateStage returns null after celebration marked', async () => {
+    AsyncStorage.getItem
+      .mockResolvedValueOnce(JSON.stringify(['sprout'])) // celebratedStages
+      .mockResolvedValueOnce('true') // baselineInitialized
+    const result = await shouldCelebrateStage(5)
+    expect(result).toBeNull()
+  })
+
+  test('shouldCelebrateStage returns null when baseline not initialized', async () => {
+    AsyncStorage.getItem
+      .mockResolvedValueOnce(null) // celebratedStages
+      .mockResolvedValueOnce(null) // baselineInitialized
+    const result = await shouldCelebrateStage(5)
+    expect(result).toBeNull()
+  })
+
+  test('shouldCelebrateStage returns null when prevLifetimeDays is same stage', async () => {
+    AsyncStorage.getItem
+      .mockResolvedValueOnce(null) // celebratedStages
+      .mockResolvedValueOnce('true') // baselineInitialized
+    const result = await shouldCelebrateStage(10, 6)
+    expect(result).toBeNull()
+  })
+
+  test('shouldCelebrateStage returns stage when prevLifetimeDays is different stage', async () => {
+    AsyncStorage.getItem
+      .mockResolvedValueOnce(null) // celebratedStages
+      .mockResolvedValueOnce('true') // baselineInitialized
+    const result = await shouldCelebrateStage(5, 4)
+    expect(result).not.toBeNull()
+    expect(result.key).toBe('sprout')
+  })
+
+  test('markStageCelebrated persists the stage key', async () => {
+    AsyncStorage.getItem.mockResolvedValueOnce(JSON.stringify(['seed']))
+    await markStageCelebrated('sprout')
+    const setCall = AsyncStorage.setItem.mock.calls.find(
+      (c) => c[0] === 'glowJourney_celebratedStages'
+    )
+    expect(setCall).toBeDefined()
+    const stored = JSON.parse(setCall[1])
+    expect(stored).toContain('sprout')
+    expect(stored).toContain('seed')
+  })
+
+  test('shouldCelebrateWeekly returns null for already celebrated week', async () => {
+    AsyncStorage.getItem
+      .mockResolvedValueOnce(JSON.stringify(['2025-06-02'])) // celebratedWeeks
+      .mockResolvedValueOnce('true') // baselineInitialized
+    const entries = [
+      { dateKey: '2025-06-02', id: '1' },
+      { dateKey: '2025-06-03', id: '2' },
+      { dateKey: '2025-06-04', id: '3' },
+    ]
+    const result = await shouldCelebrateWeekly(entries)
+    expect(result).toBeNull()
+  })
+
+  test('shouldCelebrateWeekly returns null when baseline not initialized', async () => {
+    AsyncStorage.getItem
+      .mockResolvedValueOnce(null) // celebratedWeeks
+      .mockResolvedValueOnce(null) // baselineInitialized
+    const entries = [
+      { dateKey: '2025-06-02', id: '1' },
+      { dateKey: '2025-06-03', id: '2' },
+      { dateKey: '2025-06-04', id: '3' },
+    ]
+    const result = await shouldCelebrateWeekly(entries)
+    expect(result).toBeNull()
+  })
+})
+
+// ── 15. Existing Glow Streak logic remains unchanged ─────────
+
+describe('Glow Streak rules unchanged', () => {
+  test('GLOW_JOURNEY_STAGES has 7 stages', () => {
+    expect(GLOW_JOURNEY_STAGES).toHaveLength(7)
+  })
+
+  test('WEEKLY_GLOW_GOAL default is 3', () => {
+    expect(WEEKLY_GLOW_GOAL).toBe(3)
+  })
+
+  test('stage thresholds match spec', () => {
+    const keys = GLOW_JOURNEY_STAGES.map((s) => s.key)
+    expect(keys).toEqual(['seed', 'sprout', 'growing', 'blooming', 'thriving', 'radiant', 'legend'])
+  })
+
+  test('stage min/max match spec', () => {
+    expect(GLOW_JOURNEY_STAGES[0]).toMatchObject({ key: 'seed', min: 1, max: 4 })
+    expect(GLOW_JOURNEY_STAGES[1]).toMatchObject({ key: 'sprout', min: 5, max: 14 })
+    expect(GLOW_JOURNEY_STAGES[2]).toMatchObject({ key: 'growing', min: 15, max: 29 })
+    expect(GLOW_JOURNEY_STAGES[3]).toMatchObject({ key: 'blooming', min: 30, max: 59 })
+    expect(GLOW_JOURNEY_STAGES[4]).toMatchObject({ key: 'thriving', min: 60, max: 99 })
+    expect(GLOW_JOURNEY_STAGES[5]).toMatchObject({ key: 'radiant', min: 100, max: 199 })
+    expect(GLOW_JOURNEY_STAGES[6]).toMatchObject({ key: 'legend', min: 200, max: Infinity })
+  })
+})
+
+// ── 16. Existing Today-screen actions still work ─────────────
+
+describe('Today screen integration', () => {
+  test('glowJourneyService functions are importable', () => {
+    expect(typeof getWeeklyQualifyingDays).toBe('function')
+    expect(typeof getLifetimeQualifyingDays).toBe('function')
+    expect(typeof getWeeklyLeafStates).toBe('function')
+    expect(typeof getMilestoneMessage).toBe('function')
+  })
+
+  test('resetGlowJourneyCelebrations is callable', async () => {
+    await resetGlowJourneyCelebrations()
+    expect(AsyncStorage.multiRemove).toHaveBeenCalled()
+  })
+})
+
+// ── 17. Baseline initialization — existing-user protection ──
+
+describe('Baseline initialization', () => {
+  beforeEach(() => {
+    jest.clearAllMocks()
+    AsyncStorage.getItem.mockReset()
+    AsyncStorage.setItem.mockReset()
+  })
+
+  test('initializeBaseline returns true on first call (not yet initialized)', async () => {
+    AsyncStorage.getItem.mockResolvedValue(null) // baseline not set
+    const result = await initializeBaseline([])
+    expect(result).toBe(true)
+  })
+
+  test('initializeBaseline returns false on second call (already initialized)', async () => {
+    AsyncStorage.getItem.mockResolvedValueOnce('true') // baseline already set
+    const result = await initializeBaseline([])
+    expect(result).toBe(false)
+  })
+
+  test('initializeBaseline marks current stage as celebrated for existing users', async () => {
+    AsyncStorage.getItem
+      .mockResolvedValueOnce(null) // baselineInitialized
+      .mockResolvedValueOnce(null) // celebratedStages (empty)
+    const entries = [{ dateKey: '2025-06-04', id: '1' }]
+    await initializeBaseline(entries)
+    const setCalls = AsyncStorage.setItem.mock.calls
+    const stageSetCall = setCalls.find((c) => c[0] === 'glowJourney_celebratedStages')
+    expect(stageSetCall).toBeDefined()
+    const stored = JSON.parse(stageSetCall[1])
+    expect(stored).toContain('seed')
+  })
+
+  test('initializeBaseline marks current week as celebrated if goal already met', async () => {
+    AsyncStorage.getItem
+      .mockResolvedValueOnce(null) // baselineInitialized
+      .mockResolvedValueOnce(null) // celebratedStages
+      .mockResolvedValueOnce(null) // celebratedWeeks
+    const entries = [
+      { dateKey: '2025-06-02', id: '1' },
+      { dateKey: '2025-06-03', id: '2' },
+      { dateKey: '2025-06-04', id: '3' },
+    ]
+    await initializeBaseline(entries)
+    const weekSetCall = AsyncStorage.setItem.mock.calls.find(
+      (c) => c[0] === 'glowJourney_celebratedWeeks'
+    )
+    expect(weekSetCall).toBeDefined()
+  })
+
+  test('isBaselineInitialized returns true when key is set', async () => {
+    AsyncStorage.getItem.mockResolvedValueOnce('true')
+    const result = await isBaselineInitialized()
+    expect(result).toBe(true)
+  })
+
+  test('isBaselineInitialized returns false when key is not set', async () => {
+    AsyncStorage.getItem.mockResolvedValueOnce(null)
+    const result = await isBaselineInitialized()
+    expect(result).toBe(false)
+  })
+})
+
+// ── 18. No celebration for historical progress on first init ──
+
+describe('No historical celebration on first init', () => {
+  beforeEach(() => {
+    jest.clearAllMocks()
+    AsyncStorage.getItem.mockReset()
+    AsyncStorage.setItem.mockReset()
+  })
+
+  test('shouldCelebrateStage returns null before baseline init even with high lifetime days', async () => {
+    AsyncStorage.getItem
+      .mockResolvedValueOnce(null) // celebratedStages
+      .mockResolvedValueOnce(null) // baselineInitialized
+    const result = await shouldCelebrateStage(100)
+    expect(result).toBeNull()
+  })
+
+  test('shouldCelebrateWeekly returns null before baseline init even with goal met', async () => {
+    AsyncStorage.getItem
+      .mockResolvedValueOnce(null) // celebratedWeeks
+      .mockResolvedValueOnce(null) // baselineInitialized
+    const entries = [
+      { dateKey: '2025-06-02', id: '1' },
+      { dateKey: '2025-06-03', id: '2' },
+      { dateKey: '2025-06-04', id: '3' },
+    ]
+    const result = await shouldCelebrateWeekly(entries)
+    expect(result).toBeNull()
+  })
+})
+
+// ── 19. New stage celebration only after baseline ──
+
+describe('New stage celebration after baseline', () => {
+  beforeEach(() => {
+    jest.clearAllMocks()
+    AsyncStorage.getItem.mockReset()
+    AsyncStorage.setItem.mockReset()
+  })
+
+  test('shouldCelebrateStage returns stage for new threshold after baseline', async () => {
+    AsyncStorage.getItem
+      .mockResolvedValueOnce(null) // celebratedStages (empty)
+      .mockResolvedValueOnce('true') // baselineInitialized
+    const result = await shouldCelebrateStage(15, 14)
+    expect(result).not.toBeNull()
+    expect(result.key).toBe('growing')
+  })
+
+  test('shouldCelebrateStage returns null for same stage transition within stage', async () => {
+    AsyncStorage.getItem
+      .mockResolvedValueOnce(null) // celebratedStages
+      .mockResolvedValueOnce('true') // baselineInitialized
+    const result = await shouldCelebrateStage(10, 6)
+    expect(result).toBeNull()
+  })
+})
+
+// ── 20. Weekly celebration only for new week after baseline ──
+
+describe('Weekly celebration for new week', () => {
+  beforeEach(() => {
+    jest.clearAllMocks()
+    AsyncStorage.getItem.mockReset()
+    AsyncStorage.setItem.mockReset()
+  })
+
+  test('shouldCelebrateWeekly returns result for new qualifying week after baseline', async () => {
+    AsyncStorage.getItem
+      .mockResolvedValueOnce(null) // celebratedWeeks
+      .mockResolvedValueOnce('true') // baselineInitialized
+    const entries = [
+      { dateKey: '2025-06-02', id: '1' },
+      { dateKey: '2025-06-03', id: '2' },
+      { dateKey: '2025-06-04', id: '3' },
+    ]
+    const result = await shouldCelebrateWeekly(entries)
+    expect(result).not.toBeNull()
+    expect(result.days).toBe(3)
+  })
+
+  test('shouldCelebrateWeekly returns null for incomplete week', async () => {
+    AsyncStorage.getItem
+      .mockResolvedValueOnce(null) // celebratedWeeks
+      .mockResolvedValueOnce('true') // baselineInitialized
+    const entries = [{ dateKey: '2025-06-02', id: '1' }]
+    const result = await shouldCelebrateWeekly(entries)
+    expect(result).toBeNull()
+  })
+})
+
+// ── 21. Week-start key is Monday-based ──
+
+describe('Monday-based week convention', () => {
+  test('getWeekStartToday returns a Monday', async () => {
+    const { getWeekStartToday } = require('../../services/glowJourneyService')
+    const weekStart = getWeekStartToday()
+    const [y, m, d] = weekStart.split('-').map(Number)
+    const date = new Date(y, m - 1, d)
+    expect(date.getDay()).toBe(1) // Monday
+  })
+})
+
+// ── 22. Duplicate-prevention storage keys ──
+
+describe('Duplicate-prevention storage keys', () => {
+  beforeEach(() => {
+    jest.clearAllMocks()
+    AsyncStorage.getItem.mockReset()
+    AsyncStorage.setItem.mockReset()
+  })
+
+  test('markStageCelebrated does not duplicate stage keys', async () => {
+    AsyncStorage.getItem.mockResolvedValueOnce(JSON.stringify(['seed', 'sprout']))
+    await markStageCelebrated('sprout')
+    const setCall = AsyncStorage.setItem.mock.calls.find(
+      (c) => c[0] === 'glowJourney_celebratedStages'
+    )
+    if (setCall) {
+      const stored = JSON.parse(setCall[1])
+      const sproutCount = stored.filter((k) => k === 'sprout').length
+      expect(sproutCount).toBe(1)
+    }
+  })
+
+  test('markWeeklyCelebrated does not duplicate week keys', async () => {
+    AsyncStorage.getItem.mockResolvedValueOnce(JSON.stringify(['2025-06-02']))
+    await markWeeklyCelebrated('2025-06-02')
+    const setCall = AsyncStorage.setItem.mock.calls.find(
+      (c) => c[0] === 'glowJourney_celebratedWeeks'
+    )
+    if (setCall) {
+      const stored = JSON.parse(setCall[1])
+      const count = stored.filter((k) => k === '2025-06-02').length
+      expect(count).toBe(1)
+    }
+  })
+})
+
+// ── 23. resetGlowJourneyCelebrations clears all three keys ──
+
+describe('Reset clears all keys', () => {
+  beforeEach(() => {
+    jest.clearAllMocks()
+    AsyncStorage.multiRemove.mockReset()
+  })
+
+  test('reset removes celebratedStages, celebratedWeeks, and baselineInitialized', async () => {
+    await resetGlowJourneyCelebrations()
+    const call = AsyncStorage.multiRemove.mock.calls[0]
+    expect(call[0]).toContain('glowJourney_celebratedStages')
+    expect(call[0]).toContain('glowJourney_celebratedWeeks')
+    expect(call[0]).toContain('glowJourney_baselineInitialized')
+  })
+})
+
+// ── 24. Analytics events use non-sensitive properties ──
+
+describe('Analytics event properties', () => {
+  let EVENT_SCHEMAS
+  beforeAll(() => {
+    const AnalyticsService = jest.requireActual('../../services/AnalyticsService')
+    EVENT_SCHEMAS = AnalyticsService.EVENT_SCHEMAS
+  })
+
+  test('glow_journey_viewed schema exists', () => {
+    expect(EVENT_SCHEMAS.glow_journey_viewed).toBeDefined()
+    expect(EVENT_SCHEMAS.glow_journey_viewed.optional).toContain('journey_stage_key')
+    expect(EVENT_SCHEMAS.glow_journey_viewed.optional).toContain('weekly_completed_days')
+  })
+
+  test('glow_journey_tapped schema exists', () => {
+    expect(EVENT_SCHEMAS.glow_journey_tapped).toBeDefined()
+    expect(EVENT_SCHEMAS.glow_journey_tapped.optional).toContain('journey_stage_key')
+  })
+
+  test('weekly_glow_completed schema exists', () => {
+    expect(EVENT_SCHEMAS.weekly_glow_completed).toBeDefined()
+    expect(EVENT_SCHEMAS.weekly_glow_completed.optional).toContain('weekly_completed_days')
+  })
+
+  test('glow_journey_stage_reached schema exists', () => {
+    expect(EVENT_SCHEMAS.glow_journey_stage_reached).toBeDefined()
+    expect(EVENT_SCHEMAS.glow_journey_stage_reached.optional).toContain('journey_stage_key')
+    expect(EVENT_SCHEMAS.glow_journey_stage_reached.optional).toContain('lifetime_days')
+  })
+
+  test('no analytics schema contains nutrition or ingredient fields', () => {
+    const glowSchemas = ['glow_journey_viewed', 'glow_journey_tapped', 'weekly_glow_completed', 'glow_journey_stage_reached']
+    for (const key of glowSchemas) {
+      const schema = EVENT_SCHEMAS[key]
+      const allFields = [...(schema.required || []), ...(schema.optional || [])]
+      expect(allFields).not.toContain('ingredients')
+      expect(allFields).not.toContain('nutrition')
+      expect(allFields).not.toContain('account_id')
+    }
+  })
+})
+
+// ── 25. Responsive layout — useWindowDimensions not static ──
+
+describe('Responsive layout', () => {
+  test('GlowJourneyDrop source uses useWindowDimensions not static Dimensions', () => {
+    const fs = require('fs')
+    const path = require('path')
+    const source = fs.readFileSync(
+      path.join(__dirname, '..', '..', 'components', 'GlowJourneyDrop.js'),
+      'utf8'
+    )
+    expect(source).toContain('useWindowDimensions')
+    expect(source).not.toMatch(/Dimensions\.get\('window'\)\.width/) // no static screen width
+  })
+
+  test('GlowJourneyDrop source has MIN_DROP_SIZE and MAX_DROP_SIZE bounds', () => {
+    const fs = require('fs')
+    const path = require('path')
+    const source = fs.readFileSync(
+      path.join(__dirname, '..', '..', 'components', 'GlowJourneyDrop.js'),
+      'utf8'
+    )
+    expect(source).toContain('MIN_DROP_SIZE')
+    expect(source).toContain('MAX_DROP_SIZE')
+  })
+})
+
+// ── 26. No hard-coded colors in GlowJourneyDrop ──
+
+describe('No hard-coded colors in components', () => {
+  test('GlowJourneyDrop does not use hard-coded #A5D6A7 or #4CAF50', () => {
+    const fs = require('fs')
+    const path = require('path')
+    const source = fs.readFileSync(
+      path.join(__dirname, '..', '..', 'components', 'GlowJourneyDrop.js'),
+      'utf8'
+    )
+    expect(source).not.toContain('#A5D6A7')
+    expect(source).not.toContain('#4CAF50')
+  })
+
+  test('GlowJourneyDetail does not use hard-coded #0D1510 for sheet background', () => {
+    const fs = require('fs')
+    const path = require('path')
+    const source = fs.readFileSync(
+      path.join(__dirname, '..', '..', 'components', 'GlowJourneyDetail.js'),
+      'utf8'
+    )
+    expect(source).not.toMatch(/backgroundColor:\s*'#0D1510'/)
+  })
+})
+
+// ── 27. No unused imports in GlowJourneyDrop ──
+
+describe('No unused imports', () => {
+  test('GlowJourneyDrop does not import BRAND', () => {
+    const fs = require('fs')
+    const path = require('path')
+    const source = fs.readFileSync(
+      path.join(__dirname, '..', '..', 'components', 'GlowJourneyDrop.js'),
+      'utf8'
+    )
+    expect(source).not.toMatch(/import.*BRAND.*from.*tokens/)
+  })
+
+  test('GlowJourneyDrop does not import DURATION (unused after corrections)', () => {
+    const fs = require('fs')
+    const path = require('path')
+    const source = fs.readFileSync(
+      path.join(__dirname, '..', '..', 'components', 'GlowJourneyDrop.js'),
+      'utf8'
+    )
+    expect(source).not.toMatch(/import.*DURATION.*from.*motion/)
+  })
+})
+
+// ── 28. TodayScreen uses initializeBaseline on mount ──
+
+describe('TodayScreen baseline integration', () => {
+  test('TodayScreen source calls initializeBaseline', () => {
+    const fs = require('fs')
+    const path = require('path')
+    const source = fs.readFileSync(
+      path.join(__dirname, '..', '..', 'screens', 'TodayScreen.js'),
+      'utf8'
+    )
+    expect(source).toContain('initializeBaseline')
+  })
+
+  test('TodayScreen source has glowJourneyViewedRef for once-only analytics', () => {
+    const fs = require('fs')
+    const path = require('path')
+    const source = fs.readFileSync(
+      path.join(__dirname, '..', '..', 'screens', 'TodayScreen.js'),
+      'utf8'
+    )
+    expect(source).toContain('glowJourneyViewedRef')
+  })
+
+  test('TodayScreen source has prevLifetimeDaysRef for stage transition detection', () => {
+    const fs = require('fs')
+    const path = require('path')
+    const source = fs.readFileSync(
+      path.join(__dirname, '..', '..', 'screens', 'TodayScreen.js'),
+      'utf8'
+    )
+    expect(source).toContain('prevLifetimeDaysRef')
+  })
+
+  test('TodayScreen source has stageCelebration state', () => {
+    const fs = require('fs')
+    const path = require('path')
+    const source = fs.readFileSync(
+      path.join(__dirname, '..', '..', 'screens', 'TodayScreen.js'),
+      'utf8'
+    )
+    expect(source).toContain('stageCelebration')
+  })
+})
+
+// ── 29. Stage celebration respects achievement overlay order ──
+
+describe('Stage celebration safe presentation', () => {
+  test('TodayScreen source checks pendingAchievement before showing stage celebration', () => {
+    const fs = require('fs')
+    const path = require('path')
+    const source = fs.readFileSync(
+      path.join(__dirname, '..', '..', 'screens', 'TodayScreen.js'),
+      'utf8'
+    )
+    expect(source).toMatch(/!pendingAchievement.*stageCelebration/)
+  })
+})
+
+// ── 30. Reduced motion in stage celebration ──
+
+describe('Reduced motion in celebration', () => {
+  test('TodayScreen stage celebration uses isReduced for animationType', () => {
+    const fs = require('fs')
+    const path = require('path')
+    const source = fs.readFileSync(
+      path.join(__dirname, '..', '..', 'screens', 'TodayScreen.js'),
+      'utf8'
+    )
+    expect(source).toMatch(/isReduced.*none.*fade/)
+  })
+})

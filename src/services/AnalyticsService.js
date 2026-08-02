@@ -396,6 +396,24 @@ const EVENT_SCHEMAS = {
     optional: ['row', 'plan'],
   },
 
+  // ── Glow Journey Drop ──────────────────────────────────────
+  glow_journey_viewed: {
+    required: ['session_id', 'ts'],
+    optional: ['journey_stage_key', 'weekly_goal', 'weekly_completed_days', 'has_active_streak'],
+  },
+  glow_journey_tapped: {
+    required: ['session_id', 'ts'],
+    optional: ['journey_stage_key', 'destination'],
+  },
+  weekly_glow_completed: {
+    required: ['session_id', 'ts'],
+    optional: ['weekly_completed_days', 'weekly_goal'],
+  },
+  glow_journey_stage_reached: {
+    required: ['session_id', 'ts'],
+    optional: ['journey_stage_key', 'lifetime_days'],
+  },
+
 }
 
 

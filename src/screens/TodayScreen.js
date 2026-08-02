@@ -14,6 +14,7 @@ import {
   TouchableOpacity,
   Pressable,
   Animated,
+  Modal,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { LinearGradient } from 'expo-linear-gradient'
@@ -58,6 +59,20 @@ import FocusNutrientCard from '../components/FocusNutrientCard'
 import TodaySummaryStats from '../components/TodaySummaryStats'
 import WeeklySummaryTeaser from '../components/WeeklySummaryTeaser'
 import AchievementOverlay from '../components/AchievementOverlay'
+import GlowJourneyDrop from '../components/GlowJourneyDrop'
+import GlowJourneyDetail from '../components/GlowJourneyDetail'
+import {
+  getWeeklyLeafStates,
+  getWeeklyQualifyingDays,
+  getLifetimeQualifyingDays,
+  getJourneyStage,
+  shouldCelebrateStage,
+  markStageCelebrated,
+  shouldCelebrateWeekly,
+  markWeeklyCelebrated,
+  initializeBaseline,
+} from '../services/glowJourneyService'
+import { getUnlockedIds } from '../services/achievements'
 
 // -- Top nutrient highlights from today's juices --------------
 
@@ -91,7 +106,7 @@ export default function TodayScreen({ navigation }) {
   const glowStreak = useGlowStreak()
   const { profile } = useUserProfile()
   const { unlocks, activation, recordLog } = useActivation()
-  const { todayEntries, totalLogCount, diversityStats } = useJuiceLog()
+  const { todayEntries, totalLogCount, diversityStats, entries } = useJuiceLog()
   const { momentum, streak: nutritionStreak } = useNutritionScore()
   const [showQuickLogger, setShowQuickLogger] = useState(false)
   const [showRewardSplash, setShowRewardSplash] = useState(false)
@@ -99,6 +114,11 @@ export default function TodayScreen({ navigation }) {
   const [usageRefreshTrigger, setUsageRefreshTrigger] = useState(0)
   const [showSpotlightDetails, setShowSpotlightDetails] = useState(false)
   const [pendingAchievement, setPendingAchievement] = useState(null)
+  const [showGlowJourneyDetail, setShowGlowJourneyDetail] = useState(false)
+  const [unlockedAchievementIds, setUnlockedAchievementIds] = useState([])
+  const [stageCelebration, setStageCelebration] = useState(null)
+  const glowJourneyViewedRef = useRef(false)
+  const prevLifetimeDaysRef = useRef(0)
 
   const fadeAnim = useRef(new Animated.Value(0)).current
   const isNavigating = useRef(false)
@@ -187,6 +207,78 @@ export default function TodayScreen({ navigation }) {
       }
     })()
   }, [glowStreak.count, totalLogCount])
+
+  // -- Glow Journey Drop computed values --
+  const glowJourneyEntries = entries
+  const weeklyLeafStates = useMemo(() => getWeeklyLeafStates(glowJourneyEntries), [glowJourneyEntries])
+  const weeklyQualifyingDays = useMemo(() => getWeeklyQualifyingDays(glowJourneyEntries), [glowJourneyEntries])
+  const lifetimeQualifyingDays = useMemo(() => getLifetimeQualifyingDays(glowJourneyEntries), [glowJourneyEntries])
+  const journeyStage = useMemo(() => getJourneyStage(lifetimeQualifyingDays), [lifetimeQualifyingDays])
+
+  // -- Glow Journey baseline initialization (existing-user protection) --
+  useEffect(() => {
+    ;(async () => {
+      await initializeBaseline(glowJourneyEntries)
+      prevLifetimeDaysRef.current = lifetimeQualifyingDays
+    })()
+  }, [])
+
+  // -- Glow Journey analytics (once per mount) --
+  useEffect(() => {
+    if (glowJourneyViewedRef.current) return
+    glowJourneyViewedRef.current = true
+    trackEvent('glow_journey_viewed', {
+      journey_stage_key: journeyStage?.key || 'none',
+      weekly_goal: 3,
+      weekly_completed_days: weeklyQualifyingDays,
+      has_active_streak: glowStreak.count > 0,
+    })
+  }, [])
+
+  // Check for stage celebration on data change (only after baseline)
+  useEffect(() => {
+    if (lifetimeQualifyingDays < 1) return
+    const prevDays = prevLifetimeDaysRef.current
+    ;(async () => {
+      const stageToCelebrate = await shouldCelebrateStage(lifetimeQualifyingDays, prevDays)
+      if (stageToCelebrate) {
+        trackEvent('glow_journey_stage_reached', {
+          journey_stage_key: stageToCelebrate.key,
+          lifetime_days: lifetimeQualifyingDays,
+        })
+        await markStageCelebrated(stageToCelebrate.key)
+        if (!pendingAchievement) {
+          setStageCelebration({ stage: stageToCelebrate, lifetimeDays: lifetimeQualifyingDays })
+        }
+      }
+      const weeklyCelebrate = await shouldCelebrateWeekly(glowJourneyEntries)
+      if (weeklyCelebrate) {
+        trackEvent('weekly_glow_completed', {
+          weekly_completed_days: weeklyCelebrate.days,
+          weekly_goal: 3,
+        })
+        await markWeeklyCelebrated(weeklyCelebrate.weekStart)
+      }
+    })()
+    prevLifetimeDaysRef.current = lifetimeQualifyingDays
+  }, [lifetimeQualifyingDays, glowJourneyEntries, pendingAchievement])
+
+  // Load unlocked achievement IDs for detail modal
+  useEffect(() => {
+    ;(async () => {
+      const ids = await getUnlockedIds()
+      setUnlockedAchievementIds(ids)
+    })()
+  }, [])
+
+  const handleGlowJourneyPress = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    trackEvent('glow_journey_tapped', {
+      journey_stage_key: journeyStage?.key || 'none',
+      destination: 'glow_journey_detail',
+    })
+    setShowGlowJourneyDetail(true)
+  }, [journeyStage])
 
   // -- Today screen viewed analytics --
   useEffect(() => {
@@ -331,6 +423,17 @@ export default function TodayScreen({ navigation }) {
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
           >
+            {/* === GLOW JOURNEY DROP ====================== */}
+            <GlowJourneyDrop
+              streakCount={glowStreak.count}
+              entries={glowJourneyEntries}
+              lifetimeDays={lifetimeQualifyingDays}
+              weeklyQualifyingDays={weeklyQualifyingDays}
+              weeklyLeafStates={weeklyLeafStates}
+              onPress={handleGlowJourneyPress}
+              isReduced={isReduced}
+            />
+
             {/* === POST-LOG STATE ========================= */}
             {hasLoggedToday && (
               <>
@@ -786,11 +889,52 @@ export default function TodayScreen({ navigation }) {
         onDismiss={() => setPendingAchievement(null)}
       />
 
+      {/* Glow Journey Stage Celebration (only when no achievement showing) */}
+      {!pendingAchievement && stageCelebration && (
+        <Modal
+          visible={true}
+          transparent
+          animationType={isReduced ? 'none' : 'fade'}
+          onRequestClose={() => setStageCelebration(null)}
+        >
+          <View style={styles.stageCelebrationOverlay}>
+            <View style={styles.stageCelebrationCard}>
+              <Text style={styles.stageCelebrationEmoji}>
+                {stageCelebration.stage.emoji}
+              </Text>
+              <Text style={styles.stageCelebrationTitle}>
+                You're {stageCelebration.stage.label}
+              </Text>
+              <Text style={styles.stageCelebrationSubtitle}>
+                {stageCelebration.lifetimeDays} days of adding more raw to your life
+              </Text>
+              <TouchableOpacity
+                onPress={() => setStageCelebration(null)}
+                style={styles.stageCelebrationButton}
+                accessibilityRole="button"
+                accessibilityLabel="Dismiss celebration"
+              >
+                <Text style={styles.stageCelebrationButtonText}>Continue</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+      )}
+
       <AccountGateModal
         visible={showAccountGate}
         onClose={() => setShowAccountGate(false)}
         onAuthenticated={() => setShowAccountGate(false)}
         initialMode="guest"
+      />
+
+      <GlowJourneyDetail
+        visible={showGlowJourneyDetail}
+        onClose={() => setShowGlowJourneyDetail(false)}
+        streakCount={glowStreak.count}
+        weeklyQualifyingDays={weeklyQualifyingDays}
+        lifetimeDays={lifetimeQualifyingDays}
+        unlockedAchievementIds={unlockedAchievementIds}
       />
     </View>
   )
@@ -1222,5 +1366,48 @@ const styles = StyleSheet.create({
     fontSize: SEMANTIC_TYPOGRAPHY.caption.fontSize,
     fontWeight: '700',
     color: SEMANTIC_COLORS.accentSecondary,
+  },
+  stageCelebrationOverlay: {
+    flex: 1,
+    backgroundColor: SEMANTIC_COLORS.overlay,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: SEMANTIC_SPACE.lg,
+  },
+  stageCelebrationCard: {
+    backgroundColor: SEMANTIC_COLORS.surfaceElevated,
+    borderRadius: SEMANTIC_RADIUS.xl,
+    padding: SEMANTIC_SPACE.xl,
+    alignItems: 'center',
+    maxWidth: 320,
+    width: '100%',
+  },
+  stageCelebrationEmoji: {
+    fontSize: 48,
+    marginBottom: SEMANTIC_SPACE.sm,
+  },
+  stageCelebrationTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: SEMANTIC_COLORS.textPrimary,
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  stageCelebrationSubtitle: {
+    fontSize: 14,
+    color: SEMANTIC_COLORS.textSecondary,
+    textAlign: 'center',
+    marginBottom: SEMANTIC_SPACE.lg,
+  },
+  stageCelebrationButton: {
+    backgroundColor: SEMANTIC_COLORS.success,
+    borderRadius: SEMANTIC_RADIUS.pill,
+    paddingVertical: 10,
+    paddingHorizontal: 32,
+  },
+  stageCelebrationButtonText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#0D1510',
   },
 })

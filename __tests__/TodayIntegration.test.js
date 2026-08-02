@@ -104,6 +104,7 @@ jest.mock('../src/services/JuiceLogStore', () => ({
     todayEntries: mockTodayJuices.length > 0 ? [{ nutrientSummary: { vitaminC: 50, potassium: 300 } }] : [],
     totalLogCount: mockTotalLogCount,
     diversityStats: { uniqueProduce: 8, uniqueToday: mockTodayJuices.length > 0 ? 2 : 0, uniqueWeek: 5 },
+    entries: [],
   })),
 }))
 
@@ -135,6 +136,7 @@ jest.mock('../src/services/AnalyticsService', () => ({
 
 jest.mock('../src/services/achievements', () => ({
   checkAchievements: jest.fn().mockResolvedValue([]),
+  getUnlockedIds: jest.fn().mockResolvedValue([]),
 }))
 
 jest.mock('../src/services/focusNutrient', () => ({
@@ -207,6 +209,45 @@ jest.mock('../src/components/AdvancedBlendModal', () => ({
   __esModule: true,
   default: function AdvancedBlendModal() { return null },
   getAdvancedBlendModalContent: jest.fn(() => ({ title: '', subtitle: null, body: '' })),
+}))
+
+jest.mock('react-native-svg', () => {
+  const React = require('react')
+  const Mock = React.forwardRef((props, ref) => React.createElement('View', { ...props, ref }))
+  return {
+    __esModule: true,
+    default: Mock,
+    Defs: Mock,
+    ClipPath: Mock,
+    Path: Mock,
+    RadialGradient: Mock,
+    LinearGradient: Mock,
+    Stop: Mock,
+    G: Mock,
+  }
+})
+
+jest.mock('../src/components/GlowJourneyDrop', () => ({
+  __esModule: true,
+  default: function GlowJourneyDrop() { return null },
+}))
+
+jest.mock('../src/components/GlowJourneyDetail', () => ({
+  __esModule: true,
+  default: function GlowJourneyDetail() { return null },
+}))
+
+jest.mock('../src/services/glowJourneyService', () => ({
+  getWeeklyLeafStates: jest.fn(() => []),
+  getWeeklyQualifyingDays: jest.fn(() => 0),
+  getLifetimeQualifyingDays: jest.fn(() => 0),
+  getJourneyStage: jest.fn(() => null),
+  shouldCelebrateStage: jest.fn(async () => null),
+  markStageCelebrated: jest.fn(async () => {}),
+  shouldCelebrateWeekly: jest.fn(async () => null),
+  markWeeklyCelebrated: jest.fn(async () => {}),
+  initializeBaseline: jest.fn(async () => false),
+  isBaselineInitialized: jest.fn(async () => true),
 }))
 
 

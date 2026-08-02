@@ -44,7 +44,7 @@ function RecipeRow({ recipe, onPress }) {
               <Text style={styles.metaText}>{getCleanupLabel(recipe.cleanupScore)}</Text>
             </View>
           </View>
-          <ChevronRight size={18} color="#484F58" />
+          <ChevronRight size={18} color="#90A4AE" />
         </View>
 
         <Text style={styles.recipeTitle}>{recipe.title}</Text>

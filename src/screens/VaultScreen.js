@@ -359,7 +359,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   sectionTitle: { fontSize: 18, fontWeight: '800', color: '#FFFFFF' },
-  sectionSubtitle: { fontSize: 12, color: '#484F58', marginTop: 1 },
+  sectionSubtitle: { fontSize: 12, color: '#90A4AE', marginTop: 1 },
 
   // Perks
   perksCard: {
@@ -433,7 +433,7 @@ const styles = StyleSheet.create({
   planPriceSelected: { color: '#FFFFFF' },
   planPeriod: {
     fontSize: 10,
-    color: '#484F58',
+    color: '#90A4AE',
     marginTop: 2,
   },
   planSavings: {
@@ -470,7 +470,7 @@ const styles = StyleSheet.create({
   },
   legalText: {
     fontSize: 11,
-    color: '#484F58',
+    color: '#90A4AE',
     textAlign: 'center',
     marginBottom: 24,
   },

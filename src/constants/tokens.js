@@ -99,7 +99,7 @@ export const DARK = {
   borderSubtle: 'rgba(255,255,255,0.03)',
   textPrimary: '#E6EDF3',
   textSecondary: '#8B949E',
-  textMuted: '#484F58',
+  textMuted: '#90A4AE',
   green: '#81C784',
   greenDim: 'rgba(129,199,132,0.15)',
   orange: '#FFB74D',

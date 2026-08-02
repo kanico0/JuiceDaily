@@ -328,7 +328,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between', marginBottom: 16,
   },
   counterText: { fontSize: 28, fontWeight: '900', color: '#FFFFFF' },
-  counterDim: { fontSize: 16, fontWeight: '600', color: '#484F58' },
+  counterDim: { fontSize: 16, fontWeight: '600', color: '#90A4AE' },
   rainbowBadge: {
     fontSize: 14, fontWeight: '800', color: '#CE93D8',
     backgroundColor: 'rgba(156,39,176,0.08)',
@@ -371,7 +371,7 @@ const styles = StyleSheet.create({
     height: 4, borderTopLeftRadius: 14, borderTopRightRadius: 14,
   },
   tubeLabel: {
-    fontSize: 9, fontWeight: '600', color: '#484F58',
+    fontSize: 9, fontWeight: '600', color: '#90A4AE',
     marginTop: 6, textAlign: 'center',
   },
   tubeRecipeBtn: {
@@ -418,7 +418,7 @@ const styles = StyleSheet.create({
     borderWidth: 0.5, borderColor: 'rgba(255,255,255,0.08)',
   },
   sectionTitle: {
-    fontSize: 13, fontWeight: '800', color: '#484F58',
+    fontSize: 13, fontWeight: '800', color: '#90A4AE',
     textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12,
   },
   bubblesRow: {

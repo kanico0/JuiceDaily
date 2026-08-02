@@ -101,7 +101,7 @@ const styles = StyleSheet.create({
     color: '#8B949E',
   },
   segmentLabelDisabled: {
-    color: '#484F58',
+    color: '#90A4AE',
   },
   disabledReason: {
     fontSize: 11,

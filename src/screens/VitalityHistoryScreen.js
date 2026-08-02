@@ -107,7 +107,7 @@ function SpectrumGrid({ challenge }) {
   return (
     <View style={styles.gridContainer}>
       <View style={styles.gridHeader}>
-        <Calendar size={14} color="#484F58" />
+        <Calendar size={14} color="#90A4AE" />
         <Text style={styles.gridTitle}>Spectrum Grid</Text>
         <Text style={styles.gridSubtitle}>Last 5 weeks</Text>
       </View>
@@ -365,13 +365,13 @@ export default function VitalityHistoryScreen({ navigation }) {
         {showFilters && (
           <View style={styles.filterPanel}>
             <View style={styles.searchRow}>
-              <Search size={16} color="#484F58" />
+              <Search size={16} color="#90A4AE" />
               <TextInput
                 style={styles.searchInput}
                 value={searchText}
                 onChangeText={setSearchText}
                 placeholder="Search by ingredient (e.g. ginger)"
-                placeholderTextColor="#484F58"
+                placeholderTextColor="#90A4AE"
                 returnKeyType="search"
               />
               {searchText.length > 0 && (
@@ -425,7 +425,7 @@ export default function VitalityHistoryScreen({ navigation }) {
                 <Text style={styles.wrapCtaTitle}>Monthly Vitality Wrap</Text>
                 <Text style={styles.wrapCtaDesc}>Your Spotify Wrapped, but for juicing</Text>
               </View>
-              <ChevronRight size={18} color="#484F58" />
+              <ChevronRight size={18} color="#90A4AE" />
             </LinearGradient>
           </TouchableOpacity>
 
@@ -580,7 +580,7 @@ const styles = StyleSheet.create({
   },
   gridSubtitle: {
     fontSize: 11,
-    color: '#484F58',
+    color: '#90A4AE',
     marginLeft: 'auto',
   },
   gridBody: {
@@ -594,7 +594,7 @@ const styles = StyleSheet.create({
   gridLabel: {
     fontSize: 9,
     fontWeight: '600',
-    color: '#484F58',
+    color: '#90A4AE',
     width: 12,
     textAlign: 'center',
     height: 18,
@@ -613,7 +613,7 @@ const styles = StyleSheet.create({
   gridWeekLabel: {
     fontSize: 9,
     fontWeight: '600',
-    color: '#484F58',
+    color: '#90A4AE',
     textAlign: 'center',
     marginBottom: 2,
     height: 14,
@@ -672,7 +672,7 @@ const styles = StyleSheet.create({
   timelineCount: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#484F58',
+    color: '#90A4AE',
   },
 
   // Timeline Entry
@@ -756,7 +756,7 @@ const styles = StyleSheet.create({
   moreChip: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#484F58',
+    color: '#90A4AE',
     alignSelf: 'center',
   },
 

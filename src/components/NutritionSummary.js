@@ -388,7 +388,7 @@ const styles = StyleSheet.create({
   },
   emptySubtitle: {
     fontSize: 13,
-    color: '#484F58',
+    color: '#90A4AE',
     marginTop: 4,
     textAlign: 'center',
   },
@@ -412,7 +412,7 @@ const styles = StyleSheet.create({
   columnHeaderText: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#484F58',
+    color: '#90A4AE',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
@@ -436,7 +436,7 @@ const styles = StyleSheet.create({
   },
   itemsHint: {
     fontSize: 11,
-    color: '#484F58',
+    color: '#90A4AE',
     marginBottom: 10,
   },
   itemCard: {
@@ -564,7 +564,7 @@ const styles = StyleSheet.create({
   },
   pickerCategory: {
     fontSize: 11,
-    color: '#484F58',
+    color: '#90A4AE',
     fontWeight: '500',
     textTransform: 'uppercase',
   },

@@ -23,7 +23,7 @@ const TAB_LABELS = {
 }
 
 const ACTIVE_COLOR = '#81C784'
-const INACTIVE_COLOR = '#484F58'
+const INACTIVE_COLOR = '#90A4AE'
 const BAR_BG = '#0D1117'
 const FAB_SIZE = 56
 const FAB_COLOR = '#4CAF50'

@@ -525,7 +525,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   pageBtnTextDisabled: {
-    color: '#484F58',
+    color: '#90A4AE',
   },
   pageIndicator: {
     color: '#8B949E',

@@ -113,7 +113,7 @@ function EmeraldSwitch({ value, onValueChange, disabled }) {
         onValueChange(v)
       }}
       trackColor={{ false: '#21262D', true: 'rgba(129,199,132,0.4)' }}
-      thumbColor={value ? '#81C784' : '#484F58'}
+      thumbColor={value ? '#81C784' : '#90A4AE'}
       ios_backgroundColor="#21262D"
       disabled={disabled}
     />
@@ -802,7 +802,7 @@ export default function SettingsScreen({ navigation }) {
                   onPress={() => handleSetJuicerType(jt.key)}
                   activeOpacity={0.7}
                 >
-                  <Cog size={14} color={isActive ? color : '#484F58'} />
+                  <Cog size={14} color={isActive ? color : '#90A4AE'} />
                   <Text style={[
                     styles.intensityLabel,
                     isActive && { color },
@@ -970,7 +970,7 @@ export default function SettingsScreen({ navigation }) {
               onChange={(t) => updateSetting('quietStart', t)}
             />
             <View style={styles.quietDivider}>
-              <Moon size={14} color="#484F58" />
+              <Moon size={14} color="#90A4AE" />
             </View>
             <TimePicker
               label="Wake"
@@ -1234,7 +1234,7 @@ export default function SettingsScreen({ navigation }) {
                 {Object.values(flags).filter(Boolean).length} of {Object.keys(DEFAULT_FLAGS).length} enabled
               </Text>
             </View>
-            <Text style={{ fontSize: 16, color: '#484F58' }}>{showDevFlags ? '▲' : '▼'}</Text>
+            <Text style={{ fontSize: 16, color: '#90A4AE' }}>{showDevFlags ? '▲' : '▼'}</Text>
           </TouchableOpacity>
 
           {showDevFlags && (
@@ -1472,7 +1472,7 @@ export default function SettingsScreen({ navigation }) {
                   <TextInput
                     style={devStyles.nameInput}
                     placeholder="Enter your name"
-                    placeholderTextColor="#484F58"
+                    placeholderTextColor="#90A4AE"
                     value={profileNameInput}
                     onChangeText={setProfileNameInput}
                     autoCapitalize="words"
@@ -1605,7 +1605,7 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
   content: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 40 },
   loadingWrap: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  loadingText: { fontSize: 14, color: '#484F58' },
+  loadingText: { fontSize: 14, color: '#90A4AE' },
 
   // Tooltip
   tooltip: {
@@ -1639,7 +1639,7 @@ const styles = StyleSheet.create({
     borderWidth: 0.5, borderColor: 'rgba(255,255,255,0.08)',
   },
   intensityTitle: {
-    fontSize: 13, fontWeight: '800', color: '#484F58',
+    fontSize: 13, fontWeight: '800', color: '#90A4AE',
     textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12,
   },
   intensityRow: { flexDirection: 'row', gap: 8 },
@@ -1650,7 +1650,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.02)',
   },
   intensityLabel: { fontSize: 14, fontWeight: '700', color: '#8B949E' },
-  intensityDesc: { fontSize: 11, color: '#484F58', marginTop: 2 },
+  intensityDesc: { fontSize: 11, color: '#90A4AE', marginTop: 2 },
   intensityHint: { fontSize: 11, color: '#8B949E', lineHeight: 16, marginTop: 10 },
 
   // Section Header
@@ -1666,7 +1666,7 @@ const styles = StyleSheet.create({
   },
   sectionTitleWrap: { flex: 1 },
   sectionTitle: { fontSize: 15, fontWeight: '800', color: '#FFFFFF' },
-  sectionSubtitle: { fontSize: 11, color: '#484F58', marginTop: 1 },
+  sectionSubtitle: { fontSize: 11, color: '#90A4AE', marginTop: 1 },
 
   // Settings Group
   settingsGroup: {
@@ -1682,8 +1682,8 @@ const styles = StyleSheet.create({
   settingRowDisabled: { opacity: 0.4 },
   settingInfo: { flex: 1, marginRight: 12 },
   settingLabel: { fontSize: 14, fontWeight: '700', color: '#C9D1D9' },
-  settingLabelDisabled: { color: '#484F58' },
-  settingDesc: { fontSize: 12, color: '#484F58', marginTop: 2, lineHeight: 16 },
+  settingLabelDisabled: { color: '#90A4AE' },
+  settingDesc: { fontSize: 12, color: '#90A4AE', marginTop: 2, lineHeight: 16 },
   emergencyTag: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
     marginTop: 6, backgroundColor: 'rgba(100,181,246,0.06)',
@@ -1701,7 +1701,7 @@ const styles = StyleSheet.create({
   ghostInfo: { flex: 1, marginRight: 12 },
   ghostIconRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 },
   ghostLabel: { fontSize: 14, fontWeight: '700', color: '#C9D1D9' },
-  ghostDesc: { fontSize: 12, color: '#484F58', lineHeight: 16 },
+  ghostDesc: { fontSize: 12, color: '#90A4AE', lineHeight: 16 },
 
   // Quiet Hours
   quietCard: {
@@ -1722,12 +1722,12 @@ const styles = StyleSheet.create({
     marginTop: 14, paddingTop: 14,
     borderTopWidth: 0.5, borderTopColor: 'rgba(255,255,255,0.06)',
   },
-  quietNoteText: { flex: 1, fontSize: 11, color: '#484F58', lineHeight: 16 },
+  quietNoteText: { flex: 1, fontSize: 11, color: '#90A4AE', lineHeight: 16 },
 
   // Time Picker
   timePicker: { alignItems: 'center' },
   timeLabel: {
-    fontSize: 11, fontWeight: '700', color: '#484F58',
+    fontSize: 11, fontWeight: '700', color: '#90A4AE',
     textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8,
   },
   timeControls: { flexDirection: 'row', alignItems: 'center', gap: 8 },
@@ -1751,7 +1751,7 @@ const styles = StyleSheet.create({
   },
   masterInfo: { flex: 1, marginRight: 12 },
   masterLabel: { fontSize: 15, fontWeight: '800', color: '#FFFFFF' },
-  masterDesc: { fontSize: 12, color: '#484F58', marginTop: 2 },
+  masterDesc: { fontSize: 12, color: '#90A4AE', marginTop: 2 },
 
   // Help rows
   helpRow: {
@@ -1762,8 +1762,8 @@ const styles = StyleSheet.create({
   },
   helpInfo: { flex: 1 },
   helpLabel: { fontSize: 14, fontWeight: '700', color: '#C9D1D9' },
-  helpDesc: { fontSize: 12, color: '#484F58', marginTop: 2 },
-  helpArrow: { fontSize: 16, color: '#484F58' },
+  helpDesc: { fontSize: 12, color: '#90A4AE', marginTop: 2 },
+  helpArrow: { fontSize: 16, color: '#90A4AE' },
 })
 
 const devStyles = StyleSheet.create({
@@ -1898,7 +1898,7 @@ const nudgeStyles = StyleSheet.create({
     borderBottomWidth: 0.5, borderBottomColor: 'rgba(255,255,255,0.06)',
   },
   timeLabel: {
-    fontSize: 13, fontWeight: '600', color: '#484F58',
+    fontSize: 13, fontWeight: '600', color: '#90A4AE',
   },
   dayRow: {
     flexDirection: 'row', gap: 4,
@@ -1913,7 +1913,7 @@ const nudgeStyles = StyleSheet.create({
     borderColor: 'rgba(129,199,132,0.3)',
   },
   dayText: {
-    fontSize: 11, fontWeight: '700', color: '#484F58',
+    fontSize: 11, fontWeight: '700', color: '#90A4AE',
   },
   dayTextActive: {
     color: '#81C784',

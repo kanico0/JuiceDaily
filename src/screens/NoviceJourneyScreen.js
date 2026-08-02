@@ -109,7 +109,7 @@ function ScreenListItem({ screen, isCompleted, isUnlocked, isCurrent, onPress })
       <View style={st.left}>
         <View style={[st.num, isCompleted && st.numDone, isCurrent && st.numCurrent]}>
           {isCompleted ? <CheckCircle size={14} color="#81C784" />
-            : !isUnlocked ? <Lock size={12} color="#484F58" />
+            : !isUnlocked ? <Lock size={12} color="#90A4AE" />
             : <Text style={[st.numText, isCurrent && st.numTextCurrent]}>{screen.index + 1}</Text>}
         </View>
         <View style={st.info}>
@@ -117,7 +117,7 @@ function ScreenListItem({ screen, isCompleted, isUnlocked, isCurrent, onPress })
           <Text style={st.xp}>+{screen.xp} XP</Text>
         </View>
       </View>
-      {isUnlocked && !isCompleted && <ChevronRight size={16} color="#484F58" />}
+      {isUnlocked && !isCompleted && <ChevronRight size={16} color="#90A4AE" />}
     </TouchableOpacity>
   )
 }
@@ -261,7 +261,7 @@ const m = StyleSheet.create({
   progWrap: { marginBottom: 20 },
   progBg: { height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.06)', overflow: 'hidden', marginBottom: 6 },
   progFill: { height: 6, borderRadius: 3, backgroundColor: '#81C784' },
-  progText: { fontSize: 11, color: '#484F58', textAlign: 'center' },
+  progText: { fontSize: 11, color: '#90A4AE', textAlign: 'center' },
   activeHero: { alignItems: 'center', paddingVertical: 20, marginBottom: 8 },
   activeHL: { fontSize: 22, fontWeight: '900', color: '#FFF', marginTop: 8, textAlign: 'center' },
   activeXP: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8, backgroundColor: 'rgba(255,215,79,0.1)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 24 },
@@ -281,7 +281,7 @@ const m = StyleSheet.create({
 
 const cs = StyleSheet.create({
   wrap: { backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 24, padding: 20, marginTop: 16, marginBottom: 8, borderWidth: 0.5, borderColor: 'rgba(255,255,255,0.08)' },
-  title: { fontSize: 12, fontWeight: '800', color: '#484F58', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 16 },
+  title: { fontSize: 12, fontWeight: '800', color: '#90A4AE', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 16 },
   barRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10, gap: 10 },
   barLabel: { width: 90, fontSize: 12, fontWeight: '600', color: '#8B949E' },
   barTrack: { flex: 1, height: 20, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.04)', overflow: 'hidden' },
@@ -332,6 +332,6 @@ const st = StyleSheet.create({
   numTextCurrent: { color: '#64B5F6' },
   info: { flex: 1 },
   title: { fontSize: 15, fontWeight: '600', color: '#C9D1D9', marginBottom: 2 },
-  titleLocked: { color: '#484F58' },
-  xp: { fontSize: 11, color: '#484F58', fontWeight: '600' },
+  titleLocked: { color: '#90A4AE' },
+  xp: { fontSize: 11, color: '#90A4AE', fontWeight: '600' },
 })

@@ -80,6 +80,6 @@ const styles = StyleSheet.create({
   unit: {
     fontSize: 12,
     fontWeight: '400',
-    color: '#484F58',
+    color: '#90A4AE',
   },
 })

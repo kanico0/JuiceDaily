@@ -551,7 +551,7 @@ export default function RecipeDetailScreen({ route, navigation }) {
                     activeOpacity={0.7}
                     hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
                   >
-                    <Leaf size={11} color={ing.isOrganic ? '#81C784' : '#484F58'} />
+                    <Leaf size={11} color={ing.isOrganic ? '#81C784' : '#90A4AE'} />
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={styles.removeIngBtn}
@@ -601,7 +601,7 @@ export default function RecipeDetailScreen({ route, navigation }) {
                 <Text style={styles.groceryTitle}>Order Ingredients</Text>
                 <Text style={styles.groceryDesc}>Get everything delivered via Instacart</Text>
               </View>
-              <ExternalLink size={16} color="#484F58" />
+              <ExternalLink size={16} color="#90A4AE" />
             </TouchableOpacity>
           )}
 
@@ -657,11 +657,11 @@ export default function RecipeDetailScreen({ route, navigation }) {
               </TouchableOpacity>
             </View>
             <View style={styles.addModalSearchRow}>
-              <Search size={16} color="#484F58" />
+              <Search size={16} color="#90A4AE" />
               <TextInput
                 style={styles.addModalSearchInput}
                 placeholder="Search produce..."
-                placeholderTextColor="#484F58"
+                placeholderTextColor="#90A4AE"
                 value={addSearch}
                 onChangeText={setAddSearch}
                 autoFocus
@@ -816,7 +816,7 @@ const styles = StyleSheet.create({
   cleanupLabel: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#484F58',
+    color: '#90A4AE',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
@@ -858,7 +858,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 13,
     fontWeight: '800',
-    color: '#484F58',
+    color: '#90A4AE',
     textTransform: 'uppercase',
     letterSpacing: 1,
     marginBottom: 12,
@@ -957,7 +957,7 @@ const styles = StyleSheet.create({
   },
   checkNameDone: {
     textDecorationLine: 'line-through',
-    color: '#484F58',
+    color: '#90A4AE',
   },
   checkAmount: {
     fontSize: 13,
@@ -966,7 +966,7 @@ const styles = StyleSheet.create({
   },
   checkAmountDone: {
     textDecorationLine: 'line-through',
-    color: '#484F58',
+    color: '#90A4AE',
   },
   allCheckedBadge: {
     alignItems: 'center',
@@ -1116,7 +1116,7 @@ const styles = StyleSheet.create({
   },
   addModalEmpty: {
     fontSize: 14,
-    color: '#484F58',
+    color: '#90A4AE',
     textAlign: 'center',
     paddingVertical: 24,
   },

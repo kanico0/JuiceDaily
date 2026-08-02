@@ -47,7 +47,7 @@ function RecipeCard({ recipe, navigation }) {
               </View>
             ))}
           </View>
-          <ChevronRight size={18} color="#484F58" />
+          <ChevronRight size={18} color="#90A4AE" />
         </View>
         <Text style={styles.recipeTitle}>{recipe.title}</Text>
         <View style={styles.recipeMeta}>
@@ -246,7 +246,7 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontSize: 13,
     fontWeight: '800',
-    color: '#484F58',
+    color: '#90A4AE',
     textTransform: 'uppercase',
     letterSpacing: 1,
     marginBottom: 10,

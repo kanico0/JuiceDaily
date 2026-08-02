@@ -164,7 +164,7 @@ const styles = StyleSheet.create({
     fontSize: 13, color: '#8B949E', textAlign: 'center', marginBottom: 8,
   },
   mercySub: {
-    fontSize: 12, color: '#484F58', textAlign: 'center',
+    fontSize: 12, color: '#90A4AE', textAlign: 'center',
     fontStyle: 'italic', marginBottom: 20,
   },
   mercyBtn: { width: '100%', borderRadius: 28, overflow: 'hidden' },

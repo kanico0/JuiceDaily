@@ -194,11 +194,11 @@ function ProduceEditRow({
           {allPillars.length > 0 ? allPillars.map((p) => (
             <View key={p} style={[styles.editPillarDot, { backgroundColor: DAILY_PILLARS[p].color }]} />
           )) : (
-            <View style={[styles.editPillarDot, { backgroundColor: '#484F58' }]} />
+            <View style={[styles.editPillarDot, { backgroundColor: '#90A4AE' }]} />
           )}
         </View>
         <Text style={styles.editName} numberOfLines={1} ellipsizeMode="tail">{getProduceVariantDisplayName(item.produceId) || entry?.name || item.produceId}</Text>
-        <ChevronDown size={14} color="#484F58" />
+        <ChevronDown size={14} color="#90A4AE" />
       </TouchableOpacity>
 
       {/* Row 1a: Primary produce control */}
@@ -253,8 +253,8 @@ function ProduceEditRow({
             accessibilityState={{ checked: isOrganic }}
             accessibilityLabel={isOrganic ? 'Organic' : 'Non-Organic'}
           >
-            <Leaf size={10} color={isOrganic ? '#81C784' : '#484F58'} />
-            <Text style={[styles.organicLabel, { color: isOrganic ? '#81C784' : '#484F58' }]}>
+            <Leaf size={10} color={isOrganic ? '#81C784' : '#90A4AE'} />
+            <Text style={[styles.organicLabel, { color: isOrganic ? '#81C784' : '#90A4AE' }]}>
               {isOrganic ? 'Organic' : 'Non-Organic'}
             </Text>
           </TouchableOpacity>
@@ -307,8 +307,8 @@ function ProduceEditRow({
               accessibilityState={{ checked: isOrganic }}
               accessibilityLabel={isOrganic ? 'Organic' : 'Non-Organic'}
             >
-              <Leaf size={10} color={isOrganic ? '#81C784' : '#484F58'} />
-              <Text style={[styles.organicLabel, { color: isOrganic ? '#81C784' : '#484F58' }]}>
+              <Leaf size={10} color={isOrganic ? '#81C784' : '#90A4AE'} />
+              <Text style={[styles.organicLabel, { color: isOrganic ? '#81C784' : '#90A4AE' }]}>
                 {isOrganic ? 'Organic' : 'Non-Organic'}
               </Text>
             </TouchableOpacity>
@@ -369,7 +369,7 @@ function ProduceEditRow({
                     {optAllPillars.length > 0 ? optAllPillars.map((p) => (
                       <View key={p} style={[styles.pickerDot, { backgroundColor: DAILY_PILLARS[p].color }]} />
                     )) : (
-                      <View style={[styles.pickerDot, { backgroundColor: '#484F58' }]} />
+                      <View style={[styles.pickerDot, { backgroundColor: '#90A4AE' }]} />
                     )}
                     <Text style={styles.pickerOptionText}>{opt.name}</Text>
                     <View style={{ flexDirection: 'row', gap: 4 }}>
@@ -443,7 +443,7 @@ function AddProducePicker({ onAdd }) {
                     {optAllPillars.length > 0 ? optAllPillars.map((p) => (
                       <View key={p} style={[styles.pickerDot, { backgroundColor: DAILY_PILLARS[p].color }]} />
                     )) : (
-                      <View style={[styles.pickerDot, { backgroundColor: '#484F58' }]} />
+                      <View style={[styles.pickerDot, { backgroundColor: '#90A4AE' }]} />
                     )}
                     <Text style={styles.pickerOptionText}>{opt.name}</Text>
                     <View style={{ flexDirection: 'row', gap: 4 }}>
@@ -1330,7 +1330,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
                     isFilled && { backgroundColor: `${data.color}20`, borderColor: `${data.color}40` },
                   ]}
                 >
-                  <Icon size={14} color={isFilled ? data.color : '#484F58'} />
+                  <Icon size={14} color={isFilled ? data.color : '#90A4AE'} />
                   <Text style={[
                     styles.pillarBadgeText,
                     isFilled && { color: data.color },
@@ -1388,7 +1388,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
                 accessibilityRole="button"
                 accessibilityLabel={primaryProduceId ? 'Find recipes with my primary produce' : 'Select a primary produce to find recipes'}
               >
-                <BookOpen size={18} color={primaryProduceId ? '#64B5F6' : '#484F58'} />
+                <BookOpen size={18} color={primaryProduceId ? '#64B5F6' : '#90A4AE'} />
                 <Text style={[styles.findRecipesBtnText, !primaryProduceId && styles.findRecipesBtnTextDisabled]}>
                   {primaryProduceId ? 'Find Recipes with My Primary Produce' : 'Select a Primary Produce First'}
                 </Text>
@@ -1417,11 +1417,11 @@ export default function JuiceSnapScreen({ navigation, route }) {
         <View style={manualStyles.manualSection}>
           <Text style={manualStyles.manualLabel}>Or type it in</Text>
           <View style={manualStyles.searchBar}>
-            <Search size={16} color="#484F58" />
+            <Search size={16} color="#90A4AE" />
             <TextInput
               style={manualStyles.searchInput}
               placeholder="Search ingredients..."
-              placeholderTextColor="#484F58"
+              placeholderTextColor="#90A4AE"
               value={manualSearch}
               onChangeText={setManualSearch}
               autoCapitalize="none"
@@ -1429,7 +1429,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
             />
             {manualSearch.length > 0 && (
               <TouchableOpacity onPress={() => setManualSearch('')}>
-                <X size={16} color="#484F58" />
+                <X size={16} color="#90A4AE" />
               </TouchableOpacity>
             )}
           </View>
@@ -1669,7 +1669,7 @@ const styles = StyleSheet.create({
   pillarBadgeText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#484F58',
+    color: '#90A4AE',
   },
 
   // ── Editable Produce Card ──────────────────────────────────
@@ -1690,7 +1690,7 @@ const styles = StyleSheet.create({
   editCardTitle: {
     fontSize: 13,
     fontWeight: '800',
-    color: '#484F58',
+    color: '#90A4AE',
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
@@ -1781,7 +1781,7 @@ const styles = StyleSheet.create({
   editWeightLb: {
     fontSize: 9,
     fontWeight: '600',
-    color: '#484F58',
+    color: '#90A4AE',
     textAlign: 'center',
     marginTop: 1,
   },
@@ -1894,7 +1894,7 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   findRecipesBtnTextDisabled: {
-    color: '#484F58',
+    color: '#90A4AE',
   },
   primaryRow: {
     flexDirection: 'row',
@@ -1994,7 +1994,7 @@ const manualStyles = StyleSheet.create({
   modeBtnText: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#484F58',
+    color: '#90A4AE',
   },
   modeBtnTextActive: {
     color: '#81C784',
@@ -2023,7 +2023,7 @@ const manualStyles = StyleSheet.create({
   manualLabel: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#484F58',
+    color: '#90A4AE',
     marginBottom: 10,
     textAlign: 'center',
   },
@@ -2083,7 +2083,7 @@ const manualStyles = StyleSheet.create({
   },
   noResults: {
     fontSize: 14,
-    color: '#484F58',
+    color: '#90A4AE',
     textAlign: 'center',
     paddingVertical: 20,
   },
@@ -2136,13 +2136,13 @@ const manualStyles = StyleSheet.create({
   },
   searchTipsParagraph: {
     fontSize: 11,
-    color: '#484F58',
+    color: '#90A4AE',
     lineHeight: 16,
     marginBottom: 16,
   },
   searchTipsLastParagraph: {
     fontSize: 11,
-    color: '#484F58',
+    color: '#90A4AE',
     lineHeight: 16,
   },
 })

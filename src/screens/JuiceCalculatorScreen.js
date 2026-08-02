@@ -204,7 +204,7 @@ function TargetInputRow({ nutrientId, target, timeframe, onChange }) {
           }}
           keyboardType="numeric"
           placeholder="0"
-          placeholderTextColor="#484F58"
+          placeholderTextColor="#90A4AE"
           accessibilityLabel={`${meta.label} target in ${meta.unit}`}
         />
 
@@ -776,11 +776,11 @@ export default function JuiceCalculatorScreen({ navigation }) {
                   Select Nutrients ({selectedNutrients.length}/{MAX_NUTRIENTS})
                 </Text>
                 <View style={styles.searchRow}>
-                  <Search size={14} color="#484F58" />
+                  <Search size={14} color="#90A4AE" />
                   <TextInput
                     style={styles.searchInput}
                     placeholder="Search nutrients..."
-                    placeholderTextColor="#484F58"
+                    placeholderTextColor="#90A4AE"
                     value={nutrientSearch}
                     onChangeText={setNutrientSearch}
                     accessibilityLabel="Search nutrients"
@@ -830,7 +830,7 @@ export default function JuiceCalculatorScreen({ navigation }) {
                     value={allowMulti}
                     onValueChange={setAllowMulti}
                     trackColor={{ false: 'rgba(255,255,255,0.08)', true: 'rgba(129,199,132,0.3)' }}
-                    thumbColor={allowMulti ? '#81C784' : '#484F58'}
+                    thumbColor={allowMulti ? '#81C784' : '#90A4AE'}
                     accessibilityLabel="Allow multi-produce combinations"
                   />
                 </View>

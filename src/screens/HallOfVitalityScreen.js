@@ -149,7 +149,7 @@ function BadgeCell({ badge, onPress, isNew }) {
         </Text>
         {!badge.isUnlocked && !isSecret && (
           <View style={styles.badgeLockOverlay}>
-            <Lock size={12} color="#484F58" />
+            <Lock size={12} color="#90A4AE" />
           </View>
         )}
       </Animated.View>
@@ -321,7 +321,7 @@ const styles = StyleSheet.create({
     borderWidth: 0.5, borderColor: 'rgba(255,255,255,0.08)',
   },
   headerTitle: { fontSize: 18, fontWeight: '800', color: '#FFFFFF' },
-  headerCount: { fontSize: 14, fontWeight: '700', color: '#484F58' },
+  headerCount: { fontSize: 14, fontWeight: '700', color: '#90A4AE' },
   scroll: { flex: 1 },
   content: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 40 },
 
@@ -345,7 +345,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row', justifyContent: 'space-between',
     width: '100%', marginTop: 6,
   },
-  rankXp: { fontSize: 11, fontWeight: '700', color: '#484F58' },
+  rankXp: { fontSize: 11, fontWeight: '700', color: '#90A4AE' },
   rankNext: { fontSize: 11, fontWeight: '700' },
 
   // Category
@@ -358,7 +358,7 @@ const styles = StyleSheet.create({
     flex: 1, fontSize: 14, fontWeight: '800', color: '#C9D1D9',
     textTransform: 'uppercase', letterSpacing: 1,
   },
-  categoryCount: { fontSize: 12, fontWeight: '700', color: '#484F58' },
+  categoryCount: { fontSize: 12, fontWeight: '700', color: '#90A4AE' },
 
   // Badge Grid
   badgeGrid: {
@@ -402,7 +402,7 @@ const styles = StyleSheet.create({
     fontSize: 11, fontWeight: '700', color: '#C9D1D9',
     textAlign: 'center', marginTop: 6,
   },
-  badgeNameLocked: { color: '#484F58' },
+  badgeNameLocked: { color: '#90A4AE' },
 
   // Popover
   popoverOverlay: {
@@ -439,7 +439,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   popoverHowToLabel: {
-    fontSize: 11, fontWeight: '800', color: '#484F58',
+    fontSize: 11, fontWeight: '800', color: '#90A4AE',
     textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4,
   },
   popoverHowToText: { fontSize: 13, color: '#8B949E', lineHeight: 18 },

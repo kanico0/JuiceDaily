@@ -312,7 +312,7 @@ const styles = StyleSheet.create({
   },
   planPeriod: {
     fontSize: 10,
-    color: '#484F58',
+    color: '#90A4AE',
     marginTop: 2,
   },
   planSavings: {
@@ -350,7 +350,7 @@ const styles = StyleSheet.create({
   },
   legalText: {
     fontSize: 11,
-    color: '#484F58',
+    color: '#90A4AE',
     textAlign: 'center',
   },
 })

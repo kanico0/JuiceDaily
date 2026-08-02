@@ -353,7 +353,7 @@ export default function DashboardScreen({ navigation, route }) {
                   style={styles.settingsBtn}
                   activeOpacity={0.7}
                 >
-                  <Settings size={16} color="#484F58" />
+                  <Settings size={16} color="#90A4AE" />
                 </TouchableOpacity>
               </View>
               <View style={styles.heroBadges}>
@@ -974,7 +974,7 @@ const styles = StyleSheet.create({
   },
   hallLinkArrow: {
     fontSize: 16,
-    color: '#484F58',
+    color: '#90A4AE',
   },
 
   // ── Vitality History Link ───────────────────────────────────
@@ -997,7 +997,7 @@ const styles = StyleSheet.create({
   },
   historyLinkArrow: {
     fontSize: 16,
-    color: '#484F58',
+    color: '#90A4AE',
   },
 
   // ── Vault Link ──────────────────────────────────────────────
@@ -1020,7 +1020,7 @@ const styles = StyleSheet.create({
   },
   vaultLinkArrow: {
     fontSize: 16,
-    color: '#484F58',
+    color: '#90A4AE',
   },
 
   // ── Lock Overlay ────────────────────────────────────────────
@@ -1052,7 +1052,7 @@ const styles = StyleSheet.create({
   socialTitle: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#484F58',
+    color: '#90A4AE',
     textTransform: 'uppercase',
     letterSpacing: 1,
     marginBottom: 10,
@@ -1082,12 +1082,12 @@ const styles = StyleSheet.create({
   avatarLetter: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#484F58',
+    color: '#90A4AE',
   },
   avatarName: {
     fontSize: 10,
     fontWeight: '600',
-    color: '#484F58',
+    color: '#90A4AE',
     marginTop: 4,
   },
 

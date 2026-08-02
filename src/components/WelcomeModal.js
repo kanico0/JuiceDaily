@@ -59,7 +59,7 @@ function WelcomeStep({ name, onNameChange, onNext }) {
           value={name}
           onChangeText={onNameChange}
           placeholder="Your name"
-          placeholderTextColor="#484F58"
+          placeholderTextColor="#90A4AE"
           autoFocus
           returnKeyType="next"
           onSubmitEditing={() => name.trim() && onNext()}
@@ -373,7 +373,7 @@ const styles = StyleSheet.create({
   inputLabel: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#484F58',
+    color: '#90A4AE',
     textTransform: 'uppercase',
     letterSpacing: 1,
     marginBottom: 8,

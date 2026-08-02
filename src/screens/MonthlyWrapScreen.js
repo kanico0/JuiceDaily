@@ -487,7 +487,7 @@ const styles = StyleSheet.create({
   },
   heroSubtitle: {
     fontSize: 13,
-    color: '#484F58',
+    color: '#90A4AE',
     marginTop: 2,
   },
 
@@ -498,7 +498,7 @@ const styles = StyleSheet.create({
   mosaicTitle: {
     fontSize: 10,
     fontWeight: '800',
-    color: '#484F58',
+    color: '#90A4AE',
     letterSpacing: 2,
     marginBottom: 10,
   },
@@ -545,7 +545,7 @@ const styles = StyleSheet.create({
   statLabel: {
     fontSize: 10,
     fontWeight: '700',
-    color: '#484F58',
+    color: '#90A4AE',
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
@@ -584,7 +584,7 @@ const styles = StyleSheet.create({
   spectrumLabel: {
     fontSize: 10,
     fontWeight: '800',
-    color: '#484F58',
+    color: '#90A4AE',
     letterSpacing: 2,
   },
   spectrumBar: {
@@ -644,7 +644,7 @@ const styles = StyleSheet.create({
   heroIngTitle: {
     fontSize: 10,
     fontWeight: '800',
-    color: '#484F58',
+    color: '#90A4AE',
     letterSpacing: 2,
   },
   heroIngList: {
@@ -692,7 +692,7 @@ const styles = StyleSheet.create({
   },
   brandSub: {
     fontSize: 11,
-    color: '#484F58',
+    color: '#90A4AE',
     marginTop: 2,
   },
 

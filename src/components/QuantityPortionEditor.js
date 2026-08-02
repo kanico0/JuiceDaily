@@ -142,7 +142,7 @@ export default function QuantityPortionEditor({
           onEndEditing={handleQuantitySubmit}
           keyboardType={keyboardType}
           placeholder="0"
-          placeholderTextColor="#484F58"
+          placeholderTextColor="#90A4AE"
           accessibilityLabel={`Quantity of ${produceName}`}
           accessibilityHint={`Enter the number of ${unitLabel}`}
           hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
@@ -318,7 +318,7 @@ const styles = StyleSheet.create({
   },
   helperText: {
     fontSize: 11,
-    color: '#484F58',
+    color: '#90A4AE',
     lineHeight: 16,
   },
   errorText: {

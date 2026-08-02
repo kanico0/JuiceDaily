@@ -202,7 +202,7 @@ export default function AccountGateModal ({ visible, onClose, onAuthenticated, i
                   <TextInput
                     style={styles.input}
                     placeholder="you@example.com"
-                    placeholderTextColor="#484F58"
+                    placeholderTextColor="#90A4AE"
                     value={email}
                     onChangeText={setEmail}
                     autoCapitalize="none"
@@ -236,7 +236,7 @@ export default function AccountGateModal ({ visible, onClose, onAuthenticated, i
                 <TextInput
                   style={styles.codeInput}
                   placeholder="123456"
-                  placeholderTextColor="#484F58"
+                  placeholderTextColor="#90A4AE"
                   value={code}
                   onChangeText={setCode}
                   keyboardType="number-pad"
@@ -400,7 +400,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   linkDisabled: {
-    color: '#484F58',
+    color: '#90A4AE',
   },
   error: {
     color: '#F97583',

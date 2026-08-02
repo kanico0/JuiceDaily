@@ -2698,7 +2698,7 @@ export default function ScanScreen({ navigation }) {
             accessibilityRole="button"
             accessibilityLabel="Settings"
           >
-            <Settings size={18} color="#484F58" />
+            <Settings size={18} color="#90A4AE" />
           </TouchableOpacity>
         </View>
         <ScrollView

@@ -127,7 +127,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 13,
     fontWeight: '800',
-    color: '#484F58',
+    color: '#90A4AE',
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
@@ -139,7 +139,7 @@ const styles = StyleSheet.create({
   counterMax: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#484F58',
+    color: '#90A4AE',
   },
   bar: {
     flexDirection: 'row',
@@ -160,7 +160,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 9,
     fontWeight: '600',
-    color: '#484F58',
+    color: '#90A4AE',
     textAlign: 'center',
   },
   badge: {
@@ -182,7 +182,7 @@ const styles = StyleSheet.create({
   },
   hint: {
     fontSize: 11,
-    color: '#484F58',
+    color: '#90A4AE',
     textAlign: 'center',
     marginTop: 8,
     fontStyle: 'italic',

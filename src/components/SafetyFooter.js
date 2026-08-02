@@ -40,20 +40,20 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 11,
     fontWeight: '800',
-    color: '#484F58',
+    color: '#90A4AE',
     textTransform: 'uppercase',
     letterSpacing: 1,
     marginBottom: 8,
   },
   text: {
     fontSize: 11,
-    color: '#484F58',
+    color: '#90A4AE',
     lineHeight: 17,
     marginBottom: 6,
   },
   dataPoint: {
     fontSize: 11,
-    color: '#484F58',
+    color: '#90A4AE',
     fontStyle: 'italic',
   },
 })

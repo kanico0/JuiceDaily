@@ -517,7 +517,7 @@ export default function QuickLogger({ visible, onDismiss, onLogComplete, onCusto
                         onPress={() => handleIngToggleOrganic(i)}
                         activeOpacity={0.7}
                       >
-                        <Leaf size={10} color={ing.isOrganic ? '#81C784' : '#484F58'} />
+                        <Leaf size={10} color={ing.isOrganic ? '#81C784' : '#90A4AE'} />
                       </TouchableOpacity>
                       <TouchableOpacity
                         style={qlStyles.editRemoveBtn}
@@ -543,11 +543,11 @@ export default function QuickLogger({ visible, onDismiss, onLogComplete, onCusto
                 ) : (
                   <View style={qlStyles.editAddPanel}>
                     <View style={qlStyles.editSearchRow}>
-                      <Search size={14} color="#484F58" />
+                      <Search size={14} color="#90A4AE" />
                       <TextInput
                         style={qlStyles.editSearchInput}
                         placeholder="Search produce..."
-                        placeholderTextColor="#484F58"
+                        placeholderTextColor="#90A4AE"
                         value={addSearch}
                         onChangeText={setAddSearch}
                         autoFocus

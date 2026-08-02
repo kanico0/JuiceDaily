@@ -238,7 +238,7 @@ const styles = StyleSheet.create({
   previewTitle: {
     fontSize: 11,
     fontWeight: '800',
-    color: '#484F58',
+    color: '#90A4AE',
     textTransform: 'uppercase',
     letterSpacing: 1,
     marginBottom: 2,

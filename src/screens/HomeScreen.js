@@ -1019,13 +1019,16 @@ export default function JuiceSnapScreen({ navigation, route }) {
   }, [juiceMethod])
 
   const handleQuantityChange = useCallback((index, qty) => {
-    const safeQty = Math.max(1, qty)
+    // Do NOT clamp here — validation in QuantityPortionEditor.handleQuantitySubmit
+    // already prevents 0/negative/NaN from reaching this point.
+    // If an invalid value somehow gets through, recomputeFromQuantityChange
+    // will return null and the batch will remain unchanged.
     setBatch((prev) => {
       const updated = [...prev.scannedIngredients]
       const item = updated[index]
       const unitKey = item.portionMetadata?.unitKey || item.pendingUnitKey || getDefaultPortionUnit(item.produceId)?.unitKey
       const sizeKey = item.portionMetadata?.sizeKey || item.pendingSizeKey || null
-      const input = { produceId: item.produceId, quantity: safeQty, unitKey, sizeKey: sizeKey || undefined }
+      const input = { produceId: item.produceId, quantity: qty, unitKey, sizeKey: sizeKey || undefined }
       const result = recomputeFromQuantityChange(input)
       if (!result) return prev
       updated[index] = {

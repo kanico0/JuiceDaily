@@ -68,10 +68,12 @@ describe('Quantity validation fix', () => {
     expect(modeBlock).not.toContain("Don't fabricate a quantity")
   })
 
-  // 8. handleQuantityChange clamps to minimum 1
-  test('handleQuantityChange uses Math.max(1, qty) not Math.max(0, qty)', () => {
-    expect(homeSource).toContain('Math.max(1, qty)')
+  // 8. handleQuantityChange does NOT clamp — validation happens in QuantityPortionEditor
+  test('handleQuantityChange does not clamp user input (no Math.max)', () => {
+    expect(homeSource).not.toContain('Math.max(1, qty)')
     expect(homeSource).not.toContain('Math.max(0, qty)')
+    // Should have a comment explaining why clamping is not done here
+    expect(homeSource).toContain('Do NOT clamp')
   })
 
   // 9. currentQuantity defaults to 1, not empty string
@@ -121,6 +123,55 @@ describe('Quantity validation fix', () => {
     const modeIdx = homeSource.indexOf('handleModeChange')
     const modeBlock = homeSource.slice(modeIdx, modeIdx + 800)
     expect(modeBlock).toContain('restoreQuantityMetadata')
-    expect(modeBlock).toContain('inputMode === \'quantity\'')
+    expect(modeBlock).toContain("inputMode === 'quantity'")
+  })
+
+  // 16. Defaulting vs validation distinction: new ingredient defaults to 1
+  test('New ingredient initialization uses quantity: 1 (defaulting, not clamping)', () => {
+    // The initialization paths use quantity: 1 in recomputeFromQuantityChange calls
+    const initMatches = homeSource.match(/recomputeFromQuantityChange\([\s\S]*?quantity:\s*1/g)
+    expect(initMatches).not.toBeNull()
+    expect(initMatches.length).toBeGreaterThanOrEqual(3)
+  })
+
+  // 17. Validation rejects deliberate zero in QuantityPortionEditor
+  test('Deliberate user-entered 0 is rejected by validation, not silently converted', () => {
+    // The useEffect validation checks qty <= 0 and shows an error
+    expect(editorSource).toContain('qty <= 0')
+    expect(editorSource).toContain('setValidationError')
+    // handleQuantitySubmit also validates before calling onQuantityChange
+    expect(editorSource).toContain('handleQuantitySubmit')
+  })
+
+  // 18. handleQuantitySubmit blocks submission of invalid input
+  test('handleQuantitySubmit returns early on invalid input without calling onQuantityChange', () => {
+    const submitIdx = editorSource.indexOf('handleQuantitySubmit')
+    expect(submitIdx).not.toBe(-1)
+    const submitBlock = editorSource.slice(submitIdx, submitIdx + 300)
+    expect(submitBlock).toContain('qty <= 0')
+    expect(submitBlock).toContain('return')
+  })
+
+  // 19. Server-side validation also rejects zero
+  test('producePortionConversion validates quantity > 0 (server-side backstop)', () => {
+    const convSource = fs.readFileSync(
+      path.resolve(__dirname, '../producePortionConversion.ts'),
+      'utf-8'
+    )
+    expect(convSource).toContain('input.quantity <= 0')
+    expect(convSource).toContain('invalid_quantity')
+  })
+
+  // 20. No silent clamping exists anywhere in HomeScreen
+  test('No Math.max with quantity in HomeScreen (no silent clamping)', () => {
+    expect(homeSource).not.toMatch(/Math\.max\(\d+,\s*qty\)/)
+  })
+
+  // 21. Existing historical records are not rewritten
+  test('Existing portionMetadata with valid quantity is preserved on re-render', () => {
+    // currentQuantity uses enteredQuantity from existing metadata, only defaults to 1 if missing
+    expect(homeSource).toContain('enteredQuantity || 1')
+    // The sync effect only normalizes when quantity is falsy
+    expect(editorSource).toContain('quantity || 1')
   })
 })

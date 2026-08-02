@@ -234,12 +234,13 @@ describe('FIX 4: Entitlement loading state in HistoryScreen', () => {
     expect(source).toContain('initialized')
   })
 
-  test('18. During loading, isPro defaults to true (optimistic)', () => {
-    expect(source).toContain('!subState.initialized')
+  test('18. During loading, isPro is false (neutral, not optimistic)', () => {
+    expect(source).toContain('entitlementInitialized')
+    expect(source).not.toContain('!subState.initialized ? true')
   })
 
-  test('19. wasProRef tracks entitlement transitions', () => {
-    expect(source).toContain('wasProRef')
+  test('19. resolvedEntitlementRef tracks resolved state for transition detection', () => {
+    expect(source).toContain('resolvedEntitlementRef')
   })
 })
 
@@ -257,12 +258,14 @@ describe('FIX 5: advanced_history_unlocked analytics event', () => {
     expect(source).toContain('advanced_history_unlocked')
   })
 
-  test('21. Event fires only when transitioning from free to Pro', () => {
-    expect(source).toContain('!wasProRef.current && isPro')
+  test('21. Event fires only on real Free to Pro transition (not init)', () => {
+    expect(source).toContain('resolvedEntitlementRef')
+    expect(source).toContain('prev === false && isPro')
   })
 
   test('22. Event fires only after initialization completes', () => {
-    expect(source).toContain('subState.initialized')
+    expect(source).toContain('entitlementInitialized')
+    expect(source).not.toContain('wasProRef')
   })
 })
 

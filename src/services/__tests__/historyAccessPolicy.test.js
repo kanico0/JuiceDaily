@@ -238,3 +238,59 @@ describe('historyAccessPolicy — edge cases', () => {
     expect(keys.length).toBe(0)
   })
 })
+
+// ── Loading State (entitlementInitialized=false) ─────────────
+
+describe('historyAccessPolicy — loading state', () => {
+  test('46. Loading returns isLoading=true', () => {
+    const p = getHistoryAccessPolicy(false, false, false)
+    expect(p.isLoading).toBe(true)
+  })
+
+  test('47. Loading allows basic history', () => {
+    const p = getHistoryAccessPolicy(false, false, false)
+    expect(p.canViewBasicHistory).toBe(true)
+  })
+
+  test('48. Loading blocks advanced details', () => {
+    const p = getHistoryAccessPolicy(false, false, false)
+    expect(p.canViewAdvancedDetails).toBe(false)
+  })
+
+  test('49. Loading blocks Make Again', () => {
+    const p = getHistoryAccessPolicy(false, false, false)
+    expect(p.canMakeAgain).toBe(false)
+  })
+
+  test('50. Loading hides all premium UI', () => {
+    const p = getHistoryAccessPolicy(false, false, false)
+    expect(p.shouldShowPreviewBadge).toBe(false)
+    expect(p.shouldShowPreviewExplanation).toBe(false)
+    expect(p.shouldShowAdvancedUpgrade).toBe(false)
+    expect(p.shouldShowMakeAgainUpgrade).toBe(false)
+  })
+
+  test('51. Loading is neutral even if isPro=true', () => {
+    const p = getHistoryAccessPolicy(true, false, false)
+    expect(p.isLoading).toBe(true)
+    expect(p.canViewAdvancedDetails).toBe(false)
+    expect(p.canMakeAgain).toBe(false)
+  })
+
+  test('52. Loading is neutral even if isAdvancedPreview=true', () => {
+    const p = getHistoryAccessPolicy(false, true, false)
+    expect(p.isLoading).toBe(true)
+    expect(p.canViewAdvancedDetails).toBe(false)
+  })
+
+  test('53. getAccessType returns loading for unresolved policy', () => {
+    const p = getHistoryAccessPolicy(false, false, false)
+    expect(getAccessType(p)).toBe('loading')
+  })
+
+  test('54. Default entitlementInitialized=true (backward compat)', () => {
+    const p = getHistoryAccessPolicy(true, false)
+    expect(p.isLoading).toBe(false)
+    expect(p.isPro).toBe(true)
+  })
+})

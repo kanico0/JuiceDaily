@@ -252,6 +252,7 @@ function EntryDetailsModal({
   onDelete,
   isPro,
   isAdvancedPreview,
+  entitlementInitialized,
   onUpgrade,
   onMakeAgain,
   makeAgainInProgress,
@@ -265,7 +266,9 @@ function EntryDetailsModal({
       lockedViewedRef.current = false
       return
     }
-    const policy = getHistoryAccessPolicy(isPro, isAdvancedPreview)
+    // Suppress all access analytics while entitlement is loading
+    if (!entitlementInitialized) return
+    const policy = getHistoryAccessPolicy(isPro, isAdvancedPreview, entitlementInitialized)
     const ingredientCount = (entry.ingredients || []).length
     const entryPosition = getEntryPosition(isAdvancedPreview)
 
@@ -283,11 +286,11 @@ function EntryDetailsModal({
         ingredient_count_bucket: getIngredientCountBucket(ingredientCount),
       })
     }
-  }, [visible, entry, isPro, isAdvancedPreview])
+  }, [visible, entry, isPro, isAdvancedPreview, entitlementInitialized])
 
   if (!entry) return null
 
-  const policy = getHistoryAccessPolicy(isPro, isAdvancedPreview)
+  const policy = getHistoryAccessPolicy(isPro, isAdvancedPreview, entitlementInitialized)
 
   const nutrients = entry.nutrientSummary || {}
   const topNutrients = Object.entries(USDA_RDA)
@@ -321,6 +324,7 @@ function EntryDetailsModal({
   }
 
   const handleMakeAgainLocked = () => {
+    if (!entitlementInitialized) return
     trackEvent('history_make_again_locked', {
       paywall_source: 'history_make_again_locked',
       entry_position: getEntryPosition(isAdvancedPreview),
@@ -329,6 +333,7 @@ function EntryDetailsModal({
   }
 
   const handleUpgradeFromPreview = () => {
+    if (!entitlementInitialized) return
     trackEvent('advanced_history_preview_cta_tapped', {
       source: 'history_preview_banner',
       paywall_source: 'history_preview_upgrade',
@@ -337,6 +342,7 @@ function EntryDetailsModal({
   }
 
   const handleUpgradeFromLocked = () => {
+    if (!entitlementInitialized) return
     trackEvent('advanced_history_upgrade_tapped', {
       source: 'history_advanced_locked',
       paywall_source: 'history_advanced_locked',
@@ -386,6 +392,13 @@ function EntryDetailsModal({
                 </View>
               )
             })}
+
+            {/* Neutral loading placeholder while entitlement unresolved */}
+            {policy.isLoading && (
+              <View style={ms.loadingPlaceholder}>
+                <Text style={ms.loadingText}>Checking history access…</Text>
+              </View>
+            )}
 
             {/* Advanced details — visible for Pro and free preview */}
             {policy.canViewAdvancedDetails && topNutrients.length > 0 && (
@@ -444,7 +457,7 @@ function EntryDetailsModal({
 }
 
 // ── Day Section ──────────────────────────────────────────────
-function DaySection({ dateKey, entries, onEntryPress, devClockTick, previewEntryId, isPro }) {
+function DaySection({ dateKey, entries, onEntryPress, devClockTick, previewEntryId, isPro, entitlementInitialized }) {
   const [expanded, setExpanded] = useState(dateKey === formatDateKey(getDevNow()))
   const totalIngredients = entries.reduce((sum, e) => sum + (e.ingredients?.length || 0), 0)
 
@@ -482,8 +495,8 @@ function DaySection({ dateKey, entries, onEntryPress, devClockTick, previewEntry
           {entries.map((entry) => {
             const SrcIcon = SOURCE_ICON[entry.source] || Camera
             const srcColor = SOURCE_COLOR[entry.source] || '#64B5F6'
-            const isPreview = !isPro && previewEntryId === entry.id
-            const isOlderLocked = !isPro && previewEntryId && previewEntryId !== entry.id
+            const isPreview = entitlementInitialized && !isPro && previewEntryId === entry.id
+            const isOlderLocked = entitlementInitialized && !isPro && previewEntryId && previewEntryId !== entry.id
             const accessLabel = isPreview
               ? `Advanced History Preview. ${entry.title}, logged ${formatDate(dateKey)}. Complete advanced details are available for this latest juice.`
               : isOlderLocked
@@ -536,25 +549,27 @@ function DaySection({ dateKey, entries, onEntryPress, devClockTick, previewEntry
 export default function HistoryScreen({ navigation }) {
   const { entries, deleteEntry } = useJuiceLog()
   const { isPro: isProActive, state: subState } = useSubscription()
-  // During entitlement loading, treat as Pro to avoid flashing locked content
-  // for paying users. Once initialized, use the actual entitlement.
-  const isPro = !subState.initialized ? true : isProActive
+  const entitlementInitialized = subState.initialized
+  const isPro = entitlementInitialized ? isProActive : false
   const [selectedEntry, setSelectedEntry] = useState(null)
   const [devClockTick, setDevClockTick] = useState(0)
   const [makeAgainInProgress, setMakeAgainInProgress] = useState(false)
   const makeAgainRef = useRef(false)
   const historyViewedRef = useRef(false)
-  const wasProRef = useRef(isPro)
+  // Tracks resolved entitlement state for Free→Pro transition detection.
+  // Starts as null (unknown) so initialization to Pro is NOT treated as a transition.
+  const resolvedEntitlementRef = useRef(null)
 
   useEffect(() => {
     return onDevClockChange(() => setDevClockTick((t) => t + 1))
   }, [])
 
   // Determine the rotating preview entry ID for free users
+  // Suppressed while entitlement is loading — no preview badge until resolved
   const previewEntryId = useMemo(() => {
-    if (isPro) return null
+    if (!entitlementInitialized || isPro) return null
     return getAdvancedPreviewEntryId(entries)
-  }, [entries, isPro])
+  }, [entries, isPro, entitlementInitialized])
 
   // Track history_viewed once per mount (not on every rerender)
   useEffect(() => {
@@ -566,15 +581,21 @@ export default function HistoryScreen({ navigation }) {
     })
   }, [entries.length])
 
-  // Fire advanced_history_unlocked when entitlement transitions free → Pro
+  // Fire advanced_history_unlocked only on a real observed Free → Pro transition.
+  // Initialization to Pro (loading → Pro) does NOT fire the event.
+  // Rerenders, remounts, and entry changes do NOT fire the event.
   useEffect(() => {
-    if (!wasProRef.current && isPro && subState.initialized) {
+    if (!entitlementInitialized) return
+    const prev = resolvedEntitlementRef.current
+    // Only fire if we had a resolved Free state and now have a resolved Pro state
+    if (prev === false && isPro) {
       trackEvent('advanced_history_unlocked', {
         access_type: 'pro',
       })
     }
-    wasProRef.current = isPro
-  }, [isPro, subState.initialized])
+    // Update ref to the current resolved state
+    resolvedEntitlementRef.current = isPro
+  }, [isPro, entitlementInitialized])
 
   // Group entries by dateKey, descending
   const groupedDays = useMemo(() => {
@@ -602,24 +623,26 @@ export default function HistoryScreen({ navigation }) {
 
   // Check if selected entry is the preview
   const isSelectedPreview = useMemo(() => {
-    if (!selectedEntry || isPro) return false
+    if (!selectedEntry || !entitlementInitialized || isPro) return false
     return previewEntryId === selectedEntry.id
-  }, [selectedEntry, isPro, previewEntryId])
+  }, [selectedEntry, isPro, previewEntryId, entitlementInitialized])
 
   const handleUpgrade = useCallback(
     (source) => {
+      if (!entitlementInitialized) return
       navigation.navigate('Paywall', { source })
     },
-    [navigation],
+    [navigation, entitlementInitialized],
   )
 
   const handleMakeAgain = useCallback(
     (entry) => {
       if (makeAgainRef.current) return
+      if (!entitlementInitialized) return
       makeAgainRef.current = true
       setMakeAgainInProgress(true)
 
-      const policy = getHistoryAccessPolicy(isPro, previewEntryId === entry.id)
+      const policy = getHistoryAccessPolicy(isPro, previewEntryId === entry.id, entitlementInitialized)
       const accessType = getAccessType(policy)
       const entryPosition = getEntryPosition(previewEntryId === entry.id)
       const ingredientCount = (entry.ingredients || []).length
@@ -699,20 +722,22 @@ export default function HistoryScreen({ navigation }) {
         navigateToEditor()
       }
     },
-    [isPro, previewEntryId, navigation],
+    [isPro, previewEntryId, navigation, entitlementInitialized],
   )
 
-  // Track item opened
+  // Track item opened — suppress access analytics while loading
   const handleEntryPress = useCallback(
     (entry) => {
-      const policy = getHistoryAccessPolicy(isPro, previewEntryId === entry.id)
-      trackEvent('history_item_opened', {
-        access_type: getAccessType(policy),
-        entry_position: getEntryPosition(previewEntryId === entry.id),
-      })
+      if (entitlementInitialized) {
+        const policy = getHistoryAccessPolicy(isPro, previewEntryId === entry.id, entitlementInitialized)
+        trackEvent('history_item_opened', {
+          access_type: getAccessType(policy),
+          entry_position: getEntryPosition(previewEntryId === entry.id),
+        })
+      }
       setSelectedEntry(entry)
     },
-    [isPro, previewEntryId],
+    [isPro, previewEntryId, entitlementInitialized],
   )
 
   return (
@@ -765,6 +790,7 @@ export default function HistoryScreen({ navigation }) {
                 devClockTick={devClockTick}
                 previewEntryId={previewEntryId}
                 isPro={isPro}
+                entitlementInitialized={entitlementInitialized}
               />
             ))
           )}
@@ -778,6 +804,7 @@ export default function HistoryScreen({ navigation }) {
         onDelete={deleteEntry}
         isPro={isPro}
         isAdvancedPreview={isSelectedPreview}
+        entitlementInitialized={entitlementInitialized}
         onUpgrade={handleUpgrade}
         onMakeAgain={handleMakeAgain}
         makeAgainInProgress={makeAgainInProgress}
@@ -1025,6 +1052,16 @@ const ms = StyleSheet.create({
     lineHeight: LINE_HEIGHT.relaxed * FONT_SIZE.xs,
     marginTop: SPACE.sm,
     textAlign: 'center',
+  },
+  loadingPlaceholder: {
+    paddingVertical: SPACE.lg,
+    alignItems: 'center',
+    marginTop: SPACE.md,
+  },
+  loadingText: {
+    fontSize: FONT_SIZE.sm,
+    fontWeight: FONT_WEIGHT.medium,
+    color: BRAND.text.muted,
   },
 })
 

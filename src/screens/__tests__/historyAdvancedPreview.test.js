@@ -276,8 +276,8 @@ describe('Advanced History Preview — source audit: Make Again flow', () => {
 })
 
 describe('Advanced History Preview — source audit: policy correctness', () => {
-  test('56. Pro users get null previewEntryId (no preview concept)', () => {
-    expect(HISTORY_SRC).toContain('if (isPro) return null')
+  test('56. Pro users and loading state get null previewEntryId (no preview concept)', () => {
+    expect(HISTORY_SRC).toContain('if (!entitlementInitialized || isPro) return null')
   })
 
   test('57. Free users get previewEntryId from getAdvancedPreviewEntryId', () => {

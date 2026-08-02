@@ -552,7 +552,7 @@ function QuotaMeter({ navigation }) {
       accessibilityLabel={label}
       style={{ alignItems: 'center', marginTop: 8 }}
     >
-      <Text style={{ color: exhausted ? '#F0883E' : '#6E7681', fontSize: 12 }}>
+      <Text style={{ color: exhausted ? '#F0883E' : '#90A4AE', fontSize: 12 }}>
         {label}
       </Text>
       {exhausted && isFree && (
@@ -692,7 +692,6 @@ export default function JuiceSnapScreen({ navigation, route }) {
     const result = await checkCameraEligibility(snapElig)
 
     if (result.action === 'open_camera') {
-      useSnap()
       setIsCameraOpen(true)
       if (!isAutoOpen) setIsLogged(false)
       return
@@ -719,7 +718,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
 
     // error — fall back to snap gate as a safe default
     setShowSnapGate(true)
-  }, [checkSnapEligibility, useSnap])
+  }, [checkSnapEligibility])
 
   // Auto-open camera when navigated with openCamera: true
   useEffect(() => {
@@ -1235,6 +1234,9 @@ export default function JuiceSnapScreen({ navigation, route }) {
 
     logJuice(ingredients, { ...batch, totals })
 
+    // Count the snap usage only after a successful scan is finalized
+    useSnap()
+
     // Record to Nutrition Score system
     const ingredientIds = ingredients
       .map((i) => i?.produceId)
@@ -1262,7 +1264,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
       previousMomentum: prevMomentum,
       ingredientNames: ingredientIds,
     })
-  }, [hasItems, batch, isPro, effectiveManualMode, logJuice, recordNutritionLog, preMomentum, navigation])
+  }, [hasItems, batch, isPro, effectiveManualMode, logJuice, useSnap, recordNutritionLog, preMomentum, navigation])
 
   const handleAdvancedBlendConfirm = useCallback(() => {
     setShowAdvancedBlendModal(false)

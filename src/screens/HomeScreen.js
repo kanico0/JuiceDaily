@@ -63,7 +63,7 @@ import { processJuiceBatch, PRODUCE_DATA } from '../services/JuiceEngine'
 import AdvancedBlendModal from '../components/AdvancedBlendModal'
 import { countDistinctProduceIds, classifyBlend, BlendAllowanceError, FREE_ADVANCED_BLEND_ALLOWANCE, createOperationId } from '../services/quota/blendAllowanceService'
 import { authorizeAndProcessBatch } from '../services/quota/blendNutritionGate'
-import { authorizeGuestLog } from '../services/quota/guestLogGate'
+import { authorizeGuestLog, isGuestLogAllowed } from '../services/quota/guestLogGate'
 import { checkCameraEligibility } from '../services/cameraEligibilityCoordinator'
 import { SUPABASE_CONFIGURED } from '../services/subscriptions/subscriptionConfig'
 import { trackEvent } from '../services/AnalyticsService'
@@ -247,10 +247,16 @@ function ProduceEditRow({
         />
       </View>
 
-      {/* Row 2: Controls — Volume mode */}
+      {/* Row 2a: Status label — full width */}
       {entryMode === 'weight' && (
-        <View style={styles.editControlsRow}>
+        <View style={styles.statusLabelRow}>
           <TrafficLightBadge produceId={item.produceId} isOrganic={isOrganic} juiceMethod={juiceMethod} />
+        </View>
+      )}
+
+      {/* Row 2b: Organic toggle — full width */}
+      {entryMode === 'weight' && (
+        <View style={styles.organicRow}>
           <TouchableOpacity
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
@@ -266,7 +272,12 @@ function ProduceEditRow({
               {isOrganic ? 'Organic' : 'Non-Organic'}
             </Text>
           </TouchableOpacity>
+        </View>
+      )}
 
+      {/* Row 2c: Volume adjustment + remove — full width */}
+      {entryMode === 'weight' && (
+        <View style={styles.adjustmentRow}>
           <View style={styles.editWeightRow}>
             <TouchableOpacity
               onPress={() => onWeightChange(index, Math.max(10, item.weightG - 25))}
@@ -300,37 +311,37 @@ function ProduceEditRow({
         </View>
       )}
 
-      {/* Row 2: Controls — Count mode */}
+      {/* Row 2a: Status label — full width */}
+      {entryMode === 'quantity' && quantitySupported && (
+        <View style={styles.statusLabelRow}>
+          <TrafficLightBadge produceId={item.produceId} isOrganic={isOrganic} juiceMethod={juiceMethod} />
+        </View>
+      )}
+
+      {/* Row 2b: Organic toggle — full width */}
+      {entryMode === 'quantity' && quantitySupported && (
+        <View style={styles.organicRow}>
+          <TouchableOpacity
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+              onToggleOrganic(index)
+            }}
+            style={[styles.organicBtn, isOrganic && styles.organicBtnActive]}
+            accessibilityRole="switch"
+            accessibilityState={{ checked: isOrganic }}
+            accessibilityLabel={isOrganic ? 'Organic' : 'Non-Organic'}
+          >
+            <Leaf size={10} color={isOrganic ? '#81C784' : '#90A4AE'} />
+            <Text style={[styles.organicLabel, { color: isOrganic ? '#81C784' : '#90A4AE' }]}>
+              {isOrganic ? 'Organic' : 'Non-Organic'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Row 2c: Count adjustment controls — full width */}
       {entryMode === 'quantity' && quantitySupported && (
         <View style={styles.editQuantityContainer}>
-          <View style={styles.editControlsRow}>
-            <TrafficLightBadge produceId={item.produceId} isOrganic={isOrganic} juiceMethod={juiceMethod} />
-            <TouchableOpacity
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-                onToggleOrganic(index)
-              }}
-              style={[styles.organicBtn, isOrganic && styles.organicBtnActive]}
-              accessibilityRole="switch"
-              accessibilityState={{ checked: isOrganic }}
-              accessibilityLabel={isOrganic ? 'Organic' : 'Non-Organic'}
-            >
-              <Leaf size={10} color={isOrganic ? '#81C784' : '#90A4AE'} />
-              <Text style={[styles.organicLabel, { color: isOrganic ? '#81C784' : '#90A4AE' }]}>
-                {isOrganic ? 'Organic' : 'Non-Organic'}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-                onRemove(index)
-              }}
-              style={styles.editRemoveBtn}
-              accessibilityLabel="Remove ingredient"
-            >
-              <X size={14} color="#E91E63" />
-            </TouchableOpacity>
-          </View>
           <QuantityPortionEditor
             produceId={item.produceId}
             quantity={currentQuantity}
@@ -342,6 +353,22 @@ function ProduceEditRow({
             onEstimatedWeightChange={(weightG) => onEstimatedWeightChange(index, weightG)}
             confidence={confidence}
           />
+        </View>
+      )}
+
+      {/* Row 2d: Remove button — full width */}
+      {entryMode === 'quantity' && quantitySupported && (
+        <View style={styles.removeRow}>
+          <TouchableOpacity
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+              onRemove(index)
+            }}
+            style={styles.editRemoveBtn}
+            accessibilityLabel="Remove ingredient"
+          >
+            <X size={14} color="#E91E63" />
+          </TouchableOpacity>
         </View>
       )}
 
@@ -623,6 +650,8 @@ export default function JuiceSnapScreen({ navigation, route }) {
   const [blendNoticeShown, setBlendNoticeShown] = useState(false)
   const [blendCheckInProgress, setBlendCheckInProgress] = useState(false)
   const blendOperationIdRef = useRef(null)
+  const blendApprovedRef = useRef(false)
+  const isLoggingRef = useRef(false)
   const [showPaywall, setShowPaywall] = useState(false)
   const [isManualMode, setIsManualMode] = useState(route?.params?.manualEntry === true)
   const [manualSearch, setManualSearch] = useState('')
@@ -1274,13 +1303,14 @@ export default function JuiceSnapScreen({ navigation, route }) {
 
   const handleLogToChallenge = useCallback(async () => {
     if (!hasItems) return
+    if (isLoggingRef.current) return
 
     const ingredients = batch?.scannedIngredients || []
     const distinctCount = countDistinctProduceIds(ingredients)
     const blendType = classifyBlend(distinctCount)
 
     // Advanced Blend: check allowance for free users
-    if (blendType === 'advanced' && !isPro) {
+    if (blendType === 'advanced' && !isPro && !blendApprovedRef.current) {
       // Create a new operation ID for this analysis attempt
       blendOperationIdRef.current = createOperationId()
       // Show pre-analysis confirmation first
@@ -1302,10 +1332,12 @@ export default function JuiceSnapScreen({ navigation, route }) {
     }
 
     await executeLogToChallenge()
-  }, [hasItems, batch, isPro, effectiveManualMode])
+  }, [hasItems, batch, isPro, effectiveManualMode, executeLogToChallenge])
 
   const executeLogToChallenge = useCallback(async () => {
     if (!hasItems) return
+    if (isLoggingRef.current) return
+    isLoggingRef.current = true
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
 
     const ingredients = batch?.scannedIngredients || []
@@ -1316,125 +1348,140 @@ export default function JuiceSnapScreen({ navigation, route }) {
     let totals = batch?.totals || {}
     let allowanceResult = null
 
-    // Advanced Blend: go through server-authoritative transaction
-    if (blendType === 'advanced') {
-      setBlendCheckInProgress(true)
-      try {
-        trackEvent('advanced_blend_analysis_started', {
-          plan: isPro ? 'pro' : 'free',
-          ingredient_count: distinctCount,
-          source: logSource,
-        })
-
-        const authorized = await authorizeAndProcessBatch(ingredients, batch.juiceMethod || 'cold_pressed', blendOperationIdRef.current || undefined)
-        totals = authorized.totals || totals
-        allowanceResult = authorized.allowance
-
-        // Update batch with real nutrition totals
-        setBatch((prev) => ({
-          ...prev,
-          totals,
-          items: authorized.ingredients || prev.items,
-        }))
-
-        if (allowanceResult && allowanceResult.plan === 'free') {
-          const remaining = allowanceResult.remaining ?? 0
-          trackEvent('advanced_blend_analysis_completed', {
-            plan: 'free',
-            ingredient_count: distinctCount,
-            remaining,
-            used: allowanceResult.used,
-            limit: allowanceResult.limit,
-            source: logSource,
-          })
-
-          // Show completion confirmation
-          setAdvancedBlendStage('completion_confirmation')
-          setAdvancedBlendRemaining(remaining)
-          setShowAdvancedBlendModal(true)
-          blendOperationIdRef.current = null
-        }
-      } catch (err) {
-        if (err instanceof BlendAllowanceError && err.code === 'advanced_blend_limit_reached') {
-          setAdvancedBlendStage('allowance_exhausted')
-          setAdvancedBlendRemaining(0)
-          setShowAdvancedBlendModal(true)
-          blendOperationIdRef.current = null
-          trackEvent('advanced_blend_quota_exhausted', {
-            plan: 'free',
-            ingredient_count: distinctCount,
-            used: err.result?.used ?? 0,
-            limit: err.result?.limit ?? FREE_ADVANCED_BLEND_ALLOWANCE,
-            source: logSource,
-          })
-          setBlendCheckInProgress(false)
-          return
-        }
-
-        // Network or server error — fail closed
-        if (__DEV__) console.warn('[blend] allowance check failed:', err?.message)
-        setAdvancedBlendStage('network_retry')
-        setShowAdvancedBlendModal(true)
-        trackEvent('advanced_blend_allowance_error', {
-          plan: isPro ? 'pro' : 'free',
-          error_code: err instanceof BlendAllowanceError ? err.code : 'unknown',
-          ingredient_count: distinctCount,
-          source: logSource,
-        })
-        trackEvent('advanced_blend_analysis_released', {
-          plan: isPro ? 'pro' : 'free',
-          ingredient_count: distinctCount,
-          error_code: err instanceof BlendAllowanceError ? err.code : 'unknown',
-          source: logSource,
-        })
-        setBlendCheckInProgress(false)
+    try {
+      // ── Guest log gate: pre-check BEFORE consuming blend allowance ──
+      // Use non-finalizing check so blend failures don't waste the guest journey.
+      const canLog = await isGuestLogAllowed()
+      if (!canLog) {
+        setShowAccountGate(true)
         return
       }
-      setBlendCheckInProgress(false)
+
+      // Advanced Blend: go through server-authoritative transaction
+      if (blendType === 'advanced') {
+        setBlendCheckInProgress(true)
+        try {
+          trackEvent('advanced_blend_analysis_started', {
+            plan: isPro ? 'pro' : 'free',
+            ingredient_count: distinctCount,
+            source: logSource,
+          })
+
+          const authorized = await authorizeAndProcessBatch(ingredients, batch.juiceMethod || 'cold_pressed', blendOperationIdRef.current || undefined)
+          totals = authorized.totals || totals
+          allowanceResult = authorized.allowance
+
+          // Update batch with real nutrition totals
+          setBatch((prev) => ({
+            ...prev,
+            totals,
+            items: authorized.ingredients || prev.items,
+          }))
+
+          if (allowanceResult && allowanceResult.plan === 'free') {
+            const remaining = allowanceResult.remaining ?? 0
+            trackEvent('advanced_blend_analysis_completed', {
+              plan: 'free',
+              ingredient_count: distinctCount,
+              remaining,
+              used: allowanceResult.used,
+              limit: allowanceResult.limit,
+              source: logSource,
+            })
+
+            // Show completion confirmation
+            setAdvancedBlendStage('completion_confirmation')
+            setAdvancedBlendRemaining(remaining)
+            setShowAdvancedBlendModal(true)
+          }
+        } catch (err) {
+          if (err instanceof BlendAllowanceError && err.code === 'advanced_blend_limit_reached') {
+            setAdvancedBlendStage('allowance_exhausted')
+            setAdvancedBlendRemaining(0)
+            setShowAdvancedBlendModal(true)
+            trackEvent('advanced_blend_quota_exhausted', {
+              plan: 'free',
+              ingredient_count: distinctCount,
+              used: err.result?.used ?? 0,
+              limit: err.result?.limit ?? FREE_ADVANCED_BLEND_ALLOWANCE,
+              source: logSource,
+            })
+            return
+          }
+
+          // Network or server error — fail closed
+          if (__DEV__) console.warn('[blend] allowance check failed:', err?.message)
+          setAdvancedBlendStage('network_retry')
+          setShowAdvancedBlendModal(true)
+          trackEvent('advanced_blend_allowance_error', {
+            plan: isPro ? 'pro' : 'free',
+            error_code: err instanceof BlendAllowanceError ? err.code : 'unknown',
+            ingredient_count: distinctCount,
+            source: logSource,
+          })
+          trackEvent('advanced_blend_analysis_released', {
+            plan: isPro ? 'pro' : 'free',
+            ingredient_count: distinctCount,
+            error_code: err instanceof BlendAllowanceError ? err.code : 'unknown',
+            source: logSource,
+          })
+          return
+        } finally {
+          setBlendCheckInProgress(false)
+        }
+      }
+
+      // ── Guest log gate: finalize AFTER blend succeeds ──────────
+      const logGate = await authorizeGuestLog()
+      if (!logGate.allowed) {
+        setShowAccountGate(true)
+        return
+      }
+
+      logJuice(ingredients, { ...batch, totals })
+
+      // Snap was already consumed at analysis success (handleProduceIdentified).
+      // Do not consume again at log finalization.
+
+      // Record to Nutrition Score system
+      const ingredientIds = ingredients
+        .map((i) => i?.produceId)
+        .filter((id) => typeof id === 'string' && id.length > 0)
+      const prevMomentum = typeof preMomentum === 'number' ? preMomentum : 0
+      recordNutritionLog(ingredientIds, totals)
+
+      // Create a JuiceLogEntry for the Today log
+      addLogEntry({
+        source: logSource,
+        ingredientIds: ingredientIds,
+        nutrientSummary: totals,
+      })
+      recordMeaningfulActivity().catch(() => {})
+
+      setIsLogged(true)
+
+      // Navigate to ScanSuccess with session metrics
+      const nutrientKeys = Object.keys(totals).filter(
+        (k) => (Number(totals[k]) || 0) > 0
+      )
+      navigation.navigate('ScanSuccess', {
+        ingredientCount: ingredientIds.length,
+        nutrientsFound: nutrientKeys.length,
+        previousMomentum: prevMomentum,
+        ingredientNames: ingredientIds,
+      })
+    } catch (err) {
+      if (__DEV__) console.warn('[log] executeLogToChallenge failed:', err?.message)
+      Alert.alert('Logging Error', 'Could not log your juice. Please try again.')
+    } finally {
+      isLoggingRef.current = false
+      blendApprovedRef.current = false
+      blendOperationIdRef.current = null
     }
-
-    // ── Guest log gate: authorize before writing ───────────
-    const logGate = await authorizeGuestLog()
-    if (!logGate.allowed) {
-      setShowAccountGate(true)
-      return
-    }
-
-    logJuice(ingredients, { ...batch, totals })
-
-    // Snap was already consumed at analysis success (handleProduceIdentified).
-    // Do not consume again at log finalization.
-
-    // Record to Nutrition Score system
-    const ingredientIds = ingredients
-      .map((i) => i?.produceId)
-      .filter((id) => typeof id === 'string' && id.length > 0)
-    const prevMomentum = typeof preMomentum === 'number' ? preMomentum : 0
-    recordNutritionLog(ingredientIds, totals)
-
-    // Create a JuiceLogEntry for the Today log
-    addLogEntry({
-      source: logSource,
-      ingredientIds: ingredientIds,
-      nutrientSummary: totals,
-    })
-    recordMeaningfulActivity().catch(() => {})
-
-    setIsLogged(true)
-
-    // Navigate to ScanSuccess with session metrics
-    const nutrientKeys = Object.keys(totals).filter(
-      (k) => (Number(totals[k]) || 0) > 0
-    )
-    navigation.navigate('ScanSuccess', {
-      ingredientCount: ingredientIds.length,
-      nutrientsFound: nutrientKeys.length,
-      previousMomentum: prevMomentum,
-      ingredientNames: ingredientIds,
-    })
-  }, [hasItems, batch, isPro, effectiveManualMode, logJuice, recordNutritionLog, preMomentum, navigation])
+  }, [hasItems, batch, isPro, effectiveManualMode, logJuice, recordNutritionLog, preMomentum, navigation, addLogEntry])
 
   const handleAdvancedBlendConfirm = useCallback(() => {
+    blendApprovedRef.current = true
     setShowAdvancedBlendModal(false)
     executeLogToChallenge()
   }, [executeLogToChallenge])
@@ -1900,6 +1947,33 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingLeft: 16,
   },
+  statusLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingLeft: 16,
+    paddingRight: 4,
+    flexWrap: 'wrap',
+  },
+  organicRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingLeft: 16,
+    paddingRight: 4,
+  },
+  adjustmentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingLeft: 16,
+    paddingRight: 4,
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  removeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingLeft: 16,
+    paddingRight: 4,
+  },
   organicBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1908,7 +1982,6 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 10,
     backgroundColor: 'rgba(255,255,255,0.04)',
-    marginRight: 6,
     borderWidth: 0.5,
     borderColor: 'rgba(255,255,255,0.06)',
   },
@@ -1926,7 +1999,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    marginRight: 8,
   },
   editWeightBtn: {
     width: 28,

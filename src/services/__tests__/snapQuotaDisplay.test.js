@@ -168,7 +168,7 @@ describe('Snap quota display synchronization', () => {
     // The open_camera branch should NOT contain useSnap()
     const openCameraMatch = funcBody.match(/if \(result\.action === 'open_camera'\)[\s\S]*?return/)
     expect(openCameraMatch).not.toBeNull()
-    expect(openCameraMatch[0]).not.toContain('useSnap()')
+    expect(openCameraMatch[0]).not.toContain('recordSnapUsage()')
   })
 
   // 2. Exiting the camera does not change either display
@@ -179,7 +179,7 @@ describe('Snap quota display synchronization', () => {
       const idx = homeScreenSource.indexOf(pattern)
       if (idx !== -1) {
         const surrounding = homeScreenSource.slice(Math.max(0, idx - 200), idx + 200)
-        expect(surrounding).not.toContain('useSnap()')
+        expect(surrounding).not.toContain('recordSnapUsage()')
       }
     }
   })
@@ -189,7 +189,7 @@ describe('Snap quota display synchronization', () => {
     const permIdx = homeScreenSource.indexOf('permission')
     if (permIdx !== -1) {
       const surrounding = homeScreenSource.slice(Math.max(0, permIdx - 200), permIdx + 200)
-      expect(surrounding).not.toContain('useSnap()')
+      expect(surrounding).not.toContain('recordSnapUsage()')
     }
   })
 
@@ -201,23 +201,23 @@ describe('Snap quota display synchronization', () => {
       const catchBlocks = homeScreenSource.match(/catch[\s\S]*?\}/g)
       if (catchBlocks) {
         for (const block of catchBlocks) {
-          expect(block).not.toContain('useSnap()')
+          expect(block).not.toContain('recordSnapUsage()')
         }
       }
     }
   })
 
   // 5. Analysis failure does not change either display (same as above)
-  test('useSnap is only called once in the entire file', () => {
-    const useSnapCalls = homeScreenSource.match(/useSnap\(\)/g)
+  test('recordSnapUsage is only called once in the entire file', () => {
+    const useSnapCalls = homeScreenSource.match(/recordSnapUsage\(\)/g)
     expect(useSnapCalls).not.toBeNull()
     expect(useSnapCalls.length).toBe(1)
   })
 
   // 6. Successful finalized analysis changes usage exactly once
-  test('useSnap() is called after logJuice in executeLogToChallenge', () => {
+  test('recordSnapUsage() is called after logJuice in executeLogToChallenge', () => {
     const logIdx = homeScreenSource.indexOf('logJuice(ingredients')
-    const useSnapIdx = homeScreenSource.indexOf('useSnap()', logIdx)
+    const useSnapIdx = homeScreenSource.indexOf('recordSnapUsage()', logIdx)
     expect(logIdx).not.toBe(-1)
     expect(useSnapIdx).not.toBe(-1)
     // useSnap should come after logJuice
@@ -240,7 +240,7 @@ describe('Snap quota display synchronization', () => {
     const funcStart = homeScreenSource.indexOf('const attemptCameraOpen')
     const funcEnd = homeScreenSource.indexOf('}, [checkSnapEligibility]', funcStart)
     const funcBody = homeScreenSource.slice(funcStart, funcEnd)
-    expect(funcBody).not.toContain('useSnap()')
+    expect(funcBody).not.toContain('recordSnapUsage()')
   })
 
   // 9. Quota exhaustion still blocks camera access

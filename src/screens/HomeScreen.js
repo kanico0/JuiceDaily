@@ -600,7 +600,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
   const { logJuice, vitalityScore } = useChallenge()
   const { recordNutritionLog, momentum: preMomentum } = useNutritionScore()
   const { addEntry: addLogEntry } = useJuiceLog()
-  const { checkSnapEligibility, useSnap, snapInfo, isPro } = usePro()
+  const { checkSnapEligibility, useSnap: recordSnapUsage, snapInfo, isPro } = usePro()
   const [showSnapGate, setShowSnapGate] = useState(false)
   const [showAccountGate, setShowAccountGate] = useState(false)
   const [accountGateMode, setAccountGateMode] = useState('guest')
@@ -1275,7 +1275,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
     logJuice(ingredients, { ...batch, totals })
 
     // Count the snap usage only after a successful scan is finalized
-    useSnap()
+    recordSnapUsage()
 
     // Record to Nutrition Score system
     const ingredientIds = ingredients
@@ -1304,7 +1304,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
       previousMomentum: prevMomentum,
       ingredientNames: ingredientIds,
     })
-  }, [hasItems, batch, isPro, effectiveManualMode, logJuice, useSnap, recordNutritionLog, preMomentum, navigation])
+  }, [hasItems, batch, isPro, effectiveManualMode, logJuice, recordSnapUsage, recordNutritionLog, preMomentum, navigation])
 
   const handleAdvancedBlendConfirm = useCallback(() => {
     setShowAdvancedBlendModal(false)

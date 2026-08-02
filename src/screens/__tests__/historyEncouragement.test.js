@@ -290,7 +290,7 @@ describe('Progressive History Encouragement', () => {
     // Day 1
     expect(ENCOURAGEMENT_COPY[1].title).toBe('Great start')
     expect(ENCOURAGEMENT_COPY[1].body).toBe(
-      'You\u2019ve logged your first day. That first step gives your journey a beginning. Keep adding your juices so your history can gradually show your habits, favorites, and progress over time.'
+      'Every juice you log stays in your complete basic Juice History. Free members can explore full advanced details for their latest juice, while RawLifeFlow Pro unlocks detailed history for every juice you have logged.'
     )
 
     // Day 2

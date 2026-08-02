@@ -82,7 +82,7 @@ export const ENCOURAGEMENT_COPY = [
   },
   {
     title: 'Great start',
-    body: 'You\u2019ve logged your first day. That first step gives your journey a beginning. Keep adding your juices so your history can gradually show your habits, favorites, and progress over time.',
+    body: 'Every juice you log stays in your complete basic Juice History. Free members can explore full advanced details for their latest juice, while RawLifeFlow Pro unlocks detailed history for every juice you have logged.',
   },
   {
     title: 'You\u2019re building momentum',
@@ -1235,7 +1235,7 @@ const s = StyleSheet.create({
   encouragementBody: {
     fontSize: FONT_SIZE.sm,
     fontWeight: FONT_WEIGHT.regular,
-    color: BRAND.text.secondary,
+    color: SEMANTIC_COLORS.textSecondary,
     lineHeight: LINE_HEIGHT.relaxed * FONT_SIZE.sm,
   },
 })

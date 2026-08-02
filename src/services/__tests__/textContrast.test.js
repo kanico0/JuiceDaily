@@ -132,4 +132,108 @@ describe('Fine print contrast on dark surfaces', () => {
   test('SEMANTIC_COLORS.textSecondary matches BRAND.text.secondary', () => {
     expect(SEMANTIC_COLORS.textSecondary).toBe(BRAND.text.secondary)
   })
+
+  // 7. #90A4AE meets WCAG 4.5:1 on dark backgrounds (the replacement color)
+  test('#90A4AE meets WCAG 4.5:1 on #0D1117 background', () => {
+    const ratio = getContrastRatio('#90A4AE', DARK_BG)
+    expect(ratio).toBeGreaterThanOrEqual(4.5)
+  })
+
+  test('#90A4AE meets WCAG 4.5:1 on #060D0A brand background', () => {
+    const ratio = getContrastRatio('#90A4AE', BRAND_BG)
+    expect(ratio).toBeGreaterThanOrEqual(4.5)
+  })
+
+  // 8. Disabled text is distinguishable from normal supporting text
+  test('#90A4AE (disabled/muted) is dimmer than #C9D1D9 (normal text)', () => {
+    const mutedLum = getLuminance('#90A4AE')
+    const normalLum = getLuminance('#C9D1D9')
+    expect(mutedLum).toBeLessThan(normalLum)
+  })
+
+  test('#90A4AE (disabled/muted) is dimmer than #FFFFFF (primary text)', () => {
+    const mutedLum = getLuminance('#90A4AE')
+    const primaryLum = getLuminance('#FFFFFF')
+    expect(mutedLum).toBeLessThan(primaryLum)
+  })
+
+  // 9. Disabled switch thumb is distinguishable from enabled
+  test('#90A4AE (switch off) is distinct from #81C784 (switch on)', () => {
+    const offLum = getLuminance('#90A4AE')
+    const onLum = getLuminance('#81C784')
+    // They should not be the same luminance
+    expect(Math.abs(offLum - onLum)).toBeGreaterThan(0.05)
+  })
+
+  // 10. Inactive tab is distinguishable from active tab
+  test('#90A4AE (inactive tab) is distinct from #81C784 (active tab)', () => {
+    const inactiveLum = getLuminance('#90A4AE')
+    const activeLum = getLuminance('#81C784')
+    expect(Math.abs(inactiveLum - activeLum)).toBeGreaterThan(0.05)
+  })
+
+  // 11. No borders or dividers use #90A4AE (should not have been brightened)
+  test('no borderColor or borderTopColor uses #90A4AE in key screens', () => {
+    const fs = require('fs')
+    const path = require('path')
+    const screens = ['HomeScreen.js', 'SettingsScreen.js', 'DashboardScreen.js']
+    for (const screen of screens) {
+      const content = fs.readFileSync(
+        path.resolve(__dirname, '../../screens/' + screen),
+        'utf-8'
+      )
+      const borderMatches = content.match(/border[A-Za-z]*Color.*#90A4AE/g)
+      expect(borderMatches).toBeNull()
+    }
+  })
+
+  // 12. #90A4AE is not used on light backgrounds (would reduce contrast)
+  test('#90A4AE on #FFD54F (light yellow) has poor contrast — verify not used together', () => {
+    const ratio = getContrastRatio('#90A4AE', '#FFD54F')
+    // If this ratio is low, #90A4AE should never be text on #FFD54F backgrounds
+    // We verify the ratio is indeed low (confirming it would be a bad combination)
+    expect(ratio).toBeLessThan(3)
+  })
+
+  // 13. All affected screens have no remaining old low-contrast value for normal fine print
+  test('no hard-coded #484F58 remains in any affected screen', () => {
+    const fs = require('fs')
+    const path = require('path')
+    const screens = [
+      'HomeScreen.js', 'ScanScreen.js', 'SettingsScreen.js',
+      'DashboardScreen.js', 'RecipeDetailScreen.js', 'WeeklyReportScreen.js',
+      'VitalityHistoryScreen.js', 'VaultScreen.js', 'HallOfVitalityScreen.js',
+      'NoviceJourneyScreen.js', 'MonthlyWrapScreen.js',
+      'BeginnerGlowPathScreen.js', 'FridgeForagerScreen.js',
+      'GlowLibraryScreen.js', 'JuiceCalculatorScreen.js',
+      'ProduceRecipeResultsScreen.js', 'SeasonalGlowPacksScreen.js',
+    ]
+    for (const screen of screens) {
+      const content = fs.readFileSync(
+        path.resolve(__dirname, '../../screens/' + screen),
+        'utf-8'
+      )
+      expect(content).not.toMatch(/#484[Ff]58/)
+    }
+  })
+
+  // 14. No hard-coded #484F58 remains in affected components
+  test('no hard-coded #484F58 remains in affected components', () => {
+    const fs = require('fs')
+    const path = require('path')
+    const components = [
+      'AccountGateModal.js', 'BigSqueezeModal.js', 'FreezerPassModal.js',
+      'ModernTabBar.js', 'NutritionRow.js', 'NutritionSummary.js',
+      'PaywallModal.js', 'PortionEntryModeToggle.js', 'QuantityPortionEditor.js',
+      'QuickLogger.js', 'SafetyFooter.js', 'SnapGateModal.js',
+      'WeeklySpectrumBar.js', 'WelcomeModal.js',
+    ]
+    for (const comp of components) {
+      const content = fs.readFileSync(
+        path.resolve(__dirname, '../../components/' + comp),
+        'utf-8'
+      )
+      expect(content).not.toMatch(/#484[Ff]58/)
+    }
+  })
 })

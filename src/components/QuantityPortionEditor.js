@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native'
 import * as Haptics from 'expo-haptics'
+import { Minus, Plus } from 'lucide-react-native'
 import {
   isQuantitySupported,
   getSupportedCountUnits,
@@ -88,6 +89,28 @@ export default function QuantityPortionEditor({
     onQuantityChange(qty)
   }, [localQuantity, onQuantityChange])
 
+  const handleStepperIncrement = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    const current = parseFloat(localQuantity)
+    const safeCurrent = (!current || isNaN(current) || current < 0) ? 0 : current
+    const next = safeCurrent + 1
+    const nextStr = String(next)
+    setLocalQuantity(nextStr)
+    onQuantityChange(next)
+  }, [localQuantity, onQuantityChange])
+
+  const handleStepperDecrement = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    const current = parseFloat(localQuantity)
+    const safeCurrent = (!current || isNaN(current) || current < 1) ? 1 : current
+    const next = Math.max(1, safeCurrent - 1)
+    const nextStr = String(next)
+    setLocalQuantity(nextStr)
+    onQuantityChange(next)
+  }, [localQuantity, onQuantityChange])
+
+  const isAtMinimum = parseFloat(localQuantity) <= 1 || !localQuantity || isNaN(parseFloat(localQuantity))
+
   const handleUnitSelect = useCallback((newUnitKey) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
     onUnitChange(newUnitKey)
@@ -141,6 +164,19 @@ export default function QuantityPortionEditor({
     <View style={styles.container}>
       {/* Quantity input + unit selector */}
       <View style={styles.quantityRow}>
+        <TouchableOpacity
+          style={[styles.stepperBtn, isAtMinimum && styles.stepperBtnDisabled]}
+          onPress={handleStepperDecrement}
+          disabled={isAtMinimum}
+          activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel="Decrease quantity"
+          accessibilityHint="Decreases the ingredient quantity by one"
+          accessibilityState={{ disabled: isAtMinimum }}
+          hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+        >
+          <Minus size={16} color={isAtMinimum ? '#90A4AE' : '#8B949E'} />
+        </TouchableOpacity>
         <TextInput
           style={styles.quantityInput}
           value={localQuantity}
@@ -153,6 +189,17 @@ export default function QuantityPortionEditor({
           accessibilityHint={`Enter the number of ${unitLabel}`}
           hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
         />
+        <TouchableOpacity
+          style={styles.stepperBtn}
+          onPress={handleStepperIncrement}
+          activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel="Increase quantity"
+          accessibilityHint="Increases the ingredient quantity by one"
+          hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+        >
+          <Plus size={16} color="#8B949E" />
+        </TouchableOpacity>
         <View style={styles.unitSelector} accessibilityRole="list" accessibilityLabel={`Unit for ${produceName}`}>
           {units.map((u) => {
             const isActive = u.unitKey === currentUnit.unitKey
@@ -242,10 +289,24 @@ const styles = StyleSheet.create({
   quantityRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
+  },
+  stepperBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    borderWidth: 0.5,
+    borderColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  stepperBtnDisabled: {
+    opacity: 0.35,
+    borderColor: 'rgba(255,255,255,0.04)',
   },
   quantityInput: {
-    width: 56,
+    width: 48,
     height: 36,
     borderRadius: 10,
     borderWidth: 0.5,

@@ -247,10 +247,14 @@ const secStyles = StyleSheet.create({
 
 // ── Browse Ideas Modal ───────────────────────────────────────
 
+const BROWSE_PAGE_SIZE = 25
+
 function BrowseIdeasModal({ visible, onDismiss, onScanReady, isReduced, navigation }) {
   const fadeAnim = useRef(new Animated.Value(0)).current
   const [searchQuery, setSearchQuery] = useState('')
   const [showPaywall, setShowPaywall] = useState(false)
+  const [currentPage, setCurrentPage] = useState(1)
+  const listRef = useRef(null)
   const { hasFeatureAccess } = usePro()
   const { isEnabled } = useFlags()
   const isPaywallDisabled = isEnabled('ff_dev_disable_paywalls')
@@ -261,8 +265,29 @@ function BrowseIdeasModal({ visible, onDismiss, onScanReady, isReduced, navigati
     if (canonicalKey) {
       return searchRecipes(searchQuery, undefined, 1000)
     }
-    return searchRecipes(searchQuery, { collection: 'core', tier: 'free' }, 100)
+    return searchRecipes(searchQuery, undefined, 1000)
   }, [searchQuery])
+
+  const totalPages = Math.max(1, Math.ceil(searchResults.length / BROWSE_PAGE_SIZE))
+  const safePage = Math.min(currentPage, totalPages)
+  const startIndex = (safePage - 1) * BROWSE_PAGE_SIZE
+  const pagedResults = useMemo(() => {
+    return searchResults.slice(startIndex, startIndex + BROWSE_PAGE_SIZE)
+  }, [searchResults, startIndex])
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchQuery])
+
+  const handlePrevPage = useCallback(() => {
+    setCurrentPage((p) => Math.max(1, p - 1))
+    if (listRef.current) listRef.current.scrollToOffset({ offset: 0, animated: false })
+  }, [])
+
+  const handleNextPage = useCallback(() => {
+    setCurrentPage((p) => Math.min(totalPages, p + 1))
+    if (listRef.current) listRef.current.scrollToOffset({ offset: 0, animated: false })
+  }, [totalPages])
 
   useEffect(() => {
     if (visible) {
@@ -273,6 +298,7 @@ function BrowseIdeasModal({ visible, onDismiss, onScanReady, isReduced, navigati
     } else {
       fadeAnim.setValue(0)
       setSearchQuery('')
+      setCurrentPage(1)
     }
   }, [visible])
 
@@ -372,7 +398,8 @@ function BrowseIdeasModal({ visible, onDismiss, onScanReady, isReduced, navigati
           </Text>
 
           <FlatList
-            data={searchResults}
+            ref={listRef}
+            data={pagedResults}
             renderItem={renderItem}
             keyExtractor={(item) => item.id}
             contentContainerStyle={browseStyles.scrollContent}
@@ -389,6 +416,34 @@ function BrowseIdeasModal({ visible, onDismiss, onScanReady, isReduced, navigati
               </View>
             }
           />
+
+          {searchResults.length > 0 && (
+            <View style={browseStyles.paginationBar}>
+              <TouchableOpacity
+                onPress={handlePrevPage}
+                disabled={safePage <= 1}
+                style={[browseStyles.pageBtn, safePage <= 1 && browseStyles.pageBtnDisabled]}
+                accessibilityRole="button"
+                accessibilityLabel="Previous page"
+                accessibilityState={{ disabled: safePage <= 1 }}
+              >
+                <Text style={[browseStyles.pageBtnText, safePage <= 1 && browseStyles.pageBtnTextDisabled]}>Previous</Text>
+              </TouchableOpacity>
+              <Text style={browseStyles.pageIndicator}>
+                Page {safePage} of {totalPages}
+              </Text>
+              <TouchableOpacity
+                onPress={handleNextPage}
+                disabled={safePage >= totalPages}
+                style={[browseStyles.pageBtn, safePage >= totalPages && browseStyles.pageBtnDisabled]}
+                accessibilityRole="button"
+                accessibilityLabel="Next page"
+                accessibilityState={{ disabled: safePage >= totalPages }}
+              >
+                <Text style={[browseStyles.pageBtnText, safePage >= totalPages && browseStyles.pageBtnTextDisabled]}>Next</Text>
+              </TouchableOpacity>
+            </View>
+          )}
 
           <View style={browseStyles.footer}>
             <TouchableOpacity
@@ -623,6 +678,39 @@ const browseStyles = StyleSheet.create({
     fontSize: FONT_SIZE.md,
     fontWeight: FONT_WEIGHT.heavy,
     color: '#FFFFFF',
+  },
+  paginationBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderTopWidth: 0.5,
+    borderTopColor: 'rgba(255,255,255,0.06)',
+  },
+  pageBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    minHeight: 44,
+    justifyContent: 'center',
+  },
+  pageBtnDisabled: {
+    opacity: 0.35,
+  },
+  pageBtnText: {
+    fontSize: FONT_SIZE.sm,
+    fontWeight: FONT_WEIGHT.bold,
+    color: DARK.textPrimary,
+  },
+  pageBtnTextDisabled: {
+    color: DARK.textMuted,
+  },
+  pageIndicator: {
+    fontSize: FONT_SIZE.sm,
+    fontWeight: FONT_WEIGHT.medium,
+    color: DARK.textSecondary,
   },
 })
 

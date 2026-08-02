@@ -159,21 +159,18 @@ const homeScreenSource = fs.readFileSync(
 
 describe('Snap quota display synchronization', () => {
   // 1. Opening the camera does not change either usage display
-  test('useSnap() is not called inside attemptCameraOpen', () => {
-    // Find the attemptCameraOpen function body
+  test('recordSnapUsage() is not called inside attemptCameraOpen', () => {
     const funcStart = homeScreenSource.indexOf('const attemptCameraOpen')
     const funcEnd = homeScreenSource.indexOf('}, [checkSnapEligibility]', funcStart)
     const funcBody = homeScreenSource.slice(funcStart, funcEnd)
 
-    // The open_camera branch should NOT contain useSnap()
     const openCameraMatch = funcBody.match(/if \(result\.action === 'open_camera'\)[\s\S]*?return/)
     expect(openCameraMatch).not.toBeNull()
     expect(openCameraMatch[0]).not.toContain('recordSnapUsage()')
   })
 
   // 2. Exiting the camera does not change either display
-  test('no useSnap call in camera close/cancel paths', () => {
-    // useSnap should not appear in camera close or dismiss handlers
+  test('no recordSnapUsage call in camera close/cancel paths', () => {
     const cameraClosePatterns = ['setIsCameraOpen(false)', 'onCameraClose', 'handleCameraClose']
     for (const pattern of cameraClosePatterns) {
       const idx = homeScreenSource.indexOf(pattern)
@@ -185,7 +182,7 @@ describe('Snap quota display synchronization', () => {
   })
 
   // 3. Permission denial does not change either display
-  test('no useSnap call in permission denial path', () => {
+  test('no recordSnapUsage call in permission denial path', () => {
     const permIdx = homeScreenSource.indexOf('permission')
     if (permIdx !== -1) {
       const surrounding = homeScreenSource.slice(Math.max(0, permIdx - 200), permIdx + 200)
@@ -194,10 +191,9 @@ describe('Snap quota display synchronization', () => {
   })
 
   // 4. Upload failure does not change either display
-  test('no useSnap call in upload/analysis failure paths', () => {
+  test('no recordSnapUsage call in upload/analysis failure paths', () => {
     const failIdx = homeScreenSource.indexOf('catch')
     if (failIdx !== -1) {
-      // Check all catch blocks don't contain useSnap
       const catchBlocks = homeScreenSource.match(/catch[\s\S]*?\}/g)
       if (catchBlocks) {
         for (const block of catchBlocks) {
@@ -207,36 +203,33 @@ describe('Snap quota display synchronization', () => {
     }
   })
 
-  // 5. Analysis failure does not change either display (same as above)
-  test('recordSnapUsage is only called once in the entire file', () => {
+  // 5. recordSnapUsage is called exactly once in the file (in handleProduceIdentified)
+  test('recordSnapUsage() is called exactly once in the entire file', () => {
     const useSnapCalls = homeScreenSource.match(/recordSnapUsage\(\)/g)
     expect(useSnapCalls).not.toBeNull()
     expect(useSnapCalls.length).toBe(1)
   })
 
-  // 6. Successful finalized analysis changes usage exactly once
-  test('recordSnapUsage() is called after logJuice in executeLogToChallenge', () => {
-    const logIdx = homeScreenSource.indexOf('logJuice(ingredients')
-    const useSnapIdx = homeScreenSource.indexOf('recordSnapUsage()', logIdx)
+  // 6. recordSnapUsage is in handleProduceIdentified (successful analysis), NOT in executeLogToChallenge
+  test('recordSnapUsage() is called in handleProduceIdentified, not in executeLogToChallenge', () => {
+    const produceIdx = homeScreenSource.indexOf('const handleProduceIdentified')
+    expect(produceIdx).not.toBe(-1)
+    const produceBlock = homeScreenSource.slice(produceIdx, produceIdx + 2000)
+    expect(produceBlock).toContain('recordSnapUsage()')
+
+    const logIdx = homeScreenSource.indexOf('const executeLogToChallenge')
     expect(logIdx).not.toBe(-1)
-    expect(useSnapIdx).not.toBe(-1)
-    // useSnap should come after logJuice
-    expect(useSnapIdx).toBeGreaterThan(logIdx)
-    // And should be within ~100 chars (right after)
-    expect(useSnapIdx - logIdx).toBeLessThan(200)
+    const logBlock = homeScreenSource.slice(logIdx, logIdx + 2000)
+    expect(logBlock).not.toContain('recordSnapUsage()')
   })
 
   // 7. Both displays show the same usage state
   test('snapInfo and QuotaMeter both derive from authoritative state', () => {
-    // snapInfo comes from usePro() state
-    // QuotaMeter comes from useQuota() — both are server-authoritative
-    // The key is that useSnap (which updates snapInfo) is only called on success
     expect(mockSnapInfo.label).toBeDefined()
   })
 
   // 8. Repeated camera opens without successful scans do not alter remaining scans
-  test('opening camera multiple times without scan does not call useSnap', () => {
-    // Since useSnap is removed from attemptCameraOpen, repeated opens won't call it
+  test('opening camera multiple times without scan does not call recordSnapUsage', () => {
     const funcStart = homeScreenSource.indexOf('const attemptCameraOpen')
     const funcEnd = homeScreenSource.indexOf('}, [checkSnapEligibility]', funcStart)
     const funcBody = homeScreenSource.slice(funcStart, funcEnd)
@@ -259,5 +252,47 @@ describe('Snap quota display synchronization', () => {
     const funcBody = homeScreenSource.slice(funcStart, funcEnd)
     expect(funcBody).toContain('show_snap_gate')
     expect(funcBody).toContain('show_account_gate')
+  })
+
+  // 11. Idempotency: snapConsumedForSessionRef prevents double-counting
+  test('snapConsumedForSessionRef guards recordSnapUsage against double-counting', () => {
+    const produceIdx = homeScreenSource.indexOf('const handleProduceIdentified')
+    const produceBlock = homeScreenSource.slice(produceIdx, produceIdx + 2000)
+    expect(produceBlock).toContain('snapConsumedForSessionRef')
+    expect(produceBlock).toContain('!snapConsumedForSessionRef.current')
+    expect(produceBlock).toContain('snapConsumedForSessionRef.current = true')
+  })
+
+  // 12. Session ref is reset when camera opens
+  test('snapConsumedForSessionRef is reset to false on camera open', () => {
+    const funcStart = homeScreenSource.indexOf('const attemptCameraOpen')
+    const funcEnd = homeScreenSource.indexOf('}, [checkSnapEligibility]', funcStart)
+    const funcBody = homeScreenSource.slice(funcStart, funcEnd)
+    expect(funcBody).toContain('snapConsumedForSessionRef.current = false')
+  })
+
+  // 13. executeLogToChallenge does NOT call recordSnapUsage (snap already consumed at analysis)
+  test('executeLogToChallenge does not consume a snap', () => {
+    const logIdx = homeScreenSource.indexOf('const executeLogToChallenge')
+    const logBlock = homeScreenSource.slice(logIdx, logIdx + 5000)
+    expect(logBlock).not.toContain('recordSnapUsage()')
+    // Should have a comment explaining why
+    expect(logBlock).toContain('already consumed')
+  })
+
+  // 14. Manual entries do not consume snaps (recordSnapUsage only in handleProduceIdentified)
+  test('manual entry path does not call recordSnapUsage', () => {
+    const manualIdx = homeScreenSource.indexOf('const handleManualAdd')
+    expect(manualIdx).not.toBe(-1)
+    const manualBlock = homeScreenSource.slice(manualIdx, manualIdx + 800)
+    expect(manualBlock).not.toContain('recordSnapUsage()')
+  })
+
+  // 15. handleAddProduce does not consume snaps
+  test('handleAddProduce does not call recordSnapUsage', () => {
+    const addIdx = homeScreenSource.indexOf('const handleAddProduce')
+    expect(addIdx).not.toBe(-1)
+    const addBlock = homeScreenSource.slice(addIdx, addIdx + 800)
+    expect(addBlock).not.toContain('recordSnapUsage()')
   })
 })

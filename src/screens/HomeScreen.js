@@ -611,6 +611,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
   const [blendNoticeShown, setBlendNoticeShown] = useState(false)
   const [blendCheckInProgress, setBlendCheckInProgress] = useState(false)
   const blendOperationIdRef = useRef(null)
+  const snapConsumedForSessionRef = useRef(false)
   const [showPaywall, setShowPaywall] = useState(false)
   const [isManualMode, setIsManualMode] = useState(route?.params?.manualEntry === true)
   const [manualSearch, setManualSearch] = useState('')
@@ -692,6 +693,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
     const result = await checkCameraEligibility(snapElig)
 
     if (result.action === 'open_camera') {
+      snapConsumedForSessionRef.current = false
       setIsCameraOpen(true)
       if (!isAutoOpen) setIsLogged(false)
       return
@@ -846,6 +848,14 @@ export default function JuiceSnapScreen({ navigation, route }) {
     }
     setIsCameraOpen(false)
     setIsLogged(false)
+
+    // Consume one snap on successful image analysis (not on log finalization).
+    // Idempotent: if already consumed for this session, do not double-count.
+    if (!snapConsumedForSessionRef.current) {
+      recordSnapUsage()
+      snapConsumedForSessionRef.current = true
+    }
+
     // Check for Advanced Blend threshold from photo scan
     const distinctCount = countDistinctProduceIds(enriched)
     if (distinctCount >= 5 && !isPro) {
@@ -859,7 +869,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
         source: 'photo',
       })
     }
-  }, [juiceMethod, isPro, primaryProduceId])
+  }, [juiceMethod, isPro, primaryProduceId, recordSnapUsage])
 
   const handleUpdateItem = useCallback((index, newProduceId, newWeightG) => {
     setBatch((prev) => {
@@ -1274,8 +1284,8 @@ export default function JuiceSnapScreen({ navigation, route }) {
 
     logJuice(ingredients, { ...batch, totals })
 
-    // Count the snap usage only after a successful scan is finalized
-    recordSnapUsage()
+    // Snap was already consumed at analysis success (handleProduceIdentified).
+    // Do not consume again at log finalization.
 
     // Record to Nutrition Score system
     const ingredientIds = ingredients
@@ -1304,7 +1314,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
       previousMomentum: prevMomentum,
       ingredientNames: ingredientIds,
     })
-  }, [hasItems, batch, isPro, effectiveManualMode, logJuice, recordSnapUsage, recordNutritionLog, preMomentum, navigation])
+  }, [hasItems, batch, isPro, effectiveManualMode, logJuice, recordNutritionLog, preMomentum, navigation])
 
   const handleAdvancedBlendConfirm = useCallback(() => {
     setShowAdvancedBlendModal(false)

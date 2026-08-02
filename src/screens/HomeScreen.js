@@ -736,43 +736,65 @@ export default function JuiceSnapScreen({ navigation, route }) {
   // Uses the server-authoritative QuotaStore snapshot for the snap
   // eligibility precheck. A stale client cache cannot grant or block
   // access — the server makes the final decision in analyze-scan.
+  const cameraInFlightRef = useRef(false)
+
   const attemptCameraOpen = useCallback(async (isAutoOpen = false) => {
-    const snapElig = {
-      eligible: filmRollRemaining > 0,
-      remaining: filmRollRemaining,
-      reason: filmRollRemaining > 0 ? null : 'Scan limit reached for this period',
-      isPro: filmRollIsPro,
-    }
-    const result = await checkCameraEligibility(snapElig)
+    // Guard against double-tap while an eligibility check is in flight
+    if (cameraInFlightRef.current) return
+    cameraInFlightRef.current = true
 
-    if (result.action === 'open_camera') {
-      setIsCameraOpen(true)
-      if (!isAutoOpen) setIsLogged(false)
-      return
-    }
+    try {
+      // If quota hasn't loaded yet, treat as eligible (optimistic for camera open).
+      // Opening the camera consumes zero scans — the server makes the final
+      // decision during analyze-scan.  Blocking the camera on a null quota
+      // leaves the button permanently inert for fresh installs and slow networks.
+      const quotaLoaded = serverQuota !== null
+      const effectiveRemaining = quotaLoaded ? filmRollRemaining : 1
+      const effectiveIsPro = quotaLoaded ? filmRollIsPro : false
 
-    if (result.action === 'show_snap_gate') {
+      const snapElig = {
+        eligible: effectiveRemaining > 0,
+        remaining: effectiveRemaining,
+        reason: effectiveRemaining > 0 ? null : 'Scan limit reached for this period',
+        isPro: effectiveIsPro,
+      }
+      const result = await checkCameraEligibility(snapElig)
+
+      if (result.action === 'open_camera') {
+        setIsCameraOpen(true)
+        if (!isAutoOpen) setIsLogged(false)
+        return
+      }
+
+      if (result.action === 'show_snap_gate') {
+        setShowSnapGate(true)
+        return
+      }
+
+      if (result.action === 'show_account_gate') {
+        setAccountGateMode('guest')
+        setShowAccountGate(true)
+        pendingCameraOpenRef.current = true
+        return
+      }
+
+      if (result.action === 'show_auth_resume') {
+        setAccountGateMode('signin')
+        setShowAccountGate(true)
+        pendingCameraOpenRef.current = true
+        return
+      }
+
+      // error — fall back to snap gate as a safe default
       setShowSnapGate(true)
-      return
+    } catch (e) {
+      // Navigation or eligibility failure: reset all guards so the user can retry.
+      // Show snap gate as a safe fallback rather than leaving the button inert.
+      setShowSnapGate(true)
+    } finally {
+      cameraInFlightRef.current = false
     }
-
-    if (result.action === 'show_account_gate') {
-      setAccountGateMode('guest')
-      setShowAccountGate(true)
-      pendingCameraOpenRef.current = true
-      return
-    }
-
-    if (result.action === 'show_auth_resume') {
-      setAccountGateMode('signin')
-      setShowAccountGate(true)
-      pendingCameraOpenRef.current = true
-      return
-    }
-
-    // error — fall back to snap gate as a safe default
-    setShowSnapGate(true)
-  }, [filmRollRemaining, filmRollIsPro])
+  }, [filmRollRemaining, filmRollIsPro, serverQuota])
 
   // Auto-open camera when navigated with openCamera: true
   useEffect(() => {

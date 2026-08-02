@@ -178,7 +178,7 @@ function ProduceEditRow({
   const confidence = registryRecord?.confidence || 'high'
 
   const qtyMeta = portionMeta?.inputMode === 'quantity' ? portionMeta : null
-  const currentQuantity = qtyMeta?.enteredQuantity || ''
+  const currentQuantity = qtyMeta?.enteredQuantity || 1
   const currentUnitKey = qtyMeta?.unitKey || getDefaultPortionUnit(item.produceId)?.unitKey || null
   const currentSizeKey = qtyMeta?.sizeKey || null
 
@@ -756,8 +756,19 @@ export default function JuiceSnapScreen({ navigation, route }) {
         const defaultSize = hasSML
           ? (defaultUnit.sizes.find((s) => s.sizeKey === 'medium') || defaultUnit.sizes[0])
           : null
-        // Don't fabricate a quantity — leave metadata empty until user enters one
-        newIngredient.portionMetadata = undefined
+        // Initialize with quantity: 1 so the default passes validation
+        const initialResult = recomputeFromQuantityChange({
+          produceId: item.id,
+          quantity: 1,
+          unitKey: defaultUnit.unitKey,
+          sizeKey: defaultSize?.sizeKey || undefined,
+        })
+        if (initialResult) {
+          newIngredient.portionMetadata = initialResult.metadata
+          newIngredient.weightG = initialResult.weightG
+        } else {
+          newIngredient.portionMetadata = undefined
+        }
         newIngredient.pendingUnitKey = defaultUnit.unitKey
         newIngredient.pendingSizeKey = defaultSize?.sizeKey || null
       }
@@ -950,10 +961,39 @@ export default function JuiceSnapScreen({ navigation, route }) {
             portionMetadata: restored.metadata,
           }
         } else {
-          // No prior metadata — don't invent a count, just switch mode
-          updated[index] = {
-            ...item,
-            portionEntryMode: 'quantity',
+          // No prior metadata — initialize with quantity: 1
+          const defaultUnit = getDefaultPortionUnit(item.produceId)
+          if (defaultUnit) {
+            const hasSML = defaultUnit.sizes.some((s) => s.sizeKey !== 'standard')
+            const defaultSize = hasSML
+              ? (defaultUnit.sizes.find((s) => s.sizeKey === 'medium') || defaultUnit.sizes[0])
+              : null
+            const initialResult = recomputeFromQuantityChange({
+              produceId: item.produceId,
+              quantity: 1,
+              unitKey: defaultUnit.unitKey,
+              sizeKey: defaultSize?.sizeKey || undefined,
+            })
+            if (initialResult) {
+              updated[index] = {
+                ...item,
+                portionEntryMode: 'quantity',
+                weightG: initialResult.weightG,
+                portionMetadata: initialResult.metadata,
+                pendingUnitKey: defaultUnit.unitKey,
+                pendingSizeKey: defaultSize?.sizeKey || null,
+              }
+            } else {
+              updated[index] = {
+                ...item,
+                portionEntryMode: 'quantity',
+              }
+            }
+          } else {
+            updated[index] = {
+              ...item,
+              portionEntryMode: 'quantity',
+            }
           }
         }
       } else {
@@ -969,7 +1009,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
   }, [juiceMethod])
 
   const handleQuantityChange = useCallback((index, qty) => {
-    const safeQty = Math.max(0, qty)
+    const safeQty = Math.max(1, qty)
     setBatch((prev) => {
       const updated = [...prev.scannedIngredients]
       const item = updated[index]

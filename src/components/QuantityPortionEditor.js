@@ -27,7 +27,7 @@ export default function QuantityPortionEditor({
   onEstimatedWeightChange,
   confidence = 'high',
 }) {
-  const [localQuantity, setLocalQuantity] = useState(String(quantity || ''))
+  const [localQuantity, setLocalQuantity] = useState(String(quantity || 1))
   const [validationError, setValidationError] = useState('')
 
   const supported = isQuantitySupported(produceId)
@@ -46,6 +46,12 @@ export default function QuantityPortionEditor({
     () => (currentUnit ? getSupportedSizes(produceId, currentUnit.unitKey) : []),
     [produceId, currentUnit],
   )
+
+  // Sync localQuantity when the quantity prop changes from parent
+  useEffect(() => {
+    const normalized = quantity || 1
+    setLocalQuantity(String(normalized))
+  }, [quantity])
 
   // Recompute estimate when inputs change
   useEffect(() => {

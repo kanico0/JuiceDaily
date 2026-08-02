@@ -54,6 +54,56 @@ jest.mock('../../components/MeshGradientBg', () => {
   }
 })
 
+jest.mock('../../services/subscriptions/SubscriptionStore', () => ({
+  useSubscription: jest.fn(() => ({
+    isPro: false,
+    state: { isProActive: false, initialized: true, loading: false },
+    purchase: jest.fn(),
+    restore: jest.fn(),
+    refresh: jest.fn(),
+    openManagement: jest.fn(),
+    offering: null,
+    purchasing: false,
+  })),
+}))
+
+jest.mock('../../services/historyAccessPolicy', () => ({
+  getHistoryAccessPolicy: jest.fn((isPro, isPreview) => ({
+    isPro,
+    isAdvancedPreview: isPreview,
+    canViewBasicHistory: true,
+    canViewAdvancedDetails: isPro || isPreview,
+    canMakeAgain: isPro || isPreview,
+    shouldShowPreviewBadge: !isPro && isPreview,
+    shouldShowPreviewExplanation: !isPro && isPreview,
+    shouldShowAdvancedUpgrade: !isPro && !isPreview,
+    shouldShowMakeAgainUpgrade: !isPro && !isPreview,
+  })),
+  getAccessType: jest.fn((p) => p.isPro ? 'pro' : p.isAdvancedPreview ? 'free_preview' : 'free_locked'),
+  getEntryPosition: jest.fn((isPreview) => isPreview ? 'newest' : 'older'),
+}))
+
+jest.mock('../../services/historyPreviewEntry', () => ({
+  getAdvancedPreviewEntryId: jest.fn(() => null),
+  isAdvancedPreviewEntry: jest.fn(() => false),
+  sortHistoryNewestFirst: jest.fn((e) => e),
+  isValidHistoryEntry: jest.fn(() => true),
+}))
+
+jest.mock('../../services/makeAgainHelper', () => ({
+  createEditableDraftFromHistoryEntry: jest.fn(() => ({
+    ingredients: [],
+    primaryProduceId: null,
+    skippedIngredients: [],
+  })),
+  draftToPreloadIngredients: jest.fn(() => []),
+  hasUnsavedDraft: jest.fn(() => false),
+}))
+
+jest.mock('../../services/AnalyticsService', () => ({
+  trackEvent: jest.fn(),
+}))
+
 import {
   countDistinctLoggedDays,
   getEncouragementCopy,

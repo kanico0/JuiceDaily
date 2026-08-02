@@ -4,27 +4,51 @@
 // expands to show individual entries for that day.
 // ─────────────────────────────────────────────────────────────
 
-import React, { useState, useMemo, useCallback, useEffect } from 'react'
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  Pressable,
-  Modal,
-} from 'react-native'
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react'
+import { View, Text, StyleSheet, ScrollView, Pressable, Modal, Alert } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import * as Haptics from 'expo-haptics'
 import {
-  ArrowLeft, ChevronDown, ChevronUp, X,
-  Camera, Keyboard, Eye, Trash2, Clock, Sparkles,
+  ArrowLeft,
+  ChevronDown,
+  ChevronUp,
+  X,
+  Camera,
+  Keyboard,
+  Eye,
+  Trash2,
+  Clock,
+  Sparkles,
+  Lock,
+  RefreshCw,
+  ChevronRight,
 } from 'lucide-react-native'
 import MeshGradientBg from '../components/MeshGradientBg'
 import { useJuiceLog } from '../services/JuiceLogStore'
 import { PRODUCE_DATA } from '../services/JuiceEngine'
 import { USDA_RDA } from '../constants/nutrition'
-import { BRAND, FONT_SIZE, FONT_WEIGHT, SPACE, RADIUS, LINE_HEIGHT } from '../constants/tokens'
+import {
+  BRAND,
+  FONT_SIZE,
+  FONT_WEIGHT,
+  SPACE,
+  RADIUS,
+  LINE_HEIGHT,
+  SEMANTIC_COLORS,
+} from '../constants/tokens'
 import { getDevNow, onDevClockChange } from '../utils/DevClock'
+import { useSubscription } from '../services/subscriptions/SubscriptionStore'
+import {
+  getHistoryAccessPolicy,
+  getAccessType,
+  getEntryPosition,
+} from '../services/historyAccessPolicy'
+import { getAdvancedPreviewEntryId } from '../services/historyPreviewEntry'
+import {
+  createEditableDraftFromHistoryEntry,
+  draftToPreloadIngredients,
+} from '../services/makeAgainHelper'
+import { trackEvent } from '../services/AnalyticsService'
 
 // ── Source icon helper ───────────────────────────────────────
 const SOURCE_ICON = { photo: Camera, manual: Keyboard, demo: Eye }
@@ -78,7 +102,7 @@ export const ENCOURAGEMENT_COPY = [
   },
 ]
 
-export function countDistinctLoggedDays (entries) {
+export function countDistinctLoggedDays(entries) {
   const validKeys = new Set()
   for (const e of entries) {
     if (!e || typeof e !== 'object') continue
@@ -89,13 +113,13 @@ export function countDistinctLoggedDays (entries) {
   return validKeys.size
 }
 
-export function getEncouragementCopy (distinctDays) {
+export function getEncouragementCopy(distinctDays) {
   if (distinctDays < 0 || distinctDays > 5) return null
   return ENCOURAGEMENT_COPY[distinctDays]
 }
 
 // ── Encouragement Card ───────────────────────────────────────
-function EncouragementCard ({ title, body }) {
+function EncouragementCard({ title, body }) {
   return (
     <View style={s.encouragementCard} accessibilityRole="summary">
       <View style={s.encouragementHeader}>
@@ -115,25 +139,210 @@ function formatTime(isoStr) {
   return `${h % 12 || 12}:${m} ${ampm}`
 }
 
+// ── Ingredient count bucket for analytics ───────────────────
+function getIngredientCountBucket(count) {
+  if (count <= 0) return '0'
+  if (count <= 2) return '1-2'
+  if (count <= 4) return '3-4'
+  if (count <= 6) return '5-6'
+  return '7+'
+}
+
+function getEntryCountBucket(count) {
+  if (count <= 0) return '0'
+  if (count <= 5) return '1-5'
+  if (count <= 20) return '6-20'
+  if (count <= 50) return '21-50'
+  return '50+'
+}
+
+// ── Advanced Preview Banner ──────────────────────────────────
+function AdvancedPreviewBanner({ onUpgrade }) {
+  return (
+    <View style={ms.previewBanner}>
+      <View style={ms.previewBannerHeader}>
+        <Sparkles size={16} color={SEMANTIC_COLORS.warning} />
+        <Text style={ms.previewBannerTitle}>Your Advanced History Preview</Text>
+      </View>
+      <Text style={ms.previewBannerBody}>
+        Your latest juice includes the complete history experience. Upgrade to RawLifeFlow Pro to
+        revisit detailed insights for every juice you have logged.
+      </Text>
+      <Pressable
+        style={({ pressed }) => [ms.previewCtaBtn, pressed && { opacity: 0.7 }]}
+        onPress={onUpgrade}
+        hitSlop={8}
+        accessibilityRole="button"
+        accessibilityLabel="Unlock Advanced History"
+      >
+        <Text style={ms.previewCtaText}>Unlock Advanced History</Text>
+        <ChevronRight size={16} color={SEMANTIC_COLORS.textOnAccent} />
+      </Pressable>
+    </View>
+  )
+}
+
+// ── Locked Advanced Card ─────────────────────────────────────
+function LockedAdvancedCard({ onUpgrade, onMakeAgainLocked }) {
+  return (
+    <View style={ms.lockedCard}>
+      <View style={ms.lockedCardHeader}>
+        <Lock size={16} color={SEMANTIC_COLORS.textMuted} />
+        <Text style={ms.lockedCardTitle}>Your juice is safely saved</Text>
+      </View>
+      <Text style={ms.lockedCardBody}>
+        Upgrade to RawLifeFlow Pro to reopen its detailed nutrition, insights, and comparisons.
+      </Text>
+      <Text style={ms.lockedCardSub}>
+        Your complete basic Juice History will always remain available.
+      </Text>
+      <Pressable
+        style={({ pressed }) => [ms.lockedCtaBtn, pressed && { opacity: 0.7 }]}
+        onPress={onUpgrade}
+        hitSlop={8}
+        accessibilityRole="button"
+        accessibilityLabel="Unlock Advanced History"
+        accessibilityHint="Opens RawLifeFlow Pro subscription options."
+      >
+        <Text style={ms.lockedCtaText}>Unlock Advanced History</Text>
+      </Pressable>
+      <Pressable
+        style={({ pressed }) => [ms.makeAgainLockedBtn, pressed && { opacity: 0.7 }]}
+        onPress={onMakeAgainLocked}
+        hitSlop={8}
+        accessibilityRole="button"
+        accessibilityLabel="Make This Juice Again"
+        accessibilityHint="Requires RawLifeFlow Pro for older history entries."
+      >
+        <RefreshCw size={16} color={SEMANTIC_COLORS.textMuted} />
+        <Text style={ms.makeAgainLockedText}>Make This Juice Again</Text>
+        <Lock size={12} color={SEMANTIC_COLORS.textMuted} />
+      </Pressable>
+    </View>
+  )
+}
+
+// ── Make Again Button ────────────────────────────────────────
+function MakeAgainButton({ onPress, disabled }) {
+  return (
+    <Pressable
+      style={({ pressed }) => [
+        ms.makeAgainBtn,
+        pressed && { opacity: 0.7 },
+        disabled && { opacity: 0.5 },
+      ]}
+      onPress={onPress}
+      disabled={disabled}
+      hitSlop={8}
+      accessibilityRole="button"
+      accessibilityLabel="Make This Juice Again"
+      accessibilityHint="Starts a new editable juice using ingredients from this past juice."
+    >
+      <RefreshCw size={16} color={SEMANTIC_COLORS.success} />
+      <Text style={ms.makeAgainText}>Make This Juice Again</Text>
+    </Pressable>
+  )
+}
+
 // ── Entry Details Modal ──────────────────────────────────────
-function EntryDetailsModal({ entry, visible, onClose, onDelete }) {
+function EntryDetailsModal({
+  entry,
+  visible,
+  onClose,
+  onDelete,
+  isPro,
+  isAdvancedPreview,
+  onUpgrade,
+  onMakeAgain,
+  makeAgainInProgress,
+}) {
+  const previewViewedRef = useRef(false)
+  const lockedViewedRef = useRef(false)
+
+  useEffect(() => {
+    if (!visible || !entry) {
+      previewViewedRef.current = false
+      lockedViewedRef.current = false
+      return
+    }
+    const policy = getHistoryAccessPolicy(isPro, isAdvancedPreview)
+    const ingredientCount = (entry.ingredients || []).length
+    const entryPosition = getEntryPosition(isAdvancedPreview)
+
+    if (policy.isAdvancedPreview && !previewViewedRef.current) {
+      previewViewedRef.current = true
+      trackEvent('advanced_history_preview_viewed', {
+        entry_position: entryPosition,
+        ingredient_count_bucket: getIngredientCountBucket(ingredientCount),
+      })
+    }
+    if (policy.shouldShowAdvancedUpgrade && !lockedViewedRef.current) {
+      lockedViewedRef.current = true
+      trackEvent('advanced_history_locked_viewed', {
+        entry_position: entryPosition,
+        ingredient_count_bucket: getIngredientCountBucket(ingredientCount),
+      })
+    }
+  }, [visible, entry, isPro, isAdvancedPreview])
+
   if (!entry) return null
+
+  const policy = getHistoryAccessPolicy(isPro, isAdvancedPreview)
+
   const nutrients = entry.nutrientSummary || {}
   const topNutrients = Object.entries(USDA_RDA)
     .map(([key, rda]) => {
       const val = nutrients[key] || 0
       const pct = rda > 0 ? Math.round((val / rda) * 100) : 0
-      const label = key === 'vitaminC' ? 'Vitamin C'
-        : key === 'vitaminA' ? 'Vitamin A'
-        : key === 'potassium' ? 'Potassium'
-        : key === 'iron' ? 'Iron'
-        : key === 'magnesium' ? 'Magnesium'
-        : key === 'folate' ? 'Folate' : key
+      const label =
+        key === 'vitaminC'
+          ? 'Vitamin C'
+          : key === 'vitaminA'
+            ? 'Vitamin A'
+            : key === 'potassium'
+              ? 'Potassium'
+              : key === 'iron'
+                ? 'Iron'
+                : key === 'magnesium'
+                  ? 'Magnesium'
+                  : key === 'folate'
+                    ? 'Folate'
+                    : key
       return { key, label, pct }
     })
     .filter((n) => n.pct > 0)
     .sort((a, b) => b.pct - a.pct)
     .slice(0, 5)
+
+  const handleMakeAgain = () => {
+    if (policy.canMakeAgain && onMakeAgain) {
+      onMakeAgain(entry)
+    }
+  }
+
+  const handleMakeAgainLocked = () => {
+    trackEvent('history_make_again_locked', {
+      paywall_source: 'history_make_again_locked',
+      entry_position: getEntryPosition(isAdvancedPreview),
+    })
+    onUpgrade('history_make_again_locked')
+  }
+
+  const handleUpgradeFromPreview = () => {
+    trackEvent('advanced_history_preview_cta_tapped', {
+      source: 'history_preview_banner',
+      paywall_source: 'history_preview_upgrade',
+    })
+    onUpgrade('history_preview_upgrade')
+  }
+
+  const handleUpgradeFromLocked = () => {
+    trackEvent('advanced_history_upgrade_tapped', {
+      source: 'history_advanced_locked',
+      paywall_source: 'history_advanced_locked',
+    })
+    onUpgrade('history_advanced_locked')
+  }
 
   return (
     <Modal visible={visible} transparent animationType="fade">
@@ -141,7 +350,12 @@ function EntryDetailsModal({ entry, visible, onClose, onDelete }) {
         <Pressable style={ms.card} onPress={(e) => e.stopPropagation()}>
           <View style={ms.cardHeader}>
             <Text style={ms.cardTitle}>Entry Details</Text>
-            <Pressable onPress={onClose} hitSlop={12}>
+            <Pressable
+              onPress={onClose}
+              hitSlop={12}
+              accessibilityRole="button"
+              accessibilityLabel="Close details"
+            >
               <X size={20} color={BRAND.text.muted} />
             </Pressable>
           </View>
@@ -151,35 +365,75 @@ function EntryDetailsModal({ entry, visible, onClose, onDelete }) {
               {entry.source} · {formatTime(entry.createdAt)}
             </Text>
 
+            {/* Advanced Preview Banner for free newest item */}
+            {policy.shouldShowPreviewExplanation && (
+              <AdvancedPreviewBanner onUpgrade={handleUpgradeFromPreview} />
+            )}
+
+            {/* Ingredients — always visible (basic field) */}
             <Text style={ms.sectionTitle}>Ingredients</Text>
             {(entry.ingredients || []).map((id, i) => {
               const prod = PRODUCE_DATA[id]
               return (
                 <View key={`${id}-${i}`} style={ms.ingredientRow}>
-                  <View style={[ms.ingredientDot, { backgroundColor: prod?.category === 'fruit' ? '#FFB74D' : '#81C784' }]} />
+                  <View
+                    style={[
+                      ms.ingredientDot,
+                      { backgroundColor: prod?.category === 'fruit' ? '#FFB74D' : '#81C784' },
+                    ]}
+                  />
                   <Text style={ms.ingredientName}>{prod?.name || id}</Text>
                 </View>
               )
             })}
 
-            {topNutrients.length > 0 && (
+            {/* Advanced details — visible for Pro and free preview */}
+            {policy.canViewAdvancedDetails && topNutrients.length > 0 && (
               <>
                 <Text style={[ms.sectionTitle, { marginTop: SPACE.lg }]}>Top Nutrients (% DV)</Text>
                 {topNutrients.map((n) => (
                   <View key={n.key} style={ms.statRow}>
                     <Text style={ms.statLabel}>{n.label}</Text>
-                    <Text style={[ms.statValue, n.pct >= 20 && { color: '#81C784' }]}>{n.pct}%</Text>
+                    <Text style={[ms.statValue, n.pct >= 20 && { color: SEMANTIC_COLORS.success }]}>
+                      {n.pct}%
+                    </Text>
                   </View>
                 ))}
               </>
             )}
 
+            {/* Locked advanced card for older free items */}
+            {policy.shouldShowAdvancedUpgrade && (
+              <LockedAdvancedCard
+                onUpgrade={handleUpgradeFromLocked}
+                onMakeAgainLocked={handleMakeAgainLocked}
+              />
+            )}
+
+            {/* Make Again — enabled for Pro and free preview */}
+            {policy.canMakeAgain && (
+              <MakeAgainButton onPress={handleMakeAgain} disabled={makeAgainInProgress} />
+            )}
+
+            {/* Supporting copy for preview Make Again */}
+            {policy.isAdvancedPreview && (
+              <Text style={ms.makeAgainHint}>
+                We added the ingredients from your past juice. Adjust anything before analyzing or
+                logging this new batch.
+              </Text>
+            )}
+
             <Pressable
               style={({ pressed }) => [ms.deleteBtn, pressed && { opacity: 0.7 }]}
-              onPress={() => { onDelete(entry.id); onClose() }}
+              onPress={() => {
+                onDelete(entry.id)
+                onClose()
+              }}
               hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Delete entry"
             >
-              <Trash2 size={16} color="#E91E63" />
+              <Trash2 size={16} color={SEMANTIC_COLORS.danger} />
               <Text style={ms.deleteBtnText}>Delete Entry</Text>
             </Pressable>
           </ScrollView>
@@ -190,7 +444,7 @@ function EntryDetailsModal({ entry, visible, onClose, onDelete }) {
 }
 
 // ── Day Section ──────────────────────────────────────────────
-function DaySection({ dateKey, entries, onEntryPress, devClockTick }) {
+function DaySection({ dateKey, entries, onEntryPress, devClockTick, previewEntryId, isPro }) {
   const [expanded, setExpanded] = useState(dateKey === formatDateKey(getDevNow()))
   const totalIngredients = entries.reduce((sum, e) => sum + (e.ingredients?.length || 0), 0)
 
@@ -216,10 +470,11 @@ function DaySection({ dateKey, entries, onEntryPress, devClockTick }) {
             {entries.length} juice{entries.length !== 1 ? 's' : ''} · {totalIngredients} ingredients
           </Text>
         </View>
-        {expanded
-          ? <ChevronUp size={18} color={BRAND.text.muted} />
-          : <ChevronDown size={18} color={BRAND.text.muted} />
-        }
+        {expanded ? (
+          <ChevronUp size={18} color={BRAND.text.muted} />
+        ) : (
+          <ChevronDown size={18} color={BRAND.text.muted} />
+        )}
       </Pressable>
 
       {expanded && (
@@ -227,19 +482,45 @@ function DaySection({ dateKey, entries, onEntryPress, devClockTick }) {
           {entries.map((entry) => {
             const SrcIcon = SOURCE_ICON[entry.source] || Camera
             const srcColor = SOURCE_COLOR[entry.source] || '#64B5F6'
+            const isPreview = !isPro && previewEntryId === entry.id
+            const isOlderLocked = !isPro && previewEntryId && previewEntryId !== entry.id
+            const accessLabel = isPreview
+              ? `Advanced History Preview. ${entry.title}, logged ${formatDate(dateKey)}. Complete advanced details are available for this latest juice.`
+              : isOlderLocked
+                ? `Opens basic juice details. Advanced historical insights require RawLifeFlow Pro.`
+                : undefined
             return (
               <Pressable
                 key={entry.id}
                 style={({ pressed }) => [s.entryRow, pressed && { opacity: 0.7 }]}
                 onPress={() => onEntryPress(entry)}
                 hitSlop={4}
+                accessibilityRole="button"
+                accessibilityLabel={accessLabel || `${entry.title}, ${formatTime(entry.createdAt)}`}
               >
                 <View style={[s.entrySrcIcon, { backgroundColor: srcColor + '18' }]}>
                   <SrcIcon size={14} color={srcColor} />
                 </View>
                 <View style={s.entryContent}>
-                  <Text style={s.entryTitle} numberOfLines={1}>{entry.title}</Text>
-                  <Text style={s.entryMeta}>{formatTime(entry.createdAt)} · {(entry.ingredients || []).length} ingredients</Text>
+                  <View style={s.entryTitleRow}>
+                    <Text style={s.entryTitle} numberOfLines={1}>
+                      {entry.title}
+                    </Text>
+                    {isPreview && (
+                      <View style={s.previewBadge}>
+                        <Sparkles size={10} color={SEMANTIC_COLORS.warning} />
+                        <Text style={s.previewBadgeText}>ADVANCED PREVIEW</Text>
+                      </View>
+                    )}
+                  </View>
+                  <Text style={s.entryMeta}>
+                    {formatTime(entry.createdAt)} · {(entry.ingredients || []).length} ingredients
+                  </Text>
+                  {isPreview && (
+                    <Text style={s.previewHint}>
+                      Explore the complete details from your latest juice.
+                    </Text>
+                  )}
                 </View>
               </Pressable>
             )
@@ -254,12 +535,32 @@ function DaySection({ dateKey, entries, onEntryPress, devClockTick }) {
 
 export default function HistoryScreen({ navigation }) {
   const { entries, deleteEntry } = useJuiceLog()
+  const { isPro } = useSubscription()
   const [selectedEntry, setSelectedEntry] = useState(null)
   const [devClockTick, setDevClockTick] = useState(0)
+  const [makeAgainInProgress, setMakeAgainInProgress] = useState(false)
+  const makeAgainRef = useRef(false)
+  const historyViewedRef = useRef(false)
 
   useEffect(() => {
     return onDevClockChange(() => setDevClockTick((t) => t + 1))
   }, [])
+
+  // Determine the rotating preview entry ID for free users
+  const previewEntryId = useMemo(() => {
+    if (isPro) return null
+    return getAdvancedPreviewEntryId(entries)
+  }, [entries, isPro])
+
+  // Track history_viewed once per mount (not on every rerender)
+  useEffect(() => {
+    if (historyViewedRef.current) return
+    historyViewedRef.current = true
+    trackEvent('history_viewed', {
+      has_history_entries: entries.length > 0,
+      history_entry_count_bucket: getEntryCountBucket(entries.length),
+    })
+  }, [entries.length])
 
   // Group entries by dateKey, descending
   const groupedDays = useMemo(() => {
@@ -280,7 +581,125 @@ export default function HistoryScreen({ navigation }) {
   const totalEntries = entries.length
   const totalDays = groupedDays.length
   const distinctLoggedDays = useMemo(() => countDistinctLoggedDays(entries), [entries])
-  const encouragement = useMemo(() => getEncouragementCopy(distinctLoggedDays), [distinctLoggedDays])
+  const encouragement = useMemo(
+    () => getEncouragementCopy(distinctLoggedDays),
+    [distinctLoggedDays],
+  )
+
+  // Check if selected entry is the preview
+  const isSelectedPreview = useMemo(() => {
+    if (!selectedEntry || isPro) return false
+    return previewEntryId === selectedEntry.id
+  }, [selectedEntry, isPro, previewEntryId])
+
+  const handleUpgrade = useCallback(
+    (source) => {
+      navigation.navigate('Paywall', { source })
+    },
+    [navigation],
+  )
+
+  const handleMakeAgain = useCallback(
+    (entry) => {
+      if (makeAgainRef.current) return
+      makeAgainRef.current = true
+      setMakeAgainInProgress(true)
+
+      const policy = getHistoryAccessPolicy(isPro, previewEntryId === entry.id)
+      const accessType = getAccessType(policy)
+      const entryPosition = getEntryPosition(previewEntryId === entry.id)
+      const ingredientCount = (entry.ingredients || []).length
+
+      trackEvent('history_make_again_tapped', {
+        access_type: accessType,
+        entry_position: entryPosition,
+        ingredient_count_bucket: getIngredientCountBucket(ingredientCount),
+      })
+
+      const result = createEditableDraftFromHistoryEntry(entry)
+
+      if (result.ingredients.length === 0) {
+        trackEvent('history_make_again_failed', {
+          access_type: accessType,
+          failure_category: 'no_valid_ingredients',
+          ingredient_count_bucket: getIngredientCountBucket(ingredientCount),
+          skipped_ingredient_count_bucket: getIngredientCountBucket(
+            result.skippedIngredients.length,
+          ),
+        })
+        Alert.alert(
+          'Unable to recreate juice',
+          'Some ingredients from this past juice are no longer available and could not be added.',
+          [
+            {
+              text: 'OK',
+              onPress: () => {
+                makeAgainRef.current = false
+                setMakeAgainInProgress(false)
+              },
+            },
+          ],
+        )
+        return
+      }
+
+      trackEvent('history_make_again_draft_created', {
+        access_type: accessType,
+        entry_position: entryPosition,
+        ingredient_count_bucket: getIngredientCountBucket(ingredientCount),
+        skipped_ingredient_count_bucket: getIngredientCountBucket(result.skippedIngredients.length),
+      })
+
+      const preload = draftToPreloadIngredients(result.ingredients)
+
+      const navigateToEditor = () => {
+        navigation.navigate('ScanFlow', {
+          screen: 'ScanHome',
+          params: {
+            manualEntry: true,
+            preloadIngredients: preload,
+            source: 'history_make_again',
+          },
+        })
+        setSelectedEntry(null)
+        makeAgainRef.current = false
+        setMakeAgainInProgress(false)
+      }
+
+      if (result.skippedIngredients.length > 0) {
+        Alert.alert(
+          'Some ingredients could not be added',
+          'Some ingredients from this past juice are no longer available and could not be added.',
+          [
+            {
+              text: 'Cancel',
+              onPress: () => {
+                makeAgainRef.current = false
+                setMakeAgainInProgress(false)
+              },
+            },
+            { text: 'Continue', onPress: navigateToEditor },
+          ],
+        )
+      } else {
+        navigateToEditor()
+      }
+    },
+    [isPro, previewEntryId, navigation],
+  )
+
+  // Track item opened
+  const handleEntryPress = useCallback(
+    (entry) => {
+      const policy = getHistoryAccessPolicy(isPro, previewEntryId === entry.id)
+      trackEvent('history_item_opened', {
+        access_type: getAccessType(policy),
+        entry_position: getEntryPosition(previewEntryId === entry.id),
+      })
+      setSelectedEntry(entry)
+    },
+    [isPro, previewEntryId],
+  )
 
   return (
     <View style={s.root}>
@@ -289,19 +708,30 @@ export default function HistoryScreen({ navigation }) {
       <SafeAreaView style={s.safe} edges={['top']}>
         <View style={s.header}>
           <View style={s.headerRow}>
-            <Pressable onPress={() => navigation.goBack()} style={s.backBtn} hitSlop={8}>
+            <Pressable
+              onPress={() => navigation.goBack()}
+              style={s.backBtn}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Go back"
+            >
               <ArrowLeft size={22} color={BRAND.text.primary} />
             </Pressable>
             <View style={{ flex: 1 }}>
               <Text style={s.headerTitle}>History</Text>
               <Text style={s.headerSub}>
-                {totalEntries} juice{totalEntries !== 1 ? 's' : ''} across {totalDays} day{totalDays !== 1 ? 's' : ''}
+                {totalEntries} juice{totalEntries !== 1 ? 's' : ''} across {totalDays} day
+                {totalDays !== 1 ? 's' : ''}
               </Text>
             </View>
           </View>
         </View>
 
-        <ScrollView style={s.scroll} contentContainerStyle={s.scrollContent} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          style={s.scroll}
+          contentContainerStyle={s.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
           {encouragement && (
             <EncouragementCard title={encouragement.title} body={encouragement.body} />
           )}
@@ -317,8 +747,10 @@ export default function HistoryScreen({ navigation }) {
                 key={group.dateKey}
                 dateKey={group.dateKey}
                 entries={group.entries}
-                onEntryPress={setSelectedEntry}
+                onEntryPress={handleEntryPress}
                 devClockTick={devClockTick}
+                previewEntryId={previewEntryId}
+                isPro={isPro}
               />
             ))
           )}
@@ -330,6 +762,11 @@ export default function HistoryScreen({ navigation }) {
         visible={!!selectedEntry}
         onClose={() => setSelectedEntry(null)}
         onDelete={deleteEntry}
+        isPro={isPro}
+        isAdvancedPreview={isSelectedPreview}
+        onUpgrade={handleUpgrade}
+        onMakeAgain={handleMakeAgain}
+        makeAgainInProgress={makeAgainInProgress}
       />
     </View>
   )
@@ -438,7 +875,142 @@ const ms = StyleSheet.create({
   deleteBtnText: {
     fontSize: FONT_SIZE.sm,
     fontWeight: FONT_WEIGHT.semibold,
-    color: '#E91E63',
+    color: SEMANTIC_COLORS.danger,
+  },
+  // ── Advanced Preview Banner ────────────────────────────────
+  previewBanner: {
+    backgroundColor: 'rgba(255,183,77,0.08)',
+    borderRadius: RADIUS.md,
+    borderWidth: 0.5,
+    borderColor: 'rgba(255,183,77,0.15)',
+    paddingHorizontal: SPACE.md,
+    paddingVertical: SPACE.md,
+    marginBottom: SPACE.lg,
+  },
+  previewBannerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: SPACE.xs,
+  },
+  previewBannerTitle: {
+    fontSize: FONT_SIZE.sm,
+    fontWeight: FONT_WEIGHT.bold,
+    color: SEMANTIC_COLORS.warning,
+  },
+  previewBannerBody: {
+    fontSize: FONT_SIZE.xs,
+    fontWeight: FONT_WEIGHT.regular,
+    color: BRAND.text.secondary,
+    lineHeight: LINE_HEIGHT.relaxed * FONT_SIZE.xs,
+    marginBottom: SPACE.sm,
+  },
+  previewCtaBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    paddingVertical: 10,
+    borderRadius: RADIUS.sm,
+    backgroundColor: SEMANTIC_COLORS.accentPrimary,
+  },
+  previewCtaText: {
+    fontSize: FONT_SIZE.sm,
+    fontWeight: FONT_WEIGHT.semibold,
+    color: SEMANTIC_COLORS.textOnAccent,
+  },
+  // ── Locked Advanced Card ───────────────────────────────────
+  lockedCard: {
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    borderRadius: RADIUS.md,
+    borderWidth: 0.5,
+    borderColor: 'rgba(255,255,255,0.06)',
+    paddingHorizontal: SPACE.md,
+    paddingVertical: SPACE.lg,
+    marginTop: SPACE.lg,
+    alignItems: 'center',
+  },
+  lockedCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: SPACE.xs,
+  },
+  lockedCardTitle: {
+    fontSize: FONT_SIZE.sm,
+    fontWeight: FONT_WEIGHT.bold,
+    color: BRAND.text.primary,
+  },
+  lockedCardBody: {
+    fontSize: FONT_SIZE.xs,
+    fontWeight: FONT_WEIGHT.regular,
+    color: BRAND.text.secondary,
+    textAlign: 'center',
+    lineHeight: LINE_HEIGHT.relaxed * FONT_SIZE.xs,
+    marginBottom: SPACE.xs,
+  },
+  lockedCardSub: {
+    fontSize: FONT_SIZE.xs,
+    fontWeight: FONT_WEIGHT.medium,
+    color: BRAND.text.muted,
+    textAlign: 'center',
+    marginBottom: SPACE.md,
+  },
+  lockedCtaBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: SPACE.lg,
+    borderRadius: RADIUS.sm,
+    backgroundColor: SEMANTIC_COLORS.accentPrimary,
+    marginBottom: SPACE.sm,
+    minWidth: 200,
+  },
+  lockedCtaText: {
+    fontSize: FONT_SIZE.sm,
+    fontWeight: FONT_WEIGHT.semibold,
+    color: SEMANTIC_COLORS.textOnAccent,
+  },
+  makeAgainLockedBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    paddingHorizontal: SPACE.lg,
+    borderRadius: RADIUS.sm,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    minWidth: 200,
+  },
+  makeAgainLockedText: {
+    fontSize: FONT_SIZE.sm,
+    fontWeight: FONT_WEIGHT.medium,
+    color: BRAND.text.muted,
+  },
+  // ── Make Again Button ──────────────────────────────────────
+  makeAgainBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: SPACE.lg,
+    paddingVertical: 12,
+    borderRadius: RADIUS.md,
+    backgroundColor: 'rgba(129,199,132,0.08)',
+  },
+  makeAgainText: {
+    fontSize: FONT_SIZE.sm,
+    fontWeight: FONT_WEIGHT.semibold,
+    color: SEMANTIC_COLORS.success,
+  },
+  makeAgainHint: {
+    fontSize: FONT_SIZE.xs,
+    fontWeight: FONT_WEIGHT.regular,
+    color: BRAND.text.muted,
+    lineHeight: LINE_HEIGHT.relaxed * FONT_SIZE.xs,
+    marginTop: SPACE.sm,
+    textAlign: 'center',
   },
 })
 
@@ -535,10 +1107,37 @@ const s = StyleSheet.create({
   entryContent: {
     flex: 1,
   },
+  entryTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
   entryTitle: {
     fontSize: FONT_SIZE.sm,
     fontWeight: FONT_WEIGHT.semibold,
     color: BRAND.text.primary,
+    flex: 1,
+  },
+  previewBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: RADIUS.sm,
+    backgroundColor: 'rgba(255,183,77,0.12)',
+  },
+  previewBadgeText: {
+    fontSize: 9,
+    fontWeight: FONT_WEIGHT.bold,
+    color: SEMANTIC_COLORS.warning,
+    letterSpacing: 0.3,
+  },
+  previewHint: {
+    fontSize: FONT_SIZE.xs,
+    fontWeight: FONT_WEIGHT.medium,
+    color: SEMANTIC_COLORS.warning,
+    marginTop: 3,
   },
   entryMeta: {
     fontSize: FONT_SIZE.xs,

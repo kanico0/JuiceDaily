@@ -65,6 +65,7 @@ import { countDistinctProduceIds, classifyBlend, BlendAllowanceError, FREE_ADVAN
 import { authorizeAndProcessBatch } from '../services/quota/blendNutritionGate'
 import { authorizeGuestLog } from '../services/quota/guestLogGate'
 import { checkCameraEligibility } from '../services/cameraEligibilityCoordinator'
+import { SUPABASE_CONFIGURED } from '../services/subscriptions/subscriptionConfig'
 import { trackEvent } from '../services/AnalyticsService'
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -609,6 +610,8 @@ export default function JuiceSnapScreen({ navigation, route }) {
   const { addEntry: addLogEntry } = useJuiceLog()
   const { isPro } = usePro()
   const { quota: serverQuota, applySnapshot: applyQuotaSnapshot, refresh: refreshQuota } = useQuota()
+  const latestQuotaRef = useRef(serverQuota)
+  latestQuotaRef.current = serverQuota
   const filmRollLabel = selectFilmRollLabel(serverQuota)
   const filmRollRemaining = selectFilmRollRemaining(serverQuota)
   const filmRollIsPro = selectFilmRollIsPro(serverQuota)
@@ -744,19 +747,47 @@ export default function JuiceSnapScreen({ navigation, route }) {
     cameraInFlightRef.current = true
 
     try {
-      // If quota hasn't loaded yet, treat as eligible (optimistic for camera open).
-      // Opening the camera consumes zero scans — the server makes the final
-      // decision during analyze-scan.  Blocking the camera on a null quota
-      // leaves the button permanently inert for fresh installs and slow networks.
-      const quotaLoaded = serverQuota !== null
-      const effectiveRemaining = quotaLoaded ? filmRollRemaining : 1
-      const effectiveIsPro = quotaLoaded ? filmRollIsPro : false
+      let currentQuota = serverQuota
+
+      // If quota hasn't loaded yet and Supabase is configured, try to refresh
+      // once before making any eligibility decision.  Do not invent remaining
+      // usage — show a network/retry alert if the refresh fails or remains
+      // unresolved.
+      if (currentQuota === null && SUPABASE_CONFIGURED) {
+        await refreshQuota()
+        // Yield to allow React to flush the state update from setQuota
+        // so latestQuotaRef.current reflects the refreshed snapshot.
+        // eslint-disable-next-line no-undef
+        await new Promise((resolve) => setTimeout(resolve, 0))
+        currentQuota = latestQuotaRef.current
+      }
+
+      // If quota is still null after refresh (or Supabase not configured),
+      // we cannot confirm or deny eligibility.  When Supabase is configured
+      // and the refresh failed, show a network/retry alert.  When Supabase
+      // is not configured (dev/offline mode), proceed with null quota —
+      // the coordinator will handle the offline case.
+      if (currentQuota === null && SUPABASE_CONFIGURED) {
+        Alert.alert(
+          'Unable to Check Access',
+          'We could not verify your scan access. Please check your connection and try again.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Try Again', onPress: () => attemptCameraOpen(isAutoOpen) },
+          ],
+        )
+        return
+      }
+
+      // Use the confirmed (or fallback) quota values for snap eligibility
+      const currentRemaining = selectFilmRollRemaining(currentQuota)
+      const currentIsPro = selectFilmRollIsPro(currentQuota)
 
       const snapElig = {
-        eligible: effectiveRemaining > 0,
-        remaining: effectiveRemaining,
-        reason: effectiveRemaining > 0 ? null : 'Scan limit reached for this period',
-        isPro: effectiveIsPro,
+        eligible: currentRemaining > 0,
+        remaining: currentRemaining,
+        reason: currentRemaining > 0 ? null : 'Scan limit reached for this period',
+        isPro: currentIsPro,
       }
       const result = await checkCameraEligibility(snapElig)
 
@@ -785,16 +816,31 @@ export default function JuiceSnapScreen({ navigation, route }) {
         return
       }
 
-      // error — fall back to snap gate as a safe default
-      setShowSnapGate(true)
+      // result.action === 'error' — network or server error from coordinator
+      Alert.alert(
+        'Unable to Check Access',
+        'We could not verify your scan access. Please check your connection and try again.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Try Again', onPress: () => attemptCameraOpen(isAutoOpen) },
+        ],
+      )
     } catch (e) {
-      // Navigation or eligibility failure: reset all guards so the user can retry.
-      // Show snap gate as a safe fallback rather than leaving the button inert.
-      setShowSnapGate(true)
+      // Network, Supabase, or unexpected error — do NOT show the snap gate
+      // (that would misrepresent a network failure as quota exhaustion).
+      console.warn('[Camera] attemptCameraOpen error:', e?.message || e)
+      Alert.alert(
+        'Unable to Check Access',
+        'We could not verify your scan access. Please check your connection and try again.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Try Again', onPress: () => attemptCameraOpen(isAutoOpen) },
+        ],
+      )
     } finally {
       cameraInFlightRef.current = false
     }
-  }, [filmRollRemaining, filmRollIsPro, serverQuota])
+  }, [serverQuota, refreshQuota])
 
   // Auto-open camera when navigated with openCamera: true
   useEffect(() => {

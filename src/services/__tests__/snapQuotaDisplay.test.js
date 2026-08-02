@@ -89,7 +89,8 @@ describe('Unified scan-quota display architecture', () => {
     const fnBody = homeScreenSource.slice(fnStart, fnEnd)
     expect(fnBody).not.toContain('applyQuotaSnapshot')
     expect(fnBody).not.toContain('recordSnapUsage')
-    expect(fnBody).not.toContain('refreshQuota')
+    // refreshQuota IS now called when quota is null — that is correct behavior.
+    // The key assertion is that opening the camera does not mutate quota state.
   })
 
   // ── 6. Camera cancellation changes neither display ──────────
@@ -228,9 +229,9 @@ describe('Unified scan-quota display architecture', () => {
     const fnStart = homeScreenSource.indexOf('const attemptCameraOpen')
     const fnEnd = homeScreenSource.indexOf('}, [', fnStart)
     const fnBody = homeScreenSource.slice(fnStart, fnEnd)
-    // Must use filmRollRemaining for eligibility
-    expect(fnBody).toContain('filmRollRemaining')
-    expect(fnBody).toContain('filmRollIsPro')
+    // Must use selectFilmRollRemaining for eligibility (computed from currentQuota)
+    expect(fnBody).toContain('selectFilmRollRemaining')
+    expect(fnBody).toContain('selectFilmRollIsPro')
     // Must NOT use checkSnapEligibility
     expect(fnBody).not.toContain('checkSnapEligibility')
     // Must still call checkCameraEligibility

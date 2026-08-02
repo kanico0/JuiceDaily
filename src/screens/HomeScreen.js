@@ -601,6 +601,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
   const { recordNutritionLog, momentum: preMomentum } = useNutritionScore()
   const { addEntry: addLogEntry } = useJuiceLog()
   const { checkSnapEligibility, useSnap: recordSnapUsage, snapInfo, isPro } = usePro()
+  const { applySnapshot: applyQuotaSnapshot, refresh: refreshQuota } = useQuota()
   const [showSnapGate, setShowSnapGate] = useState(false)
   const [showAccountGate, setShowAccountGate] = useState(false)
   const [accountGateMode, setAccountGateMode] = useState('guest')
@@ -851,9 +852,23 @@ export default function JuiceSnapScreen({ navigation, route }) {
 
     // Consume one snap on successful image analysis (not on log finalization).
     // Idempotent: if already consumed for this session, do not double-count.
+    // The server has already committed the scan quota via the analyze-scan
+    // Edge Function (reserve → vision → commit). recordSnapUsage() is an
+    // optimistic client-side update for the film-roll counter; the
+    // server-returned quota snapshot is applied to QuotaStore for the
+    // authoritative display.
     if (!snapConsumedForSessionRef.current) {
       recordSnapUsage()
       snapConsumedForSessionRef.current = true
+    }
+
+    // Apply the server-returned quota snapshot to QuotaStore so both the
+    // upper-right QuotaMeter and the FreePlanUsageCard reconcile from the
+    // same authoritative source. Falls back to refresh() if no snapshot.
+    if (visionResult.quota) {
+      applyQuotaSnapshot(visionResult.quota)
+    } else {
+      refreshQuota()
     }
 
     // Check for Advanced Blend threshold from photo scan
@@ -869,7 +884,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
         source: 'photo',
       })
     }
-  }, [juiceMethod, isPro, primaryProduceId, recordSnapUsage])
+  }, [juiceMethod, isPro, primaryProduceId, recordSnapUsage, applyQuotaSnapshot, refreshQuota])
 
   const handleUpdateItem = useCallback((index, newProduceId, newWeightG) => {
     setBatch((prev) => {

@@ -203,9 +203,10 @@ describe('Snap quota display synchronization', () => {
     }
   })
 
-  // 5. recordSnapUsage is called exactly once in the file (in handleProduceIdentified)
-  test('recordSnapUsage() is called exactly once in the entire file', () => {
-    const useSnapCalls = homeScreenSource.match(/recordSnapUsage\(\)/g)
+  // 5. recordSnapUsage is called exactly once in actual code (not comments) in the file
+  test('recordSnapUsage() is called exactly once in actual code in the entire file', () => {
+    // Count only actual call statements, not mentions in comments
+    const useSnapCalls = homeScreenSource.match(/^\s*recordSnapUsage\(\)/gm)
     expect(useSnapCalls).not.toBeNull()
     expect(useSnapCalls.length).toBe(1)
   })
@@ -257,7 +258,7 @@ describe('Snap quota display synchronization', () => {
   // 11. Idempotency: snapConsumedForSessionRef prevents double-counting
   test('snapConsumedForSessionRef guards recordSnapUsage against double-counting', () => {
     const produceIdx = homeScreenSource.indexOf('const handleProduceIdentified')
-    const produceBlock = homeScreenSource.slice(produceIdx, produceIdx + 2000)
+    const produceBlock = homeScreenSource.slice(produceIdx, produceIdx + 5000)
     expect(produceBlock).toContain('snapConsumedForSessionRef')
     expect(produceBlock).toContain('!snapConsumedForSessionRef.current')
     expect(produceBlock).toContain('snapConsumedForSessionRef.current = true')

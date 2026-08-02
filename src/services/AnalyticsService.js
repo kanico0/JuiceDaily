@@ -8,13 +8,25 @@
 // Each event has required fields, optional fields, and
 // prohibited fields (enforced at runtime via allowlist).
 
+// ── Install ID (persistent) ─────────────────────────────────
+
+import AsyncStorage from '@react-native-async-storage/async-storage'
+
 const EVENT_SCHEMAS = {
   first_log_started: {
     required: ['install_id', 'session_id', 'ts', 'surface', 'logger_variant'],
     optional: ['ab_bucket', 'flag_state'],
   },
   first_log_completed: {
-    required: ['install_id', 'session_id', 'ts', 'log_type', 'volume_bucket', 'juice_type_enum', 'offline'],
+    required: [
+      'install_id',
+      'session_id',
+      'ts',
+      'log_type',
+      'volume_bucket',
+      'juice_type_enum',
+      'offline',
+    ],
     optional: ['time_bucket', 'latency_ms_bucket'],
   },
   log_completed: {
@@ -414,17 +426,86 @@ const EVENT_SCHEMAS = {
     optional: ['journey_stage_key', 'lifetime_days'],
   },
 
-}
+  // ── History Access ──────────────────────────────────────────
+  history_viewed: {
+    required: ['session_id', 'ts'],
+    optional: ['has_history_entries', 'history_entry_count_bucket'],
+  },
+  history_item_opened: {
+    required: ['session_id', 'ts'],
+    optional: ['access_type', 'entry_position'],
+  },
+  advanced_history_preview_viewed: {
+    required: ['session_id', 'ts'],
+    optional: ['entry_position', 'ingredient_count_bucket'],
+  },
+  advanced_history_preview_cta_tapped: {
+    required: ['session_id', 'ts'],
+    optional: ['source', 'paywall_source'],
+  },
+  advanced_history_locked_viewed: {
+    required: ['session_id', 'ts'],
+    optional: ['entry_position', 'ingredient_count_bucket'],
+  },
+  advanced_history_upgrade_tapped: {
+    required: ['session_id', 'ts'],
+    optional: ['source', 'paywall_source'],
+  },
+  advanced_history_unlocked: {
+    required: ['session_id', 'ts'],
+    optional: ['access_type'],
+  },
 
+  // ── Make Again ──────────────────────────────────────────────
+  history_make_again_tapped: {
+    required: ['session_id', 'ts'],
+    optional: ['access_type', 'entry_position', 'ingredient_count_bucket'],
+  },
+  history_make_again_draft_created: {
+    required: ['session_id', 'ts'],
+    optional: [
+      'access_type',
+      'entry_position',
+      'ingredient_count_bucket',
+      'skipped_ingredient_count_bucket',
+    ],
+  },
+  history_make_again_locked: {
+    required: ['session_id', 'ts'],
+    optional: ['paywall_source', 'entry_position'],
+  },
+  history_make_again_failed: {
+    required: ['session_id', 'ts'],
+    optional: [
+      'access_type',
+      'failure_category',
+      'ingredient_count_bucket',
+      'skipped_ingredient_count_bucket',
+    ],
+  },
+}
 
 // ── Prohibited field patterns (PII / sensitive) ──────────────
 // These field names are NEVER allowed in any event payload.
 
 const PROHIBITED_PATTERNS = [
-  'name', 'email', 'phone', 'address', 'location',
-  'ingredient_text', 'ingredients', 'notes', 'recipe_name',
-  'photo', 'image', 'base64', 'exif', 'prompt_text',
-  'user_name', 'user_email', 'template_name',
+  'name',
+  'email',
+  'phone',
+  'address',
+  'location',
+  'ingredient_text',
+  'ingredients',
+  'notes',
+  'recipe_name',
+  'photo',
+  'image',
+  'base64',
+  'exif',
+  'prompt_text',
+  'user_name',
+  'user_email',
+  'template_name',
 ]
 
 function containsProhibitedField(fields) {
@@ -452,10 +533,6 @@ function getSessionId() {
 export function resetSession() {
   _sessionId = null
 }
-
-// ── Install ID (persistent) ─────────────────────────────────
-
-import AsyncStorage from '@react-native-async-storage/async-storage'
 
 const INSTALL_ID_KEY = '@juicing_install_id'
 let _installId = null
@@ -499,7 +576,8 @@ export async function trackEvent(eventName, fields = {}) {
   // PII enforcement
   const prohibited = containsProhibitedField(fields)
   if (prohibited) {
-    if (__DEV__) console.error(`[Analytics] BLOCKED: prohibited field "${prohibited}" in ${eventName}`)
+    if (__DEV__)
+      console.error(`[Analytics] BLOCKED: prohibited field "${prohibited}" in ${eventName}`)
     return
   }
 

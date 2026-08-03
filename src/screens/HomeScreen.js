@@ -636,7 +636,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
   const [squeezeColors, setSqueezeColors] = useState([])
   const { logJuice, vitalityScore } = useChallenge()
   const { recordNutritionLog, momentum: preMomentum } = useNutritionScore()
-  const { addEntry: addLogEntry } = useJuiceLog()
+  const { addEntry: addLogEntry, setTasteReaction: setLogTasteReaction } = useJuiceLog()
   const { isPro } = usePro()
   const { quota: serverQuota, applySnapshot: applyQuotaSnapshot, refresh: refreshQuota } = useQuota()
   const filmRollLabel = selectFilmRollLabel(serverQuota)
@@ -645,6 +645,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
   const [showSnapGate, setShowSnapGate] = useState(false)
   const [showAccountGate, setShowAccountGate] = useState(false)
   const [accountGateMode, setAccountGateMode] = useState('guest')
+  const [isPreparingCamera, setIsPreparingCamera] = useState(false)
   const pendingCameraOpenRef = useRef(false)
   const [showAdvancedBlendModal, setShowAdvancedBlendModal] = useState(false)
   const [advancedBlendStage, setAdvancedBlendStage] = useState('fifth_ingredient_notice')
@@ -768,6 +769,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
     // Guard against double-tap while an eligibility check is in flight
     if (cameraInFlightRef.current) return
     cameraInFlightRef.current = true
+    setIsPreparingCamera(true)
 
     try {
       let currentQuota = serverQuota
@@ -781,9 +783,9 @@ export default function JuiceSnapScreen({ navigation, route }) {
       // If quota is still null after refresh (or Supabase not configured),
       // we cannot confirm or deny eligibility.  When Supabase is configured
       // and the refresh failed, show a network/retry alert.  When Supabase
-      // is not configured (dev/offline mode), proceed with null quota —
-      // the coordinator will handle the offline case.
+      // is not configured (dev/offline mode), proceed with offline-dev path.
       if (currentQuota === null && SUPABASE_CONFIGURED) {
+        setIsPreparingCamera(false)
         Alert.alert(
           'Unable to Check Access',
           'We could not verify your scan access. Please check your connection and try again.',
@@ -795,14 +797,27 @@ export default function JuiceSnapScreen({ navigation, route }) {
         return
       }
 
-      // Use the confirmed (or fallback) quota values for snap eligibility
-      // When quota is null (offline/dev), treat as eligible with unlimited snaps
-      const currentRemaining = currentQuota === null
-        ? Infinity
-        : selectFilmRollRemaining(currentQuota)
-      const currentIsPro = currentQuota === null
-        ? false
-        : selectFilmRollIsPro(currentQuota)
+      // Offline-development path: when Supabase is not configured, allow
+      // camera access through an explicit offline-dev eligibility result.
+      // Do not fabricate a synthetic quota count.
+      if (currentQuota === null && !SUPABASE_CONFIGURED) {
+        const offlineResult = await checkCameraEligibility({
+          eligible: true,
+          remaining: 0,
+          reason: null,
+          isPro: false,
+        })
+        if (offlineResult.action === 'open_camera') {
+          setIsCameraOpen(true)
+          if (!isAutoOpen) setIsLogged(false)
+        }
+        setIsPreparingCamera(false)
+        return
+      }
+
+      // Use the confirmed quota values for snap eligibility
+      const currentRemaining = selectFilmRollRemaining(currentQuota)
+      const currentIsPro = selectFilmRollIsPro(currentQuota)
 
       const snapElig = {
         eligible: currentRemaining > 0,
@@ -815,11 +830,13 @@ export default function JuiceSnapScreen({ navigation, route }) {
       if (result.action === 'open_camera') {
         setIsCameraOpen(true)
         if (!isAutoOpen) setIsLogged(false)
+        setIsPreparingCamera(false)
         return
       }
 
       if (result.action === 'show_snap_gate') {
         setShowSnapGate(true)
+        setIsPreparingCamera(false)
         return
       }
 
@@ -827,6 +844,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
         setAccountGateMode('guest')
         setShowAccountGate(true)
         pendingCameraOpenRef.current = true
+        setIsPreparingCamera(false)
         return
       }
 
@@ -834,10 +852,12 @@ export default function JuiceSnapScreen({ navigation, route }) {
         setAccountGateMode('signin')
         setShowAccountGate(true)
         pendingCameraOpenRef.current = true
+        setIsPreparingCamera(false)
         return
       }
 
       // result.action === 'error' — network or server error from coordinator
+      setIsPreparingCamera(false)
       Alert.alert(
         'Unable to Check Access',
         'We could not verify your scan access. Please check your connection and try again.',
@@ -850,6 +870,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
       // Network, Supabase, or unexpected error — do NOT show the snap gate
       // (that would misrepresent a network failure as quota exhaustion).
       console.warn('[Camera] attemptCameraOpen error:', e?.message || e)
+      setIsPreparingCamera(false)
       Alert.alert(
         'Unable to Check Access',
         'We could not verify your scan access. Please check your connection and try again.',
@@ -1465,7 +1486,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
       recordNutritionLog(ingredientIds, totals)
 
       // Create a JuiceLogEntry for the Today log
-      addLogEntry({
+      const logEntry = addLogEntry({
         source: logSource,
         ingredientIds: ingredientIds,
         nutrientSummary: totals,
@@ -1475,7 +1496,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
       setIsLogged(true)
       loggingSucceeded = true
 
-      // Navigate to ScanSuccess with session metrics
+      // Navigate to ScanSuccess with session metrics and entry ID
       const nutrientKeys = Object.keys(totals).filter(
         (k) => (Number(totals[k]) || 0) > 0
       )
@@ -1484,6 +1505,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
         nutrientsFound: nutrientKeys.length,
         previousMomentum: prevMomentum,
         ingredientNames: ingredientIds,
+        logEntryId: logEntry?.id || null,
       })
     } catch (err) {
       if (__DEV__) console.warn('[log] executeLogToChallenge failed:', err?.message)
@@ -1653,6 +1675,12 @@ export default function JuiceSnapScreen({ navigation, route }) {
         {!isSnapDepleted && (
           <View style={styles.buttonSection}>
             <SnapButton onPress={handleSnap} />
+            {isPreparingCamera && (
+              <View style={styles.preparingCameraRow}>
+                <ActivityIndicator size="small" color="#64B5F6" />
+                <Text style={styles.preparingCameraText}>Preparing camera…</Text>
+              </View>
+            )}
             <QuotaMeter navigation={navigation} />
           </View>
         )}
@@ -1720,7 +1748,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
           </TouchableOpacity>
         )}
 
-        {hasItems && !isLogged && (
+        {hasItems && (
           <TouchableOpacity
             style={[styles.logButton, isLogging && styles.logButtonBusy]}
             onPress={handleLogToChallenge}
@@ -2209,6 +2237,18 @@ const styles = StyleSheet.create({
   },
   logButtonBusy: {
     opacity: 0.7,
+  },
+  preparingCameraRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 10,
+  },
+  preparingCameraText: {
+    color: '#64B5F6',
+    fontSize: 14,
+    fontWeight: '500',
   },
   logButtonGradient: {
     flexDirection: 'row',

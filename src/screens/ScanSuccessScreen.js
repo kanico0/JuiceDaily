@@ -28,6 +28,7 @@ import { TASTE_REACTIONS } from '../constants/recipeData'
 import MeshGradientBg from '../components/MeshGradientBg'
 import GlassSurface from '../components/GlassSurface'
 import { useNutritionScore } from '../services/NutritionScoreStore'
+import { useJuiceLog } from '../services/JuiceLogStore'
 import { BRAND, FONT_SIZE, FONT_WEIGHT, SPACE, RADIUS, SHADOW } from '../constants/tokens'
 import { useReducedMotion, DURATION, EASING } from '../utils/motion'
 import { trackEvent } from '../services/AnalyticsService'
@@ -43,10 +44,12 @@ export default function ScanSuccessScreen({ route, navigation }) {
     nutrientsFound = 0,
     previousMomentum = 0,
     ingredientNames = [],
+    logEntryId = null,
   } = route.params || {}
 
   const { momentum, streak, diversity, coverage } = useNutritionScore()
   const { activation } = useActivation()
+  const { setTasteReaction } = useJuiceLog()
 
   // Compute live score increase from pre-log snapshot
   const scoreIncrease = Math.max(0, momentum - previousMomentum)
@@ -56,10 +59,16 @@ export default function ScanSuccessScreen({ route, navigation }) {
   const [glowToast, setGlowToast] = useState(null)
   const [pendingAchievement, setPendingAchievement] = useState(null)
   const [showTasteFeedback, setShowTasteFeedback] = useState(false)
+  const achievementCheckedRef = useRef(false)
+  const hasAchievementRef = useRef(false)
+  const achievementTimerRef = useRef(null)
+
   useEffect(() => {
+    let cancelled = false
     ;(async () => {
       try {
         const result = await checkInToday()
+        if (cancelled) return
         if (result.wasIncremented) {
           setGlowToast(`Glow streak: ${result.count} day${result.count !== 1 ? 's' : ''}`)
         }
@@ -67,26 +76,51 @@ export default function ScanSuccessScreen({ route, navigation }) {
         const totalLogs = (activation?.totalLogsCount || 0) + 1
         const streakCount = result.count || 0
         const newlyUnlocked = await checkAchievements({ totalLogs, streakCount })
+        if (cancelled) return
+        achievementCheckedRef.current = true
         if (newlyUnlocked.length > 0) {
+          hasAchievementRef.current = true
           // Delay slightly so toast shows first
-          setTimeout(() => setPendingAchievement(newlyUnlocked[0]), 1500)
+          achievementTimerRef.current = setTimeout(() => {
+            if (cancelled) return
+            setPendingAchievement(newlyUnlocked[0])
+          }, 1500)
+        } else {
+          // No achievement — show taste feedback after toast auto-dismisses
+          hasAchievementRef.current = false
         }
       } catch (e) {
         console.warn('[GlowStreak] auto check-in failed:', e)
+        achievementCheckedRef.current = true
+        hasAchievementRef.current = false
       }
     })()
+    return () => {
+      cancelled = true
+      if (achievementTimerRef.current) {
+        clearTimeout(achievementTimerRef.current)
+        achievementTimerRef.current = null
+      }
+    }
   }, [])
 
-  // Show taste feedback prompt after a short delay
-  useEffect(() => {
-    const t = setTimeout(() => setShowTasteFeedback(true), 1200)
-    return () => clearTimeout(t)
+  // Show taste feedback after achievement overlay is dismissed
+  // (explicit queue completion — no timer race)
+  const handleAchievementDismiss = useCallback(() => {
+    setPendingAchievement(null)
+    setShowTasteFeedback(true)
   }, [])
 
   // Auto-dismiss toast
   useEffect(() => {
     if (!glowToast) return
-    const t = setTimeout(() => setGlowToast(null), 3000)
+    const t = setTimeout(() => {
+      setGlowToast(null)
+      // If no achievement pending, show taste feedback after toast dismisses
+      if (achievementCheckedRef.current && !hasAchievementRef.current) {
+        setShowTasteFeedback(true)
+      }
+    }, 3000)
     return () => clearTimeout(t)
   }, [glowToast])
 
@@ -116,7 +150,7 @@ export default function ScanSuccessScreen({ route, navigation }) {
     }
 
     // Staggered entrance
-    Animated.sequence([
+    const entranceAnim = Animated.sequence([
       // Check icon scales in
       Animated.spring(checkScale, {
         toValue: 1,
@@ -139,10 +173,11 @@ export default function ScanSuccessScreen({ route, navigation }) {
           useNativeDriver: true,
         }),
       ]),
-    ]).start()
+    ])
+    entranceAnim.start()
 
     // Soft glow pulse
-    Animated.loop(
+    const glowLoop = Animated.loop(
       Animated.sequence([
         Animated.timing(glowAnim, {
           toValue: 1,
@@ -157,7 +192,13 @@ export default function ScanSuccessScreen({ route, navigation }) {
           useNativeDriver: true,
         }),
       ]),
-    ).start()
+    )
+    glowLoop.start()
+
+    return () => {
+      entranceAnim.stop()
+      glowLoop.stop()
+    }
   }, [])
 
   const glowOpacity = glowAnim.interpolate({
@@ -370,7 +411,7 @@ export default function ScanSuccessScreen({ route, navigation }) {
       <AchievementOverlay
         achievement={pendingAchievement}
         visible={!!pendingAchievement}
-        onDismiss={() => setPendingAchievement(null)}
+        onDismiss={handleAchievementDismiss}
       />
 
       {/* Taste Feedback Modal */}
@@ -409,7 +450,11 @@ export default function ScanSuccessScreen({ route, navigation }) {
                     trackEvent('taste_feedback_submitted', {
                       reaction: r.label,
                       ingredient_count: ingredientCount,
+                      log_entry_id: logEntryId,
                     })
+                    if (logEntryId) {
+                      setTasteReaction(logEntryId, r)
+                    }
                     setShowTasteFeedback(false)
                   }}
                   activeOpacity={0.7}

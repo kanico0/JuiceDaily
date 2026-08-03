@@ -79,6 +79,16 @@ function logReducer(state, action) {
       return { ...state, entries: state.entries.filter((e) => e.id !== id) }
     }
 
+    case 'SET_TASTE_REACTION': {
+      const { id, reaction } = action.payload
+      return {
+        ...state,
+        entries: state.entries.map((e) =>
+          e.id === id ? { ...e, tasteReaction: reaction } : e
+        ),
+      }
+    }
+
     case 'RESET':
       return createEmptyState()
 
@@ -151,6 +161,10 @@ export function JuiceLogProvider({ children }) {
 
   const deleteEntry = useCallback((id) => {
     dispatch({ type: 'DELETE_ENTRY', payload: id })
+  }, [])
+
+  const setTasteReaction = useCallback((id, reaction) => {
+    dispatch({ type: 'SET_TASTE_REACTION', payload: { id, reaction } })
   }, [])
 
   const resetLog = useCallback(() => {
@@ -227,6 +241,7 @@ export function JuiceLogProvider({ children }) {
     consistencyStats,
     addEntry,
     deleteEntry,
+    setTasteReaction,
     resetLog,
   }
 

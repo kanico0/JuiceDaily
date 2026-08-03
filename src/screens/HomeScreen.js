@@ -796,8 +796,13 @@ export default function JuiceSnapScreen({ navigation, route }) {
       }
 
       // Use the confirmed (or fallback) quota values for snap eligibility
-      const currentRemaining = selectFilmRollRemaining(currentQuota)
-      const currentIsPro = selectFilmRollIsPro(currentQuota)
+      // When quota is null (offline/dev), treat as eligible with unlimited snaps
+      const currentRemaining = currentQuota === null
+        ? Infinity
+        : selectFilmRollRemaining(currentQuota)
+      const currentIsPro = currentQuota === null
+        ? false
+        : selectFilmRollIsPro(currentQuota)
 
       const snapElig = {
         eligible: currentRemaining > 0,

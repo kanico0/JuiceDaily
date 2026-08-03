@@ -18,11 +18,13 @@ import {
   Pressable,
   Animated,
   BackHandler,
+  Modal,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { LinearGradient } from 'expo-linear-gradient'
 import * as Haptics from 'expo-haptics'
 import { Check, Leaf, Beaker, TrendingUp, Flame, X } from 'lucide-react-native'
+import { TASTE_REACTIONS } from '../constants/recipeData'
 import MeshGradientBg from '../components/MeshGradientBg'
 import GlassSurface from '../components/GlassSurface'
 import { useNutritionScore } from '../services/NutritionScoreStore'
@@ -53,6 +55,7 @@ export default function ScanSuccessScreen({ route, navigation }) {
   // ── Glow Streak auto check-in + Achievement check ──
   const [glowToast, setGlowToast] = useState(null)
   const [pendingAchievement, setPendingAchievement] = useState(null)
+  const [showTasteFeedback, setShowTasteFeedback] = useState(false)
   useEffect(() => {
     ;(async () => {
       try {
@@ -72,6 +75,12 @@ export default function ScanSuccessScreen({ route, navigation }) {
         console.warn('[GlowStreak] auto check-in failed:', e)
       }
     })()
+  }, [])
+
+  // Show taste feedback prompt after a short delay
+  useEffect(() => {
+    const t = setTimeout(() => setShowTasteFeedback(true), 1200)
+    return () => clearTimeout(t)
   }, [])
 
   // Auto-dismiss toast
@@ -370,6 +379,68 @@ export default function ScanSuccessScreen({ route, navigation }) {
         visible={!!pendingAchievement}
         onDismiss={() => setPendingAchievement(null)}
       />
+
+      {/* Taste Feedback Modal */}
+      <Modal
+        visible={showTasteFeedback}
+        transparent
+        animationType="fade"
+        statusBarTranslucent
+        onRequestClose={() => setShowTasteFeedback(false)}
+      >
+        <View style={s.tasteOverlay}>
+          <View style={s.tasteCard}>
+            <View style={s.tasteHeader}>
+              <Text style={s.tasteTitle}>How was the taste?</Text>
+              <TouchableOpacity
+                style={s.tasteCloseBtn}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+                  setShowTasteFeedback(false)
+                }}
+                activeOpacity={0.7}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                accessibilityRole="button"
+                accessibilityLabel="Close without answering"
+              >
+                <X size={18} color="#8B949E" />
+              </TouchableOpacity>
+            </View>
+            <View style={s.tasteOptions}>
+              {TASTE_REACTIONS.map((r) => (
+                <TouchableOpacity
+                  key={r.emoji}
+                  style={s.tasteBtn}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+                    trackEvent('taste_feedback_submitted', {
+                      reaction: r.label,
+                      ingredient_count: ingredientCount,
+                    })
+                    setShowTasteFeedback(false)
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={s.tasteEmoji}>{r.emoji}</Text>
+                  <Text style={s.tasteBtnLabel}>{r.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <TouchableOpacity
+              style={s.tasteSkipBtn}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+                setShowTasteFeedback(false)
+              }}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="Skip taste feedback"
+            >
+              <Text style={s.tasteSkipText}>Skip</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   )
 }
@@ -557,5 +628,65 @@ const s = StyleSheet.create({
     fontSize: FONT_SIZE.xs,
     fontWeight: FONT_WEIGHT.semibold,
     color: '#FFB74D',
+  },
+  tasteOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  tasteCard: {
+    width: '100%',
+    maxWidth: 340,
+    backgroundColor: '#161B22',
+    borderRadius: 20,
+    padding: 24,
+    borderWidth: 0.5,
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+  tasteHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+  },
+  tasteTitle: {
+    fontSize: FONT_SIZE.lg,
+    fontWeight: FONT_WEIGHT.bold,
+    color: BRAND.text.primary,
+  },
+  tasteCloseBtn: {
+    padding: 4,
+  },
+  tasteOptions: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: 16,
+  },
+  tasteBtn: {
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    minWidth: 80,
+  },
+  tasteEmoji: {
+    fontSize: 32,
+    marginBottom: 6,
+  },
+  tasteBtnLabel: {
+    fontSize: FONT_SIZE.xs,
+    fontWeight: FONT_WEIGHT.semibold,
+    color: BRAND.text.secondary,
+  },
+  tasteSkipBtn: {
+    alignItems: 'center',
+    paddingVertical: 10,
+  },
+  tasteSkipText: {
+    fontSize: FONT_SIZE.xs,
+    color: BRAND.text.muted,
   },
 })

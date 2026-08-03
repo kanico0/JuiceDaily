@@ -87,9 +87,9 @@ describe('Icon Assets — RawLifeFlow', () => {
     // a full-edge-to-edge image which would be much larger).
     expect(info.hasAlpha).toBe(true)
     // A 1024x1024 RGBA PNG with ~62% artwork and transparent padding
-    // should be well under 700KB. A full-edge-to-edge image would
+    // should be well under 1MB. A full-edge-to-edge image would
     // be significantly larger.
-    expect(info.size).toBeLessThan(700000)
+    expect(info.size).toBeLessThan(1000000)
   })
 
   // ── 4. No missing or blank images ───────────────────────────

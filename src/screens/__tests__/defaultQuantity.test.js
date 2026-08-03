@@ -62,7 +62,7 @@ describe('Item 1 — Default new produce quantity to 1', () => {
 
   describe('Camera-identified produce defaults', () => {
     test('camera produce that is quantity-supported gets quantity 1', () => {
-      const produceId = 'spinach'
+      const produceId = 'turnip'
       expect(isQuantitySupported(produceId)).toBe(true)
       const defaultUnit = getDefaultPortionUnit(produceId)
       const hasSML = defaultUnit.sizes.some((s) => s.sizeKey !== 'standard')

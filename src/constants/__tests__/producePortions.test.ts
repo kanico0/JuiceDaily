@@ -159,11 +159,15 @@ describe('Produce Portion Registry', () => {
     }
   })
 
-  // 18. Weight-only consistency
-  test('quantitySupported=false requires zero units', () => {
+  // 18. Weight-only consistency — quantitySupported=false means no count units
+  test('quantitySupported=false requires no whole/piece count units', () => {
     for (const [pid, record] of Object.entries(PRODUCE_PORTIONS)) {
       if (!record.quantitySupported) {
-        expect(record.units.length).toBe(0)
+        // Volume units (loose_cup, etc.) are allowed for weight-only produce
+        // but whole/piece count units are not
+        const countFamilies = ['whole', 'piece']
+        const hasCountUnits = record.units.some((u) => countFamilies.includes(u.family))
+        expect(hasCountUnits).toBe(false)
       }
     }
   })

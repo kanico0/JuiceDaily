@@ -463,7 +463,7 @@ export const PRODUCE_PORTIONS: ReadonlyProducePortions = deepFreeze({
     sourceRecords: [
       sr('USDA', 'FNDDS', null, null, '1 aloe vera leaf (≈120 g gel yield)', 'raw', 'edible portion (gel only)', 'USDA FoodData Central FNDDS 2021-2023 — aloe vera gel estimated from medium leaf'),
     ],
-    confidence: 'low',
+    confidence: 'medium',
     notes: 'Aloe vera is typically used as extracted gel. Count mode supports whole-leaf entry; weight remains the primary measurement for precise gel amounts.',
   },
 

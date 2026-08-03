@@ -14,6 +14,7 @@ import {
   Keyboard,
   KeyboardAvoidingView,
   Alert,
+  ActivityIndicator,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import AsyncStorage from '@react-native-async-storage/async-storage'
@@ -630,6 +631,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
   })
   const [isCameraOpen, setIsCameraOpen] = useState(false)
   const [isLogged, setIsLogged] = useState(false)
+  const [isLogging, setIsLogging] = useState(false)
   const [showBigSqueeze, setShowBigSqueeze] = useState(false)
   const [squeezeColors, setSqueezeColors] = useState([])
   const { logJuice, vitalityScore } = useChallenge()
@@ -1320,6 +1322,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
     if (!hasItems) return
     if (isLoggingRef.current) return
     isLoggingRef.current = true
+    setIsLogging(true)
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
 
     const ingredients = batch?.scannedIngredients || []
@@ -1470,6 +1473,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
       Alert.alert('Logging Error', 'Could not log your juice. Please try again.')
     } finally {
       isLoggingRef.current = false
+      setIsLogging(false)
       if (loggingSucceeded) {
         // Full success — clear all transient state for next batch
         blendApprovedRef.current = false
@@ -1701,9 +1705,12 @@ export default function JuiceSnapScreen({ navigation, route }) {
 
         {hasItems && !isLogged && (
           <TouchableOpacity
-            style={styles.logButton}
+            style={[styles.logButton, isLogging && styles.logButtonBusy]}
             onPress={handleLogToChallenge}
             activeOpacity={0.7}
+            disabled={isLogging}
+            accessibilityState={{ busy: isLogging }}
+            accessibilityLabel={isLogging ? 'Logging your juice, please wait' : 'Log to Today'}
           >
             <LinearGradient
               colors={['#4CAF50', '#2E7D32']}
@@ -1711,8 +1718,17 @@ export default function JuiceSnapScreen({ navigation, route }) {
               end={{ x: 1, y: 1 }}
               style={styles.logButtonGradient}
             >
-              <CheckCircle size={20} color="#FFFFFF" />
-              <Text style={styles.logButtonText}>Log to Today</Text>
+              {isLogging ? (
+                <>
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                  <Text style={styles.logButtonText}>Logging…</Text>
+                </>
+              ) : (
+                <>
+                  <CheckCircle size={20} color="#FFFFFF" />
+                  <Text style={styles.logButtonText}>Log to Today</Text>
+                </>
+              )}
             </LinearGradient>
           </TouchableOpacity>
         )}
@@ -2173,6 +2189,9 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.25,
     shadowRadius: 16,
+  },
+  logButtonBusy: {
+    opacity: 0.7,
   },
   logButtonGradient: {
     flexDirection: 'row',

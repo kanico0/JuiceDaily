@@ -200,22 +200,22 @@ describe('FIX 3: Unsaved-draft protection in HomeScreen', () => {
     expect(source).toMatch(/Alert/)
   })
 
-  test('13. Preload useEffect checks for unsaved draft', () => {
-    expect(source).toContain('hasUnsavedDraft')
-    expect(source).toContain('Replace your current draft?')
+  test('13. Preload useEffect immediately seeds batch without confirmation', () => {
+    expect(source).toContain('seedPreloadIngredients')
+    expect(source).not.toContain('Replace your current draft?')
   })
 
-  test('14. Dialog has Keep Current Draft option', () => {
-    expect(source).toContain('Keep Current Draft')
+  test('14. No Keep Current Draft option remains', () => {
+    expect(source).not.toContain('Keep Current Draft')
   })
 
-  test('15. Dialog has Use Past Juice option', () => {
-    expect(source).toContain('Use Past Juice')
+  test('15. No Use Past Juice option remains', () => {
+    expect(source).not.toContain('Use Past Juice')
   })
 
-  test('16. Empty batch does not trigger dialog (hasUnsavedDraft checks items)', () => {
-    expect(source).toContain('currentItems.length > 0')
-    expect(source).toContain('!isLogged')
+  test('16. No pendingPreloadRef or hasUnsavedDraft remains', () => {
+    expect(source).not.toContain('hasUnsavedDraft')
+    expect(source).not.toContain('pendingPreloadRef')
   })
 })
 

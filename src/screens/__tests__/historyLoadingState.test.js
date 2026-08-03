@@ -326,9 +326,9 @@ describe('Section 7: Previous audit fixes preserved', () => {
     expect(source).not.toContain('SEMANTIC_COLORS.warning')
   })
 
-  test('48. Unsaved-draft confirmation in HomeScreen', () => {
-    expect(homeSource).toContain('hasUnsavedDraft')
-    expect(homeSource).toContain('Replace your current draft?')
+  test('48. No unsaved-draft confirmation in HomeScreen (removed)', () => {
+    expect(homeSource).not.toContain('hasUnsavedDraft')
+    expect(homeSource).not.toContain('Replace your current draft?')
   })
 
   test('49. Ambiguous ingredient-name rejection in makeAgainHelper', () => {

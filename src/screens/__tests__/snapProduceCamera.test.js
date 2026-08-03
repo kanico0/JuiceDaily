@@ -63,7 +63,7 @@ describe('Snap Produce: null quota invokes refreshQuota', () => {
   const section = getAttemptCameraOpenSection()
 
   test('4. Null quota triggers refreshQuota() call', () => {
-    expect(section).toContain('await refreshQuota()')
+    expect(section).toContain('refreshQuota()')
   })
 
   test('5. refreshQuota is only called when serverQuota is null and Supabase is configured', () => {
@@ -71,11 +71,12 @@ describe('Snap Produce: null quota invokes refreshQuota', () => {
     expect(section).toContain('SUPABASE_CONFIGURED')
   })
 
-  test('6. After refresh, returned snapshot is used directly (no ref, no setTimeout)', () => {
-    expect(section).toContain('currentQuota = await refreshQuota()')
+  test('6. After refresh, returned snapshot is used directly (no ref, wrapped in timeout)', () => {
+    expect(section).toContain('currentQuota = await Promise.race([')
+    expect(section).toContain('refreshQuota()')
     expect(homeSource).not.toContain('latestQuotaRef')
-    // Check that setTimeout is not used for quota sync (it may appear in comments)
-    expect(section).not.toMatch(/await\s+new\s+Promise.*setTimeout/)
+    // setTimeout is now intentionally used for the camera timeout safety net
+    expect(section).toContain('CAMERA_TIMEOUT_MS')
   })
 
   test('7. Does not invent remaining usage (no optimistic effectiveRemaining = 1)', () => {
@@ -83,9 +84,10 @@ describe('Snap Produce: null quota invokes refreshQuota', () => {
     expect(section).not.toContain('quotaLoaded ? filmRollRemaining : 1')
   })
 
-  test('7a. No setTimeout(0) for quota synchronization', () => {
-    // Check that no setTimeout-based promise is used for quota sync
-    expect(section).not.toMatch(/await\s+new\s+Promise.*setTimeout/)
+  test('7a. Camera timeout uses Promise.race with setTimeout safety net', () => {
+    // setTimeout is intentionally used as a timeout safety net for refreshQuota
+    expect(section).toMatch(/Promise\.race/)
+    expect(section).toContain('CAMERA_TIMEOUT_MS')
   })
 })
 
@@ -179,6 +181,12 @@ describe('Snap Produce: in-flight guard behavior', () => {
   test('21. cameraInFlightRef is reset in finally block', () => {
     expect(section).toContain('finally {')
     expect(section).toContain('cameraInFlightRef.current = false')
+  })
+
+  test('21a. isPreparingCamera is reset in finally block as safety net', () => {
+    const finallyIdx = section.indexOf('finally {')
+    const finallySection = section.substring(finallyIdx, finallyIdx + 200)
+    expect(finallySection).toContain('setIsPreparingCamera(false)')
   })
 
   test('22. try/catch/finally structure is complete', () => {

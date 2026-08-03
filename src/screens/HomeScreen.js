@@ -764,6 +764,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
   // eligibility precheck. A stale client cache cannot grant or block
   // access — the server makes the final decision in analyze-scan.
   const cameraInFlightRef = useRef(false)
+  const CAMERA_TIMEOUT_MS = 12000
 
   const attemptCameraOpen = useCallback(async (isAutoOpen = false) => {
     // Guard against double-tap while an eligibility check is in flight
@@ -776,8 +777,12 @@ export default function JuiceSnapScreen({ navigation, route }) {
 
       // If quota hasn't loaded yet and Supabase is configured, refresh once
       // and use the returned snapshot directly — no setTimeout, no ref sync.
+      // Wrap in a timeout to prevent indefinite hang on unreachable servers.
       if (currentQuota === null && SUPABASE_CONFIGURED) {
-        currentQuota = await refreshQuota()
+        currentQuota = await Promise.race([
+          refreshQuota(),
+          new Promise(resolve => setTimeout(() => resolve(null), CAMERA_TIMEOUT_MS)),
+        ])
       }
 
       // If quota is still null after refresh (or Supabase not configured),
@@ -881,6 +886,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
       )
     } finally {
       cameraInFlightRef.current = false
+      setIsPreparingCamera(false)
     }
   }, [serverQuota, refreshQuota])
 

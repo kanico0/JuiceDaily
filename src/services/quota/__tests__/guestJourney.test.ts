@@ -24,6 +24,10 @@
 //   20. Simple Blend consumes no Advanced Blend allowance
 // ─────────────────────────────────────────────────────────────
 
+import { authorizeGuestLog } from '../guestLogGate'
+import { authorizeAndProcessBatch } from '../blendNutritionGate'
+import type { ScannedIngredient } from '../../JuiceEngine'
+
 const mockIsDurableUser = jest.fn()
 const mockCheckGuestJourney = jest.fn()
 const mockReserveGuestJourney = jest.fn()
@@ -66,10 +70,6 @@ jest.mock('../../subscriptions/subscriptionConfig', () => ({
   PRO_DAILY_SCAN_SAFETY_LIMIT: 10,
   FREE_ADVANCED_BLEND_ALLOWANCE: 3,
 }))
-
-import { authorizeGuestLog } from '../guestLogGate'
-import { authorizeAndProcessBatch } from '../blendNutritionGate'
-import type { ScannedIngredient } from '../../JuiceEngine'
 
 describe('Guest Journey — Authorization', () => {
   beforeEach(() => {
@@ -132,7 +132,7 @@ describe('Guest Journey — Authorization', () => {
     expect(mockFinalizeGuestLog).toHaveBeenCalledWith('existing-journey', 'op-456')
   })
 
-  test('guest with completed journey — blocked', async () => {
+  test('guest with completed journey — allowed (repeated logging permitted)', async () => {
     mockIsDurableUser.mockResolvedValue(false)
     mockCheckGuestJourney.mockResolvedValue({
       status: 'completed',
@@ -145,13 +145,13 @@ describe('Guest Journey — Authorization', () => {
 
     const result = await authorizeGuestLog()
 
-    expect(result.allowed).toBe(false)
-    if (!result.allowed) {
-      expect(result.reason).toBe('journey_completed')
+    expect(result.allowed).toBe(true)
+    if (result.allowed && !result.isDurable) {
+      expect(result.hasPriorLog).toBe(true)
     }
   })
 
-  test('guest with scan_reserved journey — blocked (in progress)', async () => {
+  test('guest with scan_reserved journey — allowed (stale reservation does not block)', async () => {
     mockIsDurableUser.mockResolvedValue(false)
     mockCheckGuestJourney.mockResolvedValue({
       status: 'scan_reserved',
@@ -164,13 +164,13 @@ describe('Guest Journey — Authorization', () => {
 
     const result = await authorizeGuestLog()
 
-    expect(result.allowed).toBe(false)
-    if (!result.allowed) {
-      expect(result.reason).toBe('journey_in_progress')
+    expect(result.allowed).toBe(true)
+    if (result.allowed && !result.isDurable) {
+      expect(result.hasPriorLog).toBe(true)
     }
   })
 
-  test('manual log: reserve failure blocks and does not finalize', async () => {
+  test('manual log: non-network reserve failure allows log (does not block)', async () => {
     mockIsDurableUser.mockResolvedValue(false)
     mockCheckGuestJourney.mockResolvedValue({
       status: 'available',
@@ -184,14 +184,14 @@ describe('Guest Journey — Authorization', () => {
 
     const result = await authorizeGuestLog()
 
-    expect(result.allowed).toBe(false)
-    if (!result.allowed) {
-      expect(result.reason).toBe('journey_completed')
+    expect(result.allowed).toBe(true)
+    if (result.allowed && !result.isDurable) {
+      expect(result.hasPriorLog).toBe(true)
     }
     expect(mockFinalizeGuestLog).not.toHaveBeenCalled()
   })
 
-  test('manual log: finalize failure releases the reservation', async () => {
+  test('manual log: non-network finalize failure releases reservation but allows log', async () => {
     mockIsDurableUser.mockResolvedValue(false)
     mockCheckGuestJourney.mockResolvedValue({
       status: 'available',
@@ -202,13 +202,13 @@ describe('Guest Journey — Authorization', () => {
       logCompletedAt: null,
     })
     mockReserveGuestJourney.mockResolvedValue({ ok: true, code: 'reserved' })
-    mockFinalizeGuestLog.mockResolvedValue({ ok: false, code: 'error' })
+    mockFinalizeGuestLog.mockResolvedValue({ ok: false, code: 'invalid_state' })
 
     const result = await authorizeGuestLog()
 
-    expect(result.allowed).toBe(false)
-    if (!result.allowed) {
-      expect(result.reason).toBe('error')
+    expect(result.allowed).toBe(true)
+    if (result.allowed && !result.isDurable) {
+      expect(result.hasPriorLog).toBe(true)
     }
     expect(mockReleaseGuestJourney).toHaveBeenCalled()
   })
@@ -233,9 +233,7 @@ describe('Guest Journey — Advanced Blend (no bypass)', () => {
     // The server call will fail since analyze-blend is not deployed,
     // but the test verifies the code path attempts the server call.
     // No guest_bypass is granted — the error propagates.
-    await expect(
-      authorizeAndProcessBatch(ingredients, 'cold_pressed', 'op-test'),
-    ).rejects.toThrow()
+    await expect(authorizeAndProcessBatch(ingredients, 'cold_pressed', 'op-test')).rejects.toThrow()
   })
 
   test('durable user with advanced blend goes through server check', async () => {
@@ -249,9 +247,7 @@ describe('Guest Journey — Advanced Blend (no bypass)', () => {
       { produceId: 'ginger', weightG: 10 },
     ]
 
-    await expect(
-      authorizeAndProcessBatch(ingredients, 'cold_pressed', 'op-test'),
-    ).rejects.toThrow()
+    await expect(authorizeAndProcessBatch(ingredients, 'cold_pressed', 'op-test')).rejects.toThrow()
   })
 
   test('guest user with simple blend processes normally (no server call)', async () => {
@@ -371,7 +367,11 @@ describe('Required Tests — Guest Journey State Machine', () => {
       scanCompletedAt: null,
       logCompletedAt: null,
     })
-    mockReserveGuestJourney.mockResolvedValue({ ok: true, code: 'reserved', status: 'log_reserved' })
+    mockReserveGuestJourney.mockResolvedValue({
+      ok: true,
+      code: 'reserved',
+      status: 'log_reserved',
+    })
     mockFinalizeGuestLog.mockResolvedValue({ ok: true, code: 'completed', status: 'completed' })
 
     const result = await authorizeGuestLog('manual-op-1')
@@ -382,8 +382,8 @@ describe('Required Tests — Guest Journey State Machine', () => {
     expect(mockReserveGuestJourney).toHaveBeenCalledWith(expect.any(String), 'manual')
   })
 
-  // Test 3: Manual first juice blocks later anonymous scan
-  test('3. manual first juice blocks later anonymous scan', async () => {
+  // Test 3: Manual first juice does NOT block later logging
+  test('3. manual first juice allows later logging (repeated logs permitted)', async () => {
     mockIsDurableUser.mockResolvedValue(false)
     // After manual log completed, journey is 'completed'
     mockCheckGuestJourney.mockResolvedValue({
@@ -396,14 +396,14 @@ describe('Required Tests — Guest Journey State Machine', () => {
     })
 
     const result = await authorizeGuestLog()
-    expect(result.allowed).toBe(false)
-    if (!result.allowed) {
-      expect(result.reason).toBe('journey_completed')
+    expect(result.allowed).toBe(true)
+    if (result.allowed && !result.isDurable) {
+      expect(result.hasPriorLog).toBe(true)
     }
   })
 
-  // Test 4: Scan-first juice blocks later manual log
-  test('4. scan-first juice blocks later manual log', async () => {
+  // Test 4: Scan-first juice does NOT block later manual log
+  test('4. scan-first juice allows later manual log (repeated logs permitted)', async () => {
     mockIsDurableUser.mockResolvedValue(false)
     // After scan-based log completed, journey is 'completed'
     mockCheckGuestJourney.mockResolvedValue({
@@ -416,9 +416,9 @@ describe('Required Tests — Guest Journey State Machine', () => {
     })
 
     const result = await authorizeGuestLog('manual-attempt')
-    expect(result.allowed).toBe(false)
-    if (!result.allowed) {
-      expect(result.reason).toBe('journey_completed')
+    expect(result.allowed).toBe(true)
+    if (result.allowed && !result.isDurable) {
+      expect(result.hasPriorLog).toBe(true)
     }
   })
 
@@ -451,8 +451,8 @@ describe('Required Tests — Guest Journey State Machine', () => {
     expect(manualRes.code).toBe('journey_already_used')
   })
 
-  // Test 6: Failed manual log releases reservation
-  test('6. failed manual log releases reservation', async () => {
+  // Test 6: Failed manual log releases reservation but allows logging
+  test('6. failed manual log releases reservation (non-network error allows log)', async () => {
     mockIsDurableUser.mockResolvedValue(false)
     mockCheckGuestJourney.mockResolvedValue({
       status: 'available',
@@ -466,9 +466,9 @@ describe('Required Tests — Guest Journey State Machine', () => {
     mockFinalizeGuestLog.mockResolvedValue({ ok: false, code: 'invalid_state' })
 
     const result = await authorizeGuestLog('failed-manual-op')
-    expect(result.allowed).toBe(false)
-    if (!result.allowed) {
-      expect(result.reason).toBe('error')
+    expect(result.allowed).toBe(true)
+    if (result.allowed && !result.isDurable) {
+      expect(result.hasPriorLog).toBe(true)
     }
     expect(mockReleaseGuestJourney).toHaveBeenCalled()
   })
@@ -484,7 +484,11 @@ describe('Required Tests — Guest Journey State Machine', () => {
       scanCompletedAt: null,
       logCompletedAt: null,
     })
-    mockReserveGuestJourney.mockResolvedValue({ ok: true, code: 'reserved', status: 'scan_reserved' })
+    mockReserveGuestJourney.mockResolvedValue({
+      ok: true,
+      code: 'reserved',
+      status: 'scan_reserved',
+    })
     mockReleaseGuestJourney.mockResolvedValue({ ok: true, code: 'released', status: 'available' })
 
     // Simulate scan failure: client calls releaseGuestJourney
@@ -579,7 +583,14 @@ describe('Required Tests — Quota Carry-Forward and Advanced Blend', () => {
     // a quota object with used=1.
     const guestScanResponse = {
       rawText: '[]',
-      quota: { plan: 'free', limit: 5, used: 1, remaining: 4, periodStart: '2026-01-01', periodEnd: '2026-02-01' },
+      quota: {
+        plan: 'free',
+        limit: 5,
+        used: 1,
+        remaining: 4,
+        periodStart: '2026-01-01',
+        periodEnd: '2026-02-01',
+      },
       isGuest: true,
     }
     expect(guestScanResponse.quota.used).toBe(1)
@@ -636,7 +647,7 @@ describe('Required Tests — Quota Carry-Forward and Advanced Blend', () => {
     // After upgrade, is_anonymous changes from true to false, but
     // the UUID and all associated rows remain.
     mockIsDurableUser.mockResolvedValueOnce(false) // before upgrade
-    mockIsDurableUser.mockResolvedValueOnce(true)  // after upgrade
+    mockIsDurableUser.mockResolvedValueOnce(true) // after upgrade
 
     const beforeUpgrade = await mockIsDurableUser()
     const afterUpgrade = await mockIsDurableUser()
@@ -709,7 +720,10 @@ describe('Required Tests — Quota Carry-Forward and Advanced Blend', () => {
     // against the PRODUCE_IDS registry. Invalid IDs return 400.
     const serverResponse = {
       status: 400,
-      body: { message: 'Invalid ingredient IDs detected', invalid_ids: ['banana_fake', 'unknown_thing'] },
+      body: {
+        message: 'Invalid ingredient IDs detected',
+        invalid_ids: ['banana_fake', 'unknown_thing'],
+      },
     }
     expect(serverResponse.status).toBe(400)
     expect(serverResponse.body.invalid_ids).toHaveLength(2)

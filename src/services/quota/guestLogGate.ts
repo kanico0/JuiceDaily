@@ -5,16 +5,14 @@
 // creating a juice log.  The gate checks the server-authoritative
 // guest journey state and decides whether to allow or block.
 //
-// For scan-based logs (after a guest scan):
-//   - The journey is in 'scan_completed' state.
-//   - authorizeGuestLog() finalizes the journey (→ 'completed').
+// The guest journey tracks the first-use experience for conversion
+// prompts but does NOT hard-block subsequent logs.  A guest who has
+// already logged may continue logging — the registration nudge is
+// handled by the UI layer, not by this gate.
 //
-// For manual logs (no prior scan):
-//   - The journey is in 'available' state.
-//   - authorizeGuestLog() reserves + finalizes the journey.
-//
-// If the journey is already 'completed', the gate returns 'blocked'
-// and the caller must show the registration modal.
+// Only network errors cause a hard block (fail-closed for data
+// integrity).  If the server is unreachable, the gate returns an
+// error so the caller can show retry feedback.
 // ─────────────────────────────────────────────────────────────
 
 import {
@@ -29,12 +27,16 @@ import { SUPABASE_CONFIGURED } from '../subscriptions/subscriptionConfig'
 
 export type GuestLogGateResult =
   | { allowed: true; journeyId: string; isDurable: true }
-  | { allowed: true; journeyId: string; isDurable: false; wasScanBased: boolean }
-  | { allowed: false; reason: 'journey_completed' | 'journey_in_progress' | 'error'; message: string }
+  | {
+      allowed: true
+      journeyId: string
+      isDurable: false
+      wasScanBased: boolean
+      hasPriorLog?: boolean
+    }
+  | { allowed: false; reason: 'journey_in_progress' | 'error'; message: string }
 
-export async function authorizeGuestLog (
-  logOperationId?: string,
-): Promise<GuestLogGateResult> {
+export async function authorizeGuestLog(logOperationId?: string): Promise<GuestLogGateResult> {
   // Offline / dev mode: no server to enforce guest journey, always allow.
   if (!SUPABASE_CONFIGURED) {
     return {
@@ -57,11 +59,16 @@ export async function authorizeGuestLog (
   // Guest user: check journey state.
   const state = await checkGuestJourney()
 
+  // Journey already completed: allow logging (don't hard-block).
+  // The UI layer can show a soft registration nudge, but logging
+  // must not be prevented — users need to track their juices.
   if (state.status === 'completed') {
     return {
-      allowed: false,
-      reason: 'journey_completed',
-      message: 'You have completed your first juice. Create a free account to continue.',
+      allowed: true,
+      journeyId: state.journeyId ?? createJourneyId(),
+      isDurable: false,
+      wasScanBased: false,
+      hasPriorLog: true,
     }
   }
 
@@ -79,10 +86,14 @@ export async function authorizeGuestLog (
         message: 'Network error. Please check your connection and try again.',
       }
     }
+    // Server rejected finalize (e.g. already finalized): allow the log
+    // anyway — the juice data is valid regardless of journey state.
     return {
-      allowed: false,
-      reason: 'error',
-      message: 'Failed to finalize guest journey.',
+      allowed: true,
+      journeyId,
+      isDurable: false,
+      wasScanBased: true,
+      hasPriorLog: true,
     }
   }
 
@@ -98,10 +109,14 @@ export async function authorizeGuestLog (
           message: 'Network error. Please check your connection and try again.',
         }
       }
+      // Reserve failed for non-network reason (e.g. already reserved):
+      // allow the log — don't block the user from tracking their juice.
       return {
-        allowed: false,
-        reason: 'journey_completed',
-        message: 'Guest journey already used — registration required.',
+        allowed: true,
+        journeyId,
+        isDurable: false,
+        wasScanBased: false,
+        hasPriorLog: true,
       }
     }
     const finalizeResult = await finalizeGuestLog(journeyId, logOperationId)
@@ -117,27 +132,36 @@ export async function authorizeGuestLog (
         message: 'Network error. Please check your connection and try again.',
       }
     }
+    // Non-network finalize error: allow the log anyway.
     return {
-      allowed: false,
-      reason: 'error',
-      message: 'Failed to finalize guest journey.',
+      allowed: true,
+      journeyId,
+      isDurable: false,
+      wasScanBased: false,
+      hasPriorLog: true,
     }
   }
 
   // scan_reserved or log_reserved — a journey is in progress.
+  // Allow the log rather than blocking — stale reservations should
+  // not prevent the user from tracking their juice.
   return {
-    allowed: false,
-    reason: 'journey_in_progress',
-    message: 'A guest journey is already in progress.',
+    allowed: true,
+    journeyId: state.journeyId ?? createJourneyId(),
+    isDurable: false,
+    wasScanBased: false,
+    hasPriorLog: true,
   }
 }
 
-export async function isGuestLogAllowed (): Promise<boolean> {
+export async function isGuestLogAllowed(): Promise<boolean> {
   if (!SUPABASE_CONFIGURED) return true
 
   const durable = await isDurableUser()
   if (durable) return true
 
-  const state = await checkGuestJourney()
-  return state.status === 'available' || state.status === 'scan_completed'
+  // Guest users: always allow logging. The guest journey tracks
+  // first-use for conversion prompts but does not block juice logs.
+  // Network errors are handled by authorizeGuestLog (fail-closed).
+  return true
 }

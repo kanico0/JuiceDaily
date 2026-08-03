@@ -88,7 +88,7 @@ describe('Issue 2: Vertical size selector', () => {
   })
 
   it('2.5 — Size options have accessibilityState with checked', () => {
-    expect(QPE_SRC).toContain("accessibilityState={{ checked: isActive }}")
+    expect(QPE_SRC).toContain('accessibilityState={{ checked: isActive }}')
   })
 
   it('2.6 — Old horizontal sizeRow style is removed', () => {
@@ -127,7 +127,9 @@ describe('Issue 3: Find Recipes button placement', () => {
   })
 
   it('3.5 — Find Recipes has accessibilityLabel', () => {
-    expect(HOME_SRC).toContain('accessibilityLabel={primaryProduceId ? \'Find recipes with my primary produce\' : \'Select a primary produce to find recipes\'}')
+    expect(HOME_SRC).toContain(
+      "accessibilityLabel={primaryProduceId ? 'Find recipes with my primary produce' : 'Select a primary produce to find recipes'}",
+    )
   })
 })
 
@@ -259,13 +261,17 @@ describe('Issue 7: Android Back navigation for modals', () => {
   })
 
   it('7.5 — Back handler returns true to prevent default behavior', () => {
-    const backHandlerBlock = SCAN_SRC.match(/BackHandler\.addEventListener\('hardwareBackPress'[\s\S]*?\}\)/)
+    const backHandlerBlock = SCAN_SRC.match(
+      /BackHandler\.addEventListener\('hardwareBackPress'[\s\S]*?\}\)/,
+    )
     expect(backHandlerBlock).not.toBeNull()
     expect(backHandlerBlock[0]).toContain('return true')
   })
 
   it('7.6 — Back handler returns false when no modal is open', () => {
-    const backHandlerBlock = SCAN_SRC.match(/BackHandler\.addEventListener\('hardwareBackPress'[\s\S]*?\}\)/)
+    const backHandlerBlock = SCAN_SRC.match(
+      /BackHandler\.addEventListener\('hardwareBackPress'[\s\S]*?\}\)/,
+    )
     expect(backHandlerBlock).not.toBeNull()
     expect(backHandlerBlock[0]).toContain('return false')
   })
@@ -286,7 +292,7 @@ describe('Regression: Data and formula preservation', () => {
   it('R1 — producePortionConversion still exports estimateRawWeightGrams', () => {
     const convSrc = fs.readFileSync(
       path.join(__dirname, '..', '..', 'services', 'producePortionConversion.ts'),
-      'utf8'
+      'utf8',
     )
     expect(convSrc).toContain('export function estimateRawWeightGrams')
   })
@@ -294,7 +300,7 @@ describe('Regression: Data and formula preservation', () => {
   it('R2 — GRAMS_PER_OZ constant still exported', () => {
     const convSrc = fs.readFileSync(
       path.join(__dirname, '..', '..', 'services', 'producePortionConversion.ts'),
-      'utf8'
+      'utf8',
     )
     expect(convSrc).toContain('GRAMS_PER_OZ')
   })
@@ -302,7 +308,7 @@ describe('Regression: Data and formula preservation', () => {
   it('R3 — ChallengeStore logJuice preserves portionMetadata', () => {
     const csSrc = fs.readFileSync(
       path.join(__dirname, '..', '..', 'services', 'ChallengeStore.js'),
-      'utf8'
+      'utf8',
     )
     expect(csSrc).toContain('portionMetadata')
   })
@@ -310,7 +316,7 @@ describe('Regression: Data and formula preservation', () => {
   it('R4 — RecipeDetailScreen preserves portion metadata in preload', () => {
     const rdSrc = fs.readFileSync(
       path.join(__dirname, '..', '..', 'screens', 'RecipeDetailScreen.js'),
-      'utf8'
+      'utf8',
     )
     expect(rdSrc).toContain('portionMetadata')
   })
@@ -341,12 +347,9 @@ describe('Regression: Data and formula preservation', () => {
     expect(EXP_SRC).toContain("handleSelect('experienced')")
   })
 
-  it('R11 — App version bumped to 1.0.15', () => {
-    const appJson = fs.readFileSync(
-      path.join(__dirname, '..', '..', '..', 'app.json'),
-      'utf8'
-    )
-    expect(appJson).toContain('"version": "1.0.15"')
+  it('R11 — App version bumped to 1.0.16', () => {
+    const appJson = fs.readFileSync(path.join(__dirname, '..', '..', '..', 'app.json'), 'utf8')
+    expect(appJson).toContain('"version": "1.0.16"')
   })
 
   it('R12 — ScanScreen still has BrowseIdeasModal and ExampleScanModal', () => {

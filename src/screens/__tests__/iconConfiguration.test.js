@@ -2,9 +2,7 @@ const fs = require('fs')
 const path = require('path')
 
 const ROOT = path.join(__dirname, '..', '..', '..')
-const APP_JSON = JSON.parse(
-  fs.readFileSync(path.join(ROOT, 'app.json'), 'utf8'),
-)
+const APP_JSON = JSON.parse(fs.readFileSync(path.join(ROOT, 'app.json'), 'utf8'))
 
 function readPngDimensions(filePath) {
   const buf = fs.readFileSync(filePath)
@@ -67,9 +65,9 @@ describe('Issue 2 — Application Icon Configuration', () => {
     expect(APP_JSON.expo.name).toBe('RawLifeFlow: Juicing Daily')
   })
 
-  test('9. Version remains 1.0.15/code 14', () => {
-    expect(APP_JSON.expo.version).toBe('1.0.15')
-    expect(APP_JSON.expo.android.versionCode).toBe(14)
+  test('9. Version remains 1.0.16/code 15', () => {
+    expect(APP_JSON.expo.version).toBe('1.0.16')
+    expect(APP_JSON.expo.android.versionCode).toBe(15)
   })
 
   test('10. Source artwork was not overwritten or deleted', () => {

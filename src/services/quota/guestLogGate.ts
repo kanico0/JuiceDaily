@@ -24,8 +24,8 @@ import {
   releaseGuestJourney,
   createJourneyId,
   isDurableUser,
-  type GuestJourneyState,
 } from './guestJourneyService'
+import { SUPABASE_CONFIGURED } from '../subscriptions/subscriptionConfig'
 
 export type GuestLogGateResult =
   | { allowed: true; journeyId: string; isDurable: true }
@@ -35,6 +35,15 @@ export type GuestLogGateResult =
 export async function authorizeGuestLog (
   logOperationId?: string,
 ): Promise<GuestLogGateResult> {
+  // Offline / dev mode: no server to enforce guest journey, always allow.
+  if (!SUPABASE_CONFIGURED) {
+    return {
+      allowed: true,
+      journeyId: createJourneyId(),
+      isDurable: true,
+    }
+  }
+
   // Durable users: always allowed, no guest journey tracking.
   const durable = await isDurableUser()
   if (durable) {
@@ -124,6 +133,8 @@ export async function authorizeGuestLog (
 }
 
 export async function isGuestLogAllowed (): Promise<boolean> {
+  if (!SUPABASE_CONFIGURED) return true
+
   const durable = await isDurableUser()
   if (durable) return true
 

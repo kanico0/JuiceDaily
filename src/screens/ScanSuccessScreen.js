@@ -156,7 +156,7 @@ export default function ScanSuccessScreen({ route, navigation }) {
           easing: EASING.decelerate,
           useNativeDriver: true,
         }),
-      ])
+      ]),
     ).start()
   }, [])
 
@@ -203,40 +203,43 @@ export default function ScanSuccessScreen({ route, navigation }) {
     return () => sub.remove()
   }, [handleDone])
 
-  const metrics = useMemo(() => [
-    {
-      icon: Leaf,
-      iconColor: BRAND.accent.chlorophyll,
-      dimColor: BRAND.accentDim.chlorophyll,
-      value: ingredientCount,
-      label: 'Ingredients',
-      sub: `${diversity.cycleUnique} unique this cycle`,
-    },
-    {
-      icon: Beaker,
-      iconColor: BRAND.accent.potassium,
-      dimColor: BRAND.accentDim.potassium,
-      value: nutrientsFound,
-      label: 'Nutrients',
-      sub: `${coverage.cycleNutrients}/8 discovered`,
-    },
-    {
-      icon: TrendingUp,
-      iconColor: BRAND.accent.vitaminC,
-      dimColor: BRAND.accentDim.vitaminC,
-      value: `+${scoreIncrease}`,
-      label: 'Score Increase',
-      sub: null,
-    },
-    {
-      icon: Flame,
-      iconColor: BRAND.accent.vitaminA,
-      dimColor: BRAND.accentDim.vitaminA,
-      value: `${streak.currentCycleStreak}d`,
-      label: 'Streak',
-      sub: null,
-    },
-  ], [ingredientCount, nutrientsFound, scoreIncrease, diversity, coverage, streak])
+  const metrics = useMemo(
+    () => [
+      {
+        icon: Leaf,
+        iconColor: BRAND.accent.chlorophyll,
+        dimColor: BRAND.accentDim.chlorophyll,
+        value: ingredientCount,
+        label: 'Ingredients',
+        sub: `${diversity.cycleUnique} unique this cycle`,
+      },
+      {
+        icon: Beaker,
+        iconColor: BRAND.accent.potassium,
+        dimColor: BRAND.accentDim.potassium,
+        value: nutrientsFound,
+        label: 'Nutrients',
+        sub: `${coverage.cycleNutrients}/8 discovered`,
+      },
+      {
+        icon: TrendingUp,
+        iconColor: BRAND.accent.vitaminC,
+        dimColor: BRAND.accentDim.vitaminC,
+        value: `+${scoreIncrease}`,
+        label: 'Score Increase',
+        sub: null,
+      },
+      {
+        icon: Flame,
+        iconColor: BRAND.accent.vitaminA,
+        dimColor: BRAND.accentDim.vitaminA,
+        value: `${streak.currentCycleStreak}d`,
+        label: 'Streak',
+        sub: null,
+      },
+    ],
+    [ingredientCount, nutrientsFound, scoreIncrease, diversity, coverage, streak],
+  )
 
   return (
     <View style={s.root}>
@@ -266,12 +269,7 @@ export default function ScanSuccessScreen({ route, navigation }) {
 
         {/* Check icon */}
         <View style={s.checkArea}>
-          <Animated.View
-            style={[
-              s.checkCircle,
-              { transform: [{ scale: checkScale }] },
-            ]}
-          >
+          <Animated.View style={[s.checkCircle, { transform: [{ scale: checkScale }] }]}>
             <Check size={32} color="#FFFFFF" strokeWidth={2.5} />
           </Animated.View>
           <Text style={s.headline}>Session Logged</Text>
@@ -291,12 +289,7 @@ export default function ScanSuccessScreen({ route, navigation }) {
             <Text style={s.momentumLabel}>Nutrition Momentum</Text>
             <Text style={s.momentumScore}>{momentum}</Text>
             <View style={s.momentumBar}>
-              <View
-                style={[
-                  s.momentumFill,
-                  { width: `${Math.min(momentum / 1000, 1) * 100}%` },
-                ]}
-              />
+              <View style={[s.momentumFill, { width: `${Math.min(momentum / 1000, 1) * 100}%` }]} />
             </View>
           </GlassSurface>
         </Animated.View>

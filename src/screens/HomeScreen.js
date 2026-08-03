@@ -652,6 +652,9 @@ export default function JuiceSnapScreen({ navigation, route }) {
   const blendOperationIdRef = useRef(null)
   const blendApprovedRef = useRef(false)
   const isLoggingRef = useRef(false)
+  const analysisCompletedRef = useRef(false)
+  const analysisResultRef = useRef(null)
+  const analysisBatchUpdateRef = useRef(false)
   const [showPaywall, setShowPaywall] = useState(false)
   const [isManualMode, setIsManualMode] = useState(route?.params?.manualEntry === true)
   const [manualSearch, setManualSearch] = useState('')
@@ -705,6 +708,21 @@ export default function JuiceSnapScreen({ navigation, route }) {
     const unsubscribe = navigation?.addListener?.('focus', hydratePortionMode)
     return () => { if (typeof unsubscribe === 'function') unsubscribe() }
   }, [navigation])
+
+  // Invalidate cached analysis when the batch materially changes.
+  // Skips the update triggered by executeLogToChallenge's setBatch (analysis result).
+  useEffect(() => {
+    if (analysisBatchUpdateRef.current) {
+      analysisBatchUpdateRef.current = false
+      return
+    }
+    if (analysisCompletedRef.current) {
+      analysisCompletedRef.current = false
+      analysisResultRef.current = null
+      blendApprovedRef.current = false
+      blendOperationIdRef.current = null
+    }
+  }, [batch])
 
   const hasItems = (batch.scannedIngredients || []).length > 0
   const isSnapDepleted = selectQuotaExhausted(serverQuota) && !filmRollIsPro
@@ -1347,6 +1365,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
 
     let totals = batch?.totals || {}
     let allowanceResult = null
+    let loggingSucceeded = false
 
     try {
       // ── Guest log gate: pre-check BEFORE consuming blend allowance ──
@@ -1358,7 +1377,8 @@ export default function JuiceSnapScreen({ navigation, route }) {
       }
 
       // Advanced Blend: go through server-authoritative transaction
-      if (blendType === 'advanced') {
+      // Skip if analysis already completed (partial-success retry)
+      if (blendType === 'advanced' && !analysisCompletedRef.current) {
         setBlendCheckInProgress(true)
         try {
           trackEvent('advanced_blend_analysis_started', {
@@ -1371,7 +1391,13 @@ export default function JuiceSnapScreen({ navigation, route }) {
           totals = authorized.totals || totals
           allowanceResult = authorized.allowance
 
+          // Preserve successful analysis result for retry
+          analysisCompletedRef.current = true
+          analysisResultRef.current = { totals, ingredients: authorized.ingredients }
+
           // Update batch with real nutrition totals
+          // Guard against the batch-invalidation effect firing
+          analysisBatchUpdateRef.current = true
           setBatch((prev) => ({
             ...prev,
             totals,
@@ -1429,6 +1455,10 @@ export default function JuiceSnapScreen({ navigation, route }) {
         } finally {
           setBlendCheckInProgress(false)
         }
+      } else if (analysisCompletedRef.current && analysisResultRef.current) {
+        // Reuse successful analysis result from prior attempt
+        totals = analysisResultRef.current.totals || totals
+        if (__DEV__) console.log('[blend] reusing cached analysis result for retry')
       }
 
       // ── Guest log gate: finalize AFTER blend succeeds ──────────
@@ -1459,6 +1489,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
       recordMeaningfulActivity().catch(() => {})
 
       setIsLogged(true)
+      loggingSucceeded = true
 
       // Navigate to ScanSuccess with session metrics
       const nutrientKeys = Object.keys(totals).filter(
@@ -1475,8 +1506,19 @@ export default function JuiceSnapScreen({ navigation, route }) {
       Alert.alert('Logging Error', 'Could not log your juice. Please try again.')
     } finally {
       isLoggingRef.current = false
-      blendApprovedRef.current = false
-      blendOperationIdRef.current = null
+      if (loggingSucceeded) {
+        // Full success — clear all transient state for next batch
+        blendApprovedRef.current = false
+        blendOperationIdRef.current = null
+        analysisCompletedRef.current = false
+        analysisResultRef.current = null
+      } else if (!analysisCompletedRef.current) {
+        // Analysis did not succeed — reset approval to allow re-authorization
+        blendApprovedRef.current = false
+        blendOperationIdRef.current = null
+      }
+      // If analysisCompletedRef.current is true but !loggingSucceeded,
+      // preserve analysis state for retry (partial-success)
     }
   }, [hasItems, batch, isPro, effectiveManualMode, logJuice, recordNutritionLog, preMomentum, navigation, addLogEntry])
 

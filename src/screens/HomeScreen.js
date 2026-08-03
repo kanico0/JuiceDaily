@@ -711,6 +711,18 @@ export default function JuiceSnapScreen({ navigation, route }) {
     return () => { if (typeof unsubscribe === 'function') unsubscribe() }
   }, [navigation])
 
+  // Reset isLogged when returning to this screen (e.g. after ScanSuccess),
+  // so the user can log a second juice on the same day.
+  useEffect(() => {
+    const resetLoggedOnFocus = () => {
+      if (!isLoggingRef.current) {
+        setIsLogged(false)
+      }
+    }
+    const unsubscribe = navigation?.addListener?.('focus', resetLoggedOnFocus)
+    return () => { if (typeof unsubscribe === 'function') unsubscribe() }
+  }, [navigation])
+
   // Invalidate cached analysis when the batch materially changes.
   // Skips the update triggered by executeLogToChallenge's setBatch (analysis result).
   useEffect(() => {

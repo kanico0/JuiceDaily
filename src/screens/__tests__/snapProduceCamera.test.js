@@ -38,7 +38,7 @@ const selectorSource = fs.readFileSync(
 // Helper: extract attemptCameraOpen function body
 function getAttemptCameraOpenSection () {
   const idx = homeSource.indexOf('const attemptCameraOpen = useCallback')
-  return homeSource.substring(idx, idx + 4000)
+  return homeSource.substring(idx, idx + 6000)
 }
 
 describe('Snap Produce: button wiring', () => {

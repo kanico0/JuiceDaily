@@ -22,8 +22,17 @@ describe('Issue 4 — Taste-voting prompt on ScanSuccessScreen', () => {
     expect(source).toMatch(/Modal/)
   })
 
-  test('taste feedback prompt is shown after a delay', () => {
-    expect(source).toMatch(/setTimeout.*setShowTasteFeedback.*true/)
+  test('taste feedback prompt is shown via explicit queue completion (not timer)', () => {
+    expect(source).toContain('handleAchievementDismiss')
+    expect(source).toContain('setShowTasteFeedback(true)')
+    // No standalone timer that races with celebration dialogs
+    const timerMatch = source.match(/setTimeout.*setShowTasteFeedback.*true/)
+    expect(timerMatch).toBeNull()
+  })
+
+  test('taste vote is persisted to exact History entry via setTasteReaction', () => {
+    expect(source).toContain('setTasteReaction')
+    expect(source).toContain('logEntryId')
   })
 
   test('taste feedback modal renders TASTE_REACTIONS options', () => {

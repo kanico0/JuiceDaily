@@ -22,6 +22,13 @@ const COUNTABLE = [
 ]
 
 const NOW_WEIGHT_ONLY = [
+  'wheatgrass',
+  'turmeric',
+  'cayenne',
+  'coconut_water',
+]
+
+const NEWLY_COUNTABLE = [
   'spinach',
   'swiss_chard',
   'collard_greens',
@@ -47,6 +54,22 @@ describe('Issue 3 — Restore Count for Countable Produce', () => {
 
   test.each(NOW_WEIGHT_ONLY)('isQuantitySupported returns false for %s', (pid) => {
     expect(isQuantitySupported(pid)).toBe(false)
+  })
+
+  test.each(NEWLY_COUNTABLE)('isQuantitySupported returns true for %s', (pid) => {
+    expect(isQuantitySupported(pid)).toBe(true)
+  })
+
+  test.each(NEWLY_COUNTABLE)('getSupportedCountUnits returns at least 1 count unit for %s', (pid) => {
+    const countUnits = getSupportedCountUnits(pid)
+    expect(countUnits.length).toBeGreaterThanOrEqual(1)
+  })
+
+  test.each(NEWLY_COUNTABLE)('getDefaultPortionUnit returns a count-family unit for %s', (pid) => {
+    const unit = getDefaultPortionUnit(pid)
+    expect(unit).not.toBeNull()
+    const VOLUME_FAMILIES = new Set(['packed_cup', 'loose_cup', 'tablespoon'])
+    expect(VOLUME_FAMILIES.has(unit!.family)).toBe(false)
   })
 
   test('turnip has whole unit with medium size = 130g', () => {

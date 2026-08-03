@@ -163,9 +163,18 @@ export const PRODUCE_PORTIONS: ReadonlyProducePortions = deepFreeze({
 
   spinach: {
     produceId: 'spinach',
-    quantitySupported: false,
-    defaultUnitKey: 'loose_cup',
+    quantitySupported: true,
+    defaultUnitKey: 'handful',
     units: [
+      {
+        unitKey: 'handful',
+        family: 'handful',
+        displaySingular: 'handful',
+        displayPlural: 'handfuls',
+        allowDecimal: true,
+        inputStep: 0.5,
+        sizes: [{ sizeKey: 'standard', displaySize: '1 handful (≈20 g)', gramWeight: 20 }],
+      },
       {
         unitKey: 'loose_cup',
         family: 'loose_cup',
@@ -184,9 +193,18 @@ export const PRODUCE_PORTIONS: ReadonlyProducePortions = deepFreeze({
 
   swiss_chard: {
     produceId: 'swiss_chard',
-    quantitySupported: false,
-    defaultUnitKey: 'loose_cup',
+    quantitySupported: true,
+    defaultUnitKey: 'leaf',
     units: [
+      {
+        unitKey: 'leaf',
+        family: 'piece',
+        displaySingular: 'leaf',
+        displayPlural: 'leaves',
+        allowDecimal: true,
+        inputStep: 1,
+        sizes: [{ sizeKey: 'medium', displaySize: 'medium leaf (≈34 g)', gramWeight: 34 }],
+      },
       {
         unitKey: 'loose_cup',
         family: 'loose_cup',
@@ -205,9 +223,18 @@ export const PRODUCE_PORTIONS: ReadonlyProducePortions = deepFreeze({
 
   collard_greens: {
     produceId: 'collard_greens',
-    quantitySupported: false,
-    defaultUnitKey: 'loose_cup',
+    quantitySupported: true,
+    defaultUnitKey: 'leaf',
     units: [
+      {
+        unitKey: 'leaf',
+        family: 'piece',
+        displaySingular: 'leaf',
+        displayPlural: 'leaves',
+        allowDecimal: true,
+        inputStep: 1,
+        sizes: [{ sizeKey: 'medium', displaySize: 'medium leaf (≈30 g)', gramWeight: 30 }],
+      },
       {
         unitKey: 'loose_cup',
         family: 'loose_cup',
@@ -226,9 +253,18 @@ export const PRODUCE_PORTIONS: ReadonlyProducePortions = deepFreeze({
 
   dandelion_greens: {
     produceId: 'dandelion_greens',
-    quantitySupported: false,
-    defaultUnitKey: 'loose_cup',
+    quantitySupported: true,
+    defaultUnitKey: 'handful',
     units: [
+      {
+        unitKey: 'handful',
+        family: 'handful',
+        displaySingular: 'handful',
+        displayPlural: 'handfuls',
+        allowDecimal: true,
+        inputStep: 0.5,
+        sizes: [{ sizeKey: 'standard', displaySize: '1 handful (≈25 g)', gramWeight: 25 }],
+      },
       {
         unitKey: 'loose_cup',
         family: 'loose_cup',
@@ -248,9 +284,18 @@ export const PRODUCE_PORTIONS: ReadonlyProducePortions = deepFreeze({
 
   arugula: {
     produceId: 'arugula',
-    quantitySupported: false,
-    defaultUnitKey: 'loose_cup',
+    quantitySupported: true,
+    defaultUnitKey: 'handful',
     units: [
+      {
+        unitKey: 'handful',
+        family: 'handful',
+        displaySingular: 'handful',
+        displayPlural: 'handfuls',
+        allowDecimal: true,
+        inputStep: 0.5,
+        sizes: [{ sizeKey: 'standard', displaySize: '1 handful (≈10 g)', gramWeight: 10 }],
+      },
       {
         unitKey: 'loose_cup',
         family: 'loose_cup',
@@ -269,9 +314,18 @@ export const PRODUCE_PORTIONS: ReadonlyProducePortions = deepFreeze({
 
   romaine: {
     produceId: 'romaine',
-    quantitySupported: false,
-    defaultUnitKey: 'loose_cup',
+    quantitySupported: true,
+    defaultUnitKey: 'leaf',
     units: [
+      {
+        unitKey: 'leaf',
+        family: 'piece',
+        displaySingular: 'leaf',
+        displayPlural: 'leaves',
+        allowDecimal: true,
+        inputStep: 1,
+        sizes: [{ sizeKey: 'medium', displaySize: 'medium leaf (≈25 g)', gramWeight: 25 }],
+      },
       {
         unitKey: 'loose_cup',
         family: 'loose_cup',
@@ -334,9 +388,18 @@ export const PRODUCE_PORTIONS: ReadonlyProducePortions = deepFreeze({
 
   parsley: {
     produceId: 'parsley',
-    quantitySupported: false,
-    defaultUnitKey: 'loose_cup',
+    quantitySupported: true,
+    defaultUnitKey: 'handful',
     units: [
+      {
+        unitKey: 'handful',
+        family: 'handful',
+        displaySingular: 'handful',
+        displayPlural: 'handfuls',
+        allowDecimal: true,
+        inputStep: 0.5,
+        sizes: [{ sizeKey: 'standard', displaySize: '1 handful (≈15 g)', gramWeight: 15 }],
+      },
       {
         unitKey: 'loose_cup',
         family: 'loose_cup',
@@ -364,9 +427,18 @@ export const PRODUCE_PORTIONS: ReadonlyProducePortions = deepFreeze({
 
   cilantro: {
     produceId: 'cilantro',
-    quantitySupported: false,
-    defaultUnitKey: 'loose_cup',
+    quantitySupported: true,
+    defaultUnitKey: 'handful',
     units: [
+      {
+        unitKey: 'handful',
+        family: 'handful',
+        displaySingular: 'handful',
+        displayPlural: 'handfuls',
+        allowDecimal: true,
+        inputStep: 0.5,
+        sizes: [{ sizeKey: 'standard', displaySize: '1 handful (≈8 g)', gramWeight: 8 }],
+      },
       {
         unitKey: 'loose_cup',
         family: 'loose_cup',
@@ -385,9 +457,18 @@ export const PRODUCE_PORTIONS: ReadonlyProducePortions = deepFreeze({
 
   mint: {
     produceId: 'mint',
-    quantitySupported: false,
-    defaultUnitKey: 'loose_cup',
+    quantitySupported: true,
+    defaultUnitKey: 'handful',
     units: [
+      {
+        unitKey: 'handful',
+        family: 'handful',
+        displaySingular: 'handful',
+        displayPlural: 'handfuls',
+        allowDecimal: true,
+        inputStep: 0.5,
+        sizes: [{ sizeKey: 'standard', displaySize: '1 handful (≈8 g)', gramWeight: 8 }],
+      },
       {
         unitKey: 'loose_cup',
         family: 'loose_cup',
@@ -415,9 +496,18 @@ export const PRODUCE_PORTIONS: ReadonlyProducePortions = deepFreeze({
 
   basil: {
     produceId: 'basil',
-    quantitySupported: false,
-    defaultUnitKey: 'loose_cup',
+    quantitySupported: true,
+    defaultUnitKey: 'handful',
     units: [
+      {
+        unitKey: 'handful',
+        family: 'handful',
+        displaySingular: 'handful',
+        displayPlural: 'handfuls',
+        allowDecimal: true,
+        inputStep: 0.5,
+        sizes: [{ sizeKey: 'standard', displaySize: '1 handful (≈6 g)', gramWeight: 6 }],
+      },
       {
         unitKey: 'loose_cup',
         family: 'loose_cup',
@@ -469,9 +559,18 @@ export const PRODUCE_PORTIONS: ReadonlyProducePortions = deepFreeze({
 
   watercress: {
     produceId: 'watercress',
-    quantitySupported: false,
-    defaultUnitKey: 'loose_cup',
+    quantitySupported: true,
+    defaultUnitKey: 'handful',
     units: [
+      {
+        unitKey: 'handful',
+        family: 'handful',
+        displaySingular: 'handful',
+        displayPlural: 'handfuls',
+        allowDecimal: true,
+        inputStep: 0.5,
+        sizes: [{ sizeKey: 'standard', displaySize: '1 handful (≈17 g)', gramWeight: 17 }],
+      },
       {
         unitKey: 'loose_cup',
         family: 'loose_cup',

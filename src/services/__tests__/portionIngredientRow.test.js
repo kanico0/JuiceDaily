@@ -112,8 +112,14 @@ describe('Ingredient Row — Portion Entry', () => {
     expect(isQuantitySupported('turmeric')).toBe(false)
     expect(isQuantitySupported('cayenne')).toBe(false)
     expect(isQuantitySupported('coconut_water')).toBe(false)
-    expect(isQuantitySupported('spinach')).toBe(false)
-    expect(isQuantitySupported('arugula')).toBe(false)
+  })
+
+  it('10c. leafy greens and herbs now support Quantity', () => {
+    expect(isQuantitySupported('spinach')).toBe(true)
+    expect(isQuantitySupported('arugula')).toBe(true)
+    expect(isQuantitySupported('romaine')).toBe(true)
+    expect(isQuantitySupported('parsley')).toBe(true)
+    expect(isQuantitySupported('basil')).toBe(true)
   })
 
   it('10b. aloe_vera now supports quantity (whole leaf)', () => {

@@ -14,6 +14,7 @@ import {
   getPortionRegistryRecord,
   isQuantitySupported,
   getSupportedPortionUnits,
+  getSupportedCountUnits,
   getDefaultPortionUnit,
   getSupportedSizes,
   GRAMS_PER_OZ,
@@ -36,6 +37,9 @@ import { PRODUCE_PORTIONS } from '../../constants/producePortions'
 
 const WEIGHT_ONLY = [
   'wheatgrass', 'turmeric', 'cayenne', 'coconut_water',
+]
+
+const COUNT_SUPPORTED_GREENS = [
   'spinach', 'swiss_chard', 'collard_greens', 'dandelion_greens',
   'arugula', 'romaine', 'parsley', 'cilantro', 'mint', 'basil',
   'watercress',
@@ -400,6 +404,22 @@ describe('Produce Portion Conversion Service', () => {
 
   test.each(WEIGHT_ONLY)('isQuantitySupported returns false for %s', (pid) => {
     expect(isQuantitySupported(pid)).toBe(false)
+  })
+
+  test.each(COUNT_SUPPORTED_GREENS)('isQuantitySupported returns true for %s', (pid) => {
+    expect(isQuantitySupported(pid)).toBe(true)
+  })
+
+  test.each(COUNT_SUPPORTED_GREENS)('getSupportedCountUnits returns at least one count unit for %s', (pid) => {
+    const units = getSupportedCountUnits(pid)
+    expect(units.length).toBeGreaterThan(0)
+  })
+
+  test.each(COUNT_SUPPORTED_GREENS)('getDefaultPortionUnit returns a count-family unit for %s', (pid) => {
+    const unit = getDefaultPortionUnit(pid)
+    expect(unit).not.toBeNull()
+    const VOLUME_FAMILIES = new Set(['packed_cup', 'loose_cup', 'tablespoon'])
+    expect(VOLUME_FAMILIES.has(unit!.family)).toBe(false)
   })
 
   test('getSupportedPortionUnits returns units for apple', () => {

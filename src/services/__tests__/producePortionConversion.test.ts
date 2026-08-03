@@ -34,7 +34,12 @@ import { PRODUCE_PORTIONS } from '../../constants/producePortions'
 // carrot: whole (S/M/L, integer) + loose_cup (standard, decimal), high confidence
 //   whole medium=61g, loose_cup standard=128g
 
-const WEIGHT_ONLY = ['wheatgrass', 'aloe_vera', 'turmeric', 'cayenne', 'coconut_water']
+const WEIGHT_ONLY = [
+  'wheatgrass', 'turmeric', 'cayenne', 'coconut_water',
+  'spinach', 'swiss_chard', 'collard_greens', 'dandelion_greens',
+  'arugula', 'romaine', 'parsley', 'cilantro', 'mint', 'basil',
+  'watercress',
+]
 
 describe('Produce Portion Conversion Service', () => {
 
@@ -52,17 +57,17 @@ describe('Produce Portion Conversion Service', () => {
     expect(result.confidence).toBe('high')
   })
 
-  // 2. Known medium-confidence supported conversion
-  test('2. medium-confidence: 1 cup dandelion greens = 55g', () => {
+  // 2. Medium-confidence supported conversion — turnip whole
+  test('2. medium-confidence: 1 medium turnip = 130g', () => {
     const result = estimateRawWeightGrams({
-      produceId: 'dandelion_greens',
+      produceId: 'turnip',
       quantity: 1,
-      unitKey: 'loose_cup',
-      sizeKey: 'standard',
+      unitKey: 'whole',
+      sizeKey: 'medium',
     })
     expect(result.ok).toBe(true)
     if (!result.ok) return
-    expect(result.estimatedRawWeightG).toBe(55)
+    expect(result.estimatedRawWeightG).toBe(130)
     expect(result.confidence).toBe('medium')
   })
 

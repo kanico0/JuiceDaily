@@ -109,25 +109,25 @@ describe('Quantity vs Direct-Weight Equivalence', () => {
     expectEquivalentResults(r1, r2, 'kale cold_pressed')
   })
 
-  // ── Medium-confidence: dandelion_greens ────────────────────
-  test('medium-confidence item (dandelion_greens): identical outputs', () => {
+  // ── Medium-confidence: turnip ────────────────────
+  test('medium-confidence item (turnip): identical outputs', () => {
     const qtyResult = estimateRawWeightGrams({
-      produceId: 'dandelion_greens',
-      quantity: 1.5,
-      unitKey: 'loose_cup',
-      sizeKey: 'standard',
+      produceId: 'turnip',
+      quantity: 2,
+      unitKey: 'whole',
+      sizeKey: 'medium',
     })
     expect(qtyResult.ok).toBe(true)
     if (!qtyResult.ok) return
 
     const ingredient: ScannedIngredient = {
-      produceId: 'dandelion_greens',
+      produceId: 'turnip',
       weightG: qtyResult.estimatedRawWeightG,
     }
 
     const r1 = processJuiceBatch([ingredient], 'cold_pressed')
     const r2 = processJuiceBatch([{ ...ingredient }], 'cold_pressed')
-    expectEquivalentResults(r1, r2, 'dandelion_greens cold_pressed')
+    expectEquivalentResults(r1, r2, 'turnip cold_pressed')
   })
 
   // ── Centrifugal equivalence ────────────────────────────────

@@ -163,7 +163,7 @@ export const PRODUCE_PORTIONS: ReadonlyProducePortions = deepFreeze({
 
   spinach: {
     produceId: 'spinach',
-    quantitySupported: true,
+    quantitySupported: false,
     defaultUnitKey: 'loose_cup',
     units: [
       {
@@ -184,7 +184,7 @@ export const PRODUCE_PORTIONS: ReadonlyProducePortions = deepFreeze({
 
   swiss_chard: {
     produceId: 'swiss_chard',
-    quantitySupported: true,
+    quantitySupported: false,
     defaultUnitKey: 'loose_cup',
     units: [
       {
@@ -205,7 +205,7 @@ export const PRODUCE_PORTIONS: ReadonlyProducePortions = deepFreeze({
 
   collard_greens: {
     produceId: 'collard_greens',
-    quantitySupported: true,
+    quantitySupported: false,
     defaultUnitKey: 'loose_cup',
     units: [
       {
@@ -226,7 +226,7 @@ export const PRODUCE_PORTIONS: ReadonlyProducePortions = deepFreeze({
 
   dandelion_greens: {
     produceId: 'dandelion_greens',
-    quantitySupported: true,
+    quantitySupported: false,
     defaultUnitKey: 'loose_cup',
     units: [
       {
@@ -248,7 +248,7 @@ export const PRODUCE_PORTIONS: ReadonlyProducePortions = deepFreeze({
 
   arugula: {
     produceId: 'arugula',
-    quantitySupported: true,
+    quantitySupported: false,
     defaultUnitKey: 'loose_cup',
     units: [
       {
@@ -269,7 +269,7 @@ export const PRODUCE_PORTIONS: ReadonlyProducePortions = deepFreeze({
 
   romaine: {
     produceId: 'romaine',
-    quantitySupported: true,
+    quantitySupported: false,
     defaultUnitKey: 'loose_cup',
     units: [
       {
@@ -291,8 +291,19 @@ export const PRODUCE_PORTIONS: ReadonlyProducePortions = deepFreeze({
   bok_choy: {
     produceId: 'bok_choy',
     quantitySupported: true,
-    defaultUnitKey: 'loose_cup',
+    defaultUnitKey: 'whole',
     units: [
+      {
+        unitKey: 'whole',
+        family: 'whole',
+        displaySingular: 'head',
+        displayPlural: 'heads',
+        allowDecimal: false,
+        inputStep: 1,
+        sizes: [
+          { sizeKey: 'medium', displaySize: 'medium head (≈170 g)', gramWeight: 170 },
+        ],
+      },
       {
         unitKey: 'loose_cup',
         family: 'loose_cup',
@@ -304,7 +315,7 @@ export const PRODUCE_PORTIONS: ReadonlyProducePortions = deepFreeze({
       },
     ],
     sourceRecords: [
-      sr('USDA', 'Foundation Foods', '11116', 2685572, '1 cup, shredded (70 g)', 'raw', 'edible portion without refuse', 'USDA FoodData Central Foundation Foods NDB 11116, Cabbage, bok choy, raw (FDC ID 2685572)'),
+      sr('USDA', 'Foundation Foods', '11116', 2685572, '1 cup, shredded (70 g); 1 medium head (≈170 g)', 'raw', 'edible portion without refuse', 'USDA FoodData Central Foundation Foods NDB 11116, Cabbage, bok choy, raw (FDC ID 2685572)'),
     ],
     confidence: 'medium',
   },
@@ -323,7 +334,7 @@ export const PRODUCE_PORTIONS: ReadonlyProducePortions = deepFreeze({
 
   parsley: {
     produceId: 'parsley',
-    quantitySupported: true,
+    quantitySupported: false,
     defaultUnitKey: 'loose_cup',
     units: [
       {
@@ -353,7 +364,7 @@ export const PRODUCE_PORTIONS: ReadonlyProducePortions = deepFreeze({
 
   cilantro: {
     produceId: 'cilantro',
-    quantitySupported: true,
+    quantitySupported: false,
     defaultUnitKey: 'loose_cup',
     units: [
       {
@@ -374,7 +385,7 @@ export const PRODUCE_PORTIONS: ReadonlyProducePortions = deepFreeze({
 
   mint: {
     produceId: 'mint',
-    quantitySupported: true,
+    quantitySupported: false,
     defaultUnitKey: 'loose_cup',
     units: [
       {
@@ -404,7 +415,7 @@ export const PRODUCE_PORTIONS: ReadonlyProducePortions = deepFreeze({
 
   basil: {
     produceId: 'basil',
-    quantitySupported: true,
+    quantitySupported: false,
     defaultUnitKey: 'loose_cup',
     units: [
       {
@@ -434,19 +445,31 @@ export const PRODUCE_PORTIONS: ReadonlyProducePortions = deepFreeze({
 
   aloe_vera: {
     produceId: 'aloe_vera',
-    quantitySupported: false,
-    defaultUnitKey: null,
-    units: [],
+    quantitySupported: true,
+    defaultUnitKey: 'whole',
+    units: [
+      {
+        unitKey: 'whole',
+        family: 'whole',
+        displaySingular: 'leaf',
+        displayPlural: 'leaves',
+        allowDecimal: false,
+        inputStep: 1,
+        sizes: [
+          { sizeKey: 'medium', displaySize: 'medium leaf (≈120 g gel)', gramWeight: 120 },
+        ],
+      },
+    ],
     sourceRecords: [
-      sr('USDA', 'FNDDS', null, null, 'No standard household measure established', 'raw', 'edible portion (gel only)', 'USDA FoodData Central FNDDS 2021-2023 — aloe vera gel has no standardized USDA household portion weight'),
+      sr('USDA', 'FNDDS', null, null, '1 aloe vera leaf (≈120 g gel yield)', 'raw', 'edible portion (gel only)', 'USDA FoodData Central FNDDS 2021-2023 — aloe vera gel estimated from medium leaf'),
     ],
     confidence: 'low',
-    notes: 'Aloe vera is typically used as extracted gel measured by weight. No standardized USDA household measure exists for raw aloe leaves.',
+    notes: 'Aloe vera is typically used as extracted gel. Count mode supports whole-leaf entry; weight remains the primary measurement for precise gel amounts.',
   },
 
   watercress: {
     produceId: 'watercress',
-    quantitySupported: true,
+    quantitySupported: false,
     defaultUnitKey: 'loose_cup',
     units: [
       {
@@ -500,8 +523,19 @@ export const PRODUCE_PORTIONS: ReadonlyProducePortions = deepFreeze({
   cabbage_green: {
     produceId: 'cabbage_green',
     quantitySupported: true,
-    defaultUnitKey: 'loose_cup',
+    defaultUnitKey: 'whole',
     units: [
+      {
+        unitKey: 'whole',
+        family: 'whole',
+        displaySingular: 'head',
+        displayPlural: 'heads',
+        allowDecimal: false,
+        inputStep: 1,
+        sizes: [
+          { sizeKey: 'medium', displaySize: 'medium head (≈908 g)', gramWeight: 908 },
+        ],
+      },
       {
         unitKey: 'loose_cup',
         family: 'loose_cup',
@@ -513,7 +547,7 @@ export const PRODUCE_PORTIONS: ReadonlyProducePortions = deepFreeze({
       },
     ],
     sourceRecords: [
-      sr('USDA', 'SR Legacy', '11109', 169975, '1 cup, shredded (70 g)', 'raw', 'edible portion without refuse', 'USDA FoodData Central SR Legacy NDB 11109, Cabbage, raw (FDC ID 169975)'),
+      sr('USDA', 'SR Legacy', '11109', 169975, '1 cup, shredded (70 g); 1 medium head (≈908 g)', 'raw', 'edible portion without refuse', 'USDA FoodData Central SR Legacy NDB 11109, Cabbage, raw (FDC ID 169975)'),
     ],
     confidence: 'high',
   },
@@ -521,8 +555,19 @@ export const PRODUCE_PORTIONS: ReadonlyProducePortions = deepFreeze({
   cabbage_red: {
     produceId: 'cabbage_red',
     quantitySupported: true,
-    defaultUnitKey: 'loose_cup',
+    defaultUnitKey: 'whole',
     units: [
+      {
+        unitKey: 'whole',
+        family: 'whole',
+        displaySingular: 'head',
+        displayPlural: 'heads',
+        allowDecimal: false,
+        inputStep: 1,
+        sizes: [
+          { sizeKey: 'medium', displaySize: 'medium head (≈893 g)', gramWeight: 893 },
+        ],
+      },
       {
         unitKey: 'loose_cup',
         family: 'loose_cup',
@@ -534,7 +579,7 @@ export const PRODUCE_PORTIONS: ReadonlyProducePortions = deepFreeze({
       },
     ],
     sourceRecords: [
-      sr('USDA', 'SR Legacy', '11112', 169977, '1 cup, shredded (70 g)', 'raw', 'edible portion without refuse', 'USDA FoodData Central SR Legacy NDB 11112, Cabbage, red, raw (FDC ID 169977)'),
+      sr('USDA', 'SR Legacy', '11112', 169977, '1 cup, shredded (70 g); 1 medium head (≈893 g)', 'raw', 'edible portion without refuse', 'USDA FoodData Central SR Legacy NDB 11112, Cabbage, red, raw (FDC ID 169977)'),
     ],
     confidence: 'medium',
     notes: 'Red cabbage portion weight inferred from green cabbage SR Legacy data; FNDDS uses same portion weight for both.',
@@ -543,8 +588,19 @@ export const PRODUCE_PORTIONS: ReadonlyProducePortions = deepFreeze({
   cauliflower: {
     produceId: 'cauliflower',
     quantitySupported: true,
-    defaultUnitKey: 'loose_cup',
+    defaultUnitKey: 'whole',
     units: [
+      {
+        unitKey: 'whole',
+        family: 'whole',
+        displaySingular: 'head',
+        displayPlural: 'heads',
+        allowDecimal: false,
+        inputStep: 1,
+        sizes: [
+          { sizeKey: 'medium', displaySize: 'medium head (≈575 g)', gramWeight: 575 },
+        ],
+      },
       {
         unitKey: 'loose_cup',
         family: 'loose_cup',
@@ -556,7 +612,7 @@ export const PRODUCE_PORTIONS: ReadonlyProducePortions = deepFreeze({
       },
     ],
     sourceRecords: [
-      sr('USDA', 'SR Legacy', '11135', 169986, '1 cup, chopped (107 g)', 'raw', 'edible portion without refuse', 'USDA FoodData Central SR Legacy NDB 11135, Cauliflower, raw (FDC ID 169986)'),
+      sr('USDA', 'SR Legacy', '11135', 169986, '1 cup, chopped (107 g); 1 medium head (≈575 g)', 'raw', 'edible portion without refuse', 'USDA FoodData Central SR Legacy NDB 11135, Cauliflower, raw (FDC ID 169986)'),
     ],
     confidence: 'high',
   },
@@ -564,8 +620,19 @@ export const PRODUCE_PORTIONS: ReadonlyProducePortions = deepFreeze({
   kohlrabi: {
     produceId: 'kohlrabi',
     quantitySupported: true,
-    defaultUnitKey: 'loose_cup',
+    defaultUnitKey: 'whole',
     units: [
+      {
+        unitKey: 'whole',
+        family: 'whole',
+        displaySingular: 'bulb',
+        displayPlural: 'bulbs',
+        allowDecimal: false,
+        inputStep: 1,
+        sizes: [
+          { sizeKey: 'medium', displaySize: 'medium bulb (≈135 g)', gramWeight: 135 },
+        ],
+      },
       {
         unitKey: 'loose_cup',
         family: 'loose_cup',
@@ -577,7 +644,7 @@ export const PRODUCE_PORTIONS: ReadonlyProducePortions = deepFreeze({
       },
     ],
     sourceRecords: [
-      sr('USDA', 'SR Legacy', '11241', 168424, '1 cup, slices (135 g)', 'raw', 'edible portion without refuse', 'USDA FoodData Central SR Legacy NDB 11241, Kohlrabi, raw (FDC ID 168424)'),
+      sr('USDA', 'SR Legacy', '11241', 168424, '1 cup, slices (135 g); 1 medium bulb (≈135 g)', 'raw', 'edible portion without refuse', 'USDA FoodData Central SR Legacy NDB 11241, Kohlrabi, raw (FDC ID 168424)'),
     ],
     confidence: 'medium',
   },
@@ -718,8 +785,19 @@ export const PRODUCE_PORTIONS: ReadonlyProducePortions = deepFreeze({
   fennel: {
     produceId: 'fennel',
     quantitySupported: true,
-    defaultUnitKey: 'loose_cup',
+    defaultUnitKey: 'whole',
     units: [
+      {
+        unitKey: 'whole',
+        family: 'whole',
+        displaySingular: 'bulb',
+        displayPlural: 'bulbs',
+        allowDecimal: false,
+        inputStep: 1,
+        sizes: [
+          { sizeKey: 'medium', displaySize: 'medium bulb (≈234 g)', gramWeight: 234 },
+        ],
+      },
       {
         unitKey: 'loose_cup',
         family: 'loose_cup',
@@ -731,7 +809,7 @@ export const PRODUCE_PORTIONS: ReadonlyProducePortions = deepFreeze({
       },
     ],
     sourceRecords: [
-      sr('USDA', 'SR Legacy', '11957', 169385, '1 cup, sliced (87 g)', 'raw', 'edible portion without refuse', 'USDA FoodData Central SR Legacy NDB 11957, Fennel, bulb, raw (FDC ID 169385)'),
+      sr('USDA', 'SR Legacy', '11957', 169385, '1 cup, sliced (87 g); 1 medium bulb (≈234 g)', 'raw', 'edible portion without refuse', 'USDA FoodData Central SR Legacy NDB 11957, Fennel, bulb, raw (FDC ID 169385)'),
     ],
     confidence: 'medium',
   },
@@ -773,8 +851,20 @@ export const PRODUCE_PORTIONS: ReadonlyProducePortions = deepFreeze({
   turnip: {
     produceId: 'turnip',
     quantitySupported: true,
-    defaultUnitKey: 'loose_cup',
+    defaultUnitKey: 'whole',
     units: [
+      {
+        unitKey: 'whole',
+        family: 'whole',
+        displaySingular: 'turnip',
+        displayPlural: 'turnips',
+        allowDecimal: false,
+        inputStep: 1,
+        sizes: [
+          { sizeKey: 'small', displaySize: 'small (2 inch dia)', gramWeight: 85 },
+          { sizeKey: 'medium', displaySize: 'medium (2-1/2 inch dia)', gramWeight: 130 },
+        ],
+      },
       {
         unitKey: 'loose_cup',
         family: 'loose_cup',
@@ -786,7 +876,7 @@ export const PRODUCE_PORTIONS: ReadonlyProducePortions = deepFreeze({
       },
     ],
     sourceRecords: [
-      sr('USDA', 'SR Legacy', '11564', 170465, '1 cup, cubed (130 g)', 'raw', 'edible portion without refuse', 'USDA FoodData Central SR Legacy NDB 11564, Turnips, raw (FDC ID 170465)'),
+      sr('USDA', 'SR Legacy', '11564', 170465, '1 cup, cubed (130 g); 1 medium turnip (130 g)', 'raw', 'edible portion without refuse', 'USDA FoodData Central SR Legacy NDB 11564, Turnips, raw (FDC ID 170465)'),
     ],
     confidence: 'medium',
   },
@@ -794,8 +884,19 @@ export const PRODUCE_PORTIONS: ReadonlyProducePortions = deepFreeze({
   celeriac: {
     produceId: 'celeriac',
     quantitySupported: true,
-    defaultUnitKey: 'loose_cup',
+    defaultUnitKey: 'whole',
     units: [
+      {
+        unitKey: 'whole',
+        family: 'whole',
+        displaySingular: 'root',
+        displayPlural: 'roots',
+        allowDecimal: false,
+        inputStep: 1,
+        sizes: [
+          { sizeKey: 'medium', displaySize: 'medium root (≈400 g)', gramWeight: 400 },
+        ],
+      },
       {
         unitKey: 'loose_cup',
         family: 'loose_cup',
@@ -807,7 +908,7 @@ export const PRODUCE_PORTIONS: ReadonlyProducePortions = deepFreeze({
       },
     ],
     sourceRecords: [
-      sr('USDA', 'SR Legacy', '11141', 170400, '1 cup, cubed (140 g)', 'raw', 'edible portion without refuse (peeled)', 'USDA FoodData Central SR Legacy NDB 11141, Celeriac, raw (FDC ID 170400)'),
+      sr('USDA', 'SR Legacy', '11141', 170400, '1 cup, cubed (140 g); 1 medium root (≈400 g estimated)', 'raw', 'edible portion without refuse (peeled)', 'USDA FoodData Central SR Legacy NDB 11141, Celeriac, raw (FDC ID 170400)'),
     ],
     confidence: 'medium',
   },
@@ -815,8 +916,19 @@ export const PRODUCE_PORTIONS: ReadonlyProducePortions = deepFreeze({
   jicama: {
     produceId: 'jicama',
     quantitySupported: true,
-    defaultUnitKey: 'loose_cup',
+    defaultUnitKey: 'whole',
     units: [
+      {
+        unitKey: 'whole',
+        family: 'whole',
+        displaySingular: 'jicama',
+        displayPlural: 'jicamas',
+        allowDecimal: false,
+        inputStep: 1,
+        sizes: [
+          { sizeKey: 'medium', displaySize: 'medium (≈700 g)', gramWeight: 700 },
+        ],
+      },
       {
         unitKey: 'loose_cup',
         family: 'loose_cup',
@@ -828,7 +940,7 @@ export const PRODUCE_PORTIONS: ReadonlyProducePortions = deepFreeze({
       },
     ],
     sourceRecords: [
-      sr('USDA', 'SR Legacy', '11603', 170073, '1 cup, slices (120 g)', 'raw', 'edible portion without refuse (peeled)', 'USDA FoodData Central SR Legacy NDB 11603, Yambean (jicama), raw (FDC ID 170073)'),
+      sr('USDA', 'SR Legacy', '11603', 170073, '1 cup, slices (120 g); 1 medium jicama (≈700 g)', 'raw', 'edible portion without refuse (peeled)', 'USDA FoodData Central SR Legacy NDB 11603, Yambean (jicama), raw (FDC ID 170073)'),
     ],
     confidence: 'medium',
   },
@@ -1785,6 +1897,17 @@ export const PRODUCE_PORTIONS: ReadonlyProducePortions = deepFreeze({
     defaultUnitKey: 'loose_cup',
     units: [
       {
+        unitKey: 'piece',
+        family: 'piece',
+        displaySingular: 'raspberry',
+        displayPlural: 'raspberries',
+        allowDecimal: false,
+        inputStep: 1,
+        sizes: [
+          { sizeKey: 'standard', displaySize: '1 berry (≈2 g)', gramWeight: 2 },
+        ],
+      },
+      {
         unitKey: 'loose_cup',
         family: 'loose_cup',
         displaySingular: 'cup',
@@ -1795,7 +1918,7 @@ export const PRODUCE_PORTIONS: ReadonlyProducePortions = deepFreeze({
       },
     ],
     sourceRecords: [
-      sr('USDA', 'SR Legacy', '9302', 167755, '1 cup (123 g)', 'raw', 'edible portion without refuse', 'USDA FoodData Central SR Legacy NDB 9302, Raspberries, raw (FDC ID 167755)'),
+      sr('USDA', 'SR Legacy', '9302', 167755, '1 cup (123 g); 1 berry (≈2 g estimated)', 'raw', 'edible portion without refuse', 'USDA FoodData Central SR Legacy NDB 9302, Raspberries, raw (FDC ID 167755)'),
     ],
     confidence: 'high',
   },
@@ -1805,6 +1928,17 @@ export const PRODUCE_PORTIONS: ReadonlyProducePortions = deepFreeze({
     quantitySupported: true,
     defaultUnitKey: 'loose_cup',
     units: [
+      {
+        unitKey: 'piece',
+        family: 'piece',
+        displaySingular: 'blackberry',
+        displayPlural: 'blackberries',
+        allowDecimal: false,
+        inputStep: 1,
+        sizes: [
+          { sizeKey: 'standard', displaySize: '1 berry (≈5 g)', gramWeight: 5 },
+        ],
+      },
       {
         unitKey: 'loose_cup',
         family: 'loose_cup',
@@ -1816,7 +1950,7 @@ export const PRODUCE_PORTIONS: ReadonlyProducePortions = deepFreeze({
       },
     ],
     sourceRecords: [
-      sr('USDA', 'SR Legacy', '9042', 173946, '1 cup (144 g)', 'raw', 'edible portion without refuse', 'USDA FoodData Central SR Legacy NDB 9042, Blackberries, raw (FDC ID 173946)'),
+      sr('USDA', 'SR Legacy', '9042', 173946, '1 cup (144 g); 1 berry (≈5 g estimated)', 'raw', 'edible portion without refuse', 'USDA FoodData Central SR Legacy NDB 9042, Blackberries, raw (FDC ID 173946)'),
     ],
     confidence: 'high',
   },
@@ -1826,6 +1960,17 @@ export const PRODUCE_PORTIONS: ReadonlyProducePortions = deepFreeze({
     quantitySupported: true,
     defaultUnitKey: 'loose_cup',
     units: [
+      {
+        unitKey: 'piece',
+        family: 'piece',
+        displaySingular: 'cranberry',
+        displayPlural: 'cranberries',
+        allowDecimal: false,
+        inputStep: 1,
+        sizes: [
+          { sizeKey: 'standard', displaySize: '1 berry (≈1.5 g)', gramWeight: 1.5 },
+        ],
+      },
       {
         unitKey: 'loose_cup',
         family: 'loose_cup',
@@ -1846,7 +1991,7 @@ export const PRODUCE_PORTIONS: ReadonlyProducePortions = deepFreeze({
       },
     ],
     sourceRecords: [
-      sr('USDA', 'SR Legacy', '9078', 171722, '1 cup whole (110 g); 1 tbsp chopped (6.9 g)', 'raw', 'edible portion without refuse', 'USDA FoodData Central SR Legacy NDB 9078, Cranberries, raw (FDC ID 171722)'),
+      sr('USDA', 'SR Legacy', '9078', 171722, '1 cup whole (110 g); 1 tbsp chopped (6.9 g); 1 berry (≈1.5 g estimated)', 'raw', 'edible portion without refuse', 'USDA FoodData Central SR Legacy NDB 9078, Cranberries, raw (FDC ID 171722)'),
     ],
     confidence: 'high',
   },

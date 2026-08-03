@@ -109,10 +109,15 @@ describe('Ingredient Row — Portion Entry', () => {
 
   it('10. weight-only produce disables Quantity', () => {
     expect(isQuantitySupported('wheatgrass')).toBe(false)
-    expect(isQuantitySupported('aloe_vera')).toBe(false)
     expect(isQuantitySupported('turmeric')).toBe(false)
     expect(isQuantitySupported('cayenne')).toBe(false)
     expect(isQuantitySupported('coconut_water')).toBe(false)
+    expect(isQuantitySupported('spinach')).toBe(false)
+    expect(isQuantitySupported('arugula')).toBe(false)
+  })
+
+  it('10b. aloe_vera now supports quantity (whole leaf)', () => {
+    expect(isQuantitySupported('aloe_vera')).toBe(true)
   })
 
   it('11. weight-only explanatory copy renders', () => {
@@ -296,7 +301,7 @@ describe('Portion Integration Equivalence', () => {
     { name: '6 medium carrots', produceId: 'carrot', qty: 6, unitKey: 'whole', sizeKey: 'medium' },
     { name: '4 small apples', produceId: 'apple', qty: 4, unitKey: 'whole', sizeKey: 'small' },
     { name: '3 celery stalks (medium)', produceId: 'celery', qty: 3, unitKey: 'stalk', sizeKey: 'medium' },
-    { name: '2 packed cups spinach', produceId: 'spinach', qty: 2, unitKey: 'loose_cup', sizeKey: 'standard' },
+    { name: '2 medium turnips', produceId: 'turnip', qty: 2, unitKey: 'whole', sizeKey: 'medium' },
   ]
 
   const juicerMethods = ['centrifugal', 'cold_pressed']
@@ -340,10 +345,10 @@ describe('Portion Integration Equivalence', () => {
   })
 
   it('medium-confidence item produces valid estimate', () => {
-    const record = getPortionRegistryRecord('dandelion_greens')
+    const record = getPortionRegistryRecord('turnip')
     expect(record).toBeDefined()
     if (record.confidence === 'medium') {
-      const ing = makeQuantityIngredient('dandelion_greens', 1, 'loose_cup', 'standard')
+      const ing = makeQuantityIngredient('turnip', 1, 'whole', 'medium')
       expect(ing).not.toBeNull()
       expect(ing.weightG).toBeGreaterThan(0)
     }

@@ -366,7 +366,12 @@ function EntryDetailsModal({
               <X size={20} color={BRAND.text.muted} />
             </Pressable>
           </View>
-          <ScrollView style={ms.cardBody} showsVerticalScrollIndicator={false}>
+          <ScrollView
+            style={ms.cardBody}
+            contentContainerStyle={ms.cardBodyContent}
+            showsVerticalScrollIndicator={false}
+            nestedScrollEnabled
+          >
             <Text style={ms.entryTitle}>{entry.title}</Text>
             <Text style={ms.entryMeta}>
               {entry.source} · {formatTime(entry.createdAt)}
@@ -841,8 +846,9 @@ const ms = StyleSheet.create({
     backgroundColor: BRAND.background.elevated || '#161B22',
     borderRadius: RADIUS.xl,
     width: '100%',
-    maxHeight: '80%',
+    maxHeight: '85%',
     overflow: 'hidden',
+    flex: 1,
   },
   cardHeader: {
     flexDirection: 'row',
@@ -860,8 +866,13 @@ const ms = StyleSheet.create({
     color: BRAND.text.primary,
   },
   cardBody: {
+    flex: 1,
     paddingHorizontal: SPACE.xl,
     paddingVertical: SPACE.lg,
+  },
+  cardBodyContent: {
+    flexGrow: 1,
+    paddingBottom: 60,
   },
   entryTitle: {
     fontSize: FONT_SIZE.lg,

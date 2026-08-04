@@ -1,7 +1,7 @@
 // scripts/generate-icons.js — Generate RawLifeFlow icon assets from source
 //
 // Source: C:\src\JuicingApp\Docs\Raw_LifeFlow_Color_Play-Store.png
-// SHA-256: 875D4FA25251649EF2BC84D402CC9040A63CEC43BEE1EE5BFEAAA8A6CDCFE47A
+// SHA-256: 3B1109ADE240DF4726EAA36CA5A94324301C48D88B80225CACB549D59279DCFD
 // Output: assets/icon.png, assets/adaptive-icon.png, assets/favicon.png,
 //         assets/splash-icon.png, assets/play-store-icon.png
 //

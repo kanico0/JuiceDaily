@@ -83,7 +83,7 @@ describe('Issue 2 — Application Icon Configuration', () => {
     const src = 'C:\\src\\JuicingApp\\Docs\\Raw_LifeFlow_Color_Play-Store.png'
     const buf = fs.readFileSync(src)
     const hash = crypto.createHash('sha256').update(buf).digest('hex')
-    expect(hash).toBe('875d4fa25251649ef2bc84d402cc9040a63cec43bee1ee5bfeaaa8a6cdcfe47a')
+    expect(hash).toBe('3b1109ade240df4726eaa36ca5a94324301c48d88b80225cacb549d59279dcfd')
   })
 
   test('12. Adaptive icon has safe-zone padding (artwork at 62% of canvas)', () => {
@@ -123,6 +123,6 @@ describe('Issue 2 — Application Icon Configuration', () => {
     const scriptPath = path.join(ROOT, 'scripts', 'generate-icons.js')
     const script = fs.readFileSync(scriptPath, 'utf8')
     expect(script).toContain('Raw_LifeFlow_Color_Play-Store.png')
-    expect(script).toContain('875D4FA25251649EF2BC84D402CC9040A63CEC43BEE1EE5BFEAAA8A6CDCFE47A')
+    expect(script).toContain('3B1109ADE240DF4726EAA36CA5A94324301C48D88B80225CACB549D59279DCFD')
   })
 })

@@ -156,7 +156,7 @@ describe('Scan quota server-authoritative architecture', () => {
     expect(logFnBody).not.toMatch(/recordSnapUsage/)
 
     // The comment should confirm snap was already consumed (may be further down)
-    const widerBody = code.slice(logFnIdx, logFnIdx + 5000)
+    const widerBody = code.slice(logFnIdx, logFnIdx + 6000)
     expect(widerBody).toMatch(/already consumed/i)
   })
 

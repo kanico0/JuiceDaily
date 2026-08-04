@@ -18,7 +18,7 @@ describe('Issue 1 — Hourglass busy state during Log Today', () => {
   })
 
   test('Log Today button is disabled during logging', () => {
-    expect(source).toContain('disabled={isLogging}')
+    expect(source).toContain('disabled={isLogging || hasInvalidIngredients}')
   })
 
   test('Log Today button shows spinner and Logging text during logging', () => {

@@ -196,7 +196,7 @@ describe('Unified scan-quota display architecture', () => {
   test('executeLogToChallenge does not call applyQuotaSnapshot or recordSnapUsage', () => {
     const logIdx = homeScreenSource.indexOf('const executeLogToChallenge')
     expect(logIdx).toBeGreaterThan(-1)
-    const logBlock = homeScreenSource.slice(logIdx, logIdx + 5000)
+    const logBlock = homeScreenSource.slice(logIdx, logIdx + 6000)
     expect(logBlock).not.toContain('recordSnapUsage')
     // Snap was already consumed at analysis time
     expect(logBlock).toContain('already consumed')

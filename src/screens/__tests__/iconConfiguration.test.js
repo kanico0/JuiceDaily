@@ -46,10 +46,12 @@ describe('Issue 2 — Application Icon Configuration', () => {
     expect(fs.existsSync(path.join(ROOT, fg))).toBe(true)
   })
 
-  test('5. Adaptive background configuration exists', () => {
+  test('5. Adaptive background configuration exists and uses exact black', () => {
     const bg = APP_JSON.expo.android?.adaptiveIcon?.backgroundColor
     expect(bg).toBeTruthy()
     expect(typeof bg).toBe('string')
+    expect(bg).not.toBe('#ffffff')
+    expect(bg).toBe('#000000')
   })
 
   test('6. No old program icon remains referenced', () => {
@@ -66,9 +68,15 @@ describe('Issue 2 — Application Icon Configuration', () => {
     expect(APP_JSON.expo.name).toBe('RawLifeFlow: Juicing Daily')
   })
 
-  test('9. Version remains 1.0.19/code 18', () => {
-    expect(APP_JSON.expo.version).toBe('1.0.19')
-    expect(APP_JSON.expo.android.versionCode).toBe(18)
+  test('9. Version is 1.0.20/code 19', () => {
+    expect(APP_JSON.expo.version).toBe('1.0.20')
+    expect(APP_JSON.expo.android.versionCode).toBe(19)
+  })
+
+  test('9b. Runtime version policy remains appVersion (derives 1.0.20)', () => {
+    expect(APP_JSON.expo.runtimeVersion).toEqual({ policy: 'appVersion' })
+    // With appVersion policy, runtime version equals expo.version
+    expect(APP_JSON.expo.version).toBe('1.0.20')
   })
 
   test('10. Source artwork was not overwritten or deleted', () => {
@@ -86,14 +94,46 @@ describe('Issue 2 — Application Icon Configuration', () => {
     expect(hash).toBe('3b1109ade240df4726eaa36ca5a94324301c48d88b80225cacb549d59279dcfd')
   })
 
-  test('12. Adaptive icon has safe-zone padding (artwork at 62% of canvas)', () => {
+  test('12. Adaptive icon has safe-zone padding (artwork within 66% safe zone)', () => {
     const adaptivePath = path.join(ROOT, APP_JSON.expo.android.adaptiveIcon.foregroundImage)
     const dims = readPngDimensions(adaptivePath)
     expect(dims.width).toBe(1024)
     expect(dims.height).toBe(1024)
-    // The adaptive icon should be 1024x1024 with transparent padding
+    // Verify nontransparent artwork is within Android's 18% safe zone
+    const zlib = require('zlib')
     const buf = fs.readFileSync(adaptivePath)
-    expect(buf.length).toBeGreaterThan(0)
+    let offset = 8
+    const idatChunks = []
+    while (offset < buf.length) {
+      const len = buf.readUInt32BE(offset)
+      const type = buf.toString('ascii', offset + 4, offset + 8)
+      if (type === 'IDAT') idatChunks.push(buf.subarray(offset + 8, offset + 8 + len))
+      if (type === 'IEND') break
+      offset += 12 + len
+    }
+    const raw = Buffer.concat(idatChunks)
+    const decompressed = zlib.inflateSync(raw)
+    const bpp = 4
+    const stride = dims.width * bpp + 1
+    let minX = dims.width, maxX = 0, minY = dims.height, maxY = 0
+    for (let y = 0; y < dims.height; y++) {
+      const rowStart = y * stride + 1
+      for (let x = 0; x < dims.width; x++) {
+        const alpha = decompressed[rowStart + x * bpp + 3]
+        if (alpha > 0) {
+          if (x < minX) minX = x
+          if (x > maxX) maxX = x
+          if (y < minY) minY = y
+          if (y > maxY) maxY = y
+        }
+      }
+    }
+    const padL = minX, padR = dims.width - maxX - 1, padT = minY, padB = dims.height - maxY - 1
+    const safeZone = Math.round(dims.width * 0.18)
+    expect(padL).toBeGreaterThanOrEqual(safeZone)
+    expect(padR).toBeGreaterThanOrEqual(safeZone)
+    expect(padT).toBeGreaterThanOrEqual(safeZone)
+    expect(padB).toBeGreaterThanOrEqual(safeZone)
   })
 
   test('13. Play Store icon asset exists and is 512x512', () => {

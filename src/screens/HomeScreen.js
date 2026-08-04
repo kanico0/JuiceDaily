@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react'
+import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import {
   View,
   Text,
@@ -722,6 +722,9 @@ export default function JuiceSnapScreen({ navigation, route }) {
       if (!isLoggingRef.current) {
         setIsLogged(false)
       }
+      // Reset stale modal state from prior log/camera attempts
+      setShowAdvancedBlendModal(false)
+      setShowAccountGate(false)
       // Increment attempt ID to invalidate any in-flight camera attempt
       // before resetting the guard.  Without this, a stale attempt can
       // resume after the focus reset and race with a new user-initiated
@@ -774,6 +777,31 @@ export default function JuiceSnapScreen({ navigation, route }) {
   }, [batch])
 
   const hasItems = (batch.scannedIngredients || []).length > 0
+
+  const hasInvalidIngredients = useMemo(() => {
+    const ingredients = batch.scannedIngredients || []
+    for (const item of ingredients) {
+      if (!isProduceQuantitySupported(item.produceId)) continue
+      if (item.portionEntryMode !== 'quantity') continue
+      const unitKey = item.portionMetadata?.unitKey || item.pendingUnitKey
+      if (!unitKey) return true
+      const sizes = getSupportedSizes(item.produceId, unitKey)
+      const hasSML = sizes.some((s) => s.sizeKey !== 'standard')
+      const sizeKey = item.portionMetadata?.sizeKey || item.pendingSizeKey || null
+      if (hasSML && !sizeKey) return true
+      const qty = item.portionMetadata?.enteredQuantity
+      if (!qty || qty <= 0 || isNaN(qty)) return true
+      const result = estimateRawWeightGrams({
+        produceId: item.produceId,
+        quantity: qty,
+        unitKey,
+        sizeKey: hasSML ? sizeKey : undefined,
+      })
+      if (!result.ok) return true
+    }
+    return false
+  }, [batch.scannedIngredients])
+
   const isSnapDepleted = selectQuotaExhausted(serverQuota) && !filmRollIsPro
 
   // Open manual entry when navigated with manualEntry: true
@@ -1437,68 +1465,74 @@ export default function JuiceSnapScreen({ navigation, route }) {
   const handleLogToChallenge = useCallback(async () => {
     if (!hasItems) return
     if (isLoggingRef.current) return
+    if (hasInvalidIngredients) return
 
-    const ingredients = batch?.scannedIngredients || []
-    const distinctCount = countDistinctProduceIds(ingredients)
-    const blendType = classifyBlend(distinctCount)
+    try {
+      const ingredients = batch?.scannedIngredients || []
+      const distinctCount = countDistinctProduceIds(ingredients)
+      const blendType = classifyBlend(distinctCount)
 
-    // Advanced Blend: check allowance for free users
-    if (blendType === 'advanced' && !isPro && !blendApprovedRef.current) {
-      // Create a new operation ID for this analysis attempt
-      blendOperationIdRef.current = createOperationId()
+      // Advanced Blend: check allowance for free users
+      if (blendType === 'advanced' && !isPro && !blendApprovedRef.current) {
+        // Create a new operation ID for this analysis attempt
+        blendOperationIdRef.current = createOperationId()
 
-      // If Supabase is configured but we could not verify the allowance,
-      // show the network retry stage instead of a stale count.
-      if (SUPABASE_CONFIGURED && !blendAllowanceVerified) {
-        setAdvancedBlendStage('network_retry')
+        // If Supabase is configured but we could not verify the allowance,
+        // show the network retry stage instead of a stale count.
+        if (SUPABASE_CONFIGURED && !blendAllowanceVerified) {
+          setAdvancedBlendStage('network_retry')
+          setShowAdvancedBlendModal(true)
+          trackEvent('advanced_blend_allowance_error', {
+            plan: 'free',
+            error_code: 'allowance_unverified',
+            ingredient_count: distinctCount,
+            source: effectiveManualMode ? 'manual' : 'photo',
+          })
+          return
+        }
+
+        const currentRemaining = getAdvancedBlendRemaining(blendUsedCount, isPro) ?? FREE_ADVANCED_BLEND_ALLOWANCE
+
+        // If server reports zero remaining, show exhausted messaging
+        // instead of a confirmation that would immediately fail.
+        if (blendAllowanceVerified && currentRemaining <= 0) {
+          setAdvancedBlendStage('allowance_exhausted')
+          setAdvancedBlendRemaining(0)
+          setShowAdvancedBlendModal(true)
+          trackEvent('advanced_blend_quota_exhausted', {
+            plan: 'free',
+            ingredient_count: distinctCount,
+            used: blendUsedCount,
+            limit: FREE_ADVANCED_BLEND_ALLOWANCE,
+            source: effectiveManualMode ? 'manual' : 'photo',
+          })
+          return
+        }
+
+        // Show pre-analysis confirmation first
+        setAdvancedBlendStage('pre_analysis_confirmation')
+        setAdvancedBlendRemaining(currentRemaining)
         setShowAdvancedBlendModal(true)
-        trackEvent('advanced_blend_allowance_error', {
+        trackEvent('advanced_blend_confirmation_shown', {
           plan: 'free',
-          error_code: 'allowance_unverified',
+          remaining: currentRemaining,
           ingredient_count: distinctCount,
           source: effectiveManualMode ? 'manual' : 'photo',
         })
         return
       }
 
-      const currentRemaining = getAdvancedBlendRemaining(blendUsedCount, isPro) ?? FREE_ADVANCED_BLEND_ALLOWANCE
-
-      // If server reports zero remaining, show exhausted messaging
-      // instead of a confirmation that would immediately fail.
-      if (blendAllowanceVerified && currentRemaining <= 0) {
-        setAdvancedBlendStage('allowance_exhausted')
-        setAdvancedBlendRemaining(0)
-        setShowAdvancedBlendModal(true)
-        trackEvent('advanced_blend_quota_exhausted', {
-          plan: 'free',
-          ingredient_count: distinctCount,
-          used: blendUsedCount,
-          limit: FREE_ADVANCED_BLEND_ALLOWANCE,
-          source: effectiveManualMode ? 'manual' : 'photo',
-        })
-        return
+      // Pro users: create operation ID and proceed directly
+      if (blendType === 'advanced' && isPro) {
+        blendOperationIdRef.current = createOperationId()
       }
 
-      // Show pre-analysis confirmation first
-      setAdvancedBlendStage('pre_analysis_confirmation')
-      setAdvancedBlendRemaining(currentRemaining)
-      setShowAdvancedBlendModal(true)
-      trackEvent('advanced_blend_confirmation_shown', {
-        plan: 'free',
-        remaining: currentRemaining,
-        ingredient_count: distinctCount,
-        source: effectiveManualMode ? 'manual' : 'photo',
-      })
-      return
+      await executeLogToChallenge()
+    } catch (err) {
+      if (__DEV__) console.warn('[log] handleLogToChallenge failed:', err?.message)
+      Alert.alert('Logging Error', 'Could not log your juice. Please try again.')
     }
-
-    // Pro users: create operation ID and proceed directly
-    if (blendType === 'advanced' && isPro) {
-      blendOperationIdRef.current = createOperationId()
-    }
-
-    await executeLogToChallenge()
-  }, [hasItems, batch, isPro, effectiveManualMode, executeLogToChallenge, blendAllowanceVerified, blendUsedCount, refreshBlendAllowance])
+  }, [hasItems, hasInvalidIngredients, batch, isPro, effectiveManualMode, executeLogToChallenge, blendAllowanceVerified, blendUsedCount, refreshBlendAllowance])
 
   const executeLogToChallenge = useCallback(async () => {
     if (!hasItems) return
@@ -1618,6 +1652,13 @@ export default function JuiceSnapScreen({ navigation, route }) {
       const logGate = await authorizeGuestLog()
       if (!logGate.allowed) {
         setShowAccountGate(true)
+        if (logGate.reason === 'error') {
+          Alert.alert(
+            'Connection Error',
+            logGate.message ||
+              'Could not verify your account. Please check your connection and try again.',
+          )
+        }
         return
       }
 
@@ -1641,9 +1682,6 @@ export default function JuiceSnapScreen({ navigation, route }) {
       })
       recordMeaningfulActivity().catch(() => {})
 
-      setIsLogged(true)
-      loggingSucceeded = true
-
       // Navigate to ScanSuccess with session metrics and entry ID
       const nutrientKeys = Object.keys(totals).filter(
         (k) => (Number(totals[k]) || 0) > 0
@@ -1655,8 +1693,12 @@ export default function JuiceSnapScreen({ navigation, route }) {
         ingredientNames: ingredientIds,
         logEntryId: logEntry?.id || null,
       })
+
+      setIsLogged(true)
+      loggingSucceeded = true
     } catch (err) {
       if (__DEV__) console.warn('[log] executeLogToChallenge failed:', err?.message)
+      setIsLogged(false)
       Alert.alert('Logging Error', 'Could not log your juice. Please try again.')
     } finally {
       isLoggingRef.current = false
@@ -1898,15 +1940,32 @@ export default function JuiceSnapScreen({ navigation, route }) {
 
         {hasItems && (
           <TouchableOpacity
-            style={[styles.logButton, isLogging && styles.logButtonBusy]}
+            style={[
+              styles.logButton,
+              isLogging && styles.logButtonBusy,
+              hasInvalidIngredients && styles.logButtonDisabled,
+            ]}
             onPress={handleLogToChallenge}
             activeOpacity={0.7}
-            disabled={isLogging}
-            accessibilityState={{ busy: isLogging }}
-            accessibilityLabel={isLogging ? 'Logging your juice, please wait' : 'Log to Today'}
+            disabled={isLogging || hasInvalidIngredients}
+            accessibilityState={{
+              busy: isLogging,
+              disabled: isLogging || hasInvalidIngredients,
+            }}
+            accessibilityLabel={
+              isLogging
+                ? 'Logging your juice, please wait'
+                : hasInvalidIngredients
+                  ? 'Log to Today — disabled, fix invalid ingredients first'
+                  : 'Log to Today'
+            }
           >
             <LinearGradient
-              colors={['#4CAF50', '#2E7D32']}
+              colors={
+                hasInvalidIngredients
+                  ? ['#6B7280', '#4B5563']
+                  : ['#4CAF50', '#2E7D32']
+              }
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={styles.logButtonGradient}
@@ -1965,23 +2024,23 @@ export default function JuiceSnapScreen({ navigation, route }) {
           }}
           onAccountRequired={() => setShowAccountGate(true)}
         />
-
-        <AccountGateModal
-          visible={showAccountGate}
-          onClose={() => {
-            setShowAccountGate(false)
-            pendingCameraOpenRef.current = false
-          }}
-          onAuthenticated={() => {
-            setShowAccountGate(false)
-            if (pendingCameraOpenRef.current) {
-              pendingCameraOpenRef.current = false
-              attemptCameraOpen(false)
-            }
-          }}
-          initialMode={accountGateMode}
-        />
       </Modal>
+
+      <AccountGateModal
+        visible={showAccountGate}
+        onClose={() => {
+          setShowAccountGate(false)
+          pendingCameraOpenRef.current = false
+        }}
+        onAuthenticated={() => {
+          setShowAccountGate(false)
+          if (pendingCameraOpenRef.current) {
+            pendingCameraOpenRef.current = false
+            attemptCameraOpen(false)
+          }
+        }}
+        initialMode={accountGateMode}
+      />
 
       <BigSqueezeModal
         visible={showBigSqueeze}
@@ -2387,6 +2446,9 @@ const styles = StyleSheet.create({
   },
   logButtonBusy: {
     opacity: 0.7,
+  },
+  logButtonDisabled: {
+    opacity: 0.5,
   },
   preparingCameraRow: {
     flexDirection: 'row',

@@ -62,6 +62,9 @@ import AchievementOverlay from '../components/AchievementOverlay'
 import GlowJourneyDrop from '../components/GlowJourneyDrop'
 import GlowJourneyDetail from '../components/GlowJourneyDetail'
 import GlowJourneyCelebrationOverlay from '../components/GlowJourneyCelebrationOverlay'
+import GardenCard from '../components/GardenCard'
+import GardenDetail from '../components/GardenDetail'
+import GardenCelebrationOverlay from '../components/GardenCelebrationOverlay'
 import {
   getWeeklyLeafStates,
   getWeeklyQualifyingDays,
@@ -73,6 +76,22 @@ import {
   markWeeklyCelebrated,
   initializeBaseline,
 } from '../services/glowJourneyService'
+import {
+  getGardenSummary,
+  initializeGardenBaseline,
+  detectNewDiscoveries,
+  detectBedMilestones,
+  detectRainbowHarvest,
+  shouldCelebrateBed,
+  shouldCelebrateColor,
+  shouldCelebrateRainbow,
+  markBedCelebrated,
+  markColorCelebrated,
+  markRainbowCelebrated,
+} from '../services/gardenService'
+import { CELEBRATION_TYPES } from '../hooks/useCelebrationCoordinator'
+import { getBedForProduce, getColorForProduce } from '../constants/gardenTaxonomy'
+import { PRODUCE_DATA } from '../services/JuiceEngine'
 import { getUnlockedIds } from '../services/achievements'
 
 // -- Top nutrient highlights from today's juices --------------
@@ -118,8 +137,12 @@ export default function TodayScreen({ navigation }) {
   const [showGlowJourneyDetail, setShowGlowJourneyDetail] = useState(false)
   const [unlockedAchievementIds, setUnlockedAchievementIds] = useState([])
   const [stageCelebration, setStageCelebration] = useState(null)
+  const [showGardenDetail, setShowGardenDetail] = useState(false)
+  const [gardenCelebration, setGardenCelebration] = useState(null)
   const glowJourneyViewedRef = useRef(false)
+  const gardenViewedRef = useRef(false)
   const prevLifetimeDaysRef = useRef(0)
+  const prevGardenEntriesRef = useRef([])
 
   const fadeAnim = useRef(new Animated.Value(0)).current
   const isNavigating = useRef(false)
@@ -264,6 +287,126 @@ export default function TodayScreen({ navigation }) {
     prevLifetimeDaysRef.current = lifetimeQualifyingDays
   }, [lifetimeQualifyingDays, glowJourneyEntries, pendingAchievement])
 
+  // -- Garden baseline initialization (existing-user protection) --
+  useEffect(() => {
+    ;(async () => {
+      await initializeGardenBaseline(entries)
+      prevGardenEntriesRef.current = entries
+    })()
+  }, [])
+
+  // -- Garden analytics (once per mount) --
+  useEffect(() => {
+    if (gardenViewedRef.current) return
+    gardenViewedRef.current = true
+    const gardenSummary = getGardenSummary(entries)
+    trackEvent('garden_viewed', {
+      discovered_count: gardenSummary.discoveredCount,
+      beds_started: gardenSummary.bedsStarted,
+      colors_discovered: gardenSummary.discoveredColorCount,
+      rainbow_complete: gardenSummary.rainbowComplete,
+    })
+  }, [])
+
+  // -- Garden celebration detection on entries change --
+  useEffect(() => {
+    const prevEntries = prevGardenEntriesRef.current
+    if (prevEntries === entries) return
+
+    const { newProduce, newColors } = detectNewDiscoveries(prevEntries, entries)
+    const bedMilestones = detectBedMilestones(prevEntries, entries)
+    const rainbowDetected = detectRainbowHarvest(prevEntries, entries)
+
+    ;(async () => {
+      // New produce discovery celebration
+      if (newProduce.length > 0) {
+        const firstPid = newProduce[0]
+        const bedKey = getBedForProduce(firstPid)
+        const colorKey = getColorForProduce(firstPid)
+        const produceEntry = PRODUCE_DATA[firstPid]
+        const gardenSummary = getGardenSummary(entries)
+        trackEvent('garden_produce_discovered', {
+          bed_key: bedKey,
+          color_key: colorKey,
+          discovered_count: gardenSummary.discoveredCount,
+        })
+        if (await shouldCelebrateBed(bedKey, 'seed')) {
+          // Only fire discovery celebration if not already celebrated for this bed
+          setGardenCelebration({
+            type: CELEBRATION_TYPES.GARDEN_DISCOVERY,
+            data: {
+              bedKey,
+              produceName: produceEntry ? produceEntry.name : firstPid,
+            },
+          })
+        }
+      }
+
+      // Bed milestone celebrations
+      for (const milestone of bedMilestones) {
+        trackEvent('garden_bed_stage_reached', {
+          bed_key: milestone.bedKey,
+          stage_key: milestone.toStage,
+          produce_count: milestone.stage ? milestone.stage.threshold : 0,
+        })
+        if (await shouldCelebrateBed(milestone.bedKey, milestone.toStage)) {
+          const gardenSummary = getGardenSummary(entries)
+          setGardenCelebration({
+            type: CELEBRATION_TYPES.GARDEN_BED_MILESTONE,
+            data: {
+              bedKey: milestone.bedKey,
+              stage: milestone.stage,
+              produceCount: gardenSummary.bedCounts[milestone.bedKey],
+            },
+          })
+          await markBedCelebrated(milestone.bedKey, milestone.toStage)
+          break
+        }
+      }
+
+      // New color celebration
+      if (newColors.length > 0) {
+        const firstColor = newColors[0]
+        const gardenSummary = getGardenSummary(entries)
+        trackEvent('garden_color_discovered', {
+          color_key: firstColor,
+          colors_discovered: gardenSummary.discoveredColorCount,
+        })
+        if (await shouldCelebrateColor(firstColor)) {
+          setGardenCelebration({
+            type: CELEBRATION_TYPES.GARDEN_COLOR,
+            data: {
+              colorKey: firstColor,
+              colorsDiscovered: gardenSummary.discoveredColorCount,
+            },
+          })
+          await markColorCelebrated(firstColor)
+        }
+      }
+
+      // Rainbow Harvest celebration
+      if (rainbowDetected) {
+        const gardenSummary = getGardenSummary(entries)
+        trackEvent('garden_rainbow_harvest', {
+          discovered_count: gardenSummary.discoveredCount,
+          colors_discovered: gardenSummary.discoveredColorCount,
+        })
+        if (await shouldCelebrateRainbow()) {
+          setGardenCelebration({
+            type: CELEBRATION_TYPES.GARDEN_RAINBOW,
+            data: {
+              discoveredCount: gardenSummary.discoveredCount,
+              colorsDiscovered: gardenSummary.discoveredColorCount,
+            },
+          })
+          await markRainbowCelebrated()
+        }
+      }
+    })()
+
+    prevGardenEntriesRef.current = entries
+  }, [entries])
+
   // Load unlocked achievement IDs for detail modal
   useEffect(() => {
     ;(async () => {
@@ -280,6 +423,15 @@ export default function TodayScreen({ navigation }) {
     })
     setShowGlowJourneyDetail(true)
   }, [journeyStage])
+
+  const handleGardenPress = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    const gardenSummary = getGardenSummary(entries)
+    trackEvent('garden_card_tapped', {
+      discovered_count: gardenSummary.discoveredCount,
+    })
+    setShowGardenDetail(true)
+  }, [entries])
 
   // -- Today screen viewed analytics --
   useEffect(() => {
@@ -432,6 +584,13 @@ export default function TodayScreen({ navigation }) {
               weeklyQualifyingDays={weeklyQualifyingDays}
               weeklyLeafStates={weeklyLeafStates}
               onPress={handleGlowJourneyPress}
+              isReduced={isReduced}
+            />
+
+            {/* === RAWLIFE GARDEN CARD =================== */}
+            <GardenCard
+              entries={entries}
+              onPress={handleGardenPress}
               isReduced={isReduced}
             />
 
@@ -916,6 +1075,23 @@ export default function TodayScreen({ navigation }) {
         lifetimeDays={lifetimeQualifyingDays}
         unlockedAchievementIds={unlockedAchievementIds}
       />
+
+      <GardenDetail
+        visible={showGardenDetail}
+        onClose={() => setShowGardenDetail(false)}
+        entries={entries}
+        isReduced={isReduced}
+      />
+
+      {/* Garden Celebration (only when no achievement or stage celebration showing) */}
+      {!pendingAchievement && !stageCelebration && gardenCelebration && (
+        <GardenCelebrationOverlay
+          visible={true}
+          celebration={gardenCelebration}
+          onDismiss={() => setGardenCelebration(null)}
+          isReduced={isReduced}
+        />
+      )}
     </View>
   )
 }

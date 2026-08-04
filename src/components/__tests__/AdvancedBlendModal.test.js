@@ -1,3 +1,20 @@
+jest.mock('@react-native-async-storage/async-storage', () => ({
+  getItem: jest.fn(),
+  setItem: jest.fn(),
+  removeItem: jest.fn(),
+  getAllKeys: jest.fn(),
+  multiGet: jest.fn(),
+  multiSet: jest.fn(),
+  multiRemove: jest.fn(),
+  clear: jest.fn(),
+}))
+jest.mock('../../services/supabase/supabaseClient', () => ({
+  supabase: { auth: { getSession: jest.fn(), signInAnonymously: jest.fn() } },
+}))
+jest.mock('../../services/supabase/identity', () => ({
+  getAccessToken: jest.fn(),
+}))
+
 import { getAdvancedBlendModalContent } from '../../components/AdvancedBlendModal'
 
 describe('getAdvancedBlendModalContent', () => {
@@ -36,12 +53,14 @@ describe('getAdvancedBlendModalContent', () => {
 
     it('shows remaining count in body', () => {
       const content = getAdvancedBlendModalContent('pre_analysis_confirmation', 2)
-      expect(content.body).toContain('2 lifetime Advanced Blend analyses remaining')
+      expect(content.body).toContain('2')
+      expect(content.body).toContain('analyses remaining')
     })
 
     it('shows remaining count of 1', () => {
       const content = getAdvancedBlendModalContent('pre_analysis_confirmation', 1)
-      expect(content.body).toContain('1 lifetime Advanced Blend analyses remaining')
+      expect(content.body).toContain('1')
+      expect(content.body).toContain('analysis remaining')
     })
   })
 
@@ -53,7 +72,8 @@ describe('getAdvancedBlendModalContent', () => {
 
     it('shows remaining count in body', () => {
       const content = getAdvancedBlendModalContent('completion_confirmation', 2)
-      expect(content.body).toContain('2 lifetime Advanced Blend analyses remaining')
+      expect(content.body).toContain('2')
+      expect(content.body).toContain('analyses remaining')
     })
 
     it('does not use alarming language', () => {

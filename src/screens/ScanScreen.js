@@ -2536,6 +2536,8 @@ export default function ScanScreen({ navigation, route }) {
   const [trackingDismissedThisSession, setTrackingDismissedThisSession] = useState(false)
   // Goal saved banner: show on browse after goal selection, dismissible
   const [savedGoalId, setSavedGoalId] = useState(null)
+  // Ref: pending tracking prompt (deferred until user returns from camera with items)
+  const pendingTrackingRef = useRef(false)
   // Restore Browse Ideas modal when returning from RecipeDetail
   useEffect(() => {
     if (route?.params?.restoreBrowseIdeas) {

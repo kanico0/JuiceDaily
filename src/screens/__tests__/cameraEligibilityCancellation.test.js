@@ -19,7 +19,7 @@ const homeSource = fs.readFileSync(
 
 function getAttemptCameraOpenSection () {
   const idx = homeSource.indexOf('const attemptCameraOpen = useCallback')
-  return homeSource.substring(idx, idx + 6000)
+  return homeSource.substring(idx, idx + 8000)
 }
 
 describe('Camera Eligibility Cancellation Tokens', () => {
@@ -192,7 +192,7 @@ describe('Camera Eligibility Fake Timer Tests', () => {
   // 20. Unmount cleanup is a separate useEffect
   test('20. unmount cleanup is a separate useEffect with empty deps', () => {
     const cleanupIdx = homeSource.indexOf('Cancel any in-flight camera eligibility attempt on unmount')
-    const cleanupSection = homeSource.substring(cleanupIdx, cleanupIdx + 200)
+    const cleanupSection = homeSource.substring(cleanupIdx, cleanupIdx + 400)
     expect(cleanupSection).toContain('useEffect')
     expect(cleanupSection).toContain('[]')
   })

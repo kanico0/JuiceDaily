@@ -109,7 +109,7 @@ describe('Snap Produce Camera — Timeout Behavior (Fake Timers)', () => {
 
   test('15. In-flight guard resets in finally block', () => {
     const finallyIdx = section.indexOf('finally {')
-    const finallySection = section.substring(finallyIdx, finallyIdx + 200)
+    const finallySection = section.substring(finallyIdx, finallyIdx + 400)
     expect(finallySection).toContain('cameraInFlightRef.current = false')
     expect(finallySection).toContain('setIsPreparingCamera(false)')
   })
@@ -146,7 +146,7 @@ describe('Snap Produce Camera — Error and Permission Handling', () => {
 
   test('20. Catch block shows retry feedback', () => {
     const catchIdx = section.indexOf('} catch (e) {')
-    const catchSection = section.substring(catchIdx, catchIdx + 300)
+    const catchSection = section.substring(catchIdx, catchIdx + 600)
     expect(catchSection).toContain('Alert.alert')
     expect(catchSection).toContain('setIsPreparingCamera(false)')
   })

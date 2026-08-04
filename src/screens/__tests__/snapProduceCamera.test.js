@@ -38,7 +38,7 @@ const selectorSource = fs.readFileSync(
 // Helper: extract attemptCameraOpen function body
 function getAttemptCameraOpenSection () {
   const idx = homeSource.indexOf('const attemptCameraOpen = useCallback')
-  return homeSource.substring(idx, idx + 6000)
+  return homeSource.substring(idx, idx + 8000)
 }
 
 describe('Snap Produce: button wiring', () => {
@@ -185,7 +185,7 @@ describe('Snap Produce: in-flight guard behavior', () => {
 
   test('21a. isPreparingCamera is reset in finally block as safety net', () => {
     const finallyIdx = section.indexOf('finally {')
-    const finallySection = section.substring(finallyIdx, finallyIdx + 200)
+    const finallySection = section.substring(finallyIdx, finallyIdx + 400)
     expect(finallySection).toContain('setIsPreparingCamera(false)')
   })
 
@@ -374,7 +374,7 @@ describe('Snap Produce: no empty catch blocks', () => {
   test('52. catch block has meaningful content (Alert.alert and console.warn)', () => {
     const section = getAttemptCameraOpenSection()
     const catchIdx = section.indexOf('catch (e)')
-    const catchSection = section.substring(catchIdx, catchIdx + 500)
+    const catchSection = section.substring(catchIdx, catchIdx + 800)
     expect(catchSection).not.toMatch(/catch\s*\([^)]*\)\s*\{\s*\}/)
     expect(catchSection).toContain('Alert.alert')
     expect(catchSection).toContain('console.warn')

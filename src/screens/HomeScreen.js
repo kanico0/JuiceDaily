@@ -780,6 +780,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
     if (cameraAbortRef.current) {
       cameraAbortRef.current.abort()
     }
+    // eslint-disable-next-line no-undef
     const abortController = new AbortController()
     cameraAbortRef.current = abortController
 

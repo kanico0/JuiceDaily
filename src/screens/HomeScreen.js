@@ -651,6 +651,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
   const [advancedBlendStage, setAdvancedBlendStage] = useState('fifth_ingredient_notice')
   const [advancedBlendRemaining, setAdvancedBlendRemaining] = useState(FREE_ADVANCED_BLEND_ALLOWANCE)
   const [blendUsedCount, setBlendUsedCount] = useState(0)
+  const [blendAllowanceVerified, setBlendAllowanceVerified] = useState(false)
   const [blendNoticeShown, setBlendNoticeShown] = useState(false)
   const [blendCheckInProgress, setBlendCheckInProgress] = useState(false)
   const blendOperationIdRef = useRef(null)
@@ -721,6 +722,15 @@ export default function JuiceSnapScreen({ navigation, route }) {
       if (!isLoggingRef.current) {
         setIsLogged(false)
       }
+      // Increment attempt ID to invalidate any in-flight camera attempt
+      // before resetting the guard.  Without this, a stale attempt can
+      // resume after the focus reset and race with a new user-initiated
+      // attempt, leaving isPreparingCamera stuck on.
+      cameraAttemptIdRef.current += 1
+      if (cameraAbortRef.current) {
+        cameraAbortRef.current.abort()
+        cameraAbortRef.current = null
+      }
       setIsCameraOpen(false)
       setIsPreparingCamera(false)
       cameraInFlightRef.current = false
@@ -736,6 +746,9 @@ export default function JuiceSnapScreen({ navigation, route }) {
     const snapshot = await fetchBlendAllowance()
     if (snapshot) {
       setBlendUsedCount(snapshot.used ?? 0)
+      setBlendAllowanceVerified(true)
+    } else {
+      setBlendAllowanceVerified(false)
     }
   }, [])
 
@@ -804,14 +817,13 @@ export default function JuiceSnapScreen({ navigation, route }) {
     const abortController = new AbortController()
     cameraAbortRef.current = abortController
 
-    // One overall timeout for the entire attempt
-    let overallTimer = null
-    const overallTimeoutPromise = new Promise((_, reject) => {
-      overallTimer = setTimeout(() => {
-        abortController.abort()
-        reject(new Error('Camera eligibility check timed out'))
-      }, CAMERA_TIMEOUT_MS)
-    })
+    // Overall timeout — fires after CAMERA_TIMEOUT_MS and aborts the
+    // attempt.  Checked via abortController.signal.aborted in the
+    // catch block; the per-stage Promise.race timeouts handle
+    // individual async hangs.
+    let overallTimer = setTimeout(() => {
+      abortController.abort()
+    }, CAMERA_TIMEOUT_MS)
 
     setIsPreparingCamera(true)
 
@@ -1434,13 +1446,46 @@ export default function JuiceSnapScreen({ navigation, route }) {
     if (blendType === 'advanced' && !isPro && !blendApprovedRef.current) {
       // Create a new operation ID for this analysis attempt
       blendOperationIdRef.current = createOperationId()
+
+      // If Supabase is configured but we could not verify the allowance,
+      // show the network retry stage instead of a stale count.
+      if (SUPABASE_CONFIGURED && !blendAllowanceVerified) {
+        setAdvancedBlendStage('network_retry')
+        setShowAdvancedBlendModal(true)
+        trackEvent('advanced_blend_allowance_error', {
+          plan: 'free',
+          error_code: 'allowance_unverified',
+          ingredient_count: distinctCount,
+          source: effectiveManualMode ? 'manual' : 'photo',
+        })
+        return
+      }
+
+      const currentRemaining = getAdvancedBlendRemaining(blendUsedCount, isPro) ?? FREE_ADVANCED_BLEND_ALLOWANCE
+
+      // If server reports zero remaining, show exhausted messaging
+      // instead of a confirmation that would immediately fail.
+      if (blendAllowanceVerified && currentRemaining <= 0) {
+        setAdvancedBlendStage('allowance_exhausted')
+        setAdvancedBlendRemaining(0)
+        setShowAdvancedBlendModal(true)
+        trackEvent('advanced_blend_quota_exhausted', {
+          plan: 'free',
+          ingredient_count: distinctCount,
+          used: blendUsedCount,
+          limit: FREE_ADVANCED_BLEND_ALLOWANCE,
+          source: effectiveManualMode ? 'manual' : 'photo',
+        })
+        return
+      }
+
       // Show pre-analysis confirmation first
       setAdvancedBlendStage('pre_analysis_confirmation')
-      setAdvancedBlendRemaining(getAdvancedBlendRemaining(blendUsedCount, isPro) ?? FREE_ADVANCED_BLEND_ALLOWANCE)
+      setAdvancedBlendRemaining(currentRemaining)
       setShowAdvancedBlendModal(true)
       trackEvent('advanced_blend_confirmation_shown', {
         plan: 'free',
-        remaining: getAdvancedBlendRemaining(blendUsedCount, isPro) ?? FREE_ADVANCED_BLEND_ALLOWANCE,
+        remaining: currentRemaining,
         ingredient_count: distinctCount,
         source: effectiveManualMode ? 'manual' : 'photo',
       })
@@ -1453,7 +1498,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
     }
 
     await executeLogToChallenge()
-  }, [hasItems, batch, isPro, effectiveManualMode, executeLogToChallenge])
+  }, [hasItems, batch, isPro, effectiveManualMode, executeLogToChallenge, blendAllowanceVerified, blendUsedCount, refreshBlendAllowance])
 
   const executeLogToChallenge = useCallback(async () => {
     if (!hasItems) return
@@ -1971,9 +2016,10 @@ export default function JuiceSnapScreen({ navigation, route }) {
         }}
         onDismiss={() => setShowAdvancedBlendModal(false)}
         onConfirm={handleAdvancedBlendConfirm}
-        onRetry={() => {
+        onRetry={async () => {
           setShowAdvancedBlendModal(false)
-          executeLogToChallenge()
+          await refreshBlendAllowance()
+          handleLogToChallenge()
         }}
       />
     </SafeAreaView>

@@ -851,6 +851,7 @@ const ms = StyleSheet.create({
     borderRadius: RADIUS.xl,
     width: '100%',
     maxHeight: '90%',
+    flex: 1,
     overflow: 'hidden',
   },
   cardHeader: {

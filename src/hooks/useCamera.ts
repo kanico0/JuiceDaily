@@ -58,6 +58,27 @@ export function useCamera() {
     }
   }, [])
 
+  // Start a timeout when entering camera_mounting phase
+  const startReadyTimeout = useCallback(() => {
+    if (readyTimerRef.current) {
+      clearTimeout(readyTimerRef.current)
+    }
+    readyTimerRef.current = setTimeout(() => {
+      setState((prev) => {
+        if (prev.phase === 'camera_mounting') {
+          return {
+            ...prev,
+            isReady: false,
+            phase: 'error',
+            mountError: 'Camera initialization timed out. Please try again.',
+            error: 'Camera initialization timed out. Please try again.',
+          }
+        }
+        return prev
+      })
+    }, CAMERA_READY_TIMEOUT_MS)
+  }, [])
+
   // Request camera permission
   const requestAccess = useCallback(async (): Promise<boolean> => {
     setState((prev) => ({ ...prev, phase: 'permission_check' }))
@@ -71,6 +92,7 @@ export function useCamera() {
           error: null,
           phase: 'camera_mounting',
         }))
+        startReadyTimeout()
       } else {
         setState((prev) => ({
           ...prev,
@@ -88,7 +110,7 @@ export function useCamera() {
       }))
       return false
     }
-  }, [requestPermission])
+  }, [requestPermission, startReadyTimeout])
 
   // Camera ready callback — native camera reports readiness
   const onCameraReady = useCallback(() => {
@@ -118,27 +140,6 @@ export function useCamera() {
       mountError: message,
       error: message,
     }))
-  }, [])
-
-  // Start a timeout when entering camera_mounting phase
-  const startReadyTimeout = useCallback(() => {
-    if (readyTimerRef.current) {
-      clearTimeout(readyTimerRef.current)
-    }
-    readyTimerRef.current = setTimeout(() => {
-      setState((prev) => {
-        if (prev.phase === 'camera_mounting') {
-          return {
-            ...prev,
-            isReady: false,
-            phase: 'error',
-            mountError: 'Camera initialization timed out. Please try again.',
-            error: 'Camera initialization timed out. Please try again.',
-          }
-        }
-        return prev
-      })
-    }, CAMERA_READY_TIMEOUT_MS)
   }, [])
 
   // Reset camera state for a fresh attempt

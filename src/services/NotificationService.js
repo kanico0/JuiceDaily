@@ -72,6 +72,28 @@ const INTENSITY_CAPS = {
   'high-vibe': 5,
 }
 
+const ANDROID_CHANNEL_ID = 'rawlifeflow-reminders'
+
+// ── Android Notification Channel ─────────────────────────────
+
+let channelCreated = false
+
+async function ensureAndroidChannel() {
+  if (Platform.OS !== 'android' || channelCreated) return
+  try {
+    await Notifications.setNotificationChannelAsync(ANDROID_CHANNEL_ID, {
+      name: 'Reminders',
+      importance: Notifications.AndroidImportance.DEFAULT,
+      vibrationPattern: [0, 250, 250, 250],
+      lightColor: '#81C784',
+      sound: 'glass_clink.wav',
+    })
+    channelCreated = true
+  } catch {
+    // Channel setup failed — non-fatal
+  }
+}
+
 // ── Configure Handler ────────────────────────────────────────
 // Wrapped in try/catch: expo-notifications Android push was removed
 // from Expo Go in SDK 53+. Gracefully degrade when unavailable.
@@ -244,11 +266,17 @@ async function scheduleNotif({ id, title, body, data, triggerDate, categoryId, i
     if (isTimeInQuietHours(d.getHours(), d.getMinutes(), settings)) return false
   }
 
+  await ensureAndroidChannel()
+
   const content = {
     title,
     body,
     data: { ...data, sentAt: new Date().toISOString() },
     sound: 'glass_clink.wav',
+  }
+
+  if (Platform.OS === 'android') {
+    content.channelId = ANDROID_CHANNEL_ID
   }
 
   if (categoryId) {

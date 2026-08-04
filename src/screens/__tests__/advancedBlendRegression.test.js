@@ -100,7 +100,9 @@ describe('Advanced Blend Display — QA Items 4 & 8 Regression', () => {
   test('7c. Pre-analysis confirmation uses getAdvancedBlendRemaining with blendUsedCount', () => {
     const idx = HOME_SRC.indexOf("setAdvancedBlendStage('pre_analysis_confirmation')")
     const s = HOME_SRC.substring(idx, idx + 300)
-    expect(s).toContain('getAdvancedBlendRemaining(blendUsedCount, isPro)')
+    expect(s).toContain('currentRemaining')
+    const calcIdx = HOME_SRC.indexOf('const currentRemaining = getAdvancedBlendRemaining')
+    expect(calcIdx).toBeGreaterThan(-1)
   })
 
   // 8. Authoritative fetch failure fails closed

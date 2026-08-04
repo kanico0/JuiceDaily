@@ -89,7 +89,10 @@ describe('Advanced Blend Remaining Count Correction', () => {
   test('12. Pre-analysis confirmation uses getAdvancedBlendRemaining', () => {
     const idx = HOME_SCREEN_SRC.indexOf("setAdvancedBlendStage('pre_analysis_confirmation')")
     const section = HOME_SCREEN_SRC.substring(idx, idx + 300)
-    expect(section).toContain('getAdvancedBlendRemaining(blendUsedCount, isPro)')
+    expect(section).toContain('currentRemaining')
+    // Verify currentRemaining is derived from getAdvancedBlendRemaining
+    const calcIdx = HOME_SCREEN_SRC.indexOf('const currentRemaining = getAdvancedBlendRemaining')
+    expect(calcIdx).toBeGreaterThan(-1)
   })
 
   // 13. Fifth-ingredient notice uses computed remaining
@@ -139,7 +142,7 @@ describe('Advanced Blend Remaining Count Correction', () => {
   test('20. trackEvent for confirmation uses actual remaining count', () => {
     const idx = HOME_SCREEN_SRC.indexOf('advanced_blend_confirmation_shown')
     const section = HOME_SCREEN_SRC.substring(idx, idx + 300)
-    expect(section).toContain('getAdvancedBlendRemaining(blendUsedCount, isPro)')
+    expect(section).toContain('currentRemaining')
   })
 })
 

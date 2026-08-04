@@ -40,13 +40,12 @@ describe('Camera Native Readiness and Abort Lifecycle', () => {
   // 4. One overall timeout governs the attempt
   test('4. One overall timeout with abort on expiry', () => {
     expect(HOME_SCREEN_SRC).toContain('overallTimer')
-    expect(HOME_SCREEN_SRC).toContain('overallTimeoutPromise')
     expect(HOME_SCREEN_SRC).toContain('CAMERA_TIMEOUT_MS')
   })
 
   // 5. Timeout aborts pending requests
   test('5. Timeout calls abortController.abort()', () => {
-    const timeoutIdx = HOME_SCREEN_SRC.indexOf('overallTimeoutPromise')
+    const timeoutIdx = HOME_SCREEN_SRC.indexOf('overallTimer')
     const section = HOME_SCREEN_SRC.substring(timeoutIdx, timeoutIdx + 200)
     expect(section).toContain('abortController.abort()')
   })

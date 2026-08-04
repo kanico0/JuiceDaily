@@ -15,6 +15,15 @@ import { getAdvancedBlendRemainingText } from '../services/quota/blendAllowanceS
 export function getAdvancedBlendModalContent (stage, remaining, isPro = false) {
   switch (stage) {
     case 'fifth_ingredient_notice':
+      if (isPro) {
+        return {
+          title: 'This is an Advanced Blend',
+          subtitle: null,
+          body:
+            'Blends with 5 or more ingredients use an Advanced Blend analysis. ' +
+            'With Pro, you have unlimited Advanced Blend analyses.',
+        }
+      }
       return {
         title: 'This is an Advanced Blend',
         subtitle: null,

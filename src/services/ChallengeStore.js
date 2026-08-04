@@ -5,6 +5,7 @@
 // ─────────────────────────────────────────────────────────────
 
 import { createContext, useContext, useReducer, useCallback, useMemo, useEffect, useRef } from 'react'
+import { AppState } from 'react-native'
 import {
   orchestrateNotifications,
   onJuiceLogged,
@@ -783,6 +784,26 @@ export function ChallengeProvider({ children }) {
       totalWeightG: state.totalProduceWeightG || 0,
       lastIngredients,
     })
+  }, [weeklyDiversity, todayLog, state.streak, state.freezerPasses, state.isFrozen, lastIngredients])
+
+  // Re-orchestrate notifications on app foreground so that settings
+  // changes (intensity, affirmation toggle, vitality toggle) take
+  // effect without requiring an app restart.
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      if (nextAppState === 'active') {
+        orchestrateNotifications({
+          weeklyDiversity,
+          todayLog,
+          streak: state.streak,
+          freezerPasses: state.freezerPasses || 0,
+          isFrozen: state.isFrozen || false,
+          totalWeightG: state.totalProduceWeightG || 0,
+          lastIngredients,
+        })
+      }
+    })
+    return () => subscription.remove()
   }, [weeklyDiversity, todayLog, state.streak, state.freezerPasses, state.isFrozen, lastIngredients])
 
   // Track juice logs for surprise & delight + wilt warning timestamp

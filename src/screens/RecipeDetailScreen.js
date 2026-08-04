@@ -18,6 +18,7 @@ import {
   TextInput,
   LayoutAnimation,
   UIManager,
+  BackHandler,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { LinearGradient } from 'expo-linear-gradient'
@@ -271,7 +272,11 @@ export default function RecipeDetailScreen({ route, navigation }) {
 
   const handleBack = useCallback(() => {
     if (origin === 'browseIdeas') {
-      navigation.navigate('Scan', {
+      // Navigate back to ExploreHome with restore params so the
+      // BrowseIdeasModal can restore its page/search state.
+      // Using navigate instead of goBack ensures the correct screen
+      // receives the params and the modal reopens properly.
+      navigation.navigate('ExploreHome', {
         restoreBrowseIdeas: true,
         restorePage: originPage || 1,
         restoreSearchQuery: originSearchQuery || '',
@@ -280,6 +285,15 @@ export default function RecipeDetailScreen({ route, navigation }) {
       navigation.goBack()
     }
   }, [navigation, origin, originPage, originSearchQuery])
+
+  // Android hardware back — use same logic as in-app back button
+  useEffect(() => {
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      handleBack()
+      return true
+    })
+    return () => subscription.remove()
+  }, [handleBack])
 
   const toggleCheck = useCallback((index) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)

@@ -23,20 +23,21 @@ describe('Recipe Back Navigation Returns to Juice Ideas Origin', () => {
     expect(RECIPE_DETAIL_SRC).toContain('handleBack')
   })
 
-  // 3. handleBack navigates to Scan with restore params for browseIdeas origin
-  test('3. handleBack navigates to Scan with restoreBrowseIdeas for browseIdeas origin', () => {
+  // 3. handleBack navigates to ExploreHome with restore params for browseIdeas origin
+  test('3. handleBack navigates to ExploreHome with restoreBrowseIdeas for browseIdeas origin', () => {
     const idx = RECIPE_DETAIL_SRC.indexOf('handleBack')
-    const section = RECIPE_DETAIL_SRC.substring(idx, idx + 400)
+    const section = RECIPE_DETAIL_SRC.substring(idx, idx + 600)
     expect(section).toContain("origin === 'browseIdeas'")
     expect(section).toContain('restoreBrowseIdeas')
     expect(section).toContain('restorePage')
     expect(section).toContain('restoreSearchQuery')
+    expect(section).toContain('ExploreHome')
   })
 
   // 4. handleBack falls back to goBack for non-browseIdeas origins
   test('4. handleBack falls back to navigation.goBack() for other origins', () => {
     const idx = RECIPE_DETAIL_SRC.indexOf('handleBack')
-    const section = RECIPE_DETAIL_SRC.substring(idx, idx + 400)
+    const section = RECIPE_DETAIL_SRC.substring(idx, idx + 600)
     expect(section).toContain('navigation.goBack()')
   })
 
@@ -110,14 +111,23 @@ describe('Recipe Back Navigation Returns to Juice Ideas Origin', () => {
   // 14. RecipeDetail passes originPage in restore params
   test('14. handleBack passes originPage in restore params', () => {
     const idx = RECIPE_DETAIL_SRC.indexOf('handleBack')
-    const section = RECIPE_DETAIL_SRC.substring(idx, idx + 400)
+    const section = RECIPE_DETAIL_SRC.substring(idx, idx + 600)
     expect(section).toContain('restorePage: originPage')
   })
 
   // 15. RecipeDetail passes originSearchQuery in restore params
   test('15. handleBack passes originSearchQuery in restore params', () => {
     const idx = RECIPE_DETAIL_SRC.indexOf('handleBack')
-    const section = RECIPE_DETAIL_SRC.substring(idx, idx + 400)
+    const section = RECIPE_DETAIL_SRC.substring(idx, idx + 600)
     expect(section).toContain('restoreSearchQuery: originSearchQuery')
+  })
+
+  // 16. Android hardware back uses handleBack for consistent navigation
+  test('16. Android hardware back press calls handleBack', () => {
+    expect(RECIPE_DETAIL_SRC).toContain('BackHandler')
+    expect(RECIPE_DETAIL_SRC).toContain('hardwareBackPress')
+    const idx = RECIPE_DETAIL_SRC.indexOf('hardwareBackPress')
+    const section = RECIPE_DETAIL_SRC.substring(idx, idx + 200)
+    expect(section).toContain('handleBack')
   })
 })

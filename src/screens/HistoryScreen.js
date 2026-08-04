@@ -6,7 +6,7 @@
 
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { View, Text, StyleSheet, ScrollView, Pressable, Modal, Alert } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import * as Haptics from 'expo-haptics'
 import {
   ArrowLeft,
@@ -258,6 +258,7 @@ function EntryDetailsModal({
   onMakeAgain,
   makeAgainInProgress,
 }) {
+  const insets = useSafeAreaInsets()
   const previewViewedRef = useRef(false)
   const lockedViewedRef = useRef(false)
 
@@ -368,7 +369,10 @@ function EntryDetailsModal({
           </View>
           <ScrollView
             style={ms.cardBody}
-            contentContainerStyle={ms.cardBodyContent}
+            contentContainerStyle={[
+              ms.cardBodyContent,
+              { paddingBottom: Math.max(insets.bottom, SPACE.lg) + SPACE.md },
+            ]}
             showsVerticalScrollIndicator={false}
             nestedScrollEnabled
           >
@@ -846,9 +850,8 @@ const ms = StyleSheet.create({
     backgroundColor: BRAND.background.elevated || '#161B22',
     borderRadius: RADIUS.xl,
     width: '100%',
-    maxHeight: '85%',
+    maxHeight: '90%',
     overflow: 'hidden',
-    flex: 1,
   },
   cardHeader: {
     flexDirection: 'row',
@@ -872,7 +875,6 @@ const ms = StyleSheet.create({
   },
   cardBodyContent: {
     flexGrow: 1,
-    paddingBottom: 60,
   },
   entryTitle: {
     fontSize: FONT_SIZE.lg,

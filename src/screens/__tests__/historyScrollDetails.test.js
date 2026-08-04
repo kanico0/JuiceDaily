@@ -68,12 +68,11 @@ describe('Advanced History Scrollable Details', () => {
     expect(closeIdx).toBeLessThan(scrollIdx)
   })
 
-  // 8. Bottom padding protects the final content
-  test('8. cardBodyContent has paddingBottom for safe area', () => {
-    const styleDefIdx = HISTORY_SRC.indexOf('cardBodyContent:')
-    const styleSection = HISTORY_SRC.substring(styleDefIdx, styleDefIdx + 100)
-    expect(styleSection).toContain('paddingBottom')
-    expect(styleSection).toContain('60')
+  // 8. Bottom padding protects the final content via safe-area inset
+  test('8. ScrollView contentContainerStyle uses safe-area-aware paddingBottom', () => {
+    expect(HISTORY_SRC).toContain('useSafeAreaInsets')
+    expect(HISTORY_SRC).toContain('insets.bottom')
+    expect(HISTORY_SRC).toContain('paddingBottom')
   })
 
   // 9. Android hardware back still closes the detail correctly
@@ -95,11 +94,11 @@ describe('Advanced History Scrollable Details', () => {
     })
   })
 
-  // Additional: card has flex:1 for proper layout
-  test('11. Card style has flex:1 for proper vertical layout', () => {
+  // Additional: card has maxHeight for scroll constraint (no flex:1 to avoid over-stretch)
+  test('11. Card style has maxHeight for proper vertical layout', () => {
     const cardIdx = HISTORY_SRC.indexOf('card:')
     const cardSection = HISTORY_SRC.substring(cardIdx, cardIdx + 200)
-    expect(cardSection).toContain('flex: 1')
+    expect(cardSection).toContain('maxHeight')
   })
 
   // Additional: cardBody has flex:1 so ScrollView fills available space

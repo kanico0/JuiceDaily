@@ -62,7 +62,7 @@ import { usePro } from '../services/ProStore'
 import MeshGradientBg from '../components/MeshGradientBg'
 import { processJuiceBatch, PRODUCE_DATA } from '../services/JuiceEngine'
 import AdvancedBlendModal from '../components/AdvancedBlendModal'
-import { countDistinctProduceIds, classifyBlend, BlendAllowanceError, FREE_ADVANCED_BLEND_ALLOWANCE, createOperationId, getAdvancedBlendRemaining } from '../services/quota/blendAllowanceService'
+import { countDistinctProduceIds, classifyBlend, BlendAllowanceError, FREE_ADVANCED_BLEND_ALLOWANCE, createOperationId, getAdvancedBlendRemaining, fetchBlendAllowance } from '../services/quota/blendAllowanceService'
 import { authorizeAndProcessBatch } from '../services/quota/blendNutritionGate'
 import { authorizeGuestLog, isGuestLogAllowed } from '../services/quota/guestLogGate'
 import { checkCameraEligibility } from '../services/cameraEligibilityCoordinator'
@@ -728,6 +728,22 @@ export default function JuiceSnapScreen({ navigation, route }) {
     const unsubscribe = navigation?.addListener?.('focus', resetLoggedOnFocus)
     return () => { if (typeof unsubscribe === 'function') unsubscribe() }
   }, [navigation])
+
+  // Fetch authoritative Advanced Blend allowance from server on mount and
+  // on focus so the pre-analysis modal shows the correct remaining count
+  // instead of defaulting to FREE_ADVANCED_BLEND_ALLOWANCE (3).
+  const refreshBlendAllowance = useCallback(async () => {
+    const snapshot = await fetchBlendAllowance()
+    if (snapshot) {
+      setBlendUsedCount(snapshot.used ?? 0)
+    }
+  }, [])
+
+  useEffect(() => {
+    refreshBlendAllowance()
+    const unsubscribe = navigation?.addListener?.('focus', refreshBlendAllowance)
+    return () => { if (typeof unsubscribe === 'function') unsubscribe() }
+  }, [navigation, refreshBlendAllowance])
 
   // Invalidate cached analysis when the batch materially changes.
   // Skips the update triggered by executeLogToChallenge's setBatch (analysis result).

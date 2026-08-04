@@ -1,20 +1,22 @@
 // ─────────────────────────────────────────────────────────────
-// GlowJourneyDrop.js — Branded progress indicator for Today.
+// GlowJourneyDrop.js — Redesigned progress indicator for Today.
 //
-// Central juice-drop with rising weekly liquid fill,
-// seven-leaf weekly halo, permanent journey stage,
-// and next milestone message.
-// Uses react-native-svg for vector drop and leaf shapes.
+// Canonical SVG drop with rising weekly liquid fill,
+// seven-leaf weekly halo, permanent journey stage motif,
+// five storyboards, reduced-motion replacements, and
+// celebration coordination support.
+// Uses GlowJourneyDropArtwork for the live SVG rendering.
 // ─────────────────────────────────────────────────────────────
 
-import React, { useMemo, useEffect, useRef, useCallback } from 'react'
-import { View, Text, StyleSheet, TouchableOpacity, Animated, useWindowDimensions } from 'react-native'
-import Svg, { Defs, ClipPath, Path, RadialGradient, Stop, LinearGradient, G } from 'react-native-svg'
+import React, { useMemo, useEffect, useRef, useCallback, useState } from 'react'
+import { View, Text, StyleSheet, Animated, useWindowDimensions, Pressable } from 'react-native'
 import * as Haptics from 'expo-haptics'
 import { SEMANTIC_COLORS, SEMANTIC_SPACE, SEMANTIC_RADIUS } from '../constants/tokens'
 import { WEEKLY_GLOW_GOAL, getJourneyStage, getNextStage, getDaysToNextStage } from '../constants/glowJourneyStages'
 import { useReducedMotion, EASING } from '../utils/motion'
 import { trackEvent } from '../services/AnalyticsService'
+import { buildGlowJourneyVisualState, clampProgress } from './GlowJourneyVisualState'
+import GlowJourneyDropArtwork from './GlowJourneyDropArtwork'
 
 const MAX_DROP_SIZE = 180
 const MIN_DROP_SIZE = 120
@@ -36,18 +38,6 @@ function numberToWord(n) {
   return String(n)
 }
 
-function buildDropPath(cx, cy, w, h) {
-  const topY = cy - h / 2
-  const bottomY = cy + h / 2
-  const halfW = w / 2
-  return `M ${cx} ${topY} C ${cx + halfW} ${cy - h * 0.15}, ${cx + halfW} ${cy + h * 0.25}, ${cx} ${bottomY} C ${cx - halfW} ${cy + h * 0.25}, ${cx - halfW} ${cy - h * 0.15}, ${cx} ${topY} Z`
-}
-
-function buildLeafPath(cx, cy, size) {
-  const halfS = size / 2
-  return `M ${cx} ${cy - halfS} Q ${cx + halfS} ${cy}, ${cx} ${cy + halfS} Q ${cx - halfS} ${cy}, ${cx} ${cy - halfS} Z`
-}
-
 function GlowJourneyDrop({
   streakCount = 0,
   entries = [],
@@ -61,40 +51,187 @@ function GlowJourneyDrop({
   const isReduced = isReducedProp !== undefined ? isReducedProp : reducedMotion
   const { width: screenWidth } = useWindowDimensions()
   const dropSize = useMemo(() => Math.max(MIN_DROP_SIZE, Math.min(screenWidth * 0.42, MAX_DROP_SIZE)), [screenWidth])
-  const haloRadius = dropSize * 0.62
-  const leafSize = dropSize * 0.14
-  const fillAnim = useRef(new Animated.Value(0)).current
-  const glowAnim = useRef(new Animated.Value(0)).current
-  const prevWeeklyDays = useRef(weeklyQualifyingDays)
+
+  const visualState = useMemo(() => buildGlowJourneyVisualState({
+    lifetimeDays,
+    weeklyQualifyingDays,
+    weeklyLeafStates,
+    streakCount,
+  }), [lifetimeDays, weeklyQualifyingDays, weeklyLeafStates, streakCount])
 
   const stage = useMemo(() => getJourneyStage(lifetimeDays), [lifetimeDays])
   const nextStage = useMemo(() => getNextStage(lifetimeDays), [lifetimeDays])
   const daysToNext = useMemo(() => getDaysToNextStage(lifetimeDays), [lifetimeDays])
 
-  const fillRatio = Math.min(weeklyQualifyingDays / WEEKLY_GLOW_GOAL, 1)
+  const fillRatio = clampProgress(weeklyQualifyingDays / WEEKLY_GLOW_GOAL)
 
+  // Animation refs
+  const entranceAnim = useRef(new Animated.Value(isReduced ? 1 : 0)).current
+  const pressScaleAnim = useRef(new Animated.Value(1)).current
+  const pressGlowAnim = useRef(new Animated.Value(0)).current
+  const fillAnim = useRef(new Animated.Value(fillRatio)).current
+  const glowRingAnim = useRef(new Animated.Value(0)).current
+  const dropletAnim = useRef(new Animated.Value(0)).current
+  const rippleAnim = useRef(new Animated.Value(0)).current
+  const leafPulseAnim = useRef(new Animated.Value(1)).current
+
+  const prevWeeklyDays = useRef(weeklyQualifyingDays)
+  const hasEnteredRef = useRef(false)
+  const pressGlowBaseRef = useRef(visualState.stageProps.glowRingOpacity)
+
+  // Animated state for artwork
+  const [animatedFillRatio, setAnimatedFillRatio] = useState(fillRatio)
+  const [animatedGlowRing, setAnimatedGlowRing] = useState(visualState.stageProps.glowRingOpacity)
+  const [dropletOpacity, setDropletOpacity] = useState(0)
+  const [rippleOpacity, setRippleOpacity] = useState(0)
+  const [leafScaleOverrides, setLeafScaleOverrides] = useState(Array(7).fill(1))
+
+  // Storyboard 1: Entrance — only on first mount
   useEffect(() => {
+    if (hasEnteredRef.current) return
+    hasEnteredRef.current = true
     if (isReduced) {
-      fillAnim.setValue(fillRatio)
-      glowAnim.setValue(0)
+      entranceAnim.setValue(1)
+      setAnimatedFillRatio(fillRatio)
+      setAnimatedGlowRing(visualState.stageProps.glowRingOpacity)
     } else {
+      Animated.timing(entranceAnim, {
+        toValue: 1,
+        duration: 500,
+        easing: EASING.decelerate,
+        useNativeDriver: true,
+      }).start()
+      setAnimatedFillRatio(fillRatio)
+      setAnimatedGlowRing(visualState.stageProps.glowRingOpacity)
+    }
+  }, [])
+
+  // Storyboard 3: Progress update — only when progress advances
+  useEffect(() => {
+    if (!hasEnteredRef.current) return
+    const prevDays = prevWeeklyDays.current
+    const progressAdvanced = weeklyQualifyingDays > prevDays
+
+    if (isReduced) {
+      setAnimatedFillRatio(fillRatio)
+      setDropletOpacity(0)
+      setRippleOpacity(0)
+      prevWeeklyDays.current = weeklyQualifyingDays
+      return
+    }
+
+    if (progressAdvanced) {
+      // Falling droplet
+      setDropletOpacity(0)
+      Animated.sequence([
+        Animated.timing(dropletAnim, { toValue: 1, duration: 200, easing: EASING.accelerate, useNativeDriver: false }),
+        Animated.timing(dropletAnim, { toValue: 0, duration: 300, easing: EASING.decelerate, useNativeDriver: false }),
+      ]).start(() => setDropletOpacity(0))
+      const dId = dropletAnim.addListener(({ value }) => setDropletOpacity(value))
+
+      // Liquid rise
       Animated.timing(fillAnim, {
         toValue: fillRatio,
-        duration: 600,
+        duration: 500,
         easing: EASING.decelerate,
         useNativeDriver: false,
       }).start()
+      const fId = fillAnim.addListener(({ value }) => setAnimatedFillRatio(value))
 
-      if (weeklyQualifyingDays > prevWeeklyDays.current) {
+      // Ripple after liquid settles
+      setTimeout(() => {
         Animated.sequence([
-          Animated.timing(glowAnim, { toValue: 1, duration: 300, easing: EASING.decelerate, useNativeDriver: false }),
-          Animated.timing(glowAnim, { toValue: 0, duration: 400, easing: EASING.linear, useNativeDriver: false }),
+          Animated.timing(rippleAnim, { toValue: 0.55, duration: 175, easing: EASING.decelerate, useNativeDriver: false }),
+          Animated.timing(rippleAnim, { toValue: 0, duration: 175, easing: EASING.linear, useNativeDriver: false }),
         ]).start()
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {})
+        const rId = rippleAnim.addListener(({ value }) => setRippleOpacity(value))
+        setTimeout(() => rippleAnim.removeListener(rId), 400)
+      }, 450)
+
+      // Leaf pulse for today's leaf
+      const todayIndex = weeklyLeafStates.findIndex((l) => l.isToday)
+      if (todayIndex >= 0) {
+        setLeafScaleOverrides((prev) => {
+          const next = [...prev]
+          next[todayIndex] = 1.06
+          return next
+        })
+        setTimeout(() => {
+          setLeafScaleOverrides((prev) => {
+            const next = [...prev]
+            next[todayIndex] = 1
+            return next
+          })
+        }, 350)
       }
+
+      // Glow ring brief pass
+      const baseGlow = visualState.stageProps.glowRingOpacity
+      Animated.sequence([
+        Animated.timing(glowRingAnim, { toValue: baseGlow + 0.08, duration: 150, easing: EASING.decelerate, useNativeDriver: false }),
+        Animated.timing(glowRingAnim, { toValue: baseGlow, duration: 150, easing: EASING.linear, useNativeDriver: false }),
+      ]).start()
+      const gId = glowRingAnim.addListener(({ value }) => setAnimatedGlowRing(value))
+
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {})
+
+      // Cleanup listeners after animation
+      setTimeout(() => {
+        dropletAnim.removeListener(dId)
+        fillAnim.removeListener(fId)
+        glowRingAnim.removeListener(gId)
+      }, 1100)
+    } else {
+      setAnimatedFillRatio(fillRatio)
     }
+
     prevWeeklyDays.current = weeklyQualifyingDays
-  }, [fillRatio, weeklyQualifyingDays, isReduced])
+  }, [fillRatio, weeklyQualifyingDays, isReduced, weeklyLeafStates, visualState.stageProps.glowRingOpacity])
+
+  // Update glow ring base when stage changes
+  useEffect(() => {
+    pressGlowBaseRef.current = visualState.stageProps.glowRingOpacity
+    setAnimatedGlowRing(visualState.stageProps.glowRingOpacity)
+  }, [visualState.stageProps.glowRingOpacity])
+
+  // Storyboard 2: Press interaction
+  const handlePressIn = useCallback(() => {
+    if (isReduced) return
+    Animated.timing(pressScaleAnim, {
+      toValue: 0.97,
+      duration: 90,
+      easing: EASING.decelerate,
+      useNativeDriver: true,
+    }).start()
+    const baseGlow = pressGlowBaseRef.current
+    Animated.timing(pressGlowAnim, {
+      toValue: baseGlow + 0.05,
+      duration: 90,
+      easing: EASING.decelerate,
+      useNativeDriver: false,
+    }).start()
+    const pId = pressGlowAnim.addListener(({ value }) => setAnimatedGlowRing(value))
+    setTimeout(() => pressGlowAnim.removeListener(pId), 300)
+  }, [isReduced])
+
+  const handlePressOut = useCallback(() => {
+    if (isReduced) return
+    Animated.timing(pressScaleAnim, {
+      toValue: 1,
+      duration: 140,
+      easing: EASING.decelerate,
+      useNativeDriver: true,
+    }).start()
+    const baseGlow = pressGlowBaseRef.current
+    Animated.timing(pressGlowAnim, {
+      toValue: baseGlow,
+      duration: 140,
+      easing: EASING.linear,
+      useNativeDriver: false,
+    }).start()
+    const pId = pressGlowAnim.addListener(({ value }) => setAnimatedGlowRing(value))
+    setTimeout(() => pressGlowAnim.removeListener(pId), 200)
+  }, [isReduced])
 
   const handlePress = useCallback(() => {
     if (onPress) onPress()
@@ -122,193 +259,94 @@ function GlowJourneyDrop({
     return parts.join(' ')
   }, [streakCount, weeklyQualifyingDays, stage, nextStage, daysToNext])
 
-  const cx = dropSize / 2
-  const cy = dropSize / 2 + dropSize * 0.05
-  const dropW = dropSize * 0.72
-  const dropH = dropSize * 0.88
+  // Build artwork visual state with animated values
+  const artworkVisualState = useMemo(() => ({
+    ...visualState,
+    fillRatio: animatedFillRatio,
+    liquidGeometry: {
+      x: 105,
+      width: 190,
+      y: 385 - (385 - 80) * clampProgress(animatedFillRatio),
+      height: (385 - 80) * clampProgress(animatedFillRatio),
+    },
+  }), [visualState, animatedFillRatio])
 
-  const glowOpacity = isReduced ? 0 : glowAnim
+  // Entrance style
+  const entranceOpacity = isReduced ? 1 : entranceAnim
+  const entranceScale = isReduced ? 1 : entranceAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.96, 1],
+  })
 
   return (
-    <TouchableOpacity
+    <Pressable
       onPress={handlePress}
-      activeOpacity={0.85}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
       accessibilityHint="Tap to view your detailed Glow Journey progress."
       style={styles.container}
     >
-      <View style={styles.graphicWrap}>
-        <Svg width={dropSize + leafSize * 8} height={dropSize + leafSize * 8} style={styles.svg}>
-          <Defs>
-            <ClipPath id="dropClip">
-              <Path d={buildDropPath(cx + leafSize * 4, cy + leafSize * 4, dropW, dropH)} />
-            </ClipPath>
-            <RadialGradient id="dropGlow" cx="50%" cy="40%" r="60%">
-              <Stop offset="0%" stopColor={SEMANTIC_COLORS.success} stopOpacity="0.15" />
-              <Stop offset="100%" stopColor={SEMANTIC_COLORS.success} stopOpacity="0" />
-            </RadialGradient>
-            <LinearGradient id="liquidGrad" x1="0" y1="0" x2="0" y2="1">
-              <Stop offset="0%" stopColor={SEMANTIC_COLORS.success} stopOpacity="0.9" />
-              <Stop offset="50%" stopColor={SEMANTIC_COLORS.success} stopOpacity="0.85" />
-              <Stop offset="100%" stopColor={SEMANTIC_COLORS.success} stopOpacity="0.7" />
-            </LinearGradient>
-            <LinearGradient id="dropStroke" x1="0" y1="0" x2="0" y2="1">
-              <Stop offset="0%" stopColor={SEMANTIC_COLORS.success} stopOpacity="0.6" />
-              <Stop offset="100%" stopColor={SEMANTIC_COLORS.success} stopOpacity="0.3" />
-            </LinearGradient>
-          </Defs>
-
-          {/* Seven-leaf halo */}
-          {weeklyLeafStates.map((leaf, i) => {
-            const angle = (i / 7) * Math.PI * 2 - Math.PI / 2
-            const haloCx = cx + leafSize * 4 + Math.cos(angle) * haloRadius
-            const haloCy = cy + leafSize * 4 + Math.sin(angle) * haloRadius
-            const leafColor = leaf.hasLog ? SEMANTIC_COLORS.success : 'rgba(255,255,255,0.08)'
-            const strokeColor = leaf.isToday ? SEMANTIC_COLORS.success : (leaf.hasLog ? 'rgba(129,199,132,0.4)' : 'rgba(255,255,255,0.12)')
-            const strokeWidth = leaf.isToday ? 2 : 1
-            const opacity = leaf.isFuture ? 0.4 : 1
-            const scale = leaf.isToday ? 1.25 : 1
-            const leafPath = buildLeafPath(haloCx, haloCy, leafSize * scale)
-
-            return (
-              <React.Fragment key={i}>
-                <Path
-                  d={leafPath}
-                  fill={leafColor}
-                  stroke={strokeColor}
-                  strokeWidth={strokeWidth}
-                  opacity={opacity}
-                />
-                {leaf.hasLog && (
-                  <Path
-                    d={leafPath}
-                    fill="none"
-                    stroke={SEMANTIC_COLORS.success}
-                    strokeWidth={0.5}
-                    opacity={0.3}
-                  />
-                )}
-              </React.Fragment>
-            )
-          })}
-
-          {/* Drop glow background */}
-          <Path
-            d={buildDropPath(cx + leafSize * 4, cy + leafSize * 4, dropW + 8, dropH + 8)}
-            fill="url(#dropGlow)"
-            opacity={0.8}
-          />
-
-          {/* Drop outline */}
-          <Path
-            d={buildDropPath(cx + leafSize * 4, cy + leafSize * 4, dropW, dropH)}
-            fill="rgba(13,21,16,0.6)"
-            stroke="url(#dropStroke)"
-            strokeWidth={2}
-          />
-
-          {/* Liquid fill clipped inside drop */}
-          <AnimatedClipPath
-            clipPathId="dropClip"
-            fillAnim={fillAnim}
-            dropH={dropH}
-            cy={cy + leafSize * 4}
-            cx={cx + leafSize * 4}
-            dropW={dropW}
+      <Animated.View
+        style={{
+          opacity: entranceOpacity,
+          transform: [{ scale: Animated.multiply(entranceScale, pressScaleAnim) }],
+          alignItems: 'center',
+        }}
+      >
+        <View style={styles.graphicWrap}>
+          <GlowJourneyDropArtwork
+            visualState={artworkVisualState}
+            size={dropSize}
+            showFallingDroplet={dropletOpacity > 0}
+            showRipple={rippleOpacity > 0}
+            showParticles={false}
+            fallingDropletOpacity={dropletOpacity}
+            rippleOpacity={rippleOpacity}
+            glowRingOpacityOverride={animatedGlowRing}
+            leafScaleOverrides={leafScaleOverrides}
             isReduced={isReduced}
           />
 
-          {/* Pulse glow on new log */}
-          {!isReduced && (
-            <AnimatedPath
-              d={buildDropPath(cx + leafSize * 4, cy + leafSize * 4, dropW, dropH)}
-              fill="none"
-              stroke={SEMANTIC_COLORS.success}
-              strokeWidth={2}
-              opacity={glowOpacity}
-            />
-          )}
-        </Svg>
-
-        {/* Streak text overlay */}
-        <View style={[styles.streakOverlay, { width: dropSize, height: dropSize }]}>
-          <Text style={[styles.streakNumber, { fontSize: Math.min(dropSize * 0.22, 40), lineHeight: Math.min(dropSize * 0.22, 40) * 1.1 }]}>{streakCount}</Text>
-          <Text style={styles.streakLabel}>
-            {streakCount === 1 ? 'Day Glow Streak' : 'Day Glow Streak'}
-          </Text>
-        </View>
-      </View>
-
-      {/* Journey stage + milestone */}
-      <View style={styles.infoSection}>
-        {stage ? (
-          <View style={styles.stageRow}>
-            <Text style={styles.stageEmoji}>{stage.emoji}</Text>
-            <Text style={styles.stageLabel}>{stage.label}</Text>
-            <Text style={styles.stageDays}>· {lifetimeDays} days</Text>
+          {/* Streak text overlay */}
+          <View style={[styles.streakOverlay, { width: dropSize, height: dropSize }]}>
+            <Text style={[styles.streakNumber, { fontSize: Math.min(dropSize * 0.22, 40), lineHeight: Math.min(dropSize * 0.22, 40) * 1.1 }]}>{streakCount}</Text>
+            <Text style={styles.streakLabel}>
+              {streakCount === 1 ? '1 Day Glow Streak' : `${streakCount} Day Glow Streak`}
+            </Text>
           </View>
-        ) : (
-          <Text style={styles.emptyStage}>Your journey starts with your first juice</Text>
-        )}
+        </View>
 
-        <MilestoneMessage
-          lifetimeDays={lifetimeDays}
-          weeklyQualifyingDays={weeklyQualifyingDays}
-          nextStage={nextStage}
-          daysToNext={daysToNext}
-        />
-      </View>
+        {/* Journey stage + milestone */}
+        <View style={styles.infoSection}>
+          {stage ? (
+            <View style={styles.stageRow}>
+              <Text style={styles.stageEmoji}>{stage.emoji}</Text>
+              <Text style={styles.stageLabel}>{stage.label}</Text>
+              <Text style={styles.stageDays}>· {lifetimeDays} days</Text>
+            </View>
+          ) : (
+            <Text style={styles.emptyStage}>Your journey starts with your first juice</Text>
+          )}
 
-      {/* Supporting chips */}
-      <View style={styles.chipsRow}>
-        <Chip label="Momentum" value={streakCount > 0 ? `${streakCount}d` : '—'} />
-        <Chip label="Weekly" value={`${weeklyQualifyingDays}/${WEEKLY_GLOW_GOAL}`} />
-        <Chip label="Lifetime" value={lifetimeDays > 0 ? `${lifetimeDays}d` : '—'} />
-      </View>
-    </TouchableOpacity>
+          <MilestoneMessage
+            lifetimeDays={lifetimeDays}
+            weeklyQualifyingDays={weeklyQualifyingDays}
+            nextStage={nextStage}
+            daysToNext={daysToNext}
+          />
+        </View>
+
+        {/* Supporting chips */}
+        <View style={styles.chipsRow}>
+          <Chip label="Momentum" value={streakCount > 0 ? `${streakCount}d` : '—'} />
+          <Chip label="Weekly" value={`${weeklyQualifyingDays}/${WEEKLY_GLOW_GOAL}`} />
+          <Chip label="Lifetime" value={lifetimeDays > 0 ? `${lifetimeDays}d` : '—'} />
+        </View>
+      </Animated.View>
+    </Pressable>
   )
-}
-
-function AnimatedClipPath({ clipPathId, fillAnim, dropH, cy, cx, dropW, isReduced }) {
-  const [fillY, setFillY] = React.useState(0)
-
-  useEffect(() => {
-    if (isReduced) {
-      setFillY(fillAnim.__getValue() * dropH)
-    } else {
-      const id = fillAnim.addListener(({ value }) => {
-        setFillY(value * dropH)
-      })
-      return () => fillAnim.removeListener(id)
-    }
-  }, [fillAnim, dropH, isReduced])
-
-  const liquidTop = cy + dropH / 2 - fillY
-  const liquidHeight = fillY
-
-  return (
-    <G clipPath={`url(#${clipPathId})`}>
-      {liquidHeight > 0 && (
-        <Path
-          d={`M ${cx - dropW / 2 - 2} ${liquidTop} L ${cx + dropW / 2 + 2} ${liquidTop} L ${cx + dropW / 2 + 2} ${cy + dropH / 2 + 2} L ${cx - dropW / 2 - 2} ${cy + dropH / 2 + 2} Z`}
-          fill="url(#liquidGrad)"
-        />
-      )}
-    </G>
-  )
-}
-
-function AnimatedPath({ d, stroke, strokeWidth, opacity }) {
-  const [op, setOp] = React.useState(0)
-  useEffect(() => {
-    if (opacity && typeof opacity.addListener === 'function') {
-      const id = opacity.addListener(({ value }) => setOp(value))
-      return () => opacity.removeListener(id)
-    }
-    setOp(typeof opacity === 'number' ? opacity : 0)
-  }, [opacity])
-  return <Path d={d} fill="none" stroke={stroke} strokeWidth={strokeWidth} opacity={op} />
 }
 
 function MilestoneMessage({ lifetimeDays, weeklyQualifyingDays, nextStage, daysToNext }) {
@@ -376,9 +414,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
-  },
-  svg: {
-    alignSelf: 'center',
   },
   streakOverlay: {
     position: 'absolute',

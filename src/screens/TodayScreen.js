@@ -61,6 +61,7 @@ import WeeklySummaryTeaser from '../components/WeeklySummaryTeaser'
 import AchievementOverlay from '../components/AchievementOverlay'
 import GlowJourneyDrop from '../components/GlowJourneyDrop'
 import GlowJourneyDetail from '../components/GlowJourneyDetail'
+import GlowJourneyCelebrationOverlay from '../components/GlowJourneyCelebrationOverlay'
 import {
   getWeeklyLeafStates,
   getWeeklyQualifyingDays,
@@ -891,34 +892,13 @@ export default function TodayScreen({ navigation }) {
 
       {/* Glow Journey Stage Celebration (only when no achievement showing) */}
       {!pendingAchievement && stageCelebration && (
-        <Modal
+        <GlowJourneyCelebrationOverlay
           visible={true}
-          transparent
-          animationType={isReduced ? 'none' : 'fade'}
-          onRequestClose={() => setStageCelebration(null)}
-        >
-          <View style={styles.stageCelebrationOverlay}>
-            <View style={styles.stageCelebrationCard}>
-              <Text style={styles.stageCelebrationEmoji}>
-                {stageCelebration.stage.emoji}
-              </Text>
-              <Text style={styles.stageCelebrationTitle}>
-                You're {stageCelebration.stage.label}
-              </Text>
-              <Text style={styles.stageCelebrationSubtitle}>
-                {stageCelebration.lifetimeDays} days of adding more raw to your life
-              </Text>
-              <TouchableOpacity
-                onPress={() => setStageCelebration(null)}
-                style={styles.stageCelebrationButton}
-                accessibilityRole="button"
-                accessibilityLabel="Dismiss celebration"
-              >
-                <Text style={styles.stageCelebrationButtonText}>Continue</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </Modal>
+          stage={stageCelebration.stage}
+          lifetimeDays={stageCelebration.lifetimeDays}
+          onDismiss={() => setStageCelebration(null)}
+          isReduced={isReduced}
+        />
       )}
 
       <AccountGateModal

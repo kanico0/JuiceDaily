@@ -941,13 +941,239 @@ describe('Stage celebration safe presentation', () => {
 // ── 30. Reduced motion in stage celebration ──
 
 describe('Reduced motion in celebration', () => {
-  test('TodayScreen stage celebration uses isReduced for animationType', () => {
+  test('TodayScreen passes isReduced to celebration overlay', () => {
     const fs = require('fs')
     const path = require('path')
     const source = fs.readFileSync(
       path.join(__dirname, '..', '..', 'screens', 'TodayScreen.js'),
       'utf8'
     )
+    expect(source).toMatch(/GlowJourneyCelebrationOverlay/)
+    expect(source).toMatch(/isReduced/)
+  })
+
+  test('GlowJourneyCelebrationOverlay uses isReduced for animationType', () => {
+    const fs = require('fs')
+    const path = require('path')
+    const source = fs.readFileSync(
+      path.join(__dirname, '..', '..', 'components', 'GlowJourneyCelebrationOverlay.js'),
+      'utf8'
+    )
     expect(source).toMatch(/isReduced.*none.*fade/)
+  })
+})
+
+// ── 31. Visual state adapter (GlowJourneyVisualState) ──
+
+describe('GlowJourneyVisualState', () => {
+  const {
+    buildGlowJourneyVisualState,
+    getStageVisualProps,
+    clampProgress,
+    GLOW_JOURNEY_PALETTE,
+  } = require('../../components/GlowJourneyVisualState')
+
+  test('getStageVisualProps returns correct props for each stage', () => {
+    const seed = getStageVisualProps('seed')
+    expect(seed.liquidColor).toBe('#DCE7D3')
+    expect(seed.outlineWidth).toBe(1.5)
+    expect(seed.glowRingOpacity).toBe(0)
+
+    const growing = getStageVisualProps('growing')
+    expect(growing.liquidColor).toBe('#6FA97D')
+    expect(growing.outlineWidth).toBe(2.0)
+    expect(growing.glowRingOpacity).toBe(0.05)
+
+    const legend = getStageVisualProps('legend')
+    expect(legend.liquidColor).toBe('#244833')
+    expect(legend.outlineWidth).toBe(2.6)
+    expect(legend.glowRingOpacity).toBe(0.18)
+  })
+
+  test('getStageVisualProps returns seed props for null/unknown stage', () => {
+    const nullProps = getStageVisualProps(null)
+    expect(nullProps.liquidColor).toBe('#DCE7D3')
+
+    const unknownProps = getStageVisualProps('unknown')
+    expect(unknownProps.liquidColor).toBe('#DCE7D3')
+  })
+
+  test('clampProgress clamps between 0 and 1', () => {
+    expect(clampProgress(0)).toBe(0)
+    expect(clampProgress(0.5)).toBe(0.5)
+    expect(clampProgress(1)).toBe(1)
+    expect(clampProgress(1.5)).toBe(1)
+    expect(clampProgress(-0.5)).toBe(0)
+    expect(clampProgress(NaN)).toBe(0)
+    expect(clampProgress(undefined)).toBe(0)
+  })
+
+  test('buildGlowJourneyVisualState returns complete state object', () => {
+    const state = buildGlowJourneyVisualState({
+      lifetimeDays: 20,
+      weeklyQualifyingDays: 2,
+      weeklyLeafStates: [
+        { hasLog: true, isToday: false, isFuture: false },
+        { hasLog: true, isToday: false, isFuture: false },
+        { hasLog: false, isToday: true, isFuture: false },
+        { hasLog: false, isToday: false, isFuture: true },
+        { hasLog: false, isToday: false, isFuture: true },
+        { hasLog: false, isToday: false, isFuture: true },
+        { hasLog: false, isToday: false, isFuture: true },
+      ],
+      streakCount: 5,
+    })
+
+    expect(state.stage).toBeTruthy()
+    expect(state.stageKey).toBe('growing')
+    expect(state.stageProps.liquidColor).toBe('#6FA97D')
+    expect(state.fillRatio).toBeCloseTo(2 / 3, 5)
+    expect(state.leafStates).toHaveLength(7)
+    expect(state.leafStates[0].visual.filled).toBe(true)
+    expect(state.leafStates[2].visual.filled).toBe(false)
+    expect(state.streakCount).toBe(5)
+    expect(state.weeklyGoal).toBe(3)
+  })
+
+  test('GLOW_JOURNEY_PALETTE has required color tokens', () => {
+    expect(GLOW_JOURNEY_PALETTE.haloUnfilledStroke).toBe('#C9C2B0')
+    expect(GLOW_JOURNEY_PALETTE.particleColor).toBe('#F5D98B')
+    expect(GLOW_JOURNEY_PALETTE.fallingDropletColor).toBe('#8FBF9F')
+    expect(GLOW_JOURNEY_PALETTE.liquidHighlightColor).toBe('#FFFFFF')
+    expect(GLOW_JOURNEY_PALETTE.stageGoldTrim).toBe('#D9A63E')
+  })
+})
+
+// ── 32. GlowJourneyDropArtwork component structure ──
+
+describe('GlowJourneyDropArtwork component', () => {
+  test('source defines canonical SVG named groups', () => {
+    const fs = require('fs')
+    const path = require('path')
+    const source = fs.readFileSync(
+      path.join(__dirname, '..', '..', 'components', 'GlowJourneyDropArtwork.js'),
+      'utf8'
+    )
+    expect(source).toMatch(/glowjourney_drop_container/)
+    expect(source).toMatch(/glowjourney_drop_glass/)
+    expect(source).toMatch(/glowjourney_glow_ring/)
+    expect(source).toMatch(/glowjourney_leaf_halo/)
+    expect(source).toMatch(/glowjourney_liquid_fill/)
+    expect(source).toMatch(/glowjourney_liquid_highlight/)
+    expect(source).toMatch(/glowjourney_drop_outline/)
+    expect(source).toMatch(/glowjourney_liquid_ripple/)
+    expect(source).toMatch(/glowjourney_falling_droplet/)
+    expect(source).toMatch(/glowjourney_stage_ornamentation/)
+    expect(source).toMatch(/glowjourney_particle/)
+  })
+
+  test('source defines all seven stage motif groups', () => {
+    const fs = require('fs')
+    const path = require('path')
+    const source = fs.readFileSync(
+      path.join(__dirname, '..', '..', 'components', 'GlowJourneyDropArtwork.js'),
+      'utf8'
+    )
+    expect(source).toMatch(/glowjourney_stage_seed/)
+    expect(source).toMatch(/glowjourney_stage_sprout/)
+    expect(source).toMatch(/glowjourney_stage_growing/)
+    expect(source).toMatch(/glowjourney_stage_blooming/)
+    expect(source).toMatch(/glowjourney_stage_thriving/)
+    expect(source).toMatch(/glowjourney_stage_radiant/)
+    expect(source).toMatch(/glowjourney_stage_legend/)
+  })
+
+  test('source uses canonical drop path from SVG', () => {
+    const fs = require('fs')
+    const path = require('path')
+    const source = fs.readFileSync(
+      path.join(__dirname, '..', '..', 'components', 'GlowJourneyDropArtwork.js'),
+      'utf8'
+    )
+    expect(source).toMatch(/M 200,90/)
+    expect(source).toMatch(/144\.8,194\.5/)
+  })
+
+  test('source does not load SVG files from Docs at runtime', () => {
+    const fs = require('fs')
+    const path = require('path')
+    const source = fs.readFileSync(
+      path.join(__dirname, '..', '..', 'components', 'GlowJourneyDropArtwork.js'),
+      'utf8'
+    )
+    expect(source).not.toMatch(/Docs/i)
+    expect(source).not.toMatch(/\.svg/)
+  })
+
+  test('particle count capped at 7', () => {
+    const fs = require('fs')
+    const path = require('path')
+    const source = fs.readFileSync(
+      path.join(__dirname, '..', '..', 'components', 'GlowJourneyDropArtwork.js'),
+      'utf8'
+    )
+    expect(source).toMatch(/Math\.min\(particleCount, 7\)/)
+  })
+})
+
+// ── 33. Celebration coordinator hook ──
+
+describe('useCelebrationCoordinator', () => {
+  test('is importable and exports expected interface', () => {
+    const mod = require('../../hooks/useCelebrationCoordinator')
+    expect(typeof mod.useCelebrationCoordinator).toBe('function')
+    expect(mod.CELEBRATION_TYPES).toBeTruthy()
+    expect(mod.CELEBRATION_TYPES.STAGE).toBe('stage')
+    expect(mod.CELEBRATION_TYPES.WEEKLY).toBe('weekly')
+  })
+})
+
+// ── 34. Streak label fix ──
+
+describe('Streak label fix', () => {
+  test('GlowJourneyDrop streak label shows correct singular form', () => {
+    const fs = require('fs')
+    const path = require('path')
+    const source = fs.readFileSync(
+      path.join(__dirname, '..', '..', 'components', 'GlowJourneyDrop.js'),
+      'utf8'
+    )
+    expect(source).toMatch(/streakCount === 1 \? '1 Day Glow Streak'/)
+    expect(source).toMatch(/`\$\{streakCount\} Day Glow Streak`/)
+  })
+
+  test('GlowJourneyDrop does not show same text for both singular and plural', () => {
+    const fs = require('fs')
+    const path = require('path')
+    const source = fs.readFileSync(
+      path.join(__dirname, '..', '..', 'components', 'GlowJourneyDrop.js'),
+      'utf8'
+    )
+    expect(source).not.toMatch(/streakCount === 1 \? 'Day Glow Streak' : 'Day Glow Streak'/)
+  })
+})
+
+// ── 35. GlowJourneyDetail redesigned artwork integration ──
+
+describe('GlowJourneyDetail redesigned artwork', () => {
+  test('imports GlowJourneyDropArtwork', () => {
+    const fs = require('fs')
+    const path = require('path')
+    const source = fs.readFileSync(
+      path.join(__dirname, '..', '..', 'components', 'GlowJourneyDetail.js'),
+      'utf8'
+    )
+    expect(source).toMatch(/GlowJourneyDropArtwork/)
+    expect(source).toMatch(/buildGlowJourneyVisualState/)
+  })
+
+  test('renders drop artwork in scroll view', () => {
+    const fs = require('fs')
+    const path = require('path')
+    const source = fs.readFileSync(
+      path.join(__dirname, '..', '..', 'components', 'GlowJourneyDetail.js'),
+      'utf8'
+    )
+    expect(source).toMatch(/dropArtworkContainer/)
   })
 })

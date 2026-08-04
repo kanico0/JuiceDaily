@@ -6,11 +6,13 @@
 // ─────────────────────────────────────────────────────────────
 
 import React, { useMemo } from 'react'
-import { View, Text, StyleSheet, Modal, TouchableOpacity, ScrollView } from 'react-native'
+import { View, Text, StyleSheet, Modal, TouchableOpacity, ScrollView, useWindowDimensions } from 'react-native'
 import { X } from 'lucide-react-native'
 import { SEMANTIC_COLORS, SEMANTIC_SPACE, SEMANTIC_RADIUS } from '../constants/tokens'
 import { WEEKLY_GLOW_GOAL, getJourneyStage, getNextStage, getDaysToNextStage, GLOW_JOURNEY_STAGES } from '../constants/glowJourneyStages'
 import { ACHIEVEMENTS } from '../services/achievements'
+import { buildGlowJourneyVisualState } from './GlowJourneyVisualState'
+import GlowJourneyDropArtwork from './GlowJourneyDropArtwork'
 
 function GlowJourneyDetail({
   visible,
@@ -23,12 +25,21 @@ function GlowJourneyDetail({
   const stage = useMemo(() => getJourneyStage(lifetimeDays), [lifetimeDays])
   const nextStage = useMemo(() => getNextStage(lifetimeDays), [lifetimeDays])
   const daysToNext = useMemo(() => getDaysToNextStage(lifetimeDays), [lifetimeDays])
+  const { width: screenWidth } = useWindowDimensions()
+  const detailDropSize = Math.min(screenWidth * 0.55, 280)
 
   const unlockedSet = useMemo(() => new Set(unlockedAchievementIds), [unlockedAchievementIds])
   const earnedAchievements = useMemo(
     () => ACHIEVEMENTS.filter((a) => unlockedSet.has(a.id)),
     [unlockedSet]
   )
+
+  const detailVisualState = useMemo(() => buildGlowJourneyVisualState({
+    lifetimeDays,
+    weeklyQualifyingDays,
+    weeklyLeafStates: [],
+    streakCount,
+  }), [lifetimeDays, weeklyQualifyingDays, streakCount])
 
   return (
     <Modal visible={visible} animationType="fade" transparent onRequestClose={onClose}>
@@ -42,6 +53,15 @@ function GlowJourneyDetail({
           </View>
 
           <ScrollView showsVerticalScrollIndicator={false} style={styles.scroll}>
+            {/* Redesigned Drop artwork */}
+            <View style={styles.dropArtworkContainer}>
+              <GlowJourneyDropArtwork
+                visualState={detailVisualState}
+                size={detailDropSize}
+                isReduced={false}
+              />
+            </View>
+
             {/* Streak */}
             <DetailRow
               label="Glow Streak"
@@ -184,6 +204,11 @@ const styles = StyleSheet.create({
   },
   scroll: {
     maxHeight: '70%',
+  },
+  dropArtworkContainer: {
+    alignItems: 'center',
+    paddingVertical: SEMANTIC_SPACE.md,
+    marginBottom: SEMANTIC_SPACE.sm,
   },
   detailRow: {
     flexDirection: 'row',

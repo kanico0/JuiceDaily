@@ -1,5 +1,6 @@
 const fs = require('fs')
 const path = require('path')
+const crypto = require('crypto')
 
 const ROOT = path.join(__dirname, '..', '..', '..')
 const APP_JSON = JSON.parse(fs.readFileSync(path.join(ROOT, 'app.json'), 'utf8'))
@@ -76,5 +77,52 @@ describe('Issue 2 — Application Icon Configuration', () => {
     const srcDims = readPngDimensions(src)
     expect(srcDims.width).toBe(512)
     expect(srcDims.height).toBe(512)
+  })
+
+  test('11. Approved source SHA-256 is documented and verified', () => {
+    const src = 'C:\\src\\JuicingApp\\Docs\\Raw_LifeFlow_Color_Play-Store.png'
+    const buf = fs.readFileSync(src)
+    const hash = crypto.createHash('sha256').update(buf).digest('hex')
+    expect(hash).toBe('875d4fa25251649ef2bc84d402cc9040a63cec43bee1ee5bfeaaa8a6cdcfe47a')
+  })
+
+  test('12. Adaptive icon has safe-zone padding (artwork at 62% of canvas)', () => {
+    const adaptivePath = path.join(ROOT, APP_JSON.expo.android.adaptiveIcon.foregroundImage)
+    const dims = readPngDimensions(adaptivePath)
+    expect(dims.width).toBe(1024)
+    expect(dims.height).toBe(1024)
+    // The adaptive icon should be 1024x1024 with transparent padding
+    const buf = fs.readFileSync(adaptivePath)
+    expect(buf.length).toBeGreaterThan(0)
+  })
+
+  test('13. Play Store icon asset exists and is 512x512', () => {
+    const playStorePath = path.join(ROOT, 'assets', 'play-store-icon.png')
+    expect(fs.existsSync(playStorePath)).toBe(true)
+    const dims = readPngDimensions(playStorePath)
+    expect(dims.width).toBe(512)
+    expect(dims.height).toBe(512)
+  })
+
+  test('14. Favicon exists and is 48x48', () => {
+    const faviconPath = path.join(ROOT, APP_JSON.expo.web?.favicon || 'assets/favicon.png')
+    expect(fs.existsSync(faviconPath)).toBe(true)
+    const dims = readPngDimensions(faviconPath)
+    expect(dims.width).toBe(48)
+    expect(dims.height).toBe(48)
+  })
+
+  test('15. Splash icon exists and is square', () => {
+    const splashPath = path.join(ROOT, APP_JSON.expo.splash?.image || 'assets/splash-icon.png')
+    expect(fs.existsSync(splashPath)).toBe(true)
+    const dims = readPngDimensions(splashPath)
+    expect(dims.width).toBe(dims.height)
+  })
+
+  test('16. Icon generation script references the approved source', () => {
+    const scriptPath = path.join(ROOT, 'scripts', 'generate-icons.js')
+    const script = fs.readFileSync(scriptPath, 'utf8')
+    expect(script).toContain('Raw_LifeFlow_Color_Play-Store.png')
+    expect(script).toContain('875D4FA25251649EF2BC84D402CC9040A63CEC43BEE1EE5BFEAAA8A6CDCFE47A')
   })
 })

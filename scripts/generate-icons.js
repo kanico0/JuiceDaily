@@ -1,6 +1,7 @@
 // scripts/generate-icons.js — Generate RawLifeFlow icon assets from source
 //
-// Source: C:\src\JuicingApp\Docs\Raw_LifeFlow_Color_Icon.png
+// Source: C:\src\JuicingApp\Docs\Raw_LifeFlow_Color_Play-Store.png
+// SHA-256: 875D4FA25251649EF2BC84D402CC9040A63CEC43BEE1EE5BFEAAA8A6CDCFE47A
 // Output: assets/icon.png, assets/adaptive-icon.png, assets/favicon.png,
 //         assets/splash-icon.png, assets/play-store-icon.png
 //
@@ -12,7 +13,7 @@
 const path = require('path')
 const sharp = require('sharp')
 
-const SOURCE = 'C:/src/JuicingApp/Docs/Raw_LifeFlow_Color_Icon.png'
+const SOURCE = 'C:/src/JuicingApp/Docs/Raw_LifeFlow_Color_Play-Store.png'
 const ASSETS = path.join(__dirname, '..', 'assets')
 
 const BG_COLOR = '#ffffff'
@@ -23,11 +24,11 @@ async function generateIcons () {
 
   // ── 1. Standard icon (1024×1024) ────────────────────────────
   // Fit artwork into 1024×1024 with ~15% padding on each side.
-  // The artwork is landscape (1078×825), so we fit by width.
+  // The artwork is square (512×512), so we fit by both dimensions.
   const ICON_SIZE = 1024
   const ICON_FIT_RATIO = 0.70 // artwork occupies 70% of canvas
   const iconTargetW = Math.round(ICON_SIZE * ICON_FIT_RATIO)
-  const iconTargetH = Math.round(iconTargetW * (meta.height / meta.width))
+  const iconTargetH = iconTargetW // square source
 
   await sharp(SOURCE)
     .resize(iconTargetW, iconTargetH, { fit: 'fill' })
@@ -48,7 +49,7 @@ async function generateIcons () {
   const ADAPTIVE_SIZE = 1024
   const ADAPTIVE_FIT_RATIO = 0.62
   const adaptiveTargetW = Math.round(ADAPTIVE_SIZE * ADAPTIVE_FIT_RATIO)
-  const adaptiveTargetH = Math.round(adaptiveTargetW * (meta.height / meta.width))
+  const adaptiveTargetH = adaptiveTargetW // square source
 
   await sharp(SOURCE)
     .resize(adaptiveTargetW, adaptiveTargetH, { fit: 'fill' })
@@ -84,7 +85,7 @@ async function generateIcons () {
   const PLAY_SIZE = 512
   const PLAY_FIT_RATIO = 0.72
   const playTargetW = Math.round(PLAY_SIZE * PLAY_FIT_RATIO)
-  const playTargetH = Math.round(playTargetW * (meta.height / meta.width))
+  const playTargetH = playTargetW // square source
 
   await sharp(SOURCE)
     .resize(playTargetW, playTargetH, { fit: 'fill' })

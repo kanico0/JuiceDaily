@@ -66,9 +66,9 @@ describe('Issue 2 — Application Icon Configuration', () => {
     expect(APP_JSON.expo.name).toBe('RawLifeFlow: Juicing Daily')
   })
 
-  test('9. Version remains 1.0.17/code 16', () => {
-    expect(APP_JSON.expo.version).toBe('1.0.17')
-    expect(APP_JSON.expo.android.versionCode).toBe(16)
+  test('9. Version remains 1.0.18/code 17', () => {
+    expect(APP_JSON.expo.version).toBe('1.0.18')
+    expect(APP_JSON.expo.android.versionCode).toBe(17)
   })
 
   test('10. Source artwork was not overwritten or deleted', () => {

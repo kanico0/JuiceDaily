@@ -49,6 +49,7 @@ import {
   draftToPreloadIngredients,
 } from '../services/makeAgainHelper'
 import { trackEvent } from '../services/AnalyticsService'
+import { TASTE_REACTIONS } from '../constants/recipeData'
 
 // ── Source icon helper ───────────────────────────────────────
 const SOURCE_ICON = { photo: Camera, manual: Keyboard, demo: Eye }
@@ -413,6 +414,20 @@ function EntryDetailsModal({
                   </View>
                 ))}
               </>
+            )}
+
+            {/* Taste vote — visible for Pro and free preview */}
+            {policy.canViewAdvancedDetails && entry.tasteReaction && (
+              <View style={ms.tasteVoteRow}>
+                <Text style={[ms.sectionTitle, { marginTop: SPACE.lg }]}>Taste Vote</Text>
+                <View style={ms.tasteVoteCard}>
+                  <Text style={ms.tasteVoteEmoji}>{entry.tasteReaction.emoji}</Text>
+                  <View style={ms.tasteVoteContent}>
+                    <Text style={ms.tasteVoteLabel}>{entry.tasteReaction.label}</Text>
+                    <Text style={ms.tasteVoteResponse}>{entry.tasteReaction.response}</Text>
+                  </View>
+                </View>
+              </View>
             )}
 
             {/* Locked advanced card for older free items */}
@@ -1062,6 +1077,40 @@ const ms = StyleSheet.create({
     fontSize: FONT_SIZE.sm,
     fontWeight: FONT_WEIGHT.medium,
     color: BRAND.text.muted,
+  },
+  // ── Taste Vote Card ────────────────────────────────────────
+  tasteVoteRow: {
+    marginTop: SPACE.sm,
+  },
+  tasteVoteCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: SPACE.md,
+    paddingHorizontal: SPACE.md,
+    borderRadius: RADIUS.md,
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    borderWidth: 0.5,
+    borderColor: 'rgba(255,255,255,0.06)',
+    marginTop: SPACE.xs,
+  },
+  tasteVoteEmoji: {
+    fontSize: 28,
+  },
+  tasteVoteContent: {
+    flex: 1,
+  },
+  tasteVoteLabel: {
+    fontSize: FONT_SIZE.sm,
+    fontWeight: FONT_WEIGHT.bold,
+    color: BRAND.text.primary,
+    marginBottom: 2,
+  },
+  tasteVoteResponse: {
+    fontSize: FONT_SIZE.xs,
+    fontWeight: FONT_WEIGHT.regular,
+    color: BRAND.text.secondary,
+    lineHeight: LINE_HEIGHT.relaxed * FONT_SIZE.xs,
   },
 })
 

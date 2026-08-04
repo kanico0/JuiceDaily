@@ -764,13 +764,18 @@ export default function JuiceSnapScreen({ navigation, route }) {
   // eligibility precheck. A stale client cache cannot grant or block
   // access — the server makes the final decision in analyze-scan.
   const cameraInFlightRef = useRef(false)
+  const cameraAttemptIdRef = useRef(0)
   const CAMERA_TIMEOUT_MS = 12000
 
   const attemptCameraOpen = useCallback(async (isAutoOpen = false) => {
     // Guard against double-tap while an eligibility check is in flight
     if (cameraInFlightRef.current) return
     cameraInFlightRef.current = true
+    cameraAttemptIdRef.current += 1
+    const attemptId = cameraAttemptIdRef.current
     setIsPreparingCamera(true)
+
+    const isStale = () => attemptId !== cameraAttemptIdRef.current
 
     try {
       let currentQuota = serverQuota
@@ -783,6 +788,9 @@ export default function JuiceSnapScreen({ navigation, route }) {
           refreshQuota(),
           new Promise(resolve => setTimeout(() => resolve(null), CAMERA_TIMEOUT_MS)),
         ])
+
+        // Ignore late results if a newer attempt started or component unmounted
+        if (isStale()) return
       }
 
       // If quota is still null after refresh (or Supabase not configured),
@@ -806,12 +814,24 @@ export default function JuiceSnapScreen({ navigation, route }) {
       // camera access through an explicit offline-dev eligibility result.
       // Do not fabricate a synthetic quota count.
       if (currentQuota === null && !SUPABASE_CONFIGURED) {
-        const offlineResult = await checkCameraEligibility({
-          eligible: true,
-          remaining: 0,
-          reason: null,
-          isPro: false,
+        let offlineTimer = null
+        const offlineTimeout = new Promise((resolve) => {
+          offlineTimer = setTimeout(() => resolve({ action: 'error', reason: 'timeout', isDurable: false, isPro: false, snapRemaining: 0, guestJourneyStatus: null }), 10000)
         })
+        const offlineResult = await Promise.race([
+          checkCameraEligibility({
+            eligible: true,
+            remaining: 0,
+            reason: null,
+            isPro: false,
+          }),
+          offlineTimeout,
+        ])
+        if (offlineTimer) clearTimeout(offlineTimer)
+
+        // Ignore late results if a newer attempt started or component unmounted
+        if (isStale()) return
+
         if (offlineResult.action === 'open_camera') {
           setIsCameraOpen(true)
           if (!isAutoOpen) setIsLogged(false)
@@ -830,7 +850,18 @@ export default function JuiceSnapScreen({ navigation, route }) {
         reason: currentRemaining > 0 ? null : 'Scan limit reached for this period',
         isPro: currentIsPro,
       }
-      const result = await checkCameraEligibility(snapElig)
+      let eligibilityTimer = null
+      const eligibilityTimeout = new Promise((resolve) => {
+        eligibilityTimer = setTimeout(() => resolve({ action: 'error', reason: 'timeout', isDurable: false, isPro: false, snapRemaining: 0, guestJourneyStatus: null }), 10000)
+      })
+      const result = await Promise.race([
+        checkCameraEligibility(snapElig),
+        eligibilityTimeout,
+      ])
+      if (eligibilityTimer) clearTimeout(eligibilityTimer)
+
+      // Ignore late results if a newer attempt started or component unmounted
+      if (isStale()) return
 
       if (result.action === 'open_camera') {
         setIsCameraOpen(true)
@@ -896,6 +927,13 @@ export default function JuiceSnapScreen({ navigation, route }) {
       attemptCameraOpen(true)
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Cancel any in-flight camera eligibility attempt on unmount
+  useEffect(() => {
+    return () => {
+      cameraAttemptIdRef.current += 1
+    }
+  }, [])
 
   // Auto-expand manual mode when snaps are depleted
   const effectiveManualMode = isManualMode || isSnapDepleted

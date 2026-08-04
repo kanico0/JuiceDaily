@@ -107,10 +107,10 @@ describe('Ingredient Row — Portion Entry', () => {
     expect(cupUnit).toBeDefined()
   })
 
-  it('10. weight-only produce disables Quantity', () => {
-    expect(isQuantitySupported('wheatgrass')).toBe(false)
-    expect(isQuantitySupported('turmeric')).toBe(false)
-    expect(isQuantitySupported('cayenne')).toBe(false)
+  it('10. formerly weight-only produce now supports Quantity', () => {
+    expect(isQuantitySupported('wheatgrass')).toBe(true)
+    expect(isQuantitySupported('turmeric')).toBe(true)
+    expect(isQuantitySupported('cayenne')).toBe(true)
     expect(isQuantitySupported('coconut_water')).toBe(false)
   })
 
@@ -126,10 +126,11 @@ describe('Ingredient Row — Portion Entry', () => {
     expect(isQuantitySupported('aloe_vera')).toBe(true)
   })
 
-  it('11. weight-only explanatory copy renders', () => {
+  it('11. formerly weight-only produce now has quantity units', () => {
     const record = getPortionRegistryRecord('wheatgrass')
     expect(record).toBeDefined()
-    expect(record.quantitySupported).toBe(false)
+    expect(record.quantitySupported).toBe(true)
+    expect(record.units.length).toBeGreaterThan(0)
   })
 
   it('12. quantity estimate displays', () => {

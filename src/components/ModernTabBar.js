@@ -38,7 +38,7 @@ export default function ModernTabBar({ state, descriptors, navigation }) {
   const midIndex = Math.floor(routes.length / 2) // FAB goes after this index
 
   const handleFAB = () => {
-    rootNav.navigate('ScanFlow')
+    rootNav.navigate('ScanFlow', { screen: 'ScanHome', params: { openCamera: true } })
   }
 
   return (

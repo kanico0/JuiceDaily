@@ -17,7 +17,7 @@ describe('Issue 6 — Snap Produce no-op (offline-dev eligibility)', () => {
 
   test('offline-dev path calls checkCameraEligibility with eligible: true', () => {
     const offlineIdx = source.indexOf('!SUPABASE_CONFIGURED')
-    const section = source.slice(offlineIdx, offlineIdx + 300)
+    const section = source.slice(offlineIdx, offlineIdx + 800)
     expect(section).toContain('eligible: true')
   })
 

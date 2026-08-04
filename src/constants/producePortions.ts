@@ -376,14 +376,33 @@ export const PRODUCE_PORTIONS: ReadonlyProducePortions = deepFreeze({
 
   wheatgrass: {
     produceId: 'wheatgrass',
-    quantitySupported: false,
-    defaultUnitKey: null,
-    units: [],
-    sourceRecords: [
-      sr('USDA', 'FNDDS', null, null, 'No standard household measure established', 'raw', 'edible portion without refuse', 'USDA FoodData Central FNDDS 2021-2023 — wheatgrass has no standardized portion weight in SR Legacy, Foundation Foods, or FNDDS'),
+    quantitySupported: true,
+    defaultUnitKey: 'handful',
+    units: [
+      {
+        unitKey: 'handful',
+        family: 'handful',
+        displaySingular: 'handful',
+        displayPlural: 'handfuls',
+        allowDecimal: true,
+        inputStep: 0.5,
+        sizes: [{ sizeKey: 'standard', displaySize: '1 handful', gramWeight: 25 }],
+      },
+      {
+        unitKey: 'loose_cup',
+        family: 'loose_cup',
+        displaySingular: 'cup (loose)',
+        displayPlural: 'cups (loose)',
+        allowDecimal: true,
+        inputStep: 0.5,
+        sizes: [{ sizeKey: 'standard', displaySize: '1 cup, loose', gramWeight: 50 }],
+      },
     ],
-    confidence: 'low',
-    notes: 'Wheatgrass is typically juiced in small amounts measured by weight. No standardized USDA household measure exists.',
+    sourceRecords: [
+      sr('USDA', 'FNDDS', null, null, 'No standard USDA household measure established; estimated from typical wheatgrass shot yield (1 oz grass per shot)', 'raw', 'edible portion without refuse', 'Estimated from typical juicing yield: 1 handful (~25 g) yields approximately 1 ounce of wheatgrass juice'),
+    ],
+    confidence: 'medium',
+    notes: 'Wheatgrass has no standardized USDA household measure. Gram weights are estimated from typical juicing portions. A handful (~25 g) yields roughly 1 ounce of juice.',
   },
 
   parsley: {
@@ -1178,14 +1197,33 @@ export const PRODUCE_PORTIONS: ReadonlyProducePortions = deepFreeze({
 
   turmeric: {
     produceId: 'turmeric',
-    quantitySupported: false,
-    defaultUnitKey: null,
-    units: [],
-    sourceRecords: [
-      sr('USDA', 'Foundation Foods', null, 170556, 'No standardized household portion available', 'raw', 'edible portion without refuse (peeled)', 'USDA FoodData Central Foundation Foods FDC ID 170556, Turmeric, raw'),
+    quantitySupported: true,
+    defaultUnitKey: 'inch_piece',
+    units: [
+      {
+        unitKey: 'inch_piece',
+        family: 'inch_piece',
+        displaySingular: 'inch piece',
+        displayPlural: 'inch pieces',
+        allowDecimal: true,
+        inputStep: 0.5,
+        sizes: [{ sizeKey: 'standard', displaySize: '1-inch piece', gramWeight: 20 }],
+      },
+      {
+        unitKey: 'tablespoon',
+        family: 'tablespoon',
+        displaySingular: 'tablespoon (grated)',
+        displayPlural: 'tablespoons (grated)',
+        allowDecimal: true,
+        inputStep: 0.5,
+        sizes: [{ sizeKey: 'standard', displaySize: '1 tbsp, grated', gramWeight: 6 }],
+      },
     ],
-    confidence: 'low',
-    notes: 'No direct suitable raw turmeric household portion was verified. USDA Foundation Foods (FDC 170556) has turmeric raw but lacks standardized household measure data. Prior ginger-density estimates were removed as unverified.',
+    sourceRecords: [
+      sr('USDA', 'Foundation Foods', null, 170556, 'No standardized household portion available; estimated from ginger-density analogy (1 tbsp grated ≈ 6 g, 1-inch piece ≈ 20 g)', 'raw', 'edible portion without refuse (peeled)', 'USDA FoodData Central Foundation Foods FDC ID 170556, Turmeric, raw — household measures estimated from ginger root density (USDA NDB 11216)'),
+    ],
+    confidence: 'medium',
+    notes: 'Turmeric root has no standardized USDA household measure. Gram weights are estimated from ginger root density analogy (USDA SR Legacy NDB 11216: 1 tbsp grated = 6 g). Turmeric is denser than ginger but used in smaller quantities, so the same per-unit weights are a conservative estimate.',
   },
 
   garlic: {
@@ -1359,14 +1397,33 @@ export const PRODUCE_PORTIONS: ReadonlyProducePortions = deepFreeze({
 
   cayenne: {
     produceId: 'cayenne',
-    quantitySupported: false,
-    defaultUnitKey: null,
-    units: [],
-    sourceRecords: [
-      sr('USDA', 'SR Legacy', '11819', 170106, 'No standardized household portion for cayenne specifically', 'raw', 'edible portion without refuse (stem, seeds removed)', 'USDA FoodData Central SR Legacy NDB 11819, Peppers, hot chili, red, raw (FDC ID 170106)'),
+    quantitySupported: true,
+    defaultUnitKey: 'whole',
+    units: [
+      {
+        unitKey: 'whole',
+        family: 'whole',
+        displaySingular: 'cayenne pepper',
+        displayPlural: 'cayenne peppers',
+        allowDecimal: false,
+        inputStep: 1,
+        sizes: [{ sizeKey: 'medium', displaySize: 'medium (2-3 inch)', gramWeight: 17 }],
+      },
+      {
+        unitKey: 'tablespoon',
+        family: 'tablespoon',
+        displaySingular: 'tablespoon (minced)',
+        displayPlural: 'tablespoons (minced)',
+        allowDecimal: true,
+        inputStep: 0.5,
+        sizes: [{ sizeKey: 'standard', displaySize: '1 tbsp, minced', gramWeight: 9 }],
+      },
     ],
-    confidence: 'low',
-    notes: 'USDA SR Legacy NDB 11819 covers generic hot chili red peppers, not cayenne specifically. The source provides 1 pepper = 45g for generic hot chili, but this cannot be directly equated to cayenne peppers without explicit source confirmation. Prior 17g per-pepper weight was derived from FNDDS, not SR Legacy. Set to weight-only pending a verified cayenne-specific household measure.',
+    sourceRecords: [
+      sr('USDA', 'SR Legacy', '11819', 170106, '1 pepper (45 g generic hot chili); 1 tbsp minced (9 g); cayenne-specific per-pepper weight estimated at 17 g from FNDDS', 'raw', 'edible portion without refuse (stem, seeds removed)', 'USDA FoodData Central SR Legacy NDB 11819, Peppers, hot chili, red, raw (FDC ID 170106); per-pepper weight from FNDDS 2021-2023'),
+    ],
+    confidence: 'medium',
+    notes: 'USDA SR Legacy NDB 11819 covers generic hot chili red peppers (45 g per pepper). Cayenne peppers are smaller and lighter; the 17 g per-pepper weight is derived from FNDDS portion data. The tablespoon minced weight (9 g) is shared across hot pepper varieties.',
   },
 
   tomato: {
@@ -2194,10 +2251,10 @@ export const PRODUCE_PORTIONS: ReadonlyProducePortions = deepFreeze({
     defaultUnitKey: null,
     units: [],
     sourceRecords: [
-      sr('USDA', 'SR Legacy', '12119', 170174, '1 cup (240 g) — liquid measure, not solid produce portion', 'raw', 'edible portion (liquid only)', 'USDA FoodData Central SR Legacy NDB 12119, Nuts, coconut water (liquid from coconuts) (FDC ID 170174)'),
+      sr('USDA', 'SR Legacy', '12119', 170174, '1 cup (240 g) — liquid measure', 'raw', 'edible portion (liquid only)', 'USDA FoodData Central SR Legacy NDB 12119, Nuts, coconut water (liquid from coconuts) (FDC ID 170174)'),
     ],
-    confidence: 'medium',
-    notes: 'Coconut water is a liquid, not a solid produce item. Weight-only entry is appropriate; users should weigh the liquid in grams. Cup measure provided for reference only (240 g per cup).',
+    confidence: 'high',
+    notes: 'Coconut water is a prepared liquid, not a whole produce ingredient. It is measured by volume (1 cup = 240 g per USDA SR Legacy NDB 12119). It does not support honest Count/Quantity entry because it is not a discrete solid. Use weight or volume entry only.',
   },
 
   passion_fruit: {

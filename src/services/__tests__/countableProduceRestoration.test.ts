@@ -1,6 +1,7 @@
 import {
   isQuantitySupported,
   getSupportedCountUnits,
+  getSupportedPortionUnits,
   estimateRawWeightGrams,
   getDefaultPortionUnit,
 } from '../producePortionConversion'
@@ -21,10 +22,13 @@ const COUNTABLE = [
   'cranberry',
 ]
 
-const NOW_WEIGHT_ONLY = [
+const FORMERLY_WEIGHT_ONLY = [
   'wheatgrass',
   'turmeric',
   'cayenne',
+]
+
+const VOLUME_ONLY = [
   'coconut_water',
 ]
 
@@ -52,8 +56,27 @@ describe('Issue 3 — Restore Count for Countable Produce', () => {
     expect(countUnits.length).toBeGreaterThanOrEqual(1)
   })
 
-  test.each(NOW_WEIGHT_ONLY)('isQuantitySupported returns false for %s', (pid) => {
+  test.each(FORMERLY_WEIGHT_ONLY)('isQuantitySupported returns true for formerly weight-only %s', (pid) => {
+    expect(isQuantitySupported(pid)).toBe(true)
+  })
+
+  test.each(FORMERLY_WEIGHT_ONLY)('getDefaultPortionUnit returns a non-null unit for %s', (pid) => {
+    const unit = getDefaultPortionUnit(pid)
+    expect(unit).not.toBeNull()
+  })
+
+  test.each(FORMERLY_WEIGHT_ONLY)('getSupportedPortionUnits returns at least 1 unit for %s', (pid) => {
+    const units = getSupportedPortionUnits(pid)
+    expect(units.length).toBeGreaterThanOrEqual(1)
+  })
+
+  test.each(VOLUME_ONLY)('isQuantitySupported returns false for volume-only %s', (pid) => {
     expect(isQuantitySupported(pid)).toBe(false)
+  })
+
+  test.each(VOLUME_ONLY)('getSupportedPortionUnits returns 0 units for volume-only %s', (pid) => {
+    const units = getSupportedPortionUnits(pid)
+    expect(units.length).toBe(0)
   })
 
   test.each(NEWLY_COUNTABLE)('isQuantitySupported returns true for %s', (pid) => {

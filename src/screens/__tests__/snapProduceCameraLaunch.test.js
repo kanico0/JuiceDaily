@@ -96,12 +96,12 @@ describe('Snap Produce Camera — Timeout Behavior (Fake Timers)', () => {
   test('14. Null quota after timeout shows retry alert (when SUPABASE_CONFIGURED)', () => {
     const timeoutSection = section.substring(
       section.indexOf('currentQuota === null && SUPABASE_CONFIGURED'),
-      section.indexOf('currentQuota === null && SUPABASE_CONFIGURED') + 500,
+      section.indexOf('currentQuota === null && SUPABASE_CONFIGURED') + 1200,
     )
     // Second check for null after the race
     const secondNullCheck = section.indexOf('currentQuota === null && SUPABASE_CONFIGURED', 50)
     if (secondNullCheck !== -1) {
-      const retrySection = section.substring(secondNullCheck, secondNullCheck + 800)
+      const retrySection = section.substring(secondNullCheck, secondNullCheck + 1200)
       expect(retrySection).toContain('Alert.alert')
       expect(retrySection).toMatch(/Try Again/i)
     }
@@ -192,7 +192,7 @@ describe('Snap Produce Camera — Error and Permission Handling', () => {
   test('26. Offline dev path opens camera without quota check', () => {
     const offlineSection = section.substring(
       section.indexOf('currentQuota === null && !SUPABASE_CONFIGURED'),
-      section.indexOf('currentQuota === null && !SUPABASE_CONFIGURED') + 500,
+      section.indexOf('currentQuota === null && !SUPABASE_CONFIGURED') + 1200,
     )
     expect(offlineSection).toContain('checkCameraEligibility')
     expect(offlineSection).toContain('setIsCameraOpen(true)')

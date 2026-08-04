@@ -3,7 +3,7 @@
 //
 // Tests for the quantity-to-raw-weight conversion service.
 // Covers: conversion, validation, weight-only, precision, labels,
-// immutability, determinism, and all five weight-only items.
+// immutability, determinism, and all formerly weight-only items.
 // ─────────────────────────────────────────────────────────────
 
 import {
@@ -35,8 +35,8 @@ import { PRODUCE_PORTIONS } from '../../constants/producePortions'
 // carrot: whole (S/M/L, integer) + loose_cup (standard, decimal), high confidence
 //   whole medium=61g, loose_cup standard=128g
 
-const WEIGHT_ONLY = [
-  'wheatgrass', 'turmeric', 'cayenne', 'coconut_water',
+const FORMERLY_WEIGHT_ONLY = [
+  'wheatgrass', 'turmeric', 'cayenne',
 ]
 
 const COUNT_SUPPORTED_GREENS = [
@@ -203,17 +203,22 @@ describe('Produce Portion Conversion Service', () => {
     expect(result.errorCode).toBe('unknown_produce')
   })
 
-  // 13. Weight-only produce returns quantity_not_supported
-  test.each(WEIGHT_ONLY)('13. weight-only produce %s returns quantity_not_supported', (pid) => {
+  // 13. Formerly weight-only produce now supports quantity conversion
+  test.each(FORMERLY_WEIGHT_ONLY)('13. formerly weight-only produce %s returns a valid conversion', (pid) => {
+    const record = getPortionRegistryRecord(pid)
+    expect(record).not.toBeNull()
+    if (!record) return
+    const unit = record.units[0]
+    const size = unit.sizes[0]
     const result = estimateRawWeightGrams({
       produceId: pid,
       quantity: 1,
-      unitKey: 'whole',
-      sizeKey: 'medium',
+      unitKey: unit.unitKey,
+      sizeKey: size.sizeKey,
     })
-    expect(result.ok).toBe(false)
-    if (result.ok) return
-    expect(result.errorCode).toBe('quantity_not_supported')
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.estimatedRawWeightG).toBeGreaterThan(0)
   })
 
   // 14. Unknown unit rejected
@@ -402,8 +407,8 @@ describe('Produce Portion Conversion Service', () => {
     expect(isQuantitySupported('apple')).toBe(true)
   })
 
-  test.each(WEIGHT_ONLY)('isQuantitySupported returns false for %s', (pid) => {
-    expect(isQuantitySupported(pid)).toBe(false)
+  test.each(FORMERLY_WEIGHT_ONLY)('isQuantitySupported returns true for formerly weight-only %s', (pid) => {
+    expect(isQuantitySupported(pid)).toBe(true)
   })
 
   test.each(COUNT_SUPPORTED_GREENS)('isQuantitySupported returns true for %s', (pid) => {

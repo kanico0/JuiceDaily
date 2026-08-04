@@ -62,7 +62,7 @@ import { usePro } from '../services/ProStore'
 import MeshGradientBg from '../components/MeshGradientBg'
 import { processJuiceBatch, PRODUCE_DATA } from '../services/JuiceEngine'
 import AdvancedBlendModal from '../components/AdvancedBlendModal'
-import { countDistinctProduceIds, classifyBlend, BlendAllowanceError, FREE_ADVANCED_BLEND_ALLOWANCE, createOperationId } from '../services/quota/blendAllowanceService'
+import { countDistinctProduceIds, classifyBlend, BlendAllowanceError, FREE_ADVANCED_BLEND_ALLOWANCE, createOperationId, getAdvancedBlendRemaining } from '../services/quota/blendAllowanceService'
 import { authorizeAndProcessBatch } from '../services/quota/blendNutritionGate'
 import { authorizeGuestLog, isGuestLogAllowed } from '../services/quota/guestLogGate'
 import { checkCameraEligibility } from '../services/cameraEligibilityCoordinator'
@@ -650,6 +650,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
   const [showAdvancedBlendModal, setShowAdvancedBlendModal] = useState(false)
   const [advancedBlendStage, setAdvancedBlendStage] = useState('fifth_ingredient_notice')
   const [advancedBlendRemaining, setAdvancedBlendRemaining] = useState(FREE_ADVANCED_BLEND_ALLOWANCE)
+  const [blendUsedCount, setBlendUsedCount] = useState(0)
   const [blendNoticeShown, setBlendNoticeShown] = useState(false)
   const [blendCheckInProgress, setBlendCheckInProgress] = useState(false)
   const blendOperationIdRef = useRef(null)
@@ -1026,7 +1027,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
       const distinctCount = countDistinctProduceIds(updated)
       if (distinctCount === 5 && !blendNoticeShown && !isPro) {
         setAdvancedBlendStage('fifth_ingredient_notice')
-        setAdvancedBlendRemaining(FREE_ADVANCED_BLEND_ALLOWANCE)
+        setAdvancedBlendRemaining(getAdvancedBlendRemaining(blendUsedCount, isPro) ?? FREE_ADVANCED_BLEND_ALLOWANCE)
         setShowAdvancedBlendModal(true)
         setBlendNoticeShown(true)
         trackEvent('advanced_blend_threshold_reached', {
@@ -1102,7 +1103,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
     const distinctCount = countDistinctProduceIds(enriched)
     if (distinctCount >= 5 && !isPro) {
       setAdvancedBlendStage('fifth_ingredient_notice')
-      setAdvancedBlendRemaining(FREE_ADVANCED_BLEND_ALLOWANCE)
+      setAdvancedBlendRemaining(getAdvancedBlendRemaining(blendUsedCount, isPro) ?? FREE_ADVANCED_BLEND_ALLOWANCE)
       setShowAdvancedBlendModal(true)
       setBlendNoticeShown(true)
       trackEvent('advanced_blend_threshold_reached', {
@@ -1413,11 +1414,11 @@ export default function JuiceSnapScreen({ navigation, route }) {
       blendOperationIdRef.current = createOperationId()
       // Show pre-analysis confirmation first
       setAdvancedBlendStage('pre_analysis_confirmation')
-      setAdvancedBlendRemaining(FREE_ADVANCED_BLEND_ALLOWANCE)
+      setAdvancedBlendRemaining(getAdvancedBlendRemaining(blendUsedCount, isPro) ?? FREE_ADVANCED_BLEND_ALLOWANCE)
       setShowAdvancedBlendModal(true)
       trackEvent('advanced_blend_confirmation_shown', {
         plan: 'free',
-        remaining: FREE_ADVANCED_BLEND_ALLOWANCE,
+        remaining: getAdvancedBlendRemaining(blendUsedCount, isPro) ?? FREE_ADVANCED_BLEND_ALLOWANCE,
         ingredient_count: distinctCount,
         source: effectiveManualMode ? 'manual' : 'photo',
       })
@@ -1487,6 +1488,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
 
           if (allowanceResult && allowanceResult.plan === 'free') {
             const remaining = allowanceResult.remaining ?? 0
+            setBlendUsedCount(allowanceResult.used ?? 0)
             trackEvent('advanced_blend_analysis_completed', {
               plan: 'free',
               ingredient_count: distinctCount,
@@ -1505,6 +1507,9 @@ export default function JuiceSnapScreen({ navigation, route }) {
           if (err instanceof BlendAllowanceError && err.code === 'advanced_blend_limit_reached') {
             setAdvancedBlendStage('allowance_exhausted')
             setAdvancedBlendRemaining(0)
+            if (err.result) {
+              setBlendUsedCount(err.result.used ?? FREE_ADVANCED_BLEND_ALLOWANCE)
+            }
             setShowAdvancedBlendModal(true)
             trackEvent('advanced_blend_quota_exhausted', {
               plan: 'free',
@@ -1933,6 +1938,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
         visible={showAdvancedBlendModal}
         stage={advancedBlendStage}
         remaining={advancedBlendRemaining}
+        isPro={isPro}
         onUpgrade={() => {
           setShowAdvancedBlendModal(false)
           trackEvent('today_usage_row_tapped', {

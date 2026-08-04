@@ -75,6 +75,33 @@ export function countDistinctProduceIds (ingredients: { produceId: string }[]): 
   return ids.size
 }
 
+// ── Remaining-count selector ─────────────────────────────────
+// Single source of truth for computing the displayed remaining
+// Advanced Blend analyses for Free users.
+// Pro users get unlimited (returns null).
+
+export function getAdvancedBlendRemaining (
+  usedCount: number,
+  isPro: boolean,
+): number | null {
+  if (isPro) return null
+  return Math.max(0, FREE_ADVANCED_BLEND_ALLOWANCE - usedCount)
+}
+
+// ── Display text for remaining count ─────────────────────────
+
+export function getAdvancedBlendRemainingText (
+  usedCount: number,
+  isPro: boolean,
+): string {
+  if (isPro) return 'Unlimited Advanced Blend analyses with Pro'
+  const remaining = getAdvancedBlendRemaining(usedCount, isPro)
+  if (remaining === null) return 'Unlimited Advanced Blend analyses with Pro'
+  if (remaining === 0) return 'You have used all 3 complimentary Advanced Blend analyses.'
+  if (remaining === 1) return 'You have 1 complimentary Advanced Blend analysis remaining.'
+  return `You have ${remaining} complimentary Advanced Blend analyses remaining.`
+}
+
 // ── Operation ID (UUID-based, one per analysis attempt) ──────
 //
 // A unique operation ID is created when the user confirms a new

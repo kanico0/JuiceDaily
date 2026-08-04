@@ -10,8 +10,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Sparkles, Crown, X, Wifi, AlertCircle } from 'lucide-react-native'
 import { useReducedMotion } from '../utils/motion'
+import { getAdvancedBlendRemainingText } from '../services/quota/blendAllowanceService'
 
-export function getAdvancedBlendModalContent (stage, remaining) {
+export function getAdvancedBlendModalContent (stage, remaining, isPro = false) {
   switch (stage) {
     case 'fifth_ingredient_notice':
       return {
@@ -21,20 +22,24 @@ export function getAdvancedBlendModalContent (stage, remaining) {
           'Blends with 5 or more ingredients use one of your 3 lifetime Advanced Blend analyses. ' +
           'Your allowance is only used after the analysis completes successfully.',
       }
-    case 'pre_analysis_confirmation':
+    case 'pre_analysis_confirmation': {
+      const used = Math.max(0, 3 - (remaining ?? 3))
+      const body = getAdvancedBlendRemainingText(used, isPro)
       return {
         title: 'Use an Advanced Blend analysis?',
         subtitle: null,
-        body:
-          `You have ${remaining} lifetime Advanced Blend analyses remaining.`,
+        body,
       }
-    case 'completion_confirmation':
+    }
+    case 'completion_confirmation': {
+      const used = Math.max(0, 3 - (remaining ?? 3))
+      const body = getAdvancedBlendRemainingText(used, isPro)
       return {
         title: 'Advanced Blend analyzed',
         subtitle: null,
-        body:
-          `You have ${remaining} lifetime Advanced Blend analyses remaining.`,
+        body,
       }
+    }
     case 'allowance_exhausted':
       return {
         title: 'Advanced Blend analyses used',
@@ -63,13 +68,14 @@ export default function AdvancedBlendModal ({
   visible,
   stage,
   remaining,
+  isPro = false,
   onUpgrade,
   onDismiss,
   onConfirm,
   onRetry,
 }) {
   const isReduced = useReducedMotion()
-  const content = getAdvancedBlendModalContent(stage, remaining)
+  const content = getAdvancedBlendModalContent(stage, remaining, isPro)
   const isExhausted = stage === 'allowance_exhausted'
   const isNetworkRetry = stage === 'network_retry'
   const isNotice = stage === 'fifth_ingredient_notice'

@@ -40,7 +40,7 @@ export const GARDEN_STAGES = [
   { key: 'sprout', label: 'Sprout', threshold: 2 },
   { key: 'growing', label: 'Growing', threshold: 3 },
   { key: 'harvesting', label: 'Harvesting', threshold: 5 },
-  { key: 'flourishing', label: 'Flourishing', threshold: 8 },
+  { key: 'flourishing', label: 'Flourishing', threshold: 7 },
 ]
 
 export const STAGE_EMPTY = 'empty'
@@ -238,7 +238,6 @@ export function getNextDiscoveryHint(entries) {
   if (!candidate) return null
 
   const stage = bedStages[candidate]
-  const bedMeta = null
 
   if (lowestCount === 0) {
     return {

@@ -262,8 +262,12 @@ describe('getBedStage', () => {
     expect(getBedStage(5).key).toBe(STAGE_HARVESTING)
   })
 
-  test('8 produce → flourishing', () => {
-    expect(getBedStage(8).key).toBe(STAGE_FLOURISHING)
+  test('6 produce → harvesting', () => {
+    expect(getBedStage(6).key).toBe(STAGE_HARVESTING)
+  })
+
+  test('7 produce → flourishing', () => {
+    expect(getBedStage(7).key).toBe(STAGE_FLOURISHING)
   })
 
   test('10 produce → flourishing (capped)', () => {

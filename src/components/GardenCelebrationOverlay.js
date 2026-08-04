@@ -22,9 +22,7 @@ function GardenCelebrationOverlay({
   onDismiss,
   isReduced = false,
 }) {
-  if (!celebration) return null
-
-  const { type, data } = celebration
+  const { type, data } = celebration || {}
 
   const content = useMemo(() => {
     if (!type || !data) return null

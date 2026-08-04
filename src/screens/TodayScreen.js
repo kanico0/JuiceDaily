@@ -318,7 +318,10 @@ export default function TodayScreen({ navigation }) {
     const rainbowDetected = detectRainbowHarvest(prevEntries, entries)
 
     ;(async () => {
-      // New produce discovery celebration
+      let pendingCelebration = null
+      let pendingPriority = 0
+
+      // New produce discovery celebration (priority 1, lowest)
       if (newProduce.length > 0) {
         const firstPid = newProduce[0]
         const bedKey = getBedForProduce(firstPid)
@@ -331,40 +334,18 @@ export default function TodayScreen({ navigation }) {
           discovered_count: gardenSummary.discoveredCount,
         })
         if (await shouldCelebrateBed(bedKey, 'seed')) {
-          // Only fire discovery celebration if not already celebrated for this bed
-          setGardenCelebration({
+          pendingCelebration = {
             type: CELEBRATION_TYPES.GARDEN_DISCOVERY,
             data: {
               bedKey,
               produceName: produceEntry ? produceEntry.name : firstPid,
             },
-          })
+          }
+          pendingPriority = 1
         }
       }
 
-      // Bed milestone celebrations
-      for (const milestone of bedMilestones) {
-        trackEvent('garden_bed_stage_reached', {
-          bed_key: milestone.bedKey,
-          stage_key: milestone.toStage,
-          produce_count: milestone.stage ? milestone.stage.threshold : 0,
-        })
-        if (await shouldCelebrateBed(milestone.bedKey, milestone.toStage)) {
-          const gardenSummary = getGardenSummary(entries)
-          setGardenCelebration({
-            type: CELEBRATION_TYPES.GARDEN_BED_MILESTONE,
-            data: {
-              bedKey: milestone.bedKey,
-              stage: milestone.stage,
-              produceCount: gardenSummary.bedCounts[milestone.bedKey],
-            },
-          })
-          await markBedCelebrated(milestone.bedKey, milestone.toStage)
-          break
-        }
-      }
-
-      // New color celebration
+      // New color celebration (priority 2)
       if (newColors.length > 0) {
         const firstColor = newColors[0]
         const gardenSummary = getGardenSummary(entries)
@@ -373,18 +354,46 @@ export default function TodayScreen({ navigation }) {
           colors_discovered: gardenSummary.discoveredColorCount,
         })
         if (await shouldCelebrateColor(firstColor)) {
-          setGardenCelebration({
-            type: CELEBRATION_TYPES.GARDEN_COLOR,
-            data: {
-              colorKey: firstColor,
-              colorsDiscovered: gardenSummary.discoveredColorCount,
-            },
-          })
+          if (pendingPriority < 2) {
+            pendingCelebration = {
+              type: CELEBRATION_TYPES.GARDEN_COLOR,
+              data: {
+                colorKey: firstColor,
+                colorsDiscovered: gardenSummary.discoveredColorCount,
+              },
+            }
+            pendingPriority = 2
+          }
           await markColorCelebrated(firstColor)
         }
       }
 
-      // Rainbow Harvest celebration
+      // Bed milestone celebrations (priority 3)
+      for (const milestone of bedMilestones) {
+        trackEvent('garden_bed_stage_reached', {
+          bed_key: milestone.bedKey,
+          stage_key: milestone.toStage,
+          produce_count: milestone.stage ? milestone.stage.threshold : 0,
+        })
+        if (await shouldCelebrateBed(milestone.bedKey, milestone.toStage)) {
+          if (pendingPriority < 3) {
+            const gardenSummary = getGardenSummary(entries)
+            pendingCelebration = {
+              type: CELEBRATION_TYPES.GARDEN_BED_MILESTONE,
+              data: {
+                bedKey: milestone.bedKey,
+                stage: milestone.stage,
+                produceCount: gardenSummary.bedCounts[milestone.bedKey],
+              },
+            }
+            pendingPriority = 3
+          }
+          await markBedCelebrated(milestone.bedKey, milestone.toStage)
+          break
+        }
+      }
+
+      // Rainbow Harvest celebration (priority 4, highest among Garden)
       if (rainbowDetected) {
         const gardenSummary = getGardenSummary(entries)
         trackEvent('garden_rainbow_harvest', {
@@ -392,15 +401,20 @@ export default function TodayScreen({ navigation }) {
           colors_discovered: gardenSummary.discoveredColorCount,
         })
         if (await shouldCelebrateRainbow()) {
-          setGardenCelebration({
+          pendingCelebration = {
             type: CELEBRATION_TYPES.GARDEN_RAINBOW,
             data: {
               discoveredCount: gardenSummary.discoveredCount,
               colorsDiscovered: gardenSummary.discoveredColorCount,
             },
-          })
+          }
+          pendingPriority = 4
           await markRainbowCelebrated()
         }
+      }
+
+      if (pendingCelebration) {
+        setGardenCelebration(pendingCelebration)
       }
     })()
 

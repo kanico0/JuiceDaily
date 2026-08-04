@@ -3,14 +3,8 @@
 // Shows recommended recipes to close your color rings
 // ─────────────────────────────────────────────────────────────
 
-import React, { useMemo } from 'react'
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-} from 'react-native'
+import React, { useMemo, useCallback } from 'react'
+import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { LinearGradient } from 'expo-linear-gradient'
 import { ArrowLeft, ChevronRight, Star } from 'lucide-react-native'
@@ -39,7 +33,10 @@ function RecipeCard({ recipe, navigation }) {
               </Text>
             </View>
             {recipe.pillars.map((p) => (
-              <View key={p} style={[styles.pillarBadge, { borderColor: `${DAILY_PILLARS[p].color}50` }]}>
+              <View
+                key={p}
+                style={[styles.pillarBadge, { borderColor: `${DAILY_PILLARS[p].color}50` }]}
+              >
                 <View style={[styles.pillarDot, { backgroundColor: DAILY_PILLARS[p].color }]} />
                 <Text style={[styles.pillarText, { color: DAILY_PILLARS[p].color }]}>
                   {DAILY_PILLARS[p].shortLabel}
@@ -52,9 +49,7 @@ function RecipeCard({ recipe, navigation }) {
         <Text style={styles.recipeTitle}>{recipe.title}</Text>
         <View style={styles.recipeMeta}>
           <View style={styles.recipeIngCount}>
-            <Text style={styles.recipeMetaText}>
-              {recipe.ingredients.length} ingredients
-            </Text>
+            <Text style={styles.recipeMetaText}>{recipe.ingredients.length} ingredients</Text>
           </View>
           <View style={styles.recipeStars}>
             {[1, 2, 3, 4, 5].map((s) => (
@@ -106,73 +101,110 @@ export default function FridgeForagerScreen({ navigation }) {
     return RECIPES.filter((r) => !r.pillars.some((p) => unclosed.includes(p)))
   }, [unclosed])
 
-  return (
-    <View style={styles.rootWrap}>
-    <MeshGradientBg />
-    <SafeAreaView style={styles.safe} edges={['top']}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <ArrowLeft size={22} color="#FFFFFF" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Find a Recipe</Text>
-        <View style={{ width: 36 }} />
-      </View>
+  const listData = useMemo(() => {
+    const items = []
 
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Unclosed rings summary */}
-        {unclosed.length > 0 && (
-          <View style={styles.ringHint}>
-            <Text style={styles.ringHintText}>
-              Close your{' '}
-              {unclosed.map((c, i) => (
-                <Text key={c}>
-                  {i > 0 ? ' & ' : ''}
-                  <Text style={{ color: DAILY_PILLARS[c].color, fontWeight: '700' }}>
-                    {DAILY_PILLARS[c].shortLabel}
+    if (unclosed.length > 0) {
+      items.push({ type: 'header', id: 'ring_hint' })
+    } else {
+      items.push({ type: 'header', id: 'complete' })
+    }
+
+    if (recommendedRecipes.length > 0) {
+      items.push({
+        type: 'section',
+        id: 'section_recommended',
+        label: unclosed.length > 0 ? 'Recommended for You' : 'All Recipes',
+      })
+      recommendedRecipes.forEach((r) => {
+        items.push({ type: 'recipe', id: r.id, recipe: r })
+      })
+    }
+
+    if (otherRecipes.length > 0) {
+      items.push({
+        type: 'section',
+        id: 'section_other',
+        label: 'Explore More',
+      })
+      otherRecipes.forEach((r) => {
+        items.push({ type: 'recipe', id: r.id, recipe: r })
+      })
+    }
+
+    items.push({ type: 'footer', id: 'footer_spacer' })
+    return items
+  }, [unclosed, recommendedRecipes, otherRecipes])
+
+  const renderItem = useCallback(
+    ({ item }) => {
+      if (item.type === 'header') {
+        if (unclosed.length > 0) {
+          return (
+            <View style={styles.ringHint}>
+              <Text style={styles.ringHintText}>
+                Close your{' '}
+                {unclosed.map((c, i) => (
+                  <Text key={c}>
+                    {i > 0 ? ' & ' : ''}
+                    <Text style={{ color: DAILY_PILLARS[c].color, fontWeight: '700' }}>
+                      {DAILY_PILLARS[c].shortLabel}
+                    </Text>
                   </Text>
-                </Text>
-              ))}
-              {' '}ring{unclosed.length > 1 ? 's' : ''}
-            </Text>
-          </View>
-        )}
-
-        {unclosed.length === 0 && (
+                ))}{' '}
+                ring{unclosed.length > 1 ? 's' : ''}
+              </Text>
+            </View>
+          )
+        }
+        return (
           <View style={styles.completeCard}>
             <Text style={styles.completeEmoji}>🌈</Text>
             <Text style={styles.completeText}>All rings closed! Browse all recipes.</Text>
           </View>
-        )}
+        )
+      }
+      if (item.type === 'section') {
+        return <Text style={styles.sectionLabel}>{item.label}</Text>
+      }
+      if (item.type === 'recipe') {
+        return <RecipeCard recipe={item.recipe} navigation={navigation} />
+      }
+      if (item.type === 'footer') {
+        return <View style={{ height: 40 }} />
+      }
+      return null
+    },
+    [unclosed, navigation],
+  )
 
-        {/* Recommended recipes */}
-        {recommendedRecipes.length > 0 && (
-          <>
-            <Text style={styles.sectionLabel}>
-              {unclosed.length > 0 ? 'Recommended for You' : 'All Recipes'}
-            </Text>
-            {recommendedRecipes.map((r) => (
-              <RecipeCard key={r.id} recipe={r} navigation={navigation} />
-            ))}
-          </>
-        )}
+  const keyExtractor = useCallback((item) => item.id, [])
 
-        {/* Other recipes */}
-        {otherRecipes.length > 0 && (
-          <>
-            <Text style={styles.sectionLabel}>Explore More</Text>
-            {otherRecipes.map((r) => (
-              <RecipeCard key={r.id} recipe={r} navigation={navigation} />
-            ))}
-          </>
-        )}
+  return (
+    <View style={styles.rootWrap}>
+      <MeshGradientBg />
+      <SafeAreaView style={styles.safe} edges={['top']}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+            <ArrowLeft size={22} color="#FFFFFF" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Find a Recipe</Text>
+          <View style={{ width: 36 }} />
+        </View>
 
-        <View style={{ height: 40 }} />
-      </ScrollView>
-    </SafeAreaView>
+        <FlatList
+          style={styles.scroll}
+          contentContainerStyle={styles.content}
+          showsVerticalScrollIndicator={false}
+          data={listData}
+          renderItem={renderItem}
+          keyExtractor={keyExtractor}
+          initialNumToRender={10}
+          maxToRenderPerBatch={10}
+          windowSize={5}
+          removeClippedSubviews
+        />
+      </SafeAreaView>
     </View>
   )
 }

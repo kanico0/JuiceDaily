@@ -21,4 +21,12 @@ module.exports = {
       version: 'detect',
     },
   },
+  overrides: [
+    {
+      files: ['scripts/*.js'],
+      env: {
+        node: true,
+      },
+    },
+  ],
 }

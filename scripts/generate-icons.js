@@ -10,6 +10,7 @@
 // size, centered, ensuring all content survives circular, rounded-square,
 // and squircle masks.
 
+const fs = require('fs')
 const path = require('path')
 const sharp = require('sharp')
 
@@ -81,25 +82,10 @@ async function generateIcons () {
   console.log('Generated: splash-icon.png (1024x1024)')
 
   // ── 5. Play Store icon (512×512) ────────────────────────────
-  // Full artwork centered with padding, opaque background.
-  const PLAY_SIZE = 512
-  const PLAY_FIT_RATIO = 0.72
-  const playTargetW = Math.round(PLAY_SIZE * PLAY_FIT_RATIO)
-  const playTargetH = playTargetW // square source
-
-  await sharp(SOURCE)
-    .resize(playTargetW, playTargetH, { fit: 'fill' })
-    .extend({
-      top: Math.floor((PLAY_SIZE - playTargetH) / 2),
-      bottom: Math.ceil((PLAY_SIZE - playTargetH) / 2),
-      left: Math.floor((PLAY_SIZE - playTargetW) / 2),
-      right: Math.ceil((PLAY_SIZE - playTargetW) / 2),
-      background: { r: 255, g: 255, b: 255, alpha: 1 },
-    })
-    .flatten({ background: BG_COLOR })
-    .png()
-    .toFile(path.join(ASSETS, 'play-store-icon.png'))
-  console.log('Generated: play-store-icon.png (512x512)')
+  // The approved source is already 512×512 — copy directly.
+  // Do not resize, pad, or recolor the approved artwork.
+  fs.copyFileSync(SOURCE, path.join(ASSETS, 'play-store-icon.png'))
+  console.log('Copied: play-store-icon.png (512x512, approved source)')
 
   console.log('All icons generated successfully.')
 }

@@ -19,7 +19,8 @@
 | 6 | `09f3107` | docs: add Phase A QA Round 1 implementation report |
 | 7 | `3257a45` | fix(icon): install approved RawLifeFlow Play Store artwork |
 | 8 | `029b6ea` | test(qa): cover camera retry and advanced blend exhaustion |
-| 9 | _(this commit)_ | docs(qa): finalize physical QA round 1 verification |
+| 9 | `ac84933` | docs(qa): finalize physical QA round 1 verification |
+| 10 | `af921a2` | fix(tooling): configure icon generator for Node lint environment |
 
 ---
 
@@ -184,7 +185,7 @@ Tests:       184 passed, 184 total
 ```
 Test Suites: 104 passed, 104 total
 Tests:       2670 passed, 2670 total
-Time:        21.284s
+Time:        19.638s
 ```
 (Up from baseline 102 suites / 2,605 tests — increase due to 2 new test files with 64 tests)
 
@@ -196,12 +197,24 @@ Exit code: 0 — 0 errors
 
 ### ESLint
 
-**Command used:**
+**Root cause of prior error:** `scripts/generate-icons.js` is a CommonJS Node.js build script that uses `__dirname`, but the ESLint config extends `expo` (React Native/browser environment) which does not define Node globals. The `__dirname` reference triggered a `no-undef` error.
+
+**Correction:** Added a narrow ESLint override in `.eslintrc.js` for `scripts/*.js` files that enables `env: { node: true }`. This defines `__dirname`, `require`, `module`, `process`, and other Node.js globals for script files only. No browser application files are affected. Additionally, `generate-icons.js` was corrected to copy the approved Play Store source directly (using `fs.copyFileSync`) instead of regenerating it through `sharp` with padding, since the approved source is already 512x512.
+
+**Focused ESLint command:**
 ```
 npx eslint src/screens/HistoryScreen.js src/screens/RecipeDetailScreen.js src/screens/HomeScreen.js src/screens/ScanSuccessScreen.js src/screens/ScanScreen.js src/screens/TodayScreen.js src/hooks/useGlowJourney.js src/components/GlowJourneyDrop.js src/components/GardenCard.js scripts/generate-icons.js --no-error-on-unmatched-pattern
 ```
 
-**Result:** 1 error (`__dirname` not defined in `generate-icons.js` — pre-existing Node script issue), 1,296 warnings (all pre-existing prettier/prettier formatting).
+**Focused ESLint result:** 0 errors, 1,296 warnings (all pre-existing `prettier/prettier` formatting).
+
+**Script-specific ESLint:**
+```
+npx eslint scripts/generate-icons.js
+```
+**Result:** 0 errors, 11 warnings (all pre-existing `prettier/prettier` formatting).
+
+**All remaining findings are warnings only — zero errors.**
 
 **Zero new errors or warnings introduced by these closure corrections.**
 
@@ -238,7 +251,8 @@ The prior 1.0.19 build reported approximately 157 warnings. The Physical QA Roun
 | `src/screens/__tests__/iconConfiguration.test.js` | Updated SHA-256 hash + destination hash test |
 | `src/screens/__tests__/cameraRetryRegression.test.js` | New — 24 camera regression tests |
 | `src/screens/__tests__/advancedBlendRegression.test.js` | New — 40 blend regression tests |
-| `scripts/generate-icons.js` | Updated SHA-256 hash comment |
+| `scripts/generate-icons.js` | Updated SHA-256 hash comment, Node env fix, direct copy for Play Store icon |
+| `.eslintrc.js` | Added narrow override for `scripts/*.js` with `env: { node: true }` |
 
 ---
 
@@ -252,4 +266,4 @@ No dependencies changed. `package.json` and `package-lock.json` unmodified.
 - Label: `RawLifeFlow: Juicing Daily` (unchanged)
 
 ## Final Git Status
-Clean working tree after final commit. All changes committed.
+Clean working tree after commit 10 (`af921a2`). All changes committed across 10 commits on branch `fix/1.0.19-physical-qa-round-1`. Final HEAD: `af921a2`.

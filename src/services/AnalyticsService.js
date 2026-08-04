@@ -426,6 +426,36 @@ const EVENT_SCHEMAS = {
     optional: ['journey_stage_key', 'lifetime_days'],
   },
 
+  // ── RawLife Garden ──────────────────────────────────────────
+  garden_viewed: {
+    required: ['session_id', 'ts'],
+    optional: ['discovered_count', 'beds_started', 'colors_discovered', 'rainbow_complete'],
+  },
+  garden_tapped: {
+    required: ['session_id', 'ts'],
+    optional: ['destination', 'bed_key'],
+  },
+  garden_card_tapped: {
+    required: ['session_id', 'ts'],
+    optional: ['discovered_count'],
+  },
+  garden_produce_discovered: {
+    required: ['session_id', 'ts'],
+    optional: ['bed_key', 'color_key', 'discovered_count'],
+  },
+  garden_bed_stage_reached: {
+    required: ['session_id', 'ts'],
+    optional: ['bed_key', 'stage_key', 'produce_count'],
+  },
+  garden_color_discovered: {
+    required: ['session_id', 'ts'],
+    optional: ['color_key', 'colors_discovered'],
+  },
+  garden_rainbow_harvest: {
+    required: ['session_id', 'ts'],
+    optional: ['discovered_count', 'colors_discovered'],
+  },
+
   // ── History Access ──────────────────────────────────────────
   history_viewed: {
     required: ['session_id', 'ts'],

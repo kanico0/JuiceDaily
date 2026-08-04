@@ -3,6 +3,10 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 const CELEBRATION_TYPES = {
   WEEKLY: 'weekly',
   STAGE: 'stage',
+  GARDEN_DISCOVERY: 'garden_discovery',
+  GARDEN_BED_MILESTONE: 'garden_bed_milestone',
+  GARDEN_COLOR: 'garden_color',
+  GARDEN_RAINBOW: 'garden_rainbow',
 }
 
 export { CELEBRATION_TYPES }
@@ -36,6 +40,17 @@ export function useCelebrationCoordinator() {
       if (!hasStage) {
         queueRef.current.push({ type, data })
       }
+    } else if (type === CELEBRATION_TYPES.GARDEN_RAINBOW) {
+      queueRef.current = queueRef.current.filter(
+        (item) => item.type !== CELEBRATION_TYPES.GARDEN_RAINBOW
+      )
+      queueRef.current.push({ type, data })
+    } else if (
+      type === CELEBRATION_TYPES.GARDEN_DISCOVERY ||
+      type === CELEBRATION_TYPES.GARDEN_BED_MILESTONE ||
+      type === CELEBRATION_TYPES.GARDEN_COLOR
+    ) {
+      queueRef.current.push({ type, data })
     }
     processQueue()
   }, [processQueue])

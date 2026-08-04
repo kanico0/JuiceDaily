@@ -245,6 +245,11 @@ export const ALL_STORAGE_KEYS = [
   '@juicing_log_entries_v1',
   '@dormant_reminder_last_activity',
   '@juicing_portion_entry_mode_v1',
+  'garden_discoveredProduce',
+  'garden_celebratedBeds',
+  'garden_celebratedColors',
+  'garden_celebratedRainbow',
+  'garden_baselineInitialized',
 ] as const
 
 /**

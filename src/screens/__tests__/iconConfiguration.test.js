@@ -104,6 +104,13 @@ describe('Issue 2 — Application Icon Configuration', () => {
     expect(dims.height).toBe(512)
   })
 
+  test('13b. Tracked Play Store icon SHA-256 matches approved source', () => {
+    const playStorePath = path.join(ROOT, 'assets', 'play-store-icon.png')
+    const buf = fs.readFileSync(playStorePath)
+    const hash = crypto.createHash('sha256').update(buf).digest('hex')
+    expect(hash).toBe('3b1109ade240df4726eaa36ca5a94324301c48d88b80225cacb549d59279dcfd')
+  })
+
   test('14. Favicon exists and is 48x48', () => {
     const faviconPath = path.join(ROOT, APP_JSON.expo.web?.favicon || 'assets/favicon.png')
     expect(fs.existsSync(faviconPath)).toBe(true)

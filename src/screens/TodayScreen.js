@@ -590,17 +590,6 @@ export default function TodayScreen({ navigation }) {
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
           >
-            {/* === GLOW JOURNEY DROP ====================== */}
-            <GlowJourneyDrop
-              streakCount={glowStreak.count}
-              entries={glowJourneyEntries}
-              lifetimeDays={lifetimeQualifyingDays}
-              weeklyQualifyingDays={weeklyQualifyingDays}
-              weeklyLeafStates={weeklyLeafStates}
-              onPress={handleGlowJourneyPress}
-              isReduced={isReduced}
-            />
-
             {/* === RAWLIFE GARDEN CARD =================== */}
             <GardenCard
               entries={entries}
@@ -1063,31 +1052,11 @@ export default function TodayScreen({ navigation }) {
         onDismiss={() => setPendingAchievement(null)}
       />
 
-      {/* Glow Journey Stage Celebration (only when no achievement showing) */}
-      {!pendingAchievement && stageCelebration && (
-        <GlowJourneyCelebrationOverlay
-          visible={true}
-          stage={stageCelebration.stage}
-          lifetimeDays={stageCelebration.lifetimeDays}
-          onDismiss={() => setStageCelebration(null)}
-          isReduced={isReduced}
-        />
-      )}
-
       <AccountGateModal
         visible={showAccountGate}
         onClose={() => setShowAccountGate(false)}
         onAuthenticated={() => setShowAccountGate(false)}
         initialMode="guest"
-      />
-
-      <GlowJourneyDetail
-        visible={showGlowJourneyDetail}
-        onClose={() => setShowGlowJourneyDetail(false)}
-        streakCount={glowStreak.count}
-        weeklyQualifyingDays={weeklyQualifyingDays}
-        lifetimeDays={lifetimeQualifyingDays}
-        unlockedAchievementIds={unlockedAchievementIds}
       />
 
       <GardenDetail

@@ -76,6 +76,15 @@ function GardenCard({
               {hint.message}
             </Text>
           )}
+          <Text style={styles.motivationalCopy}>
+            {summary.discoveredCount === 0
+              ? 'Plant your first seed today. Every scan grows your garden!'
+              : summary.rainbowComplete
+                ? 'Your garden is thriving. Keep exploring new produce to expand your colors.'
+                : summary.discoveredColorCount >= 3
+                  ? 'Your garden is blooming. Keep scanning to discover new colors and beds.'
+                  : 'Each juice adds life to your garden. Scan new produce to watch it grow.'}
+          </Text>
         </View>
       </View>
     </Pressable>
@@ -129,6 +138,12 @@ const styles = StyleSheet.create({
     ...SEMANTIC_TYPOGRAPHY.caption,
     color: SEMANTIC_COLORS.textMuted,
     marginTop: 2,
+  },
+  motivationalCopy: {
+    ...SEMANTIC_TYPOGRAPHY.caption,
+    color: SEMANTIC_COLORS.textSecondary,
+    marginTop: 4,
+    fontStyle: 'italic',
   },
 })
 

@@ -344,6 +344,17 @@ function GlowJourneyDrop({
           <Chip label="Weekly" value={`${weeklyQualifyingDays}/${WEEKLY_GLOW_GOAL}`} />
           <Chip label="Lifetime" value={lifetimeDays > 0 ? `${lifetimeDays}d` : '—'} />
         </View>
+
+        {/* Motivational copy */}
+        <Text style={styles.motivationalCopy}>
+          {lifetimeDays === 0
+            ? 'Every great journey begins with a single sip. Scan your first juice to start glowing!'
+            : weeklyQualifyingDays >= WEEKLY_GLOW_GOAL
+              ? 'You\u2019ve hit your weekly goal. Your body is glowing from the inside out.'
+              : streakCount > 0
+                ? `${streakCount} day${streakCount === 1 ? '' : 's'} of consistent glow. Keep the momentum alive!`
+                : 'Your glow is waiting. Log a juice today to reignite your streak.'}
+        </Text>
       </Animated.View>
     </Pressable>
   )
@@ -496,6 +507,15 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     color: SEMANTIC_COLORS.textPrimary,
+  },
+  motivationalCopy: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: SEMANTIC_COLORS.textSecondary,
+    textAlign: 'center',
+    marginTop: SEMANTIC_SPACE.sm,
+    paddingHorizontal: SEMANTIC_SPACE.lg,
+    lineHeight: 17,
   },
 })
 

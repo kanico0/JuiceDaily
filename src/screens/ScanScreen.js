@@ -67,6 +67,10 @@ import { searchRecipes } from '../services/recipeSearch'
 import { resolveQueryToCanonicalProduce, isRecipeLockedForUser } from '../services/produceFamilies'
 import { usePro } from '../services/ProStore'
 import PaywallModal from '../components/PaywallModal'
+import GlowJourneyDrop from '../components/GlowJourneyDrop'
+import GlowJourneyDetail from '../components/GlowJourneyDetail'
+import GlowJourneyCelebrationOverlay from '../components/GlowJourneyCelebrationOverlay'
+import { useGlowJourney } from '../hooks/useGlowJourney'
 
 const GOALS = [
   { id: 'energy', label: 'More Energy', emoji: '⚡' },
@@ -1343,7 +1347,7 @@ function ScanHome({ onScan, onBrowse, onExample, onExplore, totalLogs, showSecon
 
 // ── Browse Home: Stable Dashboard ────────────────────────────
 
-function BrowseHome({ onScan, onBrowse, onExample, onExplore, onViewToday, onWellnessFocus, onLogIngredients, dailySummary, totalLogs, savedGoalId, onDismissGoalBanner, isReduced }) {
+function BrowseHome({ onScan, onBrowse, onExample, onExplore, onViewToday, onWellnessFocus, onLogIngredients, dailySummary, totalLogs, savedGoalId, onDismissGoalBanner, isReduced, glowJourney }) {
   const fadeAnim = useRef(new Animated.Value(0)).current
   const btnScale = useRef(new Animated.Value(1)).current
   const goalData = savedGoalId ? GOALS.find((g) => g.id === savedGoalId) : null
@@ -1944,6 +1948,19 @@ function BrowseHome({ onScan, onBrowse, onExample, onExplore, onViewToday, onWel
         )}
       </View>
 
+      {/* Glow Journey progress indicator */}
+      {glowJourney && (
+        <GlowJourneyDrop
+          streakCount={glowJourney.glowStreak.count}
+          entries={glowJourney.entries}
+          lifetimeDays={glowJourney.lifetimeQualifyingDays}
+          weeklyQualifyingDays={glowJourney.weeklyQualifyingDays}
+          weeklyLeafStates={glowJourney.weeklyLeafStates}
+          onPress={glowJourney.handleGlowJourneyPress}
+          isReduced={isReduced}
+        />
+      )}
+
       <Text style={obStyles.reassurance}>{isReturning ? 'Your daily journey continues.' : 'Ready when you are.'}</Text>
 
       {/* Achievement Overlay */}
@@ -2485,6 +2502,9 @@ export default function ScanScreen({ navigation, route }) {
   const { todayEntries, totalLogCount, diversityStats } = useJuiceLog()
   const { momentum, streak } = useNutritionScore()
 
+  // Glow Journey — moved from TodayScreen to Explore
+  const glowJourney = useGlowJourney()
+
   const dailySummary = useMemo(() => {
     const todayCount = todayEntries.length
     const todayScore = typeof momentum === 'number' ? momentum : 0
@@ -2694,6 +2714,7 @@ export default function ScanScreen({ navigation, route }) {
               savedGoalId={savedGoalId}
               onDismissGoalBanner={() => setSavedGoalId(null)}
               isReduced={isReduced}
+              glowJourney={glowJourney}
             />
           )}
           {obStep === 'tracking' && (
@@ -2733,6 +2754,27 @@ export default function ScanScreen({ navigation, route }) {
         onDismiss={() => setShowExample(false)}
         onTryScan={handleExampleTryScan}
         isReduced={isReduced}
+      />
+
+      {/* Glow Journey Stage Celebration */}
+      {glowJourney.stageCelebration && (
+        <GlowJourneyCelebrationOverlay
+          visible={true}
+          stage={glowJourney.stageCelebration.stage}
+          lifetimeDays={glowJourney.stageCelebration.lifetimeDays}
+          onDismiss={() => glowJourney.setStageCelebration(null)}
+          isReduced={isReduced}
+        />
+      )}
+
+      {/* Glow Journey Detail */}
+      <GlowJourneyDetail
+        visible={glowJourney.showGlowJourneyDetail}
+        onClose={() => glowJourney.setShowGlowJourneyDetail(false)}
+        streakCount={glowJourney.glowStreak.count}
+        weeklyQualifyingDays={glowJourney.weeklyQualifyingDays}
+        lifetimeDays={glowJourney.lifetimeQualifyingDays}
+        unlockedAchievementIds={glowJourney.unlockedAchievementIds}
       />
     </View>
   )

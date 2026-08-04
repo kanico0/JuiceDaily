@@ -246,7 +246,7 @@ const secStyles = StyleSheet.create({
 
 // ── Browse Ideas Modal ───────────────────────────────────────
 
-const BROWSE_PAGE_SIZE = 25
+const BROWSE_PAGE_SIZE = 100
 
 function BrowseIdeasModal({ visible, onDismiss, onScanReady, isReduced, navigation }) {
   const fadeAnim = useRef(new Animated.Value(0)).current

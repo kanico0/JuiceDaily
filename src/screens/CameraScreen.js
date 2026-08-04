@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, useEffect } from 'react'
 import {
   View,
   Text,
@@ -7,9 +7,10 @@ import {
   Pressable,
   ActivityIndicator,
   Platform,
+  Linking,
 } from 'react-native'
 import { CameraView } from 'expo-camera'
-import { X, Aperture, Keyboard, Eye, Home } from 'lucide-react-native'
+import { X, Aperture, Keyboard, Eye, Home, AlertCircle, RefreshCw } from 'lucide-react-native'
 import { useCamera } from '../hooks/useCamera'
 import { identifyProduce, isClaudeKeySet } from '../services/ClaudeVisionService'
 import { recordMeaningfulActivity } from '../services/DormantReminderService'
@@ -21,7 +22,11 @@ export default function CameraScreen({ onClose, onProduceIdentified, onManualEnt
     state: cameraState,
     requestAccess,
     onCameraReady,
+    onMountError,
     takePhoto,
+    resetCamera,
+    startReadyTimeout,
+    CAMERA_READY_TIMEOUT_MS,
   } = useCamera()
 
   const [isProcessing, setIsProcessing] = useState(false)
@@ -30,9 +35,11 @@ export default function CameraScreen({ onClose, onProduceIdentified, onManualEnt
   const [isApiError, setIsApiError] = useState(false)
 
   // Request permission on mount if needed
-  React.useEffect(() => {
+  useEffect(() => {
     if (cameraState.hasPermission === null || cameraState.hasPermission === false) {
       requestAccess()
+    } else if (cameraState.hasPermission === true && cameraState.phase === 'camera_mounting') {
+      startReadyTimeout()
     }
   }, [])
 
@@ -103,6 +110,7 @@ export default function CameraScreen({ onClose, onProduceIdentified, onManualEnt
 
   // Permission not yet granted
   if (!cameraState.hasPermission) {
+    const isDenied = cameraState.hasPermission === false && cameraState.phase === 'error'
     return (
       <View style={styles.container}>
         <View style={styles.permissionCard}>
@@ -114,6 +122,14 @@ export default function CameraScreen({ onClose, onProduceIdentified, onManualEnt
           <TouchableOpacity style={styles.permissionButton} onPress={requestAccess}>
             <Text style={styles.permissionButtonText}>Grant Access</Text>
           </TouchableOpacity>
+          {isDenied && (
+            <TouchableOpacity
+              style={styles.settingsButton}
+              onPress={() => Linking.openSettings()}
+            >
+              <Text style={styles.settingsButtonText}>Open Settings</Text>
+            </TouchableOpacity>
+          )}
           <TouchableOpacity style={styles.closeButtonAlt} onPress={onClose}>
             <Text style={styles.closeButtonAltText}>Go Back</Text>
           </TouchableOpacity>
@@ -122,6 +138,37 @@ export default function CameraScreen({ onClose, onProduceIdentified, onManualEnt
     )
   }
 
+  // Camera mount error or timeout
+  if (cameraState.phase === 'error' && cameraState.mountError) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.permissionCard}>
+          <AlertCircle size={48} color={colors.danger || '#E91E63'} strokeWidth={1.5} />
+          <Text style={styles.permissionTitle}>Camera Could Not Start</Text>
+          <Text style={styles.permissionText}>
+            {cameraState.mountError}
+          </Text>
+          <TouchableOpacity
+            style={styles.permissionButton}
+            onPress={() => {
+              resetCamera()
+              requestAccess()
+            }}
+          >
+            <RefreshCw size={18} color={colors.white || '#FFFFFF'} />
+            <Text style={styles.permissionButtonText}>Try Again</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.closeButtonAlt} onPress={onClose}>
+            <Text style={styles.closeButtonAltText}>Go Back</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    )
+  }
+
+  // Camera is mounting — show loading state
+  const isMounting = cameraState.phase === 'camera_mounting' && !cameraState.isReady
+
   return (
     <View style={styles.container}>
       <CameraView
@@ -129,7 +176,16 @@ export default function CameraScreen({ onClose, onProduceIdentified, onManualEnt
         style={StyleSheet.absoluteFill}
         facing="back"
         onCameraReady={onCameraReady}
+        onMountError={onMountError}
       />
+
+      {/* Camera mounting overlay — shown while native camera initializes */}
+      {isMounting && (
+        <View style={styles.mountingOverlay}>
+          <ActivityIndicator size="large" color={colors.accent || '#4CAF50'} />
+          <Text style={styles.mountingText}>Starting camera…</Text>
+        </View>
+      )}
 
       {/* Overlay UI */}
       <View style={styles.overlay}>
@@ -401,6 +457,31 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     fontSize: 14,
     fontWeight: '600',
+  },
+  settingsButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 24,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    marginTop: 4,
+  },
+  settingsButtonText: {
+    color: colors.textSecondary,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  mountingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.85)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 5,
+  },
+  mountingText: {
+    color: colors.white,
+    fontSize: 16,
+    fontWeight: '600',
+    marginTop: 16,
   },
   // ── Fallback panel (API error recovery) ──
   fallbackPanel: {

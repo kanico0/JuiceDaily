@@ -765,6 +765,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
   // access — the server makes the final decision in analyze-scan.
   const cameraInFlightRef = useRef(false)
   const cameraAttemptIdRef = useRef(0)
+  const cameraAbortRef = useRef(null)
   const CAMERA_TIMEOUT_MS = 12000
 
   const attemptCameraOpen = useCallback(async (isAutoOpen = false) => {
@@ -773,6 +774,23 @@ export default function JuiceSnapScreen({ navigation, route }) {
     cameraInFlightRef.current = true
     cameraAttemptIdRef.current += 1
     const attemptId = cameraAttemptIdRef.current
+
+    // Abort any previous attempt's pending network work
+    if (cameraAbortRef.current) {
+      cameraAbortRef.current.abort()
+    }
+    const abortController = new AbortController()
+    cameraAbortRef.current = abortController
+
+    // One overall timeout for the entire attempt
+    let overallTimer = null
+    const overallTimeoutPromise = new Promise((_, reject) => {
+      overallTimer = setTimeout(() => {
+        abortController.abort()
+        reject(new Error('Camera eligibility check timed out'))
+      }, CAMERA_TIMEOUT_MS)
+    })
+
     setIsPreparingCamera(true)
 
     const isStale = () => attemptId !== cameraAttemptIdRef.current
@@ -905,17 +923,27 @@ export default function JuiceSnapScreen({ navigation, route }) {
     } catch (e) {
       // Network, Supabase, or unexpected error — do NOT show the snap gate
       // (that would misrepresent a network failure as quota exhaustion).
-      console.warn('[Camera] attemptCameraOpen error:', e?.message || e)
+      if (abortController.signal.aborted) {
+        console.warn('[Camera] attemptCameraOpen aborted:', e?.message || e)
+      } else {
+        console.warn('[Camera] attemptCameraOpen error:', e?.message || e)
+      }
       setIsPreparingCamera(false)
-      Alert.alert(
-        'Unable to Check Access',
-        'We could not verify your scan access. Please check your connection and try again.',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Try Again', onPress: () => attemptCameraOpen(isAutoOpen) },
-        ],
-      )
+      if (!abortController.signal.aborted) {
+        Alert.alert(
+          'Unable to Check Access',
+          'We could not verify your scan access. Please check your connection and try again.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Try Again', onPress: () => attemptCameraOpen(isAutoOpen) },
+          ],
+        )
+      }
     } finally {
+      if (overallTimer) clearTimeout(overallTimer)
+      if (cameraAbortRef.current === abortController) {
+        cameraAbortRef.current = null
+      }
       cameraInFlightRef.current = false
       setIsPreparingCamera(false)
     }
@@ -932,6 +960,10 @@ export default function JuiceSnapScreen({ navigation, route }) {
   useEffect(() => {
     return () => {
       cameraAttemptIdRef.current += 1
+      if (cameraAbortRef.current) {
+        cameraAbortRef.current.abort()
+        cameraAbortRef.current = null
+      }
     }
   }, [])
 

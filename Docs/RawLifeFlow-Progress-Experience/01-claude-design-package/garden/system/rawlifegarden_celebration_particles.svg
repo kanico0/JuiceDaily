@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400" role="img" aria-label="RawLife Garden celebration particles">
+<!-- Reference sheet for the seven celebration particles (garden_particle_01..07).
+     Maximum particle count for any single celebration moment is seven. -->
+<g id="garden_particle_01"><circle cx="281.8" cy="99.0" r="5" fill="#F5D98B"/></g>
+<g id="garden_particle_02"><circle cx="173.0" cy="72.8" r="5" fill="#F5D98B"/></g>
+<g id="garden_particle_03"><circle cx="84.2" cy="141.0" r="5" fill="#F5D98B"/></g>
+<g id="garden_particle_04"><circle cx="81.2" cy="252.9" r="5" fill="#F5D98B"/></g>
+<g id="garden_particle_05"><circle cx="166.4" cy="325.6" r="5" fill="#F5D98B"/></g>
+<g id="garden_particle_06"><circle cx="276.4" cy="305.2" r="5" fill="#F5D98B"/></g>
+<g id="garden_particle_07"><circle cx="329.8" cy="206.8" r="5" fill="#F5D98B"/></g>
+</svg>

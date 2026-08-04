@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 480" width="800" height="480" role="img" aria-label="RawLife Garden Rainbow Harvest">
+<!-- Rainbow Harvest permanent accomplishment system. Static, restrained, premium.
+     garden_rainbow_particle groups are hidden by default (final resting state has
+     no floating particles per the reduced-motion and post-celebration spec). -->
+<g id="garden_rainbow_arc"><path d="M 100,260 A 300,300 0 0 1 700,260" stroke="#4C7A55" stroke-width="13" fill="none" stroke-linecap="round"/><path d="M 116,260 A 284,284 0 0 1 684,260" stroke="#C4483A" stroke-width="13" fill="none" stroke-linecap="round"/><path d="M 132,260 A 268,268 0 0 1 668,260" stroke="#E8873A" stroke-width="13" fill="none" stroke-linecap="round"/><path d="M 148,260 A 252,252 0 0 1 652,260" stroke="#F2C14E" stroke-width="13" fill="none" stroke-linecap="round"/><path d="M 164,260 A 236,236 0 0 1 636,260" stroke="#7C5295" stroke-width="13" fill="none" stroke-linecap="round"/><path d="M 180,260 A 220,220 0 0 1 620,260" stroke="#B79C72" stroke-width="13" fill="none" stroke-linecap="round"/></g>
+<g id="garden_rainbow_highlight"><ellipse cx="400" cy="330" rx="360" ry="220" fill="#F5D98B" opacity="0.16"/></g>
+<g id="garden_harvest_basket"><path d="M 350,420 L 450,420 L 440,460 L 360,460 Z" fill="#B79C72"/><path d="M 346,420 L 454,420 L 454,430 L 346,430 Z" fill="#8C7350"/><path d="M 360,420 Q 400,384 440,420" stroke="#8C7350" stroke-width="6" fill="none"/></g>
+<g id="garden_rainbow_badge"><circle cx="400" cy="380" r="30" fill="#FFFFFF"/><circle cx="400" cy="380" r="30" fill="none" stroke="#F5D98B" stroke-width="4"/><circle cx="400" cy="380" r="12" fill="#F2C14E"/></g>
+<g id="garden_rainbow_particle_01" style="display:none"><circle cx="456.6" cy="270.1" r="5" fill="#F5D98B"/></g>
+<g id="garden_rainbow_particle_02" style="display:none"><circle cx="381.3" cy="252.0" r="5" fill="#F5D98B"/></g>
+<g id="garden_rainbow_particle_03" style="display:none"><circle cx="319.8" cy="299.1" r="5" fill="#F5D98B"/></g>
+<g id="garden_rainbow_particle_04" style="display:none"><circle cx="317.8" cy="376.6" r="5" fill="#F5D98B"/></g>
+<g id="garden_rainbow_particle_05" style="display:none"><circle cx="376.7" cy="426.9" r="5" fill="#F5D98B"/></g>
+<g id="garden_rainbow_particle_06" style="display:none"><circle cx="452.9" cy="412.8" r="5" fill="#F5D98B"/></g>
+<g id="garden_rainbow_particle_07" style="display:none"><circle cx="489.9" cy="344.7" r="5" fill="#F5D98B"/></g>
+</svg>

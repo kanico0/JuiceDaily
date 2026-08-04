@@ -243,6 +243,11 @@ jest.mock('react-native-svg', () => {
     LinearGradient: Mock,
     Stop: Mock,
     G: Mock,
+    Rect: Mock,
+    Circle: Mock,
+    Ellipse: Mock,
+    Line: Mock,
+    Text: Mock,
   }
 })
 
@@ -256,6 +261,21 @@ jest.mock('../src/components/GlowJourneyDetail', () => ({
   default: function GlowJourneyDetail() { return null },
 }))
 
+jest.mock('../src/components/GardenCard', () => ({
+  __esModule: true,
+  default: function GardenCard() { return null },
+}))
+
+jest.mock('../src/components/GardenDetail', () => ({
+  __esModule: true,
+  default: function GardenDetail() { return null },
+}))
+
+jest.mock('../src/components/GardenCelebrationOverlay', () => ({
+  __esModule: true,
+  default: function GardenCelebrationOverlay() { return null },
+}))
+
 jest.mock('../src/services/glowJourneyService', () => ({
   getWeeklyLeafStates: jest.fn(() => []),
   getWeeklyQualifyingDays: jest.fn(() => 0),
@@ -267,6 +287,33 @@ jest.mock('../src/services/glowJourneyService', () => ({
   markWeeklyCelebrated: jest.fn(async () => {}),
   initializeBaseline: jest.fn(async () => false),
   isBaselineInitialized: jest.fn(async () => true),
+}))
+
+jest.mock('../src/services/gardenService', () => ({
+  getGardenSummary: jest.fn(() => ({
+    discoveredProduce: [],
+    discoveredCount: 0,
+    bedStages: {},
+    bedCounts: {},
+    discoveredColors: [],
+    discoveredColorCount: 0,
+    colorCounts: {},
+    rainbowComplete: false,
+    bedsStarted: 0,
+    totalBeds: 7,
+    totalColors: 6,
+  })),
+  initializeGardenBaseline: jest.fn(async () => false),
+  detectNewDiscoveries: jest.fn(() => ({ newProduce: [], newColors: [] })),
+  detectBedMilestones: jest.fn(() => []),
+  detectRainbowHarvest: jest.fn(() => false),
+  shouldCelebrateBed: jest.fn(async () => false),
+  shouldCelebrateColor: jest.fn(async () => false),
+  shouldCelebrateRainbow: jest.fn(async () => false),
+  markBedCelebrated: jest.fn(async () => {}),
+  markColorCelebrated: jest.fn(async () => {}),
+  markRainbowCelebrated: jest.fn(async () => {}),
+  getNextDiscoveryHint: jest.fn(() => null),
 }))
 
 

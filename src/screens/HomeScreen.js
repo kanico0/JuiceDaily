@@ -715,11 +715,15 @@ export default function JuiceSnapScreen({ navigation, route }) {
 
   // Reset isLogged when returning to this screen (e.g. after ScanSuccess),
   // so the user can log a second juice on the same day.
+  // Also reset camera state to ensure "Snap Produce" works on subsequent taps.
   useEffect(() => {
     const resetLoggedOnFocus = () => {
       if (!isLoggingRef.current) {
         setIsLogged(false)
       }
+      setIsCameraOpen(false)
+      setIsPreparingCamera(false)
+      cameraInFlightRef.current = false
     }
     const unsubscribe = navigation?.addListener?.('focus', resetLoggedOnFocus)
     return () => { if (typeof unsubscribe === 'function') unsubscribe() }
@@ -966,6 +970,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
         cameraAbortRef.current.abort()
         cameraAbortRef.current = null
       }
+      cameraInFlightRef.current = false
     }
   }, [])
 

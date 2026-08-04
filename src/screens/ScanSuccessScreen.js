@@ -213,7 +213,7 @@ export default function ScanSuccessScreen({ route, navigation }) {
 
   const handleScanAnother = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-    navigation.replace('JuiceSnap', { openCamera: true, source: 'camera' })
+    navigation.replace('ScanHome', { openCamera: true, source: 'camera' })
   }
 
   const handleDone = useCallback(() => {

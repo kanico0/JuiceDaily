@@ -233,7 +233,7 @@ function TasteFeedbackModal({ visible, onSelect, onDismiss }) {
 // ── Main Screen ──────────────────────────────────────────────
 
 export default function RecipeDetailScreen({ route, navigation }) {
-  const { recipeId } = route.params || {}
+  const { recipeId, origin, originPage, originSearchQuery } = route.params || {}
   const recipe = useMemo(() => getRecipeById(recipeId), [recipeId])
   const { fmtG } = useFormatWeight()
   const { mode: organicMode } = useOrganicPref()
@@ -268,6 +268,18 @@ export default function RecipeDetailScreen({ route, navigation }) {
       Animated.spring(heroSlide, { toValue: 0, tension: 50, friction: 10, useNativeDriver: true }),
     ]).start()
   }, [])
+
+  const handleBack = useCallback(() => {
+    if (origin === 'browseIdeas') {
+      navigation.navigate('Scan', {
+        restoreBrowseIdeas: true,
+        restorePage: originPage || 1,
+        restoreSearchQuery: originSearchQuery || '',
+      })
+    } else {
+      navigation.goBack()
+    }
+  }, [navigation, origin, originPage, originSearchQuery])
 
   const toggleCheck = useCallback((index) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
@@ -407,7 +419,7 @@ export default function RecipeDetailScreen({ route, navigation }) {
               {/* Glassmorphism nav bar */}
               <View style={styles.heroNav}>
                 <TouchableOpacity
-                  onPress={() => navigation.goBack()}
+                  onPress={handleBack}
                   style={styles.heroNavBtn}
                   activeOpacity={0.7}
                 >

@@ -248,7 +248,7 @@ const secStyles = StyleSheet.create({
 
 const BROWSE_PAGE_SIZE = 100
 
-function BrowseIdeasModal({ visible, onDismiss, onScanReady, isReduced, navigation }) {
+function BrowseIdeasModal({ visible, onDismiss, onScanReady, isReduced, navigation, restorePage, restoreSearchQuery }) {
   const fadeAnim = useRef(new Animated.Value(0)).current
   const [searchQuery, setSearchQuery] = useState('')
   const [showPaywall, setShowPaywall] = useState(false)
@@ -277,6 +277,14 @@ function BrowseIdeasModal({ visible, onDismiss, onScanReady, isReduced, navigati
   useEffect(() => {
     setCurrentPage(1)
   }, [searchQuery])
+
+  // Restore state when returning from RecipeDetail
+  useEffect(() => {
+    if (visible && restorePage) {
+      setSearchQuery(restoreSearchQuery || '')
+      setCurrentPage(restorePage)
+    }
+  }, [visible, restorePage, restoreSearchQuery])
 
   const handlePrevPage = useCallback(() => {
     setCurrentPage((p) => Math.max(1, p - 1))
@@ -307,7 +315,12 @@ function BrowseIdeasModal({ visible, onDismiss, onScanReady, isReduced, navigati
     trackEvent('browse_recipe_opened', { recipe_id: recipe.id })
     if (isPaywallDisabled) {
       onDismiss()
-      navigation.navigate('RecipeDetail', { recipeId: recipe.id })
+      navigation.navigate('RecipeDetail', {
+        recipeId: recipe.id,
+        origin: 'browseIdeas',
+        originPage: currentPage,
+        originSearchQuery: searchQuery,
+      })
       return
     }
     if (isPaywallForced || isLocked) {
@@ -315,8 +328,13 @@ function BrowseIdeasModal({ visible, onDismiss, onScanReady, isReduced, navigati
       return
     }
     onDismiss()
-    navigation.navigate('RecipeDetail', { recipeId: recipe.id })
-  }, [navigation, onDismiss, hasFeatureAccess, isPaywallDisabled, isPaywallForced])
+    navigation.navigate('RecipeDetail', {
+      recipeId: recipe.id,
+      origin: 'browseIdeas',
+      originPage: currentPage,
+      originSearchQuery: searchQuery,
+    })
+  }, [navigation, onDismiss, hasFeatureAccess, isPaywallDisabled, isPaywallForced, currentPage, searchQuery])
 
   if (!visible) return null
 
@@ -2450,7 +2468,7 @@ const weeklyStyles = StyleSheet.create({
 
 // ── Main Screen ──────────────────────────────────────────────
 
-export default function ScanScreen({ navigation }) {
+export default function ScanScreen({ navigation, route }) {
   const isReduced = useReducedMotion()
   const { isEnabled } = useFlags()
   const {
@@ -2511,13 +2529,27 @@ export default function ScanScreen({ navigation }) {
     return 'browse'
   })
   const [showBrowseModal, setShowBrowseModal] = useState(false)
+  const [browseRestorePage, setBrowseRestorePage] = useState(1)
+  const [browseRestoreSearch, setBrowseRestoreSearch] = useState('')
   const [showExample, setShowExample] = useState(false)
   // Session-only flag: suppress tracking prompt after dismissal (resets on app restart)
   const [trackingDismissedThisSession, setTrackingDismissedThisSession] = useState(false)
   // Goal saved banner: show on browse after goal selection, dismissible
   const [savedGoalId, setSavedGoalId] = useState(null)
-  // Ref: pending tracking prompt (deferred until user returns from camera with items)
-  const pendingTrackingRef = useRef(false)
+  // Restore Browse Ideas modal when returning from RecipeDetail
+  useEffect(() => {
+    if (route?.params?.restoreBrowseIdeas) {
+      setBrowseRestorePage(route.params.restorePage || 1)
+      setBrowseRestoreSearch(route.params.restoreSearchQuery || '')
+      setShowBrowseModal(true)
+      // Clear the params so they don't re-trigger on re-render
+      navigation.setParams({
+        restoreBrowseIdeas: undefined,
+        restorePage: undefined,
+        restoreSearchQuery: undefined,
+      })
+    }
+  }, [route?.params?.restoreBrowseIdeas, navigation])
 
   // Sync if activation hydrates after mount
   useEffect(() => {
@@ -2689,6 +2721,8 @@ export default function ScanScreen({ navigation }) {
         onScanReady={handleBrowseScanReady}
         isReduced={isReduced}
         navigation={navigation}
+        restorePage={browseRestorePage}
+        restoreSearchQuery={browseRestoreSearch}
       />
 
       {/* Example Scan Modal */}

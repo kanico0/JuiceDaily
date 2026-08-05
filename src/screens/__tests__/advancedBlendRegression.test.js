@@ -288,8 +288,7 @@ describe('Advanced Blend Enforcement — QA Items 4 & 8 Regression', () => {
   // 22. Server or authoritative-state failure never guesses that three uses remain
   test('22. fetchBlendAllowance returns null on non-ok response', () => {
     const s = extractFunction(BLEND_SERVICE_SRC, 'export async function fetchBlendAllowance')
-    expect(s).toContain('if (!res.ok) return null')
-    expect(s).toContain('apikey')
+    expect(s).toMatch(/apikey: SUPABASE_ANON_KEY[\s\S]*if \(!res\.ok\) return null/)
   })
 
   test('22b. fetchBlendAllowance returns null on network error', () => {

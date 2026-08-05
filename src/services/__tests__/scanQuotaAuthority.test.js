@@ -589,7 +589,7 @@ describe('Scan quota server-authoritative architecture', () => {
       expect(code).toMatch(/checkGuestJourney/)
     })
 
-    test('returns show_account_gate when guest journey is completed', () => {
+    test('returns show_account_gate when guest scan is completed', () => {
       const fs = require('fs')
       const path = require('path')
       const code = fs.readFileSync(
@@ -597,7 +597,9 @@ describe('Scan quota server-authoritative architecture', () => {
         'utf-8'
       )
 
-      expect(code).toMatch(/journey\.status === 'completed'/)
+      // Gate is now based on scanCompletedAt, not status === 'completed'
+      expect(code).toMatch(/scanCompletedAt/)
+      expect(code).toMatch(/hasUsedFreeScan/)
       expect(code).toMatch(/show_account_gate/)
     })
   })

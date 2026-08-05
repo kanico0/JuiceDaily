@@ -49,13 +49,13 @@ const originalFetch = global.fetch
 beforeEach(() => {
   jest.clearAllMocks()
   global.fetch = jest.fn()
-  // Default: guest journey is completed (no free scan available).
+  // Default: guest journey is scan-completed (free scan already used).
   mockCheckGuestJourney.mockResolvedValue({
     status: 'completed',
     journeyId: 'past',
     scanRequestId: null,
     logOperationId: null,
-    scanCompletedAt: null,
+    scanCompletedAt: '2026-08-04T12:00:00Z',
     logCompletedAt: null,
   })
 })
@@ -65,7 +65,23 @@ afterAll(() => {
 })
 
 describe('durable-account scan gate', () => {
-  it('anonymous users cannot start a funded scan when guest journey is completed', async () => {
+  it('anonymous users cannot start a funded scan when guest scan is completed', async () => {
+    mockIsDurableUser.mockResolvedValue(false)
+    mockCheckGuestJourney.mockResolvedValue({
+      status: 'completed',
+      journeyId: 'past',
+      scanRequestId: null,
+      logOperationId: null,
+      scanCompletedAt: '2026-08-04T12:00:00Z',
+      logCompletedAt: null,
+    })
+
+    await expect(
+      analyzeScanOnServer('base64data', 'image/jpeg', 'req-1')
+    ).rejects.toMatchObject({ name: 'ScanQuotaError', code: 'account_required' })
+  })
+
+  it('anonymous users with manual-log-only completed journey can still scan', async () => {
     mockIsDurableUser.mockResolvedValue(false)
     mockCheckGuestJourney.mockResolvedValue({
       status: 'completed',
@@ -73,12 +89,19 @@ describe('durable-account scan gate', () => {
       scanRequestId: null,
       logOperationId: null,
       scanCompletedAt: null,
-      logCompletedAt: null,
+      logCompletedAt: '2026-08-04T12:00:00Z',
+    })
+    mockReserveGuestJourney.mockResolvedValue({ ok: true, code: 'reserved' })
+    ;(global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ rawText: '[]', quota: null, isGuest: true }),
     })
 
-    await expect(
-      analyzeScanOnServer('base64data', 'image/jpeg', 'req-1')
-    ).rejects.toMatchObject({ name: 'ScanQuotaError', code: 'account_required' })
+    const result = await analyzeScanOnServer('base64data', 'image/jpeg', 'req-manual-only')
+
+    expect(result.rawText).toBe('[]')
+    expect(mockReserveGuestJourney).toHaveBeenCalledWith(expect.any(String), 'scan')
   })
 
   it('anonymous users with available guest journey can scan once', async () => {
@@ -154,7 +177,7 @@ describe('durable-account scan gate', () => {
       journeyId: 'past',
       scanRequestId: null,
       logOperationId: null,
-      scanCompletedAt: null,
+      scanCompletedAt: '2026-08-04T12:00:00Z',
       logCompletedAt: null,
     })
 
@@ -177,7 +200,7 @@ describe('durable-account scan gate', () => {
       journeyId: 'past',
       scanRequestId: null,
       logOperationId: null,
-      scanCompletedAt: null,
+      scanCompletedAt: '2026-08-04T12:00:00Z',
       logCompletedAt: null,
     })
 
@@ -313,7 +336,7 @@ describe('stale-token session refresh (post email upgrade)', () => {
       journeyId: 'past',
       scanRequestId: null,
       logOperationId: null,
-      scanCompletedAt: null,
+      scanCompletedAt: '2026-08-04T12:00:00Z',
       logCompletedAt: null,
     })
 

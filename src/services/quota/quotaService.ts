@@ -155,12 +155,16 @@ export async function analyzeScanOnServer (
   const durable = await isDurableUser()
 
   if (!durable) {
-    // Check if the guest journey is available.
+    // Check if the guest has already used their complimentary scan.
+    // Manual juice logging transitions journey to 'completed' but does
+    // NOT set scanCompletedAt — only successful produce image analysis
+    // sets scanCompletedAt. A guest who only logged manually must still
+    // be allowed to scan for the first time.
     const guestState = await checkGuestJourney()
-    if (guestState.status !== 'available') {
+    if (guestState.scanCompletedAt) {
       throw new ScanQuotaError(
         'account_required',
-        'A free account is required before your first scan',
+        'You\u2019ve used your free produce scan. Create a free account to continue scanning.',
       )
     }
 

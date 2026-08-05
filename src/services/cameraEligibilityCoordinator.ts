@@ -97,11 +97,24 @@ export async function checkCameraEligibility(
   }
 
   // Anonymous user: check guest journey
-  if (journey.status === 'completed') {
-    // Guest has already completed their one free scan+log
+  //
+  // The gate must distinguish between:
+  //   - Guest who has completed a SCAN (scanCompletedAt !== null):
+  //     block further scans, require free account
+  //   - Guest who has only logged a MANUAL juice (status === 'completed'
+  //     but scanCompletedAt === null): allow first scan
+  //
+  // Manual juice logging does NOT consume the complimentary scan.
+  // Only successful produce image analysis sets scanCompletedAt.
+  const hasUsedFreeScan = Boolean(journey.scanCompletedAt)
+
+  if (hasUsedFreeScan) {
+    // Guest has already used their complimentary produce scan
     return {
       action: 'show_account_gate',
-      reason: 'You have completed your first juice. Create a free account to continue scanning.',
+      reason:
+        'You\u2019ve used your free produce scan. Create a free account to continue ' +
+        'scanning.',
       isDurable: false,
       isPro: false,
       snapRemaining: snapEligibility.remaining,
@@ -121,7 +134,10 @@ export async function checkCameraEligibility(
     }
   }
 
-  // available or scan_completed — allow camera open
+  // available, scan_completed (log pending, scan already recorded but
+  // scanCompletedAt not yet set by server in this state), or
+  // completed via manual-log-only (scanCompletedAt === null):
+  // allow camera open for the guest's first produce scan
   return {
     action: 'open_camera',
     reason: null,

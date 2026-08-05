@@ -158,14 +158,31 @@ describe('Feature Group 4 — Pre-Camera Eligibility Coordinator', () => {
       expect(result.guestJourneyStatus).toBe('scan_completed')
     })
 
-    it('9. Anonymous user with completed journey shows account gate', async () => {
+    it('9. Anonymous user with scan-completed journey shows account gate', async () => {
       mockIsDurableUser.mockResolvedValue(false)
-      mockCheckGuestJourney.mockResolvedValue({ status: 'completed' })
+      mockCheckGuestJourney.mockResolvedValue({
+        status: 'completed',
+        scanCompletedAt: '2026-08-04T12:00:00Z',
+      })
 
       const result = await checkCameraEligibility(FREE_ELIGIBLE)
 
       expect(result.action).toBe('show_account_gate')
       expect(result.reason).toContain('Create a free account')
+      expect(result.reason).toContain('scanning')
+      expect(result.isDurable).toBe(false)
+    })
+
+    it('9b. Anonymous user with manual-log-only completed journey can still scan', async () => {
+      mockIsDurableUser.mockResolvedValue(false)
+      mockCheckGuestJourney.mockResolvedValue({
+        status: 'completed',
+        scanCompletedAt: null,
+      })
+
+      const result = await checkCameraEligibility(FREE_ELIGIBLE)
+
+      expect(result.action).toBe('open_camera')
       expect(result.isDurable).toBe(false)
     })
 
@@ -199,9 +216,12 @@ describe('Feature Group 4 — Pre-Camera Eligibility Coordinator', () => {
       expect(result.action).toBe('open_camera')
     })
 
-    it('13. Guest with completed journey cannot scan again without account', async () => {
+    it('13. Guest with scan-completed journey cannot scan again without account', async () => {
       mockIsDurableUser.mockResolvedValue(false)
-      mockCheckGuestJourney.mockResolvedValue({ status: 'completed' })
+      mockCheckGuestJourney.mockResolvedValue({
+        status: 'completed',
+        scanCompletedAt: '2026-08-04T12:00:00Z',
+      })
 
       const result = await checkCameraEligibility(FREE_ELIGIBLE)
 
@@ -224,16 +244,22 @@ describe('Feature Group 4 — Pre-Camera Eligibility Coordinator', () => {
 
   describe('Auth resume', () => {
     it('15. After auth resume, durable user opens camera', async () => {
-      // First call: anonymous with completed journey → show_account_gate
+      // First call: anonymous with scan-completed journey → show_account_gate
       mockIsDurableUser.mockResolvedValueOnce(false)
-      mockCheckGuestJourney.mockResolvedValueOnce({ status: 'completed' })
+      mockCheckGuestJourney.mockResolvedValueOnce({
+        status: 'completed',
+        scanCompletedAt: '2026-08-04T12:00:00Z',
+      })
 
       const result1 = await checkCameraEligibility(FREE_ELIGIBLE)
       expect(result1.action).toBe('show_account_gate')
 
       // Simulate auth: now durable
       mockIsDurableUser.mockResolvedValueOnce(true)
-      mockCheckGuestJourney.mockResolvedValueOnce({ status: 'completed' })
+      mockCheckGuestJourney.mockResolvedValueOnce({
+        status: 'completed',
+        scanCompletedAt: '2026-08-04T12:00:00Z',
+      })
 
       const result2 = await checkCameraEligibility(FREE_ELIGIBLE)
       expect(result2.action).toBe('open_camera')
@@ -265,7 +291,10 @@ describe('Feature Group 4 — Pre-Camera Eligibility Coordinator', () => {
 
     it('requiresGate returns true for all gate actions', async () => {
       mockIsDurableUser.mockResolvedValue(false)
-      mockCheckGuestJourney.mockResolvedValue({ status: 'completed' })
+      mockCheckGuestJourney.mockResolvedValue({
+        status: 'completed',
+        scanCompletedAt: '2026-08-04T12:00:00Z',
+      })
 
       const accountGateResult = await checkCameraEligibility(FREE_ELIGIBLE)
       expect(requiresGate(accountGateResult)).toBe(true)
@@ -324,12 +353,15 @@ describe('Feature Group 4 — Pre-Camera Eligibility Coordinator', () => {
 
     it('20. Pro user with free snap eligibility opens camera regardless of journey', async () => {
       mockIsDurableUser.mockResolvedValue(false)
-      mockCheckGuestJourney.mockResolvedValue({ status: 'completed' })
+      mockCheckGuestJourney.mockResolvedValue({
+        status: 'completed',
+        scanCompletedAt: '2026-08-04T12:00:00Z',
+      })
 
       const result = await checkCameraEligibility(PRO_SNAP)
 
       // Pro users bypass the snap gate, but still need to pass guest journey
-      // Since journey is 'completed' and user is anonymous, show account gate
+      // Since journey is scan-completed and user is anonymous, show account gate
       expect(result.action).toBe('show_account_gate')
     })
   })
@@ -456,8 +488,11 @@ describe('Feature Group 4 — Pre-Camera Eligibility Coordinator', () => {
       const result2 = await checkCameraEligibility(FREE_ELIGIBLE)
       expect(result2.action).toBe('open_camera')
 
-      // After log finalized: completed (blocked)
-      mockCheckGuestJourney.mockResolvedValue({ status: 'completed' })
+      // After log finalized: completed with scanCompletedAt (blocked)
+      mockCheckGuestJourney.mockResolvedValue({
+        status: 'completed',
+        scanCompletedAt: '2026-08-04T12:00:00Z',
+      })
       const result3 = await checkCameraEligibility(FREE_ELIGIBLE)
       expect(result3.action).toBe('show_account_gate')
     })
@@ -483,8 +518,11 @@ describe('Feature Group 4 — Pre-Camera Eligibility Coordinator', () => {
       const result3 = await checkCameraEligibility(FREE_ELIGIBLE)
       expect(result3.action).toBe('open_camera')
 
-      // Log finalized → completed (blocked)
-      mockCheckGuestJourney.mockResolvedValue({ status: 'completed' })
+      // Log finalized → completed with scanCompletedAt (blocked)
+      mockCheckGuestJourney.mockResolvedValue({
+        status: 'completed',
+        scanCompletedAt: '2026-08-04T12:00:00Z',
+      })
       const result4 = await checkCameraEligibility(FREE_ELIGIBLE)
       expect(result4.action).toBe('show_account_gate')
     })

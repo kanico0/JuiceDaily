@@ -13,14 +13,15 @@
 // work (reservation, scan record, Anthropic call).
 //
 // Secrets (Supabase function secrets, never in the app):
-//   ANTHROPIC_API_KEY
+//   ANTHROPIC_API_KEY  — API key for Anthropic
+//   ANTHROPIC_MODEL    — Model identifier (optional, defaults to claude-sonnet-4-6)
 // ─────────────────────────────────────────────────────────────
 
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { evaluateScanUser, extractBearerToken } from '../_shared/authGate.ts'
 
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages'
-const MODEL = 'claude-sonnet-4-20250514'
+const MODEL = Deno.env.get('ANTHROPIC_MODEL') || 'claude-sonnet-4-6'
 const PROVIDER_TIMEOUT_MS = 30_000
 const MAX_IMAGE_BASE64_CHARS = 1_500_000 // ~1.1MB binary
 
@@ -228,6 +229,10 @@ Deno.serve(async (req) => {
     clearTimeout(timer)
 
     if (!anthropicRes.ok) {
+      // Diagnostic: log provider error details (sanitized — no key, no image)
+      const errBody = await anthropicRes.text().catch(() => '')
+      const sanitizedErr = errBody.substring(0, 500).replace(/sk-[A-Za-z0-9_\-.]+/g, 'REDACTED_KEY')
+      console.error(`[analyze-scan] Anthropic error: status=${anthropicRes.status} body=${sanitizedErr}`)
       // Technical/provider failure → release, no credit spent.
       if (isGuest) {
         await admin.rpc('release_guest_scan', {

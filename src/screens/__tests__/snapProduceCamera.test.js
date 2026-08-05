@@ -337,8 +337,8 @@ describe('Snap Produce: dependency array correctness', () => {
 
   test('47. attemptCameraOpen does not depend on filmRollRemaining or filmRollIsPro', () => {
     const section = getAttemptCameraOpenSection()
-    // Extract just the dependency array line
-    const depMatch = section.match(/\}, \[([^\]]+)\]\)/)
+    // Extract just the dependency array — Prettier may format as multi-line
+    const depMatch = section.match(/\[([^\]]*serverQuota[^\]]*)\]/)
     expect(depMatch).toBeTruthy()
     const depArray = depMatch[1]
     expect(depArray).not.toContain('filmRollRemaining')

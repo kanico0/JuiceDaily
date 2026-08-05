@@ -16,7 +16,13 @@ import { identifyProduce, isClaudeKeySet } from '../services/ClaudeVisionService
 import { recordMeaningfulActivity } from '../services/DormantReminderService'
 import colors from '../constants/colors'
 
-export default function CameraScreen({ onClose, onProduceIdentified, onManualEntry, onAccountRequired }) {
+export default function CameraScreen({
+  onClose,
+  onProduceIdentified,
+  onManualEntry,
+  onAccountRequired,
+  guestFirstScan,
+}) {
   const {
     cameraRef,
     state: cameraState,
@@ -67,11 +73,7 @@ export default function CameraScreen({ onClose, onProduceIdentified, onManualEnt
       }
 
       console.log('[SCAN] starting analysis')
-      const result = await identifyProduce(
-        photo.base64,
-        'image/jpeg',
-        null,
-      )
+      const result = await identifyProduce(photo.base64, 'image/jpeg', null)
 
       if (result.scannedIngredients.length === 0) {
         console.log('[SCAN] no produce identified')
@@ -117,16 +119,14 @@ export default function CameraScreen({ onClose, onProduceIdentified, onManualEnt
           <Aperture size={48} color={colors.primary} strokeWidth={1.5} />
           <Text style={styles.permissionTitle}>Camera Access Required</Text>
           <Text style={styles.permissionText}>
-            Juicing needs camera access to identify your produce items and estimate nutritional content.
+            Juicing needs camera access to identify your produce items and estimate nutritional
+            content.
           </Text>
           <TouchableOpacity style={styles.permissionButton} onPress={requestAccess}>
             <Text style={styles.permissionButtonText}>Grant Access</Text>
           </TouchableOpacity>
           {isDenied && (
-            <TouchableOpacity
-              style={styles.settingsButton}
-              onPress={() => Linking.openSettings()}
-            >
+            <TouchableOpacity style={styles.settingsButton} onPress={() => Linking.openSettings()}>
               <Text style={styles.settingsButtonText}>Open Settings</Text>
             </TouchableOpacity>
           )}
@@ -145,9 +145,7 @@ export default function CameraScreen({ onClose, onProduceIdentified, onManualEnt
         <View style={styles.permissionCard}>
           <AlertCircle size={48} color={colors.danger || '#E91E63'} strokeWidth={1.5} />
           <Text style={styles.permissionTitle}>Camera Could Not Start</Text>
-          <Text style={styles.permissionText}>
-            {cameraState.mountError}
-          </Text>
+          <Text style={styles.permissionText}>{cameraState.mountError}</Text>
           <TouchableOpacity
             style={styles.permissionButton}
             onPress={() => {
@@ -198,6 +196,16 @@ export default function CameraScreen({ onClose, onProduceIdentified, onManualEnt
           <View style={{ width: 40 }} />
         </View>
 
+        {/* Nonblocking first-scan notice for guests */}
+        {guestFirstScan && !isProcessing && !error && (
+          <View style={styles.firstScanNotice}>
+            <Text style={styles.firstScanNoticeText}>
+              Your first produce scan is free — no account needed.{'\n'}
+              Create a free account for your next scan.
+            </Text>
+          </View>
+        )}
+
         {/* Center guide */}
         <View style={styles.guideContainer}>
           <View style={styles.guideFrame}>
@@ -206,9 +214,7 @@ export default function CameraScreen({ onClose, onProduceIdentified, onManualEnt
             <View style={[styles.corner, styles.cornerBL]} />
             <View style={[styles.corner, styles.cornerBR]} />
           </View>
-          <Text style={styles.guideText}>
-            Place produce within the frame
-          </Text>
+          <Text style={styles.guideText}>Place produce within the frame</Text>
         </View>
 
         {/* API error fallback panel — full choices so user is never stuck */}
@@ -219,7 +225,11 @@ export default function CameraScreen({ onClose, onProduceIdentified, onManualEnt
               <Text style={styles.fallbackDesc}>{error}</Text>
 
               <Pressable
-                style={({ pressed }) => [styles.fallbackBtn, styles.fallbackBtnPrimary, pressed && { opacity: 0.8 }]}
+                style={({ pressed }) => [
+                  styles.fallbackBtn,
+                  styles.fallbackBtnPrimary,
+                  pressed && { opacity: 0.8 },
+                ]}
                 onPress={handleManualEntry}
                 hitSlop={8}
               >
@@ -229,7 +239,10 @@ export default function CameraScreen({ onClose, onProduceIdentified, onManualEnt
 
               <Pressable
                 style={({ pressed }) => [styles.fallbackBtn, pressed && { opacity: 0.7 }]}
-                onPress={() => { setError(null); setIsApiError(false) }}
+                onPress={() => {
+                  setError(null)
+                  setIsApiError(false)
+                }}
                 hitSlop={8}
               >
                 <Eye size={18} color={colors.textSecondary} />
@@ -242,7 +255,9 @@ export default function CameraScreen({ onClose, onProduceIdentified, onManualEnt
                 hitSlop={8}
               >
                 <Home size={18} color={colors.textMuted} />
-                <Text style={[styles.fallbackBtnText, { color: colors.textMuted }]}>Back to Home</Text>
+                <Text style={[styles.fallbackBtnText, { color: colors.textMuted }]}>
+                  Back to Home
+                </Text>
               </Pressable>
             </View>
           </View>
@@ -275,11 +290,7 @@ export default function CameraScreen({ onClose, onProduceIdentified, onManualEnt
                 )}
               </TouchableOpacity>
 
-              {isProcessing && (
-                <Text style={styles.processingText}>
-                  Identifying produce...
-                </Text>
-              )}
+              {isProcessing && <Text style={styles.processingText}>Identifying produce...</Text>}
             </>
           )}
         </View>
@@ -375,6 +386,21 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
     marginTop: 16,
+  },
+  firstScanNotice: {
+    marginHorizontal: 20,
+    marginTop: 8,
+    backgroundColor: 'rgba(46,125,50,0.85)',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+  },
+  firstScanNoticeText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '500',
+    textAlign: 'center',
+    lineHeight: 16,
   },
   errorBanner: {
     marginHorizontal: 20,

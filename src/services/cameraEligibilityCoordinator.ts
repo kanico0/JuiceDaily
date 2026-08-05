@@ -112,9 +112,7 @@ export async function checkCameraEligibility(
     // Guest has already used their complimentary produce scan
     return {
       action: 'show_account_gate',
-      reason:
-        'You\u2019ve used your free produce scan. Create a free account to continue ' +
-        'scanning.',
+      reason: 'You\u2019ve used your free produce scan. Create a free account to continue scanning.',
       isDurable: false,
       isPro: false,
       snapRemaining: snapEligibility.remaining,
@@ -122,8 +120,30 @@ export async function checkCameraEligibility(
     }
   }
 
+  // A temporary scan_reserved or log_reserved state does NOT require
+  // authentication — it means a journey is in progress. If scanCompletedAt
+  // is null, the guest has not used their free scan yet and should be
+  // allowed to proceed. Only show auth_resume for a stale reserved state
+  // where scanCompletedAt is set (scan was completed but not finalized).
+  if (
+    (journey.status === 'scan_reserved' || journey.status === 'log_reserved') &&
+    !hasUsedFreeScan
+  ) {
+    // Journey in progress but no scan completed — allow camera open.
+    // The scan reservation will be handled by analyzeScanOnServer.
+    return {
+      action: 'open_camera',
+      reason: null,
+      isDurable: false,
+      isPro: snapEligibility.isPro,
+      snapRemaining: snapEligibility.remaining,
+      guestJourneyStatus: journey.status,
+    }
+  }
+
   if (journey.status === 'scan_reserved' || journey.status === 'log_reserved') {
-    // A journey is already in progress — show account gate to resolve
+    // scanCompletedAt is set but status is still reserved — stale state
+    // after a scan was completed but not finalized. Show auth resume.
     return {
       action: 'show_auth_resume',
       reason: 'A guest session is in progress. Please sign in to continue.',
@@ -134,10 +154,10 @@ export async function checkCameraEligibility(
     }
   }
 
-  // available, scan_completed (log pending, scan already recorded but
-  // scanCompletedAt not yet set by server in this state), or
-  // completed via manual-log-only (scanCompletedAt === null):
-  // allow camera open for the guest's first produce scan
+  // available, scan_completed (log pending, scanCompletedAt set but
+  // not yet finalized to 'completed'), or completed via manual-log-only
+  // (scanCompletedAt === null): allow camera open for the guest's
+  // first produce scan
   return {
     action: 'open_camera',
     reason: null,

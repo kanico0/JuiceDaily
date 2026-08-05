@@ -647,6 +647,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
   const [accountGateMode, setAccountGateMode] = useState('guest')
   const [isPreparingCamera, setIsPreparingCamera] = useState(false)
   const pendingCameraOpenRef = useRef(false)
+  const [guestFirstScan, setGuestFirstScan] = useState(false)
   const [showAdvancedBlendModal, setShowAdvancedBlendModal] = useState(false)
   const [advancedBlendStage, setAdvancedBlendStage] = useState('fifth_ingredient_notice')
   const [advancedBlendRemaining, setAdvancedBlendRemaining] = useState(FREE_ADVANCED_BLEND_ALLOWANCE)
@@ -947,6 +948,9 @@ export default function JuiceSnapScreen({ navigation, route }) {
         setIsCameraOpen(true)
         if (!isAutoOpen) setIsLogged(false)
         setIsPreparingCamera(false)
+        if (!result.isDurable) {
+          setGuestFirstScan(true)
+        }
         return
       }
 
@@ -1109,6 +1113,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
 
   const handleCameraClose = useCallback(() => {
     setIsCameraOpen(false)
+    setGuestFirstScan(false)
     // Stay on JuiceSnap showing manual entry fallback — do NOT goBack()
     // User can type ingredients manually or navigate away via tabs/back
   }, [])
@@ -1149,6 +1154,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
     }
     setIsCameraOpen(false)
     setIsLogged(false)
+    setGuestFirstScan(false)
 
     // The server has already committed the scan quota via the analyze-scan
     // Edge Function (reserve → vision → commit). The server-returned
@@ -2023,6 +2029,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
             setIsManualMode(true)
           }}
           onAccountRequired={() => setShowAccountGate(true)}
+          guestFirstScan={guestFirstScan}
         />
       </Modal>
 
@@ -2031,6 +2038,8 @@ export default function JuiceSnapScreen({ navigation, route }) {
         onClose={() => {
           setShowAccountGate(false)
           pendingCameraOpenRef.current = false
+          setIsPreparingCamera(false)
+          cameraInFlightRef.current = false
         }}
         onAuthenticated={() => {
           setShowAccountGate(false)

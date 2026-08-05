@@ -23,7 +23,7 @@ export class ScanQuotaError extends Error {
   code: ScanQuotaErrorCode
   quota: ScanQuotaSnapshot | null
 
-  constructor (code: ScanQuotaErrorCode, message: string, quota: ScanQuotaSnapshot | null = null) {
+  constructor(code: ScanQuotaErrorCode, message: string, quota: ScanQuotaSnapshot | null = null) {
     super(message)
     this.name = 'ScanQuotaError'
     this.code = code
@@ -31,15 +31,15 @@ export class ScanQuotaError extends Error {
   }
 }
 
-export function isServerScanAvailable (): boolean {
+export function isServerScanAvailable(): boolean {
   return isSupabaseConfigured()
 }
 
-function functionUrl (name: string): string {
+function functionUrl(name: string): string {
   return `${SUPABASE_URL}/functions/v1/${name}`
 }
 
-async function authedFetch (name: string, init?: RequestInit): Promise<Response> {
+async function authedFetch(name: string, init?: RequestInit): Promise<Response> {
   const token = await getAccessToken()
   if (!token) {
     throw new ScanQuotaError('unauthenticated', 'No authenticated user for quota request')
@@ -54,7 +54,7 @@ async function authedFetch (name: string, init?: RequestInit): Promise<Response>
   })
 }
 
-function parseQuota (raw: unknown): ScanQuotaSnapshot | null {
+function parseQuota(raw: unknown): ScanQuotaSnapshot | null {
   if (!raw || typeof raw !== 'object') return null
   const q = raw as Record<string, unknown>
   if (typeof q.limit !== 'number' || typeof q.used !== 'number') return null
@@ -72,7 +72,7 @@ function parseQuota (raw: unknown): ScanQuotaSnapshot | null {
 
 // ── Quota snapshot ───────────────────────────────────────────
 
-export async function fetchScanQuota (): Promise<ScanQuotaSnapshot | null> {
+export async function fetchScanQuota(): Promise<ScanQuotaSnapshot | null> {
   if (!isServerScanAvailable()) return null
   try {
     const res = await authedFetch('scan-quota', { method: 'GET' })
@@ -93,7 +93,7 @@ export interface ServerScanResponse {
   quota: ScanQuotaSnapshot | null
 }
 
-async function performServerScan (
+async function performServerScan(
   imageBase64: string,
   mediaType: string,
   requestId: string,
@@ -126,7 +126,10 @@ async function performServerScan (
     throw new ScanQuotaError('account_required', body.message ?? 'Account required')
   }
   if (res.status === 403 && body.code === 'journey_already_used') {
-    throw new ScanQuotaError('account_required', 'Guest journey already used — registration required')
+    throw new ScanQuotaError(
+      'account_required',
+      'Guest journey already used — registration required',
+    )
   }
   if (!res.ok) {
     throw new ScanQuotaError('server_error', body.message ?? `Scan failed (${res.status})`, quota)
@@ -138,7 +141,7 @@ async function performServerScan (
   }
 }
 
-export async function analyzeScanOnServer (
+export async function analyzeScanOnServer(
   imageBase64: string,
   mediaType: string,
   requestId: string,
@@ -172,9 +175,36 @@ export async function analyzeScanOnServer (
     const journeyId = createJourneyId()
     const reserveResult = await reserveGuestJourney(journeyId, 'scan')
     if (!reserveResult.ok) {
+      // Distinguish between a genuine "scan already used" (scanCompletedAt
+      // is set) and a reserve failure from a manual-log-only journey
+      // (scanCompletedAt is null). Only the former warrants account_required.
+      if (reserveResult.code === 'journey_already_used') {
+        const rechecked = await checkGuestJourney()
+        if (rechecked.scanCompletedAt) {
+          throw new ScanQuotaError(
+            'account_required',
+            'You\u2019ve used your free produce scan. Create a free account to continue scanning.',
+          )
+        }
+        // scanCompletedAt is null but reserve still failed — this is a
+        // server-side state issue (e.g. stale 'completed' from manual log
+        // on an older server that hasn't been migrated). Surface as a
+        // retryable server error, NOT an account gate.
+        throw new ScanQuotaError(
+          'server_error',
+          'Unable to reserve your free scan. Please try again.',
+        )
+      }
+      // Network or other failure — fail-closed with a retryable error.
+      if (reserveResult.code === 'network_error') {
+        throw new ScanQuotaError(
+          'server_error',
+          'Unable to connect to the scan service. Please check your connection and try again.',
+        )
+      }
       throw new ScanQuotaError(
-        'account_required',
-        'Guest journey already used — registration required',
+        'server_error',
+        'Unable to reserve your free scan. Please try again.',
       )
     }
 

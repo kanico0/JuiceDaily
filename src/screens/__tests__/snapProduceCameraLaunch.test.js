@@ -17,8 +17,9 @@ const coordinatorSource = fs.readFileSync(
 
 // Extract the attemptCameraOpen function body for static analysis
 const funcStart = homeSource.indexOf('const attemptCameraOpen = useCallback')
-const funcEnd = homeSource.indexOf('}, [serverQuota, refreshQuota])', funcStart)
-const section = homeSource.substring(funcStart, funcEnd + 30)
+const depArrayStart = homeSource.indexOf('[serverQuota, refreshQuota]', funcStart)
+const funcEnd = homeSource.indexOf(')', depArrayStart)
+const section = homeSource.substring(funcStart, funcEnd + 1)
 
 describe('Snap Produce Camera — Successful Path', () => {
   test('1. Tap Snap Produce sets isPreparingCamera to true', () => {

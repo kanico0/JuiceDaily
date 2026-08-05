@@ -151,7 +151,7 @@ describe('durable-account scan gate', () => {
     expect(mockReleaseGuestJourney).toHaveBeenCalled()
   })
 
-  it('guest scan with journey_already_used does not call fetch', async () => {
+  it('guest scan with journey_already_used and scanCompletedAt null throws server_error (not account_required)', async () => {
     mockIsDurableUser.mockResolvedValue(false)
     mockCheckGuestJourney.mockResolvedValue({
       status: 'available',
@@ -162,6 +162,24 @@ describe('durable-account scan gate', () => {
       logCompletedAt: null,
     })
     mockReserveGuestJourney.mockResolvedValue({ ok: false, code: 'journey_already_used' })
+
+    await expect(
+      analyzeScanOnServer('base64data', 'image/jpeg', 'req-guest-blocked')
+    ).rejects.toMatchObject({ code: 'server_error' })
+
+    expect(global.fetch).not.toHaveBeenCalled()
+  })
+
+  it('guest scan with journey_already_used and scanCompletedAt set throws account_required', async () => {
+    mockIsDurableUser.mockResolvedValue(false)
+    mockCheckGuestJourney.mockResolvedValue({
+      status: 'completed',
+      journeyId: 'past-scan',
+      scanRequestId: 'scan-1',
+      logOperationId: null,
+      scanCompletedAt: '2026-08-04T12:00:00Z',
+      logCompletedAt: null,
+    })
 
     await expect(
       analyzeScanOnServer('base64data', 'image/jpeg', 'req-guest-blocked')

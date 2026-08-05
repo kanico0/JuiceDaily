@@ -23,8 +23,9 @@ const APP_SRC = fs.readFileSync(
 
 // Extract attemptCameraOpen body
 const funcStart = HOME_SRC.indexOf('const attemptCameraOpen = useCallback')
-const funcEnd = HOME_SRC.indexOf('}, [serverQuota, refreshQuota])', funcStart)
-const ATTEMPT_BODY = HOME_SRC.substring(funcStart, funcEnd + 30)
+const depArrayStart = HOME_SRC.indexOf('[serverQuota, refreshQuota]', funcStart)
+const funcEnd = HOME_SRC.indexOf(')', depArrayStart)
+const ATTEMPT_BODY = HOME_SRC.substring(funcStart, funcEnd + 1)
 
 // Extract focus-listener block
 const focusStart = HOME_SRC.indexOf('Reset isLogged when returning to this screen')

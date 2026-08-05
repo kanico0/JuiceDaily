@@ -186,23 +186,31 @@ describe('Feature Group 4 — Pre-Camera Eligibility Coordinator', () => {
       expect(result.isDurable).toBe(false)
     })
 
-    it('10. Anonymous user with scan_reserved journey shows auth resume', async () => {
+    it('10. Anonymous user with scan_reserved journey (scanCompletedAt null) can open camera', async () => {
       mockIsDurableUser.mockResolvedValue(false)
-      mockCheckGuestJourney.mockResolvedValue({ status: 'scan_reserved' })
+      mockCheckGuestJourney.mockResolvedValue({ status: 'scan_reserved', scanCompletedAt: null })
 
       const result = await checkCameraEligibility(FREE_ELIGIBLE)
 
-      expect(result.action).toBe('show_auth_resume')
-      expect(result.reason).toContain('sign in')
+      expect(result.action).toBe('open_camera')
     })
 
-    it('11. Anonymous user with log_reserved journey shows auth resume', async () => {
+    it('10b. Anonymous user with scan_reserved + scanCompletedAt set shows account gate', async () => {
       mockIsDurableUser.mockResolvedValue(false)
-      mockCheckGuestJourney.mockResolvedValue({ status: 'log_reserved' })
+      mockCheckGuestJourney.mockResolvedValue({ status: 'scan_reserved', scanCompletedAt: '2026-08-04T12:00:00Z' })
 
       const result = await checkCameraEligibility(FREE_ELIGIBLE)
 
-      expect(result.action).toBe('show_auth_resume')
+      expect(result.action).toBe('show_account_gate')
+    })
+
+    it('11. Anonymous user with log_reserved journey (scanCompletedAt null) can open camera', async () => {
+      mockIsDurableUser.mockResolvedValue(false)
+      mockCheckGuestJourney.mockResolvedValue({ status: 'log_reserved', scanCompletedAt: null })
+
+      const result = await checkCameraEligibility(FREE_ELIGIBLE)
+
+      expect(result.action).toBe('open_camera')
     })
   })
 
@@ -266,14 +274,23 @@ describe('Feature Group 4 — Pre-Camera Eligibility Coordinator', () => {
       expect(result2.isDurable).toBe(true)
     })
 
-    it('16. Auth resume with signin mode for in-progress journey', async () => {
+    it('16. Auth resume with signin mode for stale in-progress journey (scanCompletedAt set)', async () => {
       mockIsDurableUser.mockResolvedValue(false)
-      mockCheckGuestJourney.mockResolvedValue({ status: 'scan_reserved' })
+      mockCheckGuestJourney.mockResolvedValue({ status: 'scan_reserved', scanCompletedAt: '2026-08-04T12:00:00Z' })
 
       const result = await checkCameraEligibility(FREE_ELIGIBLE)
 
-      expect(result.action).toBe('show_auth_resume')
-      // The caller should show AccountGateModal with initialMode='signin'
+      // scanCompletedAt is set → hasUsedFreeScan → show_account_gate
+      expect(result.action).toBe('show_account_gate')
+    })
+
+    it('16b. In-progress journey with scanCompletedAt null allows camera', async () => {
+      mockIsDurableUser.mockResolvedValue(false)
+      mockCheckGuestJourney.mockResolvedValue({ status: 'scan_reserved', scanCompletedAt: null })
+
+      const result = await checkCameraEligibility(FREE_ELIGIBLE)
+
+      expect(result.action).toBe('open_camera')
     })
   })
 
@@ -299,7 +316,7 @@ describe('Feature Group 4 — Pre-Camera Eligibility Coordinator', () => {
       const accountGateResult = await checkCameraEligibility(FREE_ELIGIBLE)
       expect(requiresGate(accountGateResult)).toBe(true)
 
-      mockCheckGuestJourney.mockResolvedValue({ status: 'scan_reserved' })
+      mockCheckGuestJourney.mockResolvedValue({ status: 'scan_reserved', scanCompletedAt: '2026-08-04T12:00:00Z' })
       const authResumeResult = await checkCameraEligibility(FREE_ELIGIBLE)
       expect(requiresGate(authResumeResult)).toBe(true)
 

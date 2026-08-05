@@ -7,7 +7,7 @@
 // vision → commits (or releases on technical failure).
 // ─────────────────────────────────────────────────────────────
 
-import { SUPABASE_URL } from '../subscriptions/subscriptionConfig'
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from '../subscriptions/subscriptionConfig'
 import { isSupabaseConfigured } from '../supabase/supabaseClient'
 import { getAccessToken } from '../supabase/identity'
 import { isDurableUser, refreshSessionAndCheckDurable } from '../supabase/accountLink'
@@ -44,10 +44,14 @@ async function authedFetch(name: string, init?: RequestInit): Promise<Response> 
   if (!token) {
     throw new ScanQuotaError('unauthenticated', 'No authenticated user for quota request')
   }
+  if (!SUPABASE_ANON_KEY) {
+    throw new ScanQuotaError('server_error', 'Supabase is not configured')
+  }
   return fetch(functionUrl(name), {
     ...init,
     headers: {
       'Content-Type': 'application/json',
+      apikey: SUPABASE_ANON_KEY,
       Authorization: `Bearer ${token}`,
       ...(init?.headers ?? {}),
     },

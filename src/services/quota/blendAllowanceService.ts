@@ -23,7 +23,7 @@
 // is available for testing without a Supabase backend.
 // ─────────────────────────────────────────────────────────────
 
-import { SUPABASE_URL, SUPABASE_CONFIGURED } from '../subscriptions/subscriptionConfig'
+import { SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_CONFIGURED } from '../subscriptions/subscriptionConfig'
 import { getAccessToken } from '../supabase/identity'
 
 // ── Types ────────────────────────────────────────────────────
@@ -208,6 +208,7 @@ export async function reserveBlendAllowance (
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      apikey: SUPABASE_ANON_KEY ?? '',
       Authorization: `Bearer ${token}`,
     },
     body: JSON.stringify({
@@ -270,6 +271,7 @@ export async function finalizeBlendAllowance (requestId: string): Promise<void> 
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        apikey: SUPABASE_ANON_KEY ?? '',
         Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({ action: 'finalize', requestId }),
@@ -293,6 +295,7 @@ export async function releaseBlendAllowance (requestId: string): Promise<void> {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        apikey: SUPABASE_ANON_KEY ?? '',
         Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({ action: 'release', requestId }),
@@ -314,6 +317,7 @@ export async function fetchBlendAllowance (): Promise<BlendAllowanceResult | nul
     const res = await fetch(functionUrl(), {
       method: 'GET',
       headers: {
+        apikey: SUPABASE_ANON_KEY ?? '',
         Authorization: `Bearer ${token}`,
       },
     })

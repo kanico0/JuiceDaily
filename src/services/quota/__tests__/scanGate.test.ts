@@ -28,6 +28,7 @@ jest.mock('../../supabase/supabaseClient', () => ({
 
 jest.mock('../../subscriptions/subscriptionConfig', () => ({
   SUPABASE_URL: 'https://test-project.supabase.co',
+  SUPABASE_ANON_KEY: 'test-anon-key-xxxx',
 }))
 
 jest.mock('../guestJourneyService', () => ({

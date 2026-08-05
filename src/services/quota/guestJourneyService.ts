@@ -16,7 +16,7 @@
 // the guest state survives registration.
 // ─────────────────────────────────────────────────────────────
 
-import { SUPABASE_URL, SUPABASE_CONFIGURED } from '../subscriptions/subscriptionConfig'
+import { SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_CONFIGURED } from '../subscriptions/subscriptionConfig'
 import { getAccessToken, getUserId } from '../supabase/identity'
 
 export type GuestJourneyStatus =
@@ -46,6 +46,14 @@ export interface GuestJourneyResult {
 
 function functionUrl (action: string): string {
   return `${SUPABASE_URL}/functions/v1/guest-journey?action=${action}`
+}
+
+function authedHeaders (token: string, extra?: Record<string, string>): Record<string, string> {
+  return {
+    apikey: SUPABASE_ANON_KEY ?? '',
+    Authorization: `Bearer ${token}`,
+    ...extra,
+  }
 }
 
 // ── AsyncStorage cache (display-only) ─────────────────────────
@@ -107,7 +115,7 @@ export async function checkGuestJourney (): Promise<GuestJourneyState> {
 
   try {
     const res = await fetch(functionUrl('status'), {
-      headers: { Authorization: `Bearer ${token}` },
+      headers: authedHeaders(token),
     })
     if (!res.ok) {
       // Server error: return cached state for display, but do NOT
@@ -151,10 +159,7 @@ export async function reserveGuestJourney (
   try {
     const res = await fetch(functionUrl('reserve'), {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
+      headers: authedHeaders(token, { 'Content-Type': 'application/json' }),
       body: JSON.stringify({ journeyId, journeyType: type }),
     })
     const body = await res.json().catch(() => ({}))
@@ -180,10 +185,7 @@ export async function finalizeGuestScan (journeyId: string): Promise<GuestJourne
   try {
     const res = await fetch(functionUrl('finalize-scan'), {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
+      headers: authedHeaders(token, { 'Content-Type': 'application/json' }),
       body: JSON.stringify({ journeyId }),
     })
     const body = await res.json().catch(() => ({}))
@@ -212,10 +214,7 @@ export async function finalizeGuestLog (
   try {
     const res = await fetch(functionUrl('finalize-log'), {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
+      headers: authedHeaders(token, { 'Content-Type': 'application/json' }),
       body: JSON.stringify({ journeyId, logOperationId }),
     })
     const body = await res.json().catch(() => ({}))
@@ -241,10 +240,7 @@ export async function releaseGuestJourney (journeyId: string): Promise<GuestJour
   try {
     const res = await fetch(functionUrl('release'), {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
+      headers: authedHeaders(token, { 'Content-Type': 'application/json' }),
       body: JSON.stringify({ journeyId }),
     })
     const body = await res.json().catch(() => ({}))

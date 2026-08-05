@@ -39,6 +39,7 @@ const mockGetAccessToken = jest.fn()
 jest.mock('../subscriptions/subscriptionConfig', () => ({
   SUPABASE_CONFIGURED: true,
   SUPABASE_URL: 'https://test.supabase.co',
+  SUPABASE_ANON_KEY: 'test-anon-key-xxxx',
   FREE_WARNING_THRESHOLDS: [2, 1],
   PRO_WARNING_THRESHOLDS: [10, 5],
 }))

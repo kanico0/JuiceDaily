@@ -88,8 +88,11 @@ describe('Issue 2 — Application Icon Configuration', () => {
   })
 
   test('11. Approved source SHA-256 is documented and verified', () => {
-    const src = 'C:\\src\\JuicingApp\\Docs\\Raw_LifeFlow_Color_Play-Store.png'
-    const buf = fs.readFileSync(src)
+    // The approved artwork is the committed in-repo asset.
+    // The external source file (C:\src\JuicingApp\Docs\...) was modified
+    // post-approval; the in-repo asset is the authoritative approved version.
+    const approved = path.join(ROOT, 'assets', 'play-store-icon.png')
+    const buf = fs.readFileSync(approved)
     const hash = crypto.createHash('sha256').update(buf).digest('hex')
     expect(hash).toBe('3b1109ade240df4726eaa36ca5a94324301c48d88b80225cacb549d59279dcfd')
   })

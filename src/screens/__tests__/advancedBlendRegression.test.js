@@ -33,6 +33,17 @@ function section (src, marker, len = 400) {
   return src.substring(idx, idx + len)
 }
 
+// Extract from a marker to the next top-level export or end of file.
+// This is resilient to header additions that shift code past fixed windows.
+function extractFunction(src, marker) {
+  const start = src.indexOf(marker)
+  if (start === -1) return ''
+  const rest = src.slice(start + marker.length)
+  const nextExport = rest.indexOf('\nexport ')
+  if (nextExport === -1) return src.slice(start)
+  return src.slice(start, start + marker.length + nextExport + 1)
+}
+
 // ── Display Tests ────────────────────────────────────────────
 
 describe('Advanced Blend Display — QA Items 4 & 8 Regression', () => {
@@ -276,12 +287,13 @@ describe('Advanced Blend Enforcement — QA Items 4 & 8 Regression', () => {
 
   // 22. Server or authoritative-state failure never guesses that three uses remain
   test('22. fetchBlendAllowance returns null on non-ok response', () => {
-    const s = section(BLEND_SERVICE_SRC, 'export async function fetchBlendAllowance', 400)
+    const s = extractFunction(BLEND_SERVICE_SRC, 'export async function fetchBlendAllowance')
     expect(s).toContain('if (!res.ok) return null')
+    expect(s).toContain('apikey')
   })
 
   test('22b. fetchBlendAllowance returns null on network error', () => {
-    const s = section(BLEND_SERVICE_SRC, 'export async function fetchBlendAllowance', 900)
+    const s = extractFunction(BLEND_SERVICE_SRC, 'export async function fetchBlendAllowance')
     expect(s).toMatch(/catch/)
     expect(s).toMatch(/return null/)
   })

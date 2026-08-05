@@ -274,10 +274,10 @@ describe('Advanced Blend Enforcement — QA Items 4 & 8 Regression', () => {
 
   // 21. Pro users remain unlimited
   test('21. Pro user allowance is checked server-side, not bypassed client-side', () => {
-    // The reserve function sends an auth token to the server
+    // The reserve function sends an auth token to the server via buildAuthedHeaders
     const s = section(BLEND_SERVICE_SRC, 'const res = await fetch(functionUrl()', 300)
-    expect(s).toContain('Authorization')
-    expect(s).toContain('Bearer')
+    expect(s).toContain('buildAuthedHeaders')
+    expect(s).toContain('token')
   })
 
   test('21b. getAdvancedBlendRemaining returns null for pro (unlimited display)', () => {
@@ -288,7 +288,7 @@ describe('Advanced Blend Enforcement — QA Items 4 & 8 Regression', () => {
   // 22. Server or authoritative-state failure never guesses that three uses remain
   test('22. fetchBlendAllowance returns null on non-ok response', () => {
     const s = extractFunction(BLEND_SERVICE_SRC, 'export async function fetchBlendAllowance')
-    expect(s).toMatch(/apikey: SUPABASE_ANON_KEY[\s\S]*if \(!res\.ok\) return null/)
+    expect(s).toMatch(/buildAuthedHeaders[\s\S]*if \(!res\.ok\) return null/)
   })
 
   test('22b. fetchBlendAllowance returns null on network error', () => {

@@ -23,8 +23,9 @@
 // is available for testing without a Supabase backend.
 // ─────────────────────────────────────────────────────────────
 
-import { SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_CONFIGURED } from '../subscriptions/subscriptionConfig'
+import { SUPABASE_URL, SUPABASE_CONFIGURED } from '../subscriptions/subscriptionConfig'
 import { getAccessToken } from '../supabase/identity'
+import { buildAuthedHeaders, SupabaseConfigError } from './supabaseHeaders'
 
 // ── Types ────────────────────────────────────────────────────
 
@@ -204,20 +205,24 @@ export async function reserveBlendAllowance (
     throw new BlendAllowanceError('no_ingredients', 'No valid ingredients to check')
   }
 
-  const res = await fetch(functionUrl(), {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      apikey: SUPABASE_ANON_KEY ?? '',
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify({
-      action: 'reserve',
-      requestId: operationId,
-      ingredientIds,
-      ingredientFingerprint: ingredientFingerprint(ingredients),
-    }),
-  })
+  let res: Response
+  try {
+    res = await fetch(functionUrl(), {
+      method: 'POST',
+      headers: buildAuthedHeaders(token),
+      body: JSON.stringify({
+        action: 'reserve',
+        requestId: operationId,
+        ingredientIds,
+        ingredientFingerprint: ingredientFingerprint(ingredients),
+      }),
+    })
+  } catch (e) {
+    if (e instanceof SupabaseConfigError) {
+      throw new BlendAllowanceError('server_not_configured', e.message)
+    }
+    throw new BlendAllowanceError('server_error', 'Unable to connect to blend allowance service')
+  }
 
   const body = await res.json().catch(() => ({}))
 
@@ -269,14 +274,11 @@ export async function finalizeBlendAllowance (requestId: string): Promise<void> 
   try {
     await fetch(functionUrl(), {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        apikey: SUPABASE_ANON_KEY ?? '',
-        Authorization: `Bearer ${token}`,
-      },
+      headers: buildAuthedHeaders(token),
       body: JSON.stringify({ action: 'finalize', requestId }),
     })
   } catch (e) {
+    if (e instanceof SupabaseConfigError) return
     if (__DEV__) console.warn('[blend] finalize failed (non-fatal):', (e as Error)?.message)
   }
 }
@@ -293,14 +295,11 @@ export async function releaseBlendAllowance (requestId: string): Promise<void> {
   try {
     await fetch(functionUrl(), {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        apikey: SUPABASE_ANON_KEY ?? '',
-        Authorization: `Bearer ${token}`,
-      },
+      headers: buildAuthedHeaders(token),
       body: JSON.stringify({ action: 'release', requestId }),
     })
   } catch (e) {
+    if (e instanceof SupabaseConfigError) return
     if (__DEV__) console.warn('[blend] release failed (non-fatal):', (e as Error)?.message)
   }
 }
@@ -316,10 +315,7 @@ export async function fetchBlendAllowance (): Promise<BlendAllowanceResult | nul
   try {
     const res = await fetch(functionUrl(), {
       method: 'GET',
-      headers: {
-        apikey: SUPABASE_ANON_KEY ?? '',
-        Authorization: `Bearer ${token}`,
-      },
+      headers: buildAuthedHeaders(token),
     })
     if (!res.ok) return null
     const body = await res.json()

@@ -16,8 +16,9 @@
 // the guest state survives registration.
 // ─────────────────────────────────────────────────────────────
 
-import { SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_CONFIGURED } from '../subscriptions/subscriptionConfig'
+import { SUPABASE_URL, SUPABASE_CONFIGURED } from '../subscriptions/subscriptionConfig'
 import { getAccessToken, getUserId } from '../supabase/identity'
+import { buildAuthedHeaders, SupabaseConfigError } from './supabaseHeaders'
 
 export type GuestJourneyStatus =
   | 'available'
@@ -49,11 +50,7 @@ function functionUrl (action: string): string {
 }
 
 function authedHeaders (token: string, extra?: Record<string, string>): Record<string, string> {
-  return {
-    apikey: SUPABASE_ANON_KEY ?? '',
-    Authorization: `Bearer ${token}`,
-    ...extra,
-  }
+  return buildAuthedHeaders(token, extra)
 }
 
 // ── AsyncStorage cache (display-only) ─────────────────────────
@@ -169,7 +166,8 @@ export async function reserveGuestJourney (
       status: body.status as GuestJourneyStatus | undefined,
       journeyId: body.journey_id ?? journeyId,
     }
-  } catch {
+  } catch (e) {
+    if (e instanceof SupabaseConfigError) return { ok: false, code: 'server_not_configured' }
     return { ok: false, code: 'network_error' }
   }
 }
@@ -195,7 +193,8 @@ export async function finalizeGuestScan (journeyId: string): Promise<GuestJourne
       status: body.status as GuestJourneyStatus | undefined,
       journeyId,
     }
-  } catch {
+  } catch (e) {
+    if (e instanceof SupabaseConfigError) return { ok: false, code: 'server_not_configured' }
     return { ok: false, code: 'network_error' }
   }
 }
@@ -224,7 +223,8 @@ export async function finalizeGuestLog (
       status: body.status as GuestJourneyStatus | undefined,
       journeyId,
     }
-  } catch {
+  } catch (e) {
+    if (e instanceof SupabaseConfigError) return { ok: false, code: 'server_not_configured' }
     return { ok: false, code: 'network_error' }
   }
 }
@@ -250,7 +250,8 @@ export async function releaseGuestJourney (journeyId: string): Promise<GuestJour
       status: body.status as GuestJourneyStatus | undefined,
       journeyId,
     }
-  } catch {
+  } catch (e) {
+    if (e instanceof SupabaseConfigError) return { ok: false, code: 'server_not_configured' }
     return { ok: false, code: 'network_error' }
   }
 }

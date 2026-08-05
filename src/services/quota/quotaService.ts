@@ -7,7 +7,7 @@
 // vision → commits (or releases on technical failure).
 // ─────────────────────────────────────────────────────────────
 
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from '../subscriptions/subscriptionConfig'
+import { SUPABASE_URL } from '../subscriptions/subscriptionConfig'
 import { isSupabaseConfigured } from '../supabase/supabaseClient'
 import { getAccessToken } from '../supabase/identity'
 import { isDurableUser, refreshSessionAndCheckDurable } from '../supabase/accountLink'
@@ -17,6 +17,7 @@ import {
   releaseGuestJourney,
   createJourneyId,
 } from './guestJourneyService'
+import { buildAuthedHeaders, SupabaseConfigError } from './supabaseHeaders'
 import type { ScanQuotaErrorCode, ScanQuotaSnapshot } from '../subscriptions/subscriptionTypes'
 
 export class ScanQuotaError extends Error {
@@ -44,18 +45,17 @@ async function authedFetch(name: string, init?: RequestInit): Promise<Response> 
   if (!token) {
     throw new ScanQuotaError('unauthenticated', 'No authenticated user for quota request')
   }
-  if (!SUPABASE_ANON_KEY) {
-    throw new ScanQuotaError('server_error', 'Supabase is not configured')
+  try {
+    return await fetch(functionUrl(name), {
+      ...init,
+      headers: buildAuthedHeaders(token, init?.headers as Record<string, string> | undefined),
+    })
+  } catch (e) {
+    if (e instanceof SupabaseConfigError) {
+      throw new ScanQuotaError('server_error', e.message)
+    }
+    throw e
   }
-  return fetch(functionUrl(name), {
-    ...init,
-    headers: {
-      'Content-Type': 'application/json',
-      apikey: SUPABASE_ANON_KEY,
-      Authorization: `Bearer ${token}`,
-      ...(init?.headers ?? {}),
-    },
-  })
 }
 
 function parseQuota(raw: unknown): ScanQuotaSnapshot | null {

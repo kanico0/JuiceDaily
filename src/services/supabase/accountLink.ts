@@ -23,6 +23,7 @@
 // ─────────────────────────────────────────────────────────────
 
 import { getSupabase } from './supabaseClient'
+import { setAllowAnonFallback } from './identity'
 import { logIn as revenueCatLogIn } from '../subscriptions/revenueCatClient'
 
 // ── Types ────────────────────────────────────────────────────
@@ -54,12 +55,12 @@ export type VerifyResult =
 type IdentityListener = (userId: string) => void
 const identityListeners = new Set<IdentityListener>()
 
-export function addIdentityChangeListener (cb: IdentityListener): () => void {
+export function addIdentityChangeListener(cb: IdentityListener): () => void {
   identityListeners.add(cb)
   return () => identityListeners.delete(cb)
 }
 
-async function notifyIdentityChanged (userId: string): Promise<void> {
+async function notifyIdentityChanged(userId: string): Promise<void> {
   // RevenueCat must always track the canonical Supabase UUID so
   // purchases can never strand under a temporary account.
   await revenueCatLogIn(userId)
@@ -76,17 +77,17 @@ async function notifyIdentityChanged (userId: string): Promise<void> {
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
 
-export function isValidEmail (email: string): boolean {
+export function isValidEmail(email: string): boolean {
   return EMAIL_PATTERN.test(email.trim())
 }
 
-function normalizeEmail (email: string): string {
+function normalizeEmail(email: string): string {
   return email.trim().toLowerCase()
 }
 
 // ── Account status ───────────────────────────────────────────
 
-export async function getAccountStatus (): Promise<AccountStatus> {
+export async function getAccountStatus(): Promise<AccountStatus> {
   const supabase = getSupabase()
   if (!supabase) return { userId: null, email: null, isDurable: false }
   try {
@@ -105,7 +106,7 @@ export async function getAccountStatus (): Promise<AccountStatus> {
   }
 }
 
-export async function isDurableUser (): Promise<boolean> {
+export async function isDurableUser(): Promise<boolean> {
   const status = await getAccountStatus()
   return status.isDurable
 }
@@ -114,9 +115,14 @@ export async function isDurableUser (): Promise<boolean> {
 // refreshed user is permanent. Used when the server rejects a
 // token as anonymous right after an email upgrade (stale access
 // token): refresh once, then the caller may retry exactly once.
-export async function refreshSessionAndCheckDurable (): Promise<boolean> {
+export async function refreshSessionAndCheckDurable(): Promise<boolean> {
   const supabase = getSupabase()
   if (!supabase) return false
+  // Disable anon fallback during refresh — if the session is
+  // temporarily unavailable, we must NOT create a new anonymous
+  // user. The caller (quotaService) already has a durable user
+  // and is retrying with a potentially stale token.
+  setAllowAnonFallback(false)
   try {
     const { data, error } = await supabase.auth.refreshSession()
     if (error || !data.session?.user) return false
@@ -125,12 +131,14 @@ export async function refreshSessionAndCheckDurable (): Promise<boolean> {
     return !isAnonymous && Boolean(user.email)
   } catch {
     return false
+  } finally {
+    setAllowAnonFallback(true)
   }
 }
 
 // ── Error classification ─────────────────────────────────────
 
-function classifyStartError (message: string): LinkStartResult {
+function classifyStartError(message: string): LinkStartResult {
   const msg = message.toLowerCase()
   if (
     msg.includes('already') &&
@@ -147,7 +155,7 @@ function classifyStartError (message: string): LinkStartResult {
   return { status: 'error', message }
 }
 
-function classifyVerifyError (message: string): VerifyResult {
+function classifyVerifyError(message: string): VerifyResult {
   const msg = message.toLowerCase()
   if (msg.includes('expired')) return { status: 'expired' }
   if (msg.includes('invalid') || msg.includes('incorrect') || msg.includes('not found')) {
@@ -160,7 +168,7 @@ function classifyVerifyError (message: string): VerifyResult {
 
 // Step 1: attach an email to the CURRENT anonymous user. Supabase
 // sends a 6-digit OTP to the address. The UUID does not change.
-export async function beginEmailLink (rawEmail: string): Promise<LinkStartResult> {
+export async function beginEmailLink(rawEmail: string): Promise<LinkStartResult> {
   const email = normalizeEmail(rawEmail)
   if (!isValidEmail(email)) return { status: 'invalid_email' }
 
@@ -179,7 +187,7 @@ export async function beginEmailLink (rawEmail: string): Promise<LinkStartResult
 // Step 2: verify the OTP. On success the SAME user (same UUID) is
 // now permanent. RevenueCat login is refreshed with the same UUID
 // (a no-op alias-wise, but guarantees consistency).
-export async function verifyEmailLink (rawEmail: string, token: string): Promise<VerifyResult> {
+export async function verifyEmailLink(rawEmail: string, token: string): Promise<VerifyResult> {
   const email = normalizeEmail(rawEmail)
   const supabase = getSupabase()
   if (!supabase) return { status: 'error', message: 'Service unavailable' }
@@ -193,6 +201,10 @@ export async function verifyEmailLink (rawEmail: string, token: string): Promise
     if (error) return classifyVerifyError(error.message)
     const userId = data.user?.id ?? data.session?.user?.id
     if (!userId) return { status: 'error', message: 'Verification returned no user' }
+    // Disable anon fallback — the user is now durable and should
+    // never silently create a new anonymous session if the session
+    // is temporarily unavailable during the identity transition.
+    setAllowAnonFallback(false)
     await notifyIdentityChanged(userId)
     return { status: 'verified', userId }
   } catch (e) {
@@ -204,7 +216,7 @@ export async function verifyEmailLink (rawEmail: string, token: string): Promise
 
 // Step 1: request an OTP for an EXISTING account. shouldCreateUser
 // is false so a typo can never mint a new user (and a new quota).
-export async function beginSignIn (rawEmail: string): Promise<LinkStartResult> {
+export async function beginSignIn(rawEmail: string): Promise<LinkStartResult> {
   const email = normalizeEmail(rawEmail)
   if (!isValidEmail(email)) return { status: 'invalid_email' }
 
@@ -233,7 +245,7 @@ export async function beginSignIn (rawEmail: string): Promise<LinkStartResult> {
 // Step 2: verify. The session switches to the existing account's
 // ORIGINAL UUID — restoring quota usage and entitlements. RevenueCat
 // is logged in with the canonical UUID and stores are notified.
-export async function verifySignIn (rawEmail: string, token: string): Promise<VerifyResult> {
+export async function verifySignIn(rawEmail: string, token: string): Promise<VerifyResult> {
   const email = normalizeEmail(rawEmail)
   const supabase = getSupabase()
   if (!supabase) return { status: 'error', message: 'Service unavailable' }
@@ -247,6 +259,9 @@ export async function verifySignIn (rawEmail: string, token: string): Promise<Ve
     if (error) return classifyVerifyError(error.message)
     const userId = data.session?.user?.id ?? data.user?.id
     if (!userId) return { status: 'error', message: 'Sign-in returned no user' }
+    // Disable anon fallback — the user is now durable and should
+    // never silently create a new anonymous session.
+    setAllowAnonFallback(false)
     await notifyIdentityChanged(userId)
     return { status: 'verified', userId }
   } catch (e) {
@@ -259,11 +274,13 @@ export async function verifySignIn (rawEmail: string, token: string): Promise<Ve
 // subscription record, history) stays attached to the UUID and is
 // restored on the next sign-in.
 
-export async function signOutAccount (): Promise<boolean> {
+export async function signOutAccount(): Promise<boolean> {
   const supabase = getSupabase()
   if (!supabase) return false
   try {
     const { error } = await supabase.auth.signOut()
+    // Re-enable anon fallback — the next user starts fresh.
+    setAllowAnonFallback(true)
     return !error
   } catch {
     return false

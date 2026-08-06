@@ -1,10 +1,10 @@
 declare module 'react-test-renderer' {
   import React from 'react'
-  export function create (element: React.ReactElement): {
+  export function create(_element: React.ReactElement): {
     unmount: () => void
-    update: (element: React.ReactElement) => void
-    toJSON (): any
-    toTree (): any
+    update: (_element: React.ReactElement) => void
+    toJSON(): any
+    toTree(): any
   }
-  export function act (callback: () => void | Promise<void>): void | Promise<void>
+  export function act(_callback: () => void | Promise<void>): void | Promise<void>
 }

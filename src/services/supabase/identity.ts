@@ -15,7 +15,19 @@ export interface UserIdentity {
 
 let inFlight: Promise<UserIdentity | null> | null = null
 
-async function resolveUser (): Promise<UserIdentity | null> {
+// When false, getAccessToken will NOT fall back to signInAnonymously()
+// if no session is found. This prevents creating a new anonymous
+// session after an account upgrade (e.g., email link verification)
+// when the old session is temporarily unavailable during refresh.
+// Set to false by accountLink.ts before session refresh, and reset
+// to true after refresh completes.
+let allowAnonFallback = true
+
+export function setAllowAnonFallback(allowed: boolean): void {
+  allowAnonFallback = allowed
+}
+
+async function resolveUser(): Promise<UserIdentity | null> {
   const supabase = getSupabase()
   if (!supabase) return null
 
@@ -45,7 +57,7 @@ async function resolveUser (): Promise<UserIdentity | null> {
 
 // Ensure a stable authenticated (anonymous) user. Deduplicates
 // concurrent calls so only one sign-in ever runs at a time.
-export async function ensureUser (): Promise<UserIdentity | null> {
+export async function ensureUser(): Promise<UserIdentity | null> {
   if (!inFlight) {
     inFlight = resolveUser().finally(() => {
       inFlight = null
@@ -55,16 +67,24 @@ export async function ensureUser (): Promise<UserIdentity | null> {
 }
 
 // Fresh access token for authenticated Edge Function calls.
-export async function getAccessToken (): Promise<string | null> {
+// Falls back to ensureUser() (which may create an anonymous session)
+// only when allowAnonFallback is true. After account upgrade,
+// accountLink.ts disables the fallback to prevent creating a stale
+// anonymous session that would send requests with a mismatched token.
+export async function getAccessToken(): Promise<string | null> {
   const supabase = getSupabase()
   if (!supabase) return null
   const { data } = await supabase.auth.getSession()
   if (data.session?.access_token) return data.session.access_token
+  if (!allowAnonFallback) {
+    if (__DEV__) console.warn('[identity] no session and anon fallback disabled')
+    return null
+  }
   const identity = await ensureUser()
   return identity?.accessToken ?? null
 }
 
-export async function getUserId (): Promise<string | null> {
+export async function getUserId(): Promise<string | null> {
   const identity = await ensureUser()
   return identity?.userId ?? null
 }

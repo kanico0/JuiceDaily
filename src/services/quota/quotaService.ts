@@ -46,9 +46,17 @@ async function authedFetch(name: string, init?: RequestInit): Promise<Response> 
     throw new ScanQuotaError('unauthenticated', 'No authenticated user for quota request')
   }
   try {
+    const headers = buildAuthedHeaders(token, init?.headers as Record<string, string> | undefined)
+    // Defensive: ensure apikey is present and non-empty before sending.
+    // If buildAuthedHeaders returned without apikey (should not happen
+    // due to assertValidAnonKey, but guards against any future regression),
+    // throw a clear local error rather than letting Supabase reject it.
+    if (!headers.apikey || headers.apikey.trim() === '') {
+      throw new SupabaseConfigError('Supabase anon key is missing from request headers')
+    }
     return await fetch(functionUrl(name), {
       ...init,
-      headers: buildAuthedHeaders(token, init?.headers as Record<string, string> | undefined),
+      headers,
     })
   } catch (e) {
     if (e instanceof SupabaseConfigError) {

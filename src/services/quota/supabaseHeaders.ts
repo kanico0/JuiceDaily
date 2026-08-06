@@ -15,13 +15,13 @@
 import { SUPABASE_ANON_KEY } from '../subscriptions/subscriptionConfig'
 
 export class SupabaseConfigError extends Error {
-  constructor (message: string) {
+  constructor(message: string) {
     super(message)
     this.name = 'SupabaseConfigError'
   }
 }
 
-function assertValidAnonKey (): string {
+function assertValidAnonKey(): string {
   if (!SUPABASE_ANON_KEY || SUPABASE_ANON_KEY.trim() === '') {
     throw new SupabaseConfigError('Supabase anon key is not configured')
   }
@@ -31,15 +31,20 @@ function assertValidAnonKey (): string {
   return SUPABASE_ANON_KEY
 }
 
-export function buildAuthedHeaders (
+export function buildAuthedHeaders(
   token: string,
   extra?: Record<string, string>,
 ): Record<string, string> {
   const anonKey = assertValidAnonKey()
-  return {
+  const headers: Record<string, string> = {
     'Content-Type': 'application/json',
+    ...extra,
     apikey: anonKey,
     Authorization: `Bearer ${token}`,
-    ...extra,
   }
+  // Defensive: ensure apikey was not overridden by extra to a falsy value
+  if (!headers.apikey || headers.apikey.trim() === '') {
+    headers.apikey = anonKey
+  }
+  return headers
 }

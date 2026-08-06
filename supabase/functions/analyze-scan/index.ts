@@ -15,10 +15,17 @@
 // Secrets (Supabase function secrets, never in the app):
 //   ANTHROPIC_API_KEY  — API key for Anthropic
 //   ANTHROPIC_MODEL    — Model identifier (optional, defaults to claude-sonnet-4-6)
+//   DEVICE_FREE_POOL_MODE (off|observe|enforce)
+//   PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER
+//   PLAY_INTEGRITY_PACKAGE_NAME
+//   PLAY_INTEGRITY_SERVICE_ACCOUNT (JSON)
+//   DEVICE_POOL_IP_HMAC_SECRET
 // ─────────────────────────────────────────────────────────────
 
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { evaluateScanUser, extractBearerToken } from '../_shared/authGate.ts'
+import { verifyPlayIntegrity } from '../_shared/playIntegrityVerifier.ts'
+import { calculateEffectiveFreeRemaining } from '../_shared/deviceRecallBits.ts'
 
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages'
 const MODEL = Deno.env.get('ANTHROPIC_MODEL') || 'claude-sonnet-4-6'
@@ -145,6 +152,8 @@ Deno.serve(async (req) => {
   const imageBase64 = String(body.imageBase64 ?? '')
   const mediaType = String(body.mediaType ?? 'image/jpeg')
   const depthDataMm = Array.isArray(body.depthDataMm) ? (body.depthDataMm as number[]) : null
+  const integrityToken = String(body.integrityToken ?? '')
+  const isMockToken = Boolean(body.integrityTokenIsMock ?? false)
 
   if (!requestId || requestId.length > 100) return json(400, { message: 'Invalid requestId' })
   if (!imageBase64) return json(400, { message: 'Missing image' })
@@ -157,6 +166,15 @@ Deno.serve(async (req) => {
 
   // ── Reserve quota or guest journey ─────────────────────────
   const imageHash = await sha256Hex(imageBase64)
+
+  // Variables shared across the reservation and Anthropic phases
+  let quota: Record<string, unknown> | null = null
+  let supportBonusRemaining = 0
+  const devicePoolMode = Deno.env.get('DEVICE_FREE_POOL_MODE') ?? 'off'
+  let isProUser = false
+  let deviceVerification: Awaited<ReturnType<typeof verifyPlayIntegrity>> | null = null
+  let deviceRecallStateKey: string | null = null
+  let effectiveRemaining: number | null = null
 
   if (isGuest) {
     // Guest scan: reserve the guest journey (one per user).
@@ -196,13 +214,14 @@ Deno.serve(async (req) => {
     const qReserve = quotaReserve as Record<string, unknown>
     if (!qReserve.ok) {
       const code = String(qReserve.code ?? 'monthly_limit_reached')
-      const quota = quotaFromRpc(qReserve.quota)
+      quota = quotaFromRpc(qReserve.quota)
       await admin.rpc('release_guest_journey', {
         p_user_id: userId,
         p_journey_id: guestJourneyId!,
       })
       return json(429, { code, message: 'Scan limit reached', quota })
     }
+    quota = quotaFromRpc(qReserve.quota)
   } else {
     // Durable user: reserve from the monthly quota.
     const { data: reserveData, error: reserveError } = await admin.rpc('reserve_scan', {
@@ -215,12 +234,112 @@ Deno.serve(async (req) => {
       return json(500, { message: 'Quota check failed' })
     }
     const reserve = reserveData as Record<string, unknown>
-    const quota = quotaFromRpc(reserve.quota)
+    quota = quotaFromRpc(reserve.quota)
     if (!reserve.ok) {
-      const code = String(reserve.code ?? 'monthly_limit_reached')
-      return json(429, { code, message: 'Scan limit reached', quota })
+      // Account quota exhausted — try support exception bonus scan
+      const { data: excData } = await admin.rpc('consume_support_exception', {
+        p_user_id: userId,
+      })
+      const exc = excData as Record<string, unknown> | null
+      if (exc?.ok) {
+        // Support exception consumed — re-reserve with the bonus
+        const { data: retryReserveData, error: retryReserveError } = await admin.rpc('reserve_scan', {
+          p_user_id: userId,
+          p_request_id: requestId,
+          p_image_hash: imageHash,
+        })
+        if (retryReserveError) {
+          console.error('[analyze-scan] retry reserve failed:', retryReserveError.message)
+          return json(500, { message: 'Quota check failed' })
+        }
+        const retryReserve = retryReserveData as Record<string, unknown>
+        quota = quotaFromRpc(retryReserve.quota)
+        if (!retryReserve.ok) {
+          return json(429, { code: 'monthly_limit_reached', message: 'Scan limit reached', quota })
+        }
+        supportBonusRemaining = exc.bonus_remaining as number ?? 0
+      } else {
+        const code = String(reserve.code ?? 'monthly_limit_reached')
+        return json(429, { code, message: 'Scan limit reached', quota })
+      }
     }
-  }
+
+    // ── Device pool verification ───────────────────────────────
+    // The device pool applies only to FREE users. Pro users bypass
+    // the device pool entirely — their Pro quota is account-based.
+    isProUser = (quota as Record<string, unknown> | null)?.plan === 'pro'
+
+    if (devicePoolMode !== 'off' && !isProUser && integrityToken) {
+      const expectedRequestHash = [
+        requestId,
+        userId,
+        'analyze_scan',
+        imageHash,
+      ].join('|')
+
+      deviceVerification = await verifyPlayIntegrity({
+        token: integrityToken,
+        expectedPackageName: Deno.env.get('PLAY_INTEGRITY_PACKAGE_NAME') ?? 'com.juicingapp.app',
+        expectedRequestHash,
+        cloudProjectNumber: Deno.env.get('PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER') ?? '',
+        serviceAccountJson: Deno.env.get('PLAY_INTEGRITY_SERVICE_ACCOUNT') ?? '',
+        isMock: isMockToken,
+        enforcementMode: devicePoolMode,
+      })
+
+      deviceRecallStateKey = deviceVerification.deviceRecallStateKey
+
+      // In enforce mode, block if device pool is exhausted or integrity failed
+      if (devicePoolMode === 'enforce') {
+        if (!deviceVerification.ok) {
+          // If a support exception was consumed, allow the scan to proceed.
+          // Support exceptions bypass device pool enforcement but do NOT
+          // reset the device pool, modify Device Recall bits, or grant Pro.
+          if (supportBonusRemaining > 0) {
+            console.log(
+              '[analyze-scan] device pool exhausted but support exception active, allowing scan',
+            )
+          } else {
+            // Release the account reservation before returning
+            await admin.rpc('release_scan', {
+              p_user_id: userId,
+              p_request_id: requestId,
+              p_failure_category: `integrity_${deviceVerification.reasonCode}`,
+            })
+            return json(429, {
+              code: 'device_pool_exhausted',
+              message: 'Free Juice Snaps used for this month on this device',
+              quota: { ...quota, effectiveRemaining: 0 },
+              deviceRemaining: deviceVerification.deviceRemaining,
+            })
+          }
+        } else if (deviceRecallStateKey) {
+          const { error: deviceReserveError } = await admin.rpc(
+            'reserve_device_scan',
+            {
+              p_request_id: requestId,
+              p_user_id: userId,
+              p_device_recall_state_key: deviceRecallStateKey,
+              p_device_used: deviceVerification.deviceUsed,
+              p_enforcement_mode: devicePoolMode,
+              p_integrity_status: deviceVerification.integrityStatus,
+            },
+          )
+          if (deviceReserveError) {
+            console.error('[analyze-scan] device reserve failed:', deviceReserveError.message)
+          }
+        }
+      }
+
+      // Calculate effective remaining for response
+      const accountRemaining = (quota as Record<string, unknown> | null)?.remaining as number ?? 0
+      effectiveRemaining = calculateEffectiveFreeRemaining(
+        accountRemaining,
+        deviceVerification.deviceRemaining,
+      )
+    } else if (isProUser) {
+      effectiveRemaining = (quota as Record<string, unknown> | null)?.remaining as number ?? null
+    }
 
   // ── Call Anthropic ─────────────────────────────────────────
   const KNOWN_IDS = Object.keys(PRODUCE_CATALOG).join(', ')
@@ -283,6 +402,13 @@ Deno.serve(async (req) => {
         p_request_id: requestId,
         p_failure_category: `provider_${anthropicRes.status}`,
       })
+      // Also release device reservation if one was made
+      if (deviceRecallStateKey && devicePoolMode === 'enforce') {
+        await Promise.resolve(admin.rpc('release_device_scan', {
+          p_request_id: requestId,
+          p_failure_reason: `provider_${anthropicRes.status}`,
+        })).catch(() => {})
+      }
       const releasedQuota = quotaFromRpc((releaseData as Record<string, unknown>)?.quota)
       return json(502, { message: 'Vision provider error', quota: releasedQuota })
     }
@@ -327,11 +453,27 @@ Deno.serve(async (req) => {
         p_request_id: requestId,
         p_failure_category: 'no_valid_produce',
       })
+      // Also release device reservation if one was made
+      if (deviceRecallStateKey && devicePoolMode === 'enforce') {
+        await Promise.resolve(admin.rpc('release_device_scan', {
+          p_request_id: requestId,
+          p_failure_reason: 'no_valid_produce',
+        })).catch(() => {})
+      }
       const releasedQuota = quotaFromRpc((releaseData as Record<string, unknown>)?.quota)
       return json(200, { rawText, quota: releasedQuota })
     }
 
     // Usable result → commit the reservation.
+    // Also commit device reservation if one was made.
+    if (deviceRecallStateKey && devicePoolMode === 'enforce') {
+      await Promise.resolve(admin.rpc('commit_device_scan', {
+        p_request_id: requestId,
+      })).catch((e: Error) => {
+        console.error('[analyze-scan] device commit failed:', e?.message)
+      })
+    }
+
     if (isGuest) {
       // Guest scan: commit the scan quota (counts as 1 of 5 free
       // monthly scans) and finalize the guest scan stage.
@@ -356,7 +498,17 @@ Deno.serve(async (req) => {
     if (commitError) console.error('[analyze-scan] commit failed:', commitError.message)
     const committedQuota = quotaFromRpc((commitData as Record<string, unknown>)?.quota) ?? quota
 
-    return json(200, { rawText, quota: committedQuota })
+    // Return effective remaining for free users with device pool
+    const responseQuota = effectiveRemaining != null && !isProUser
+      ? { ...committedQuota, effectiveRemaining }
+      : committedQuota
+
+    const response: Record<string, unknown> = { rawText, quota: responseQuota }
+    if (supportBonusRemaining > 0) {
+      response.supportBonusRemaining = supportBonusRemaining
+    }
+
+    return json(200, response)
   } catch (e) {
     // Timeout / network failure → release, no credit spent.
     if (isGuest) {
@@ -377,6 +529,13 @@ Deno.serve(async (req) => {
       p_request_id: requestId,
       p_failure_category: 'provider_timeout',
     })
+    // Also release device reservation if one was made
+    if (deviceRecallStateKey && devicePoolMode === 'enforce') {
+      await Promise.resolve(admin.rpc('release_device_scan', {
+        p_request_id: requestId,
+        p_failure_reason: 'provider_timeout',
+      })).catch(() => {})
+    }
     const releasedQuota = quotaFromRpc((releaseData as Record<string, unknown>)?.quota)
     console.error('[analyze-scan] provider call failed:', (e as Error)?.message)
     return json(504, { message: 'Vision provider timeout', quota: releasedQuota })

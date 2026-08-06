@@ -48,10 +48,13 @@ export function computeWarningLevel (quota: ScanQuotaSnapshot | null): QuotaWarn
 
 export function QuotaProvider ({ children }: { children: React.ReactNode }) {
   const [quota, setQuota] = useState<ScanQuotaSnapshot | null>(null)
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
 
   const refresh = useCallback(async (): Promise<ScanQuotaSnapshot | null> => {
-    if (!SUPABASE_CONFIGURED) return null
+    if (!SUPABASE_CONFIGURED) {
+      setLoading(false)
+      return null
+    }
     setLoading(true)
     try {
       const snapshot = await fetchScanQuota()

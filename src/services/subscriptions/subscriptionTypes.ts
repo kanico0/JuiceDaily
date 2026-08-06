@@ -83,6 +83,8 @@ export interface ScanQuotaSnapshot {
   periodEnd: string
   dailyLimit: number | null
   dailyUsed: number | null
+  effectiveRemaining?: number | null
+  deviceRemaining?: number | null
 }
 
 export type ScanQuotaErrorCode =

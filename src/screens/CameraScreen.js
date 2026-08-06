@@ -12,7 +12,7 @@ import {
 import { CameraView } from 'expo-camera'
 import { X, Aperture, Keyboard, Eye, Home, AlertCircle, RefreshCw } from 'lucide-react-native'
 import { useCamera } from '../hooks/useCamera'
-import { identifyProduce, isClaudeKeySet } from '../services/ClaudeVisionService'
+import { identifyProduce } from '../services/ClaudeVisionService'
 import { recordMeaningfulActivity } from '../services/DormantReminderService'
 import colors from '../constants/colors'
 
@@ -60,14 +60,6 @@ export default function CameraScreen({
       console.log('[SCAN] photo captured uri:', photo?.uri ? 'present' : 'missing')
       if (!photo) {
         setError('Failed to capture photo')
-        setIsProcessing(false)
-        return
-      }
-
-      if (!isClaudeKeySet()) {
-        console.log('[SCAN] API key not configured')
-        setError('API key not configured — add ANTHROPIC_API_KEY to .env')
-        setIsApiError(true)
         setIsProcessing(false)
         return
       }

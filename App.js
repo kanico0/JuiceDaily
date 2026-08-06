@@ -10,9 +10,6 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack'
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import ModernTabBar from './src/components/ModernTabBar'
-import { ANTHROPIC_API_KEY } from '@env'
-import Constants from 'expo-constants'
-import { setClaudeApiKey } from './src/services/ClaudeVisionService'
 import { ChallengeProvider } from './src/services/ChallengeStore'
 import { ProProvider } from './src/services/ProStore'
 import { SubscriptionProvider } from './src/services/subscriptions/SubscriptionStore'
@@ -62,17 +59,6 @@ import { JuiceLogProvider, useJuiceLog } from './src/services/JuiceLogStore'
 import { refreshNudges } from './src/services/NotificationNudges'
 import { hydrateDevClock } from './src/utils/DevClock'
 import { reconcileDormantReminders } from './src/services/DormantReminderService'
-
-// ── Load Anthropic API key (fallback chain) ──────────────────
-// 1) react-native-dotenv (@env) — reads from .env at build time
-// 2) expo-constants — reads from app.config.js extra at runtime
-const _envKey = ANTHROPIC_API_KEY
-const _constantsKey = Constants.expoConfig?.extra?.ANTHROPIC_API_KEY
-const _resolvedKey = (_envKey && _envKey !== 'undefined') ? _envKey
-  : (_constantsKey && _constantsKey !== '') ? _constantsKey
-  : null
-console.log('[ClaudeKey] present:', !!_resolvedKey, 'len:', _resolvedKey?.length ?? 0, 'source:', _envKey ? '@env' : _constantsKey ? 'constants' : 'MISSING')
-if (_resolvedKey) setClaudeApiKey(_resolvedKey)
 
 const RootStack = createNativeStackNavigator()
 const Tab = createBottomTabNavigator()

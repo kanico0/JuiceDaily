@@ -4,9 +4,6 @@
     "modules": []
   },
   "android": {
-    "modules": ["ExpoPlayIntegrityModule"],
-    "publish": {
-      "imports": ["expo.modules.playintegrity.*"]
-    }
+    "modules": ["expo.modules.playintegrity.ExpoPlayIntegrityModule"]
   }
 }

@@ -37,6 +37,7 @@
     "expo-linking": "~8.0.11",
     "expo-modules-core": "^3.0.29",
     "expo-notifications": "~0.32.16",
+    "expo-play-integrity": "file:./modules/expo-play-integrity",
     "expo-sharing": "~14.0.8",
     "expo-status-bar": "~3.0.9",
     "expo-updates": "~29.0.16",

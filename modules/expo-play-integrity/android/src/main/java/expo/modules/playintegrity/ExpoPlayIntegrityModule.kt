@@ -4,12 +4,13 @@ import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 import expo.modules.kotlin.records.Record
 import expo.modules.kotlin.records.Field
+import com.google.android.play.core.integrity.IntegrityManagerFactory
 import com.google.android.play.core.integrity.StandardIntegrityManager
-import com.google.android.play.core.integrity.StandardIntegrityManagerFactory
-import com.google.android.play.core.integrity.StandardIntegrityTokenProvider
-import com.google.android.play.core.integrity.StandardIntegrityTokenRequest
-import com.google.android.play.core.integrity.StandardIntegrityTokenResponse
-import com.google.android.play.core.integrity.PrepareIntegrityTokenRequest
+import com.google.android.play.core.integrity.StandardIntegrityManager.StandardIntegrityTokenProvider
+import com.google.android.play.core.integrity.StandardIntegrityManager.StandardIntegrityTokenRequest
+import com.google.android.play.core.integrity.StandardIntegrityManager.StandardIntegrityToken
+import com.google.android.play.core.integrity.StandardIntegrityManager.PrepareIntegrityTokenRequest
+import com.google.android.play.core.integrity.model.StandardIntegrityErrorCode
 import com.google.android.gms.tasks.Tasks
 import java.util.concurrent.TimeUnit
 
@@ -33,7 +34,7 @@ class ExpoPlayIntegrityModule : Module() {
     cachedManager?.let { return it }
     val context = appContext.reactContext?.applicationContext
       ?: throw IllegalStateException("PI_NO_CONTEXT: Application context is not available")
-    val manager = StandardIntegrityManagerFactory.create(context, cloudProjectNumber)
+    val manager = IntegrityManagerFactory.createStandard(context)
     cachedManager = manager
     return manager
   }
@@ -52,7 +53,7 @@ class ExpoPlayIntegrityModule : Module() {
           .setCloudProjectNumber(cloudProjectNumber)
           .build()
         val provider = Tasks.await(
-          manager.prepareIntegrityTokenProvider(prepareRequest),
+          manager.prepareIntegrityToken(prepareRequest),
           30,
           TimeUnit.SECONDS,
         )
@@ -71,8 +72,8 @@ class ExpoPlayIntegrityModule : Module() {
     val request = StandardIntegrityTokenRequest.builder()
       .setRequestHash(requestHash)
       .build()
-    val response: StandardIntegrityTokenResponse = Tasks.await(
-      provider.requestToken(request),
+    val response: StandardIntegrityToken = Tasks.await(
+      provider.request(request),
       30,
       TimeUnit.SECONDS,
     )
@@ -101,7 +102,7 @@ class ExpoPlayIntegrityModule : Module() {
       try {
         return@AsyncFunction requestTokenFromProvider(provider, requestHash)
       } catch (e: com.google.android.gms.common.api.ApiException) {
-        if (e.statusCode == StandardIntegrityManager.INTEGRITY_TOKEN_PROVIDER_INVALID) {
+        if (e.statusCode == StandardIntegrityErrorCode.INTEGRITY_TOKEN_PROVIDER_INVALID) {
           cachedProvider = null
           val newProvider = getOrPrepareProvider(cloudProjectNumber)
           return@AsyncFunction requestTokenFromProvider(newProvider, requestHash)
@@ -111,8 +112,12 @@ class ExpoPlayIntegrityModule : Module() {
           com.google.android.gms.common.api.CommonStatusCodes.DEVELOPER_ERROR -> "PI_DEVELOPER_ERROR"
           com.google.android.gms.common.api.CommonStatusCodes.INTERNAL_ERROR -> "PI_INTERNAL_ERROR"
           com.google.android.gms.common.api.CommonStatusCodes.SERVICE_DISABLED -> "PI_SERVICE_DISABLED"
-          com.google.android.gms.common.api.CommonStatusCodes.SERVICE_INVALID -> "PI_SERVICE_INVALID"
-          com.google.android.gms.common.api.CommonStatusCodes.SERVICE_MISSING -> "PI_SERVICE_MISSING"
+          StandardIntegrityErrorCode.API_NOT_AVAILABLE -> "PI_API_NOT_AVAILABLE"
+          StandardIntegrityErrorCode.PLAY_STORE_NOT_FOUND -> "PI_PLAY_STORE_NOT_FOUND"
+          StandardIntegrityErrorCode.PLAY_SERVICES_NOT_FOUND -> "PI_PLAY_SERVICES_NOT_FOUND"
+          StandardIntegrityErrorCode.TOO_MANY_REQUESTS -> "PI_TOO_MANY_REQUESTS"
+          StandardIntegrityErrorCode.CLOUD_PROJECT_NUMBER_IS_INVALID -> "PI_CLOUD_PROJECT_NUMBER_INVALID"
+          StandardIntegrityErrorCode.CLIENT_TRANSIENT_ERROR -> "PI_CLIENT_TRANSIENT_ERROR"
           com.google.android.gms.common.api.CommonStatusCodes.SERVICE_VERSION_UPDATE_REQUIRED -> "PI_PLAY_SERVICES_OUTDATED"
           else -> "PI_API_ERROR_${e.statusCode}"
         }

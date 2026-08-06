@@ -340,6 +340,7 @@ Deno.serve(async (req) => {
     } else if (isProUser) {
       effectiveRemaining = (quota as Record<string, unknown> | null)?.remaining as number ?? null
     }
+  }
 
   // ── Call Anthropic ─────────────────────────────────────────
   const KNOWN_IDS = Object.keys(PRODUCE_CATALOG).join(', ')

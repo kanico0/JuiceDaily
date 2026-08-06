@@ -2043,10 +2043,9 @@ export default function JuiceSnapScreen({ navigation, route }) {
         }}
         onAuthenticated={() => {
           setShowAccountGate(false)
-          if (pendingCameraOpenRef.current) {
-            pendingCameraOpenRef.current = false
-            attemptCameraOpen(false)
-          }
+          pendingCameraOpenRef.current = false
+          setIsPreparingCamera(false)
+          cameraInFlightRef.current = false
         }}
         initialMode={accountGateMode}
       />

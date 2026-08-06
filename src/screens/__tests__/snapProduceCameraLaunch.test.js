@@ -168,11 +168,11 @@ describe('Snap Produce Camera — Error and Permission Handling', () => {
     expect(resumeSection).toContain('pendingCameraOpenRef.current = true')
   })
 
-  test('23. AccountGateModal onAuthenticated resumes camera opening', () => {
+  test('23. AccountGateModal onAuthenticated resets camera state without auto-reopening', () => {
     const gateModalIdx = homeSource.indexOf('onAuthenticated={() => {')
     const gateModalSection = homeSource.substring(gateModalIdx, gateModalIdx + 200)
     expect(gateModalSection).toContain('pendingCameraOpenRef')
-    expect(gateModalSection).toContain('attemptCameraOpen')
+    expect(gateModalSection).not.toContain('attemptCameraOpen')
   })
 
   test('24. No invisible modal blocks the camera', () => {

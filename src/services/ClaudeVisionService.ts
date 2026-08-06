@@ -7,6 +7,7 @@
 // ─────────────────────────────────────────────────────────────
 
 import type { ScannedIngredient } from './JuiceEngine'
+import { PRODUCE_DATA } from './JuiceEngine'
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator'
 import {
   analyzeScanOnServer,
@@ -84,6 +85,20 @@ export async function identifyProduce(
 
 // ── Response Parser ──────────────────────────────────────────
 
+// Build a lowercase name → produceId lookup for fallback matching
+const NAME_TO_ID: Record<string, string> = {}
+for (const [pid, entry] of Object.entries(PRODUCE_DATA)) {
+  NAME_TO_ID[entry.name.toLowerCase()] = pid
+}
+
+function resolveProduceId(rawId: string, name: string): string | null {
+  const id = rawId.toLowerCase().trim()
+  if (id && PRODUCE_DATA[id]) return id
+  const lowerName = name.toLowerCase().trim()
+  if (lowerName && NAME_TO_ID[lowerName]) return NAME_TO_ID[lowerName]
+  return null
+}
+
 function parseVisionResponse(
   rawText: string,
   hasDepthData: boolean,
@@ -115,9 +130,27 @@ function parseVisionResponse(
     items = []
   }
 
+  // Validate each item against the produce catalog. Attempt
+  // produceId match first, then name-based fallback. Items that
+  // cannot be resolved to a catalog entry are dropped so they
+  // never reach the UI or nutrient engine.
+  const validated: IdentifiedProduce[] = []
+  for (const item of items) {
+    const resolvedId = resolveProduceId(item.produceId, item.name)
+    if (resolvedId) {
+      validated.push({
+        ...item,
+        produceId: resolvedId,
+        name: PRODUCE_DATA[resolvedId].name,
+      })
+    } else {
+      console.warn('[SCAN] unmapped produce item dropped:', item.produceId, item.name)
+    }
+  }
+  items = validated
+
   // Convert to ScannedIngredient format for the JuiceEngine
   const scannedIngredients: ScannedIngredient[] = items
-    .filter((item) => item.produceId !== 'unknown')
     .map((item) => ({
       produceId: item.produceId,
       weightG: item.estimatedWeightG,

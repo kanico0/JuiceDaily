@@ -131,10 +131,12 @@ describe('Scan quota server-authoritative architecture', () => {
       'utf-8'
     )
 
-    // commit_scan is called before the return json(200, ...)
+    // commit_scan is called before the successful return json(200, ...)
+    // (skipping the no-valid-produce early return which releases instead)
     const commitIdx = efCode.indexOf("admin.rpc('commit_scan'")
-    const returnIdx = efCode.indexOf('return json(200,')
     expect(commitIdx).toBeGreaterThan(-1)
+    // Find the first return json(200, AFTER commit_scan
+    const returnIdx = efCode.indexOf('return json(200,', commitIdx)
     expect(returnIdx).toBeGreaterThan(commitIdx)
   })
 

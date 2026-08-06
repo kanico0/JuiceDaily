@@ -25,6 +25,36 @@ const MODEL = Deno.env.get('ANTHROPIC_MODEL') || 'claude-sonnet-4-6'
 const PROVIDER_TIMEOUT_MS = 30_000
 const MAX_IMAGE_BASE64_CHARS = 1_500_000 // ~1.1MB binary
 
+// Produce catalog IDs — must match the mobile app's PRODUCE_DATA keys.
+// Used in the Anthropic prompt so the model returns valid catalog IDs
+// instead of inventing placeholders like "prod_001".
+const PRODUCE_CATALOG: Record<string, string> = {
+  kale: 'Kale', spinach: 'Spinach', swiss_chard: 'Swiss Chard',
+  collard_greens: 'Collard Greens', dandelion_greens: 'Dandelion Greens',
+  arugula: 'Arugula', romaine: 'Romaine Lettuce', bok_choy: 'Bok Choy',
+  wheatgrass: 'Wheatgrass', parsley: 'Parsley', cilantro: 'Cilantro',
+  mint: 'Mint', basil: 'Basil', aloe_vera: 'Aloe Vera', watercress: 'Watercress',
+  broccoli: 'Broccoli', cabbage_green: 'Green Cabbage', cabbage_red: 'Red Cabbage',
+  cauliflower: 'Cauliflower', kohlrabi: 'Kohlrabi',
+  carrot: 'Carrot', celery: 'Celery', beet: 'Beet', cucumber: 'Cucumber',
+  fennel: 'Fennel', sweet_potato: 'Sweet Potato', turnip: 'Turnip',
+  celeriac: 'Celeriac', jicama: 'Jicama', zucchini: 'Zucchini',
+  asparagus: 'Asparagus', radish: 'Radish', ginger: 'Ginger', turmeric: 'Turmeric',
+  garlic: 'Garlic',
+  bell_pepper_red: 'Red Bell Pepper', bell_pepper_yellow: 'Yellow Bell Pepper',
+  bell_pepper_green: 'Green Bell Pepper', jalapeño: 'Jalapeño', cayenne: 'Cayenne Pepper',
+  tomato: 'Tomato',
+  apple: 'Green Apple', apple_green: 'Green Apple', apple_red: 'Red Apple',
+  lemon: 'Lemon', lime: 'Lime', orange: 'Orange', grapefruit: 'Grapefruit',
+  pineapple: 'Pineapple', watermelon: 'Watermelon', pomegranate: 'Pomegranate',
+  mango: 'Mango', papaya: 'Papaya', kiwi: 'Kiwi', pear: 'Pear',
+  grape: 'Red Grape', strawberry: 'Strawberry', blueberry: 'Blueberry',
+  raspberry: 'Raspberry', blackberry: 'Blackberry', cranberry: 'Cranberry',
+  cherry: 'Tart Cherry', cantaloupe: 'Cantaloupe', honeydew: 'Honeydew Melon',
+  coconut_water: 'Coconut Water', passion_fruit: 'Passion Fruit',
+  peach: 'Peach', plum: 'Plum', nectarine: 'Nectarine',
+}
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, content-type',
@@ -193,9 +223,11 @@ Deno.serve(async (req) => {
   }
 
   // ── Call Anthropic ─────────────────────────────────────────
+  const KNOWN_IDS = Object.keys(PRODUCE_CATALOG).join(', ')
+
   const systemPrompt = depthDataMm && depthDataMm.length > 0
-    ? 'You are a produce identification expert for a cold-pressed juicing app. Use the LiDAR depth data (mm) for volumetric weight estimation. Return ONLY a valid JSON array of {"produceId","name","count","estimatedWeightG","confidence"}.'
-    : 'You are a produce identification expert. Return ONLY a valid JSON array, no markdown. For each produce item: {"produceId":"<id>","name":"<name>","count":<n>,"estimatedWeightG":<g>,"confidence":<0-1>}'
+    ? `You are a produce identification expert for a cold-pressed juicing app. Use the LiDAR depth data (mm) for volumetric weight estimation. Return ONLY a valid JSON array of {"produceId","name","count","estimatedWeightG","confidence"}. Use one of these produceId values: ${KNOWN_IDS}. If you cannot identify the produce with confidence, omit it.`
+    : `You are a produce identification expert. Return ONLY a valid JSON array, no markdown. For each produce item: {"produceId":"<id>","name":"<name>","count":<n>,"estimatedWeightG":<g>,"confidence":<0-1>}. Use one of these produceId values: ${KNOWN_IDS}. If you cannot identify the produce with confidence, omit it.`
 
   const userText = depthDataMm && depthDataMm.length > 0
     ? `Identify all produce in this image. LiDAR depth data (mm): [${depthDataMm.join(',')}]`
@@ -257,6 +289,47 @@ Deno.serve(async (req) => {
 
     const data = await anthropicRes.json()
     const rawText: string = data.content?.[0]?.text ?? '[]'
+
+    // Validate that the provider response contains at least one
+    // produce item that maps to a known catalog ID. This prevents
+    // finalizing a guest scan with unusable placeholder results
+    // (e.g. "prod_001") that have no display name or nutrients.
+    let hasValidItem = false
+    try {
+      const cleaned = rawText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+      const parsed = JSON.parse(cleaned)
+      if (Array.isArray(parsed)) {
+        hasValidItem = parsed.some((it: Record<string, unknown>) => {
+          const id = String(it.produceId ?? '').toLowerCase().trim()
+          return id && id in PRODUCE_CATALOG
+        })
+      }
+    } catch {
+      // Non-JSON response — treat as no valid items
+    }
+
+    if (!hasValidItem) {
+      // No valid produce identified — release, no credit spent.
+      if (isGuest) {
+        await admin.rpc('release_guest_scan', {
+          p_user_id: userId,
+          p_request_id: requestId,
+          p_failure_category: 'no_valid_produce',
+        })
+        await admin.rpc('release_guest_journey', {
+          p_user_id: userId,
+          p_journey_id: guestJourneyId!,
+        })
+        return json(200, { rawText, quota: null, isGuest: true })
+      }
+      const { data: releaseData } = await admin.rpc('release_scan', {
+        p_user_id: userId,
+        p_request_id: requestId,
+        p_failure_category: 'no_valid_produce',
+      })
+      const releasedQuota = quotaFromRpc((releaseData as Record<string, unknown>)?.quota)
+      return json(200, { rawText, quota: releasedQuota })
+    }
 
     // Usable result → commit the reservation.
     if (isGuest) {

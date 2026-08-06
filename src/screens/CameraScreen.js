@@ -130,8 +130,13 @@ export default function CameraScreen({
     )
   }
 
-  // Camera mount error or timeout
-  if (cameraState.phase === 'error' && cameraState.mountError) {
+  // Camera mount error or timeout.
+  // Suppress the camera error card while analysis is in progress
+  // — a stale initialization timer could fire after capture has
+  // already started. The timer fix in useCamera prevents this, but
+  // this guard ensures analysis is never interrupted by a stale
+  // camera error display.
+  if (cameraState.phase === 'error' && cameraState.mountError && !isProcessing) {
     return (
       <View style={styles.container}>
         <View style={styles.permissionCard}>

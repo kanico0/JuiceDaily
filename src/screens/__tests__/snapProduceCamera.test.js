@@ -262,7 +262,9 @@ describe('Snap Produce: QuotaStore refresh behavior', () => {
   })
 
   test('36. refreshQuota returns early if SUPABASE_CONFIGURED is false', () => {
-    expect(quotaStoreSource).toContain('if (!SUPABASE_CONFIGURED) return null')
+    expect(quotaStoreSource).toContain('if (!SUPABASE_CONFIGURED)')
+    expect(quotaStoreSource).toContain('setLoading(false)')
+    expect(quotaStoreSource).toContain('return null')
   })
 
   test('36a. refreshQuota returns the fetched snapshot on success', () => {

@@ -114,4 +114,36 @@ describe('Advanced History Scrollable Details', () => {
     const scrollSection = HISTORY_SRC.substring(scrollIdx, scrollIdx + 300)
     expect(scrollSection).toContain('nestedScrollEnabled')
   })
+
+  // 14. Long-content regression: Make Again button is inside the ScrollView
+  test('14. Make Again button is inside the ScrollView (reachable with long content)', () => {
+    const scrollIdx = HISTORY_SRC.indexOf('<ScrollView')
+    const scrollEndIdx = HISTORY_SRC.indexOf('</ScrollView>', scrollIdx)
+    const makeAgainIdx = HISTORY_SRC.indexOf('MakeAgainButton', scrollIdx)
+    expect(makeAgainIdx).toBeGreaterThan(scrollIdx)
+    expect(makeAgainIdx).toBeLessThan(scrollEndIdx)
+  })
+
+  // 15. Long-content regression: Delete button is inside the ScrollView
+  test('15. Delete button is inside the ScrollView (reachable with long content)', () => {
+    const scrollIdx = HISTORY_SRC.indexOf('<ScrollView')
+    const scrollEndIdx = HISTORY_SRC.indexOf('</ScrollView>', scrollIdx)
+    const deleteIdx = HISTORY_SRC.indexOf('Delete Entry', scrollIdx)
+    expect(deleteIdx).toBeGreaterThan(scrollIdx)
+    expect(deleteIdx).toBeLessThan(scrollEndIdx)
+  })
+
+  // 16. Long-content regression: ScrollView has showsVerticalScrollIndicator
+  test('16. ScrollView has showsVerticalScrollIndicator set to false (clean UX)', () => {
+    const scrollIdx = HISTORY_SRC.indexOf('<ScrollView')
+    const scrollSection = HISTORY_SRC.substring(scrollIdx, scrollIdx + 400)
+    expect(scrollSection).toContain('showsVerticalScrollIndicator')
+  })
+
+  // 17. Long-content regression: Card has overflow hidden so ScrollView clips properly
+  test('17. Card style has overflow hidden for proper scroll clipping', () => {
+    const cardIdx = HISTORY_SRC.indexOf('card:')
+    const cardSection = HISTORY_SRC.substring(cardIdx, cardIdx + 300)
+    expect(cardSection).toContain('overflow')
+  })
 })

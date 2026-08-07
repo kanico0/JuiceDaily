@@ -305,3 +305,51 @@ describe('Advanced History Preview — source audit: policy correctness', () => 
     expect(HISTORY_SRC).not.toMatch(/AsyncStorage|saveState.*preview/)
   })
 })
+
+// ── Regression: Make Again rendering conditions ──────────────
+
+describe('Advanced History Preview — Make Again rendering regression', () => {
+  test('63. MakeAgainButton is gated only by policy.canMakeAgain', () => {
+    expect(HISTORY_SRC).toMatch(/policy\.canMakeAgain\s*&&\s*[\s\S]*MakeAgainButton/)
+  })
+
+  test('64. MakeAgainButton is NOT gated by any additional condition', () => {
+    const match = HISTORY_SRC.match(/policy\.canMakeAgain\s*&&\s*\([^)]*\)\s*.*MakeAgainButton/)
+    expect(match).toBeNull()
+  })
+
+  test('65. Locked entries show LockedAdvancedCard (not MakeAgainButton)', () => {
+    expect(HISTORY_SRC).toMatch(/shouldShowAdvancedUpgrade\s*&&\s*[\s\S]*LockedAdvancedCard/)
+  })
+
+  test('66. Free preview canMakeAgain=true in policy (newest entry)', () => {
+    const previewMatch = POLICY_SRC.match(/if\s*\(isAdvancedPreview\)[\s\S]*?canMakeAgain:\s*(true|false)/)
+    expect(previewMatch).toBeTruthy()
+    expect(previewMatch[1]).toBe('true')
+  })
+
+  test('67. Free locked canMakeAgain=false in policy (older entries)', () => {
+    const lockedMatch = POLICY_SRC.match(/return\s*\{[\s\S]*?canMakeAgain:\s*false[\s\S]*?shouldShowAdvancedUpgrade:\s*true/)
+    expect(lockedMatch).toBeTruthy()
+  })
+
+  test('68. Pro canMakeAgain=true and is unaffected by preview flag', () => {
+    const proMatch = POLICY_SRC.match(/isPro[\s\S]*?canMakeAgain:\s*true/)
+    expect(proMatch).toBeTruthy()
+    const proWithPreview = POLICY_SRC.match(/if\s*\(isPro\)[\s\S]*?return\s*\{[\s\S]*?canMakeAgain:\s*true/)
+    expect(proWithPreview).toBeTruthy()
+  })
+
+  test('69. EntryDetailsModal uses getHistoryAccessPolicy for rendering decisions', () => {
+    expect(HISTORY_SRC).toMatch(/const policy = getHistoryAccessPolicy/)
+  })
+
+  test('70. No rendering path shows MakeAgainButton for locked free entries', () => {
+    // shouldShowAdvancedUpgrade renders LockedAdvancedCard, not MakeAgainButton
+    const lockedIdx = HISTORY_SRC.indexOf('shouldShowAdvancedUpgrade && (')
+    const lockedEnd = HISTORY_SRC.indexOf(')}', lockedIdx)
+    const lockedSection = HISTORY_SRC.substring(lockedIdx, lockedEnd + 2)
+    expect(lockedSection).toContain('LockedAdvancedCard')
+    expect(lockedSection).not.toContain('MakeAgainButton')
+  })
+})

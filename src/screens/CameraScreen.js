@@ -12,7 +12,7 @@ import {
 import { CameraView } from 'expo-camera'
 import { X, Aperture, Keyboard, Eye, Home, AlertCircle, RefreshCw } from 'lucide-react-native'
 import { useCamera } from '../hooks/useCamera'
-import { identifyProduce } from '../services/ClaudeVisionService'
+import { identifyProduce, ImageProcessingError } from '../services/ClaudeVisionService'
 import { recordMeaningfulActivity } from '../services/DormantReminderService'
 import colors from '../constants/colors'
 
@@ -65,7 +65,7 @@ export default function CameraScreen({
       }
 
       console.log('[SCAN] starting analysis')
-      const result = await identifyProduce(photo.base64, 'image/jpeg', null)
+      const result = await identifyProduce(photo.uri, 'image/jpeg', null, photo.width, photo.height)
 
       if (result.scannedIngredients.length === 0) {
         console.log('[SCAN] no produce identified')
@@ -83,6 +83,13 @@ export default function CameraScreen({
         console.log('[SCAN] account required before first funded scan')
         setIsProcessing(false)
         if (onAccountRequired) onAccountRequired()
+        return
+      }
+      // Image preprocessing failures are processing errors, not camera errors.
+      if (err && err.name === 'ImageProcessingError') {
+        console.log('[SCAN] image processing error:', err.message)
+        setError(err.message)
+        setIsApiError(true)
         return
       }
       const message = err instanceof Error ? err.message : 'Something went wrong'

@@ -16,9 +16,23 @@
 //   9. A true second scan requires a free account.
 // ─────────────────────────────────────────────────────────────
 
+import { analyzeScanOnServer } from '../quota/quotaService'
+import { identifyProduce } from '../ClaudeVisionService'
+import { PRODUCE_DATA, processJuiceBatch } from '../JuiceEngine'
+
 jest.mock('../quota/quotaService', () => ({
   analyzeScanOnServer: jest.fn(),
   isServerScanAvailable: () => true,
+}))
+
+jest.mock('expo-image-manipulator', () => ({
+  manipulateAsync: jest.fn().mockResolvedValue({
+    base64: 'preprocessed-base64',
+    uri: 'file://mock',
+    width: 1024,
+    height: 768,
+  }),
+  SaveFormat: { JPEG: 'jpeg' },
 }))
 
 jest.mock('../subscriptions/subscriptionConfig', () => ({
@@ -27,11 +41,9 @@ jest.mock('../subscriptions/subscriptionConfig', () => ({
   SUPABASE_ANON_KEY: 'test-anon-key',
 }))
 
-import { analyzeScanOnServer } from '../quota/quotaService'
-import { identifyProduce } from '../ClaudeVisionService'
-import { PRODUCE_DATA, processJuiceBatch } from '../JuiceEngine'
-
-const mockedAnalyzeScanOnServer = analyzeScanOnServer as jest.MockedFunction<typeof analyzeScanOnServer>
+const mockedAnalyzeScanOnServer = analyzeScanOnServer as jest.MockedFunction<
+  typeof analyzeScanOnServer
+>
 
 describe('Scan result normalization', () => {
   beforeEach(() => {
@@ -57,7 +69,13 @@ describe('Scan result normalization', () => {
   test('2. prod_001 is never rendered as the user-facing name', async () => {
     mockedAnalyzeScanOnServer.mockResolvedValue({
       rawText: JSON.stringify([
-        { produceId: 'prod_001', name: 'Unknown Produce', count: 1, estimatedWeightG: 50, confidence: 0.5 },
+        {
+          produceId: 'prod_001',
+          name: 'Unknown Produce',
+          count: 1,
+          estimatedWeightG: 50,
+          confidence: 0.5,
+        },
       ]),
       quota: null,
     })
@@ -92,8 +110,20 @@ describe('Scan result normalization', () => {
   test('4. Unknown IDs fail safely with empty scannedIngredients', async () => {
     mockedAnalyzeScanOnServer.mockResolvedValue({
       rawText: JSON.stringify([
-        { produceId: 'prod_001', name: 'Mystery Fruit', count: 1, estimatedWeightG: 80, confidence: 0.3 },
-        { produceId: 'prod_002', name: 'Unknown Veg', count: 1, estimatedWeightG: 50, confidence: 0.4 },
+        {
+          produceId: 'prod_001',
+          name: 'Mystery Fruit',
+          count: 1,
+          estimatedWeightG: 80,
+          confidence: 0.3,
+        },
+        {
+          produceId: 'prod_002',
+          name: 'Unknown Veg',
+          count: 1,
+          estimatedWeightG: 50,
+          confidence: 0.4,
+        },
       ]),
       quota: null,
     })
@@ -106,7 +136,13 @@ describe('Scan result normalization', () => {
   test('5. Unknown IDs result in no nutrient computation', async () => {
     mockedAnalyzeScanOnServer.mockResolvedValue({
       rawText: JSON.stringify([
-        { produceId: 'prod_001', name: 'Mystery', count: 1, estimatedWeightG: 100, confidence: 0.5 },
+        {
+          produceId: 'prod_001',
+          name: 'Mystery',
+          count: 1,
+          estimatedWeightG: 100,
+          confidence: 0.5,
+        },
       ]),
       quota: null,
     })
@@ -120,7 +156,13 @@ describe('Scan result normalization', () => {
   test('6. Name-based fallback matching resolves to catalog ID', async () => {
     mockedAnalyzeScanOnServer.mockResolvedValue({
       rawText: JSON.stringify([
-        { produceId: 'some_random_id', name: 'Spinach', count: 1, estimatedWeightG: 50, confidence: 0.8 },
+        {
+          produceId: 'some_random_id',
+          name: 'Spinach',
+          count: 1,
+          estimatedWeightG: 50,
+          confidence: 0.8,
+        },
       ]),
       quota: null,
     })

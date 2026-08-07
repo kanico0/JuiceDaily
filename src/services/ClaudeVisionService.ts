@@ -9,11 +9,14 @@
 import type { ScannedIngredient } from './JuiceEngine'
 import { PRODUCE_DATA } from './JuiceEngine'
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator'
-import {
-  analyzeScanOnServer,
-  isServerScanAvailable,
-} from './quota/quotaService'
+import { analyzeScanOnServer, isServerScanAvailable } from './quota/quotaService'
 import type { ScanQuotaSnapshot } from './subscriptions/subscriptionTypes'
+
+const MAX_IMAGE_BASE64_CHARS = 1_400_000
+const TARGET_LONG_EDGE = 1024
+const TARGET_QUALITY = 0.7
+const RETRY_LONG_EDGE = 768
+const RETRY_QUALITY = 0.5
 
 // ── Types ────────────────────────────────────────────────────
 
@@ -22,7 +25,7 @@ export interface IdentifiedProduce {
   name: string
   count: number
   estimatedWeightG: number
-  confidence: number   // 0–1
+  confidence: number // 0–1
 }
 
 export interface VisionResult {
@@ -40,41 +43,108 @@ function createRequestId(): string {
 }
 
 // ── Image Pre-processing ────────────────────────────────────
-// Resize to 768px long edge at 70% JPEG quality to reduce
-// payload size and API latency
+// Resize and compress the captured image before base64 encoding
+// to ensure the final payload stays below the server's
+// MAX_IMAGE_BASE64_CHARS limit (1.5M chars ≈ 1.1MB binary).
+// We target 1.4M chars as a safety margin.
 
-export async function preprocessImage(
+export class ImageProcessingError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'ImageProcessingError'
+  }
+}
+
+interface PreprocessResult {
+  base64: string
+  width: number
+  height: number
+}
+
+async function resizeAndCompress(
   imageUri: string,
-): Promise<{ base64: string; width: number; height: number }> {
-  const result = await manipulateAsync(
-    imageUri,
-    [{ resize: { width: 768 } }],
-    { compress: 0.7, format: SaveFormat.JPEG, base64: true }
-  )
+  longEdge: number,
+  quality: number,
+): Promise<PreprocessResult> {
+  const result = await manipulateAsync(imageUri, [{ resize: { width: longEdge } }], {
+    compress: quality,
+    format: SaveFormat.JPEG,
+    base64: true,
+  })
+  const base64 = result.base64 || ''
+  if (!base64) {
+    throw new ImageProcessingError('Image preprocessing returned no data')
+  }
   return {
-    base64: result.base64 || '',
+    base64,
     width: result.width,
     height: result.height,
   }
 }
 
+export async function preprocessImage(
+  imageUri: string,
+  originalWidth?: number,
+  originalHeight?: number,
+): Promise<PreprocessResult> {
+  const origW = originalWidth ?? 0
+  const origH = originalHeight ?? 0
+  const origDims = origW > 0 && origH > 0 ? `${origW}x${origH}` : 'unknown'
+
+  let attempt = 1
+  let longEdge = TARGET_LONG_EDGE
+  let quality = TARGET_QUALITY
+
+  let result = await resizeAndCompress(imageUri, longEdge, quality)
+
+  console.debug(
+    `[image-preprocess] attempt=${attempt} origDims=${origDims} ` +
+      `resizedDims=${result.width}x${result.height} ` +
+      `base64Len=${result.base64.length}`,
+  )
+
+  if (result.base64.length > MAX_IMAGE_BASE64_CHARS) {
+    attempt = 2
+    longEdge = RETRY_LONG_EDGE
+    quality = RETRY_QUALITY
+
+    result = await resizeAndCompress(imageUri, longEdge, quality)
+
+    console.debug(
+      `[image-preprocess] attempt=${attempt} origDims=${origDims} ` +
+        `resizedDims=${result.width}x${result.height} ` +
+        `base64Len=${result.base64.length}`,
+    )
+  }
+
+  if (result.base64.length > MAX_IMAGE_BASE64_CHARS) {
+    throw new ImageProcessingError(
+      'Unable to reduce image size within acceptable limits. Please try again with different lighting.',
+    )
+  }
+
+  return result
+}
+
 // ── API Call ─────────────────────────────────────────────────
 
 export async function identifyProduce(
-  imageBase64: string,
+  imageUri: string,
   mediaType: string = 'image/jpeg',
   depthDataMm: number[] | null = null,
+  originalWidth?: number,
+  originalHeight?: number,
 ): Promise<VisionResult> {
   const hasDepth = depthDataMm !== null && depthDataMm.length > 0
 
   if (!isServerScanAvailable()) {
-    throw new Error(
-      'Scan service is not configured. Please check your connection and try again.'
-    )
+    throw new Error('Scan service is not configured. Please check your connection and try again.')
   }
 
+  const { base64 } = await preprocessImage(imageUri, originalWidth, originalHeight)
+
   const { rawText, quota } = await analyzeScanOnServer(
-    imageBase64,
+    base64,
     mediaType,
     createRequestId(),
     depthDataMm,
@@ -99,10 +169,7 @@ function resolveProduceId(rawId: string, name: string): string | null {
   return null
 }
 
-function parseVisionResponse(
-  rawText: string,
-  hasDepthData: boolean,
-): VisionResult {
+function parseVisionResponse(rawText: string, hasDepthData: boolean): VisionResult {
   let items: IdentifiedProduce[] = []
 
   try {
@@ -150,11 +217,10 @@ function parseVisionResponse(
   items = validated
 
   // Convert to ScannedIngredient format for the JuiceEngine
-  const scannedIngredients: ScannedIngredient[] = items
-    .map((item) => ({
-      produceId: item.produceId,
-      weightG: item.estimatedWeightG,
-    }))
+  const scannedIngredients: ScannedIngredient[] = items.map((item) => ({
+    produceId: item.produceId,
+    weightG: item.estimatedWeightG,
+  }))
 
   return {
     items,

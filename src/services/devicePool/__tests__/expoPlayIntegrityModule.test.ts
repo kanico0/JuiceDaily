@@ -195,7 +195,8 @@ describe('native promise handling', () => {
       ),
       'utf-8',
     )
-    expect(source).toContain('return@AsyncFunction requestTokenFromProvider')
+    expect(source).toContain('requestTokenFromProvider(provider, requestHash)')
+    expect(source).toContain('return@AsyncFunction token')
   })
 
   it('Kotlin source handles empty token failure', () => {

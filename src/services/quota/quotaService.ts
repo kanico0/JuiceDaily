@@ -22,6 +22,8 @@ import type { ScanQuotaErrorCode, ScanQuotaSnapshot } from '../subscriptions/sub
 import { getDevicePromotionProvider } from '../devicePool/devicePromotionProviderFactory'
 import { isDevicePoolEnabled } from '../devicePool/devicePoolConfig'
 import type { AttestationRequestContext } from '../devicePool/devicePromotionProvider'
+import { integrityLog } from '../devicePool/integrityLog'
+import type { IntegrityReasonCode } from '../devicePool/integrityLog'
 
 export class ScanQuotaError extends Error {
   code: ScanQuotaErrorCode
@@ -41,15 +43,29 @@ export class ScanQuotaError extends Error {
 // provider is supported. The token is sent to the server for
 // verification — the client never interprets Device Recall.
 
-async function getDeviceAttestation (
+async function getDeviceAttestation(
   requestId: string,
   userId: string,
   imageHash: string,
-): Promise<{ token: string, isMock: boolean } | null> {
-  if (!isDevicePoolEnabled()) return null
+): Promise<{ token: string; isMock: boolean } | null> {
+  if (!isDevicePoolEnabled()) {
+    integrityLog('pool_mode_resolved', requestId, true, undefined, { mode: 'off' })
+    return null
+  }
+
+  integrityLog('pool_mode_resolved', requestId, true, undefined, { mode: 'observe' })
 
   const provider = getDevicePromotionProvider()
-  if (!provider.isSupported()) return null
+  integrityLog('provider_selected', requestId, true, undefined, {
+    provider: provider.getProviderName(),
+  })
+
+  integrityLog('provider_support', requestId, true, undefined, { checking: true })
+  if (!provider.isSupported()) {
+    integrityLog('provider_support', requestId, false, 'provider_unsupported')
+    return null
+  }
+  integrityLog('provider_support', requestId, true, 'success')
 
   const ctx: AttestationRequestContext = {
     challenge: requestId,
@@ -58,10 +74,30 @@ async function getDeviceAttestation (
     requestPayloadDigest: imageHash,
   }
 
+  integrityLog('attestation_start', requestId, true)
+  integrityLog('native_call_start', requestId, true)
+
   try {
     const result = await provider.getAttestationForScan(ctx)
+    if (!result.token) {
+      integrityLog('native_token_blank', requestId, false, 'blank_token')
+      return null
+    }
+    integrityLog('native_token_received', requestId, true, 'success', { tokenPresent: true })
     return { token: result.token, isMock: result.isMock }
-  } catch {
+  } catch (e) {
+    const msg = (e as Error)?.message ?? ''
+    let reason: IntegrityReasonCode = 'unexpected_error'
+    if (msg.includes('not available') || msg.includes('native')) {
+      reason = 'native_module_unavailable'
+    } else if (msg.includes('cloud project number') || msg.includes('cloud_project')) {
+      reason = 'cloud_project_number_missing'
+    } else if (msg.includes('prepare') || msg.includes('PI_') || msg.includes('PREPARATION')) {
+      reason = 'prepare_failed'
+    } else if (msg.includes('token') || msg.includes('request')) {
+      reason = 'token_request_failed'
+    }
+    integrityLog('native_error', requestId, false, reason)
     return null
   }
 }
@@ -169,9 +205,11 @@ async function performServerScan(
   if (res.status === 429) {
     const rawCode = String(body.code ?? 'monthly_limit_reached')
     const code: ScanQuotaErrorCode =
-      rawCode === 'daily_limit_reached' ? 'daily_limit_reached'
-      : rawCode === 'device_pool_exhausted' ? 'monthly_limit_reached'
-      : 'monthly_limit_reached'
+      rawCode === 'daily_limit_reached'
+        ? 'daily_limit_reached'
+        : rawCode === 'device_pool_exhausted'
+          ? 'monthly_limit_reached'
+          : 'monthly_limit_reached'
     throw new ScanQuotaError(code, body.message ?? 'Scan limit reached', quota)
   }
   if (res.status === 401) {
@@ -211,6 +249,7 @@ export async function analyzeScanOnServer(
   // may perform exactly one scan. The guest journey is reserved on
   // the server via the guest-journey Edge Function before the scan.
   const durable = await isDurableUser()
+  integrityLog('durable_check', requestId, true, undefined, { durable })
 
   if (!durable) {
     // Check if the guest has already used their complimentary scan.
@@ -264,7 +303,15 @@ export async function analyzeScanOnServer(
     }
 
     try {
-      return await performServerScan(imageBase64, mediaType, requestId, depthDataMm, journeyId, undefined, undefined)
+      return await performServerScan(
+        imageBase64,
+        mediaType,
+        requestId,
+        depthDataMm,
+        journeyId,
+        undefined,
+        undefined,
+      )
     } catch (e) {
       // If the scan failed, release the guest journey so the user
       // can try again.
@@ -296,13 +343,38 @@ export async function analyzeScanOnServer(
         if (attestation) {
           integrityToken = attestation.token
           integrityTokenIsMock = attestation.isMock
+          integrityLog('attestation_attached', requestId, true, 'success', { tokenPresent: true })
+        } else {
+          integrityLog('attestation_attached', requestId, false, 'unexpected_error', {
+            tokenPresent: false,
+          })
         }
+      } else {
+        integrityLog('attestation_attached', requestId, false, 'no_user_id', {
+          tokenPresent: false,
+        })
       }
+    } else {
+      integrityLog('attestation_attached', requestId, false, 'no_access_token', {
+        tokenPresent: false,
+      })
     }
   }
 
+  integrityLog('scan_request_sent', requestId, true, undefined, {
+    integrityTokenPresent: Boolean(integrityToken),
+  })
+
   try {
-    return await performServerScan(imageBase64, mediaType, requestId, depthDataMm, undefined, integrityToken, integrityTokenIsMock)
+    return await performServerScan(
+      imageBase64,
+      mediaType,
+      requestId,
+      depthDataMm,
+      undefined,
+      integrityToken,
+      integrityTokenIsMock,
+    )
   } catch (e) {
     // Stale-token recovery: right after an email upgrade the client
     // may still hold the pre-upgrade anonymous access token. Refresh
@@ -312,7 +384,15 @@ export async function analyzeScanOnServer(
     if (e instanceof ScanQuotaError && e.code === 'account_required') {
       const nowDurable = await refreshSessionAndCheckDurable()
       if (nowDurable) {
-        return await performServerScan(imageBase64, mediaType, requestId, depthDataMm, undefined, integrityToken, integrityTokenIsMock)
+        return await performServerScan(
+          imageBase64,
+          mediaType,
+          requestId,
+          depthDataMm,
+          undefined,
+          integrityToken,
+          integrityTokenIsMock,
+        )
       }
     }
     throw e
@@ -321,23 +401,25 @@ export async function analyzeScanOnServer(
 
 // ── Helpers for device pool attestation ──────────────────────
 
-async function sha256Hex (text: string): Promise<string> {
+async function sha256Hex(text: string): Promise<string> {
   try {
     const data = new TextEncoder().encode(text.slice(0, 4096))
     const digest = await crypto.subtle.digest('SHA-256', data)
-    return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, '0')).join('')
+    return Array.from(new Uint8Array(digest))
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('')
   } catch {
     // Fallback: simple hash for environments without crypto.subtle
     let hash = 0
     for (let i = 0; i < text.length; i++) {
-      hash = ((hash << 5) - hash) + text.charCodeAt(i)
+      hash = (hash << 5) - hash + text.charCodeAt(i)
       hash |= 0
     }
     return `fallback_${Math.abs(hash).toString(16)}`
   }
 }
 
-function extractUserIdFromToken (token: string): string | null {
+function extractUserIdFromToken(token: string): string | null {
   try {
     const payload = token.split('.')[1]
     if (!payload) return null

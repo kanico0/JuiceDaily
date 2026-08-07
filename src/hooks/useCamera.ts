@@ -26,7 +26,7 @@ export interface CapturedPhoto {
   height: number
 }
 
-const CAMERA_READY_TIMEOUT_MS = 10000
+const CAMERA_READY_TIMEOUT_MS = 15000
 
 // ── Hook ─────────────────────────────────────────────────────
 
@@ -85,7 +85,7 @@ export function useCamera() {
         // Only fire if still in mounting phase — if the camera
         // became ready or capture started, the timer should have
         // been cleared already. This is a defensive check.
-        if (prev.phase === 'camera_mounting') {
+        if (prev.phase === 'camera_mounting' && !prev.isCapturing) {
           return {
             ...prev,
             isReady: false,

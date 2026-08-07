@@ -5,28 +5,26 @@
 const fs = require('fs')
 const path = require('path')
 
-const NOTIF_SRC = fs.readFileSync(
-  path.join(__dirname, '..', 'NotificationService.js'),
-  'utf8',
-)
+const NOTIF_SRC = fs.readFileSync(path.join(__dirname, '..', 'NotificationService.js'), 'utf8')
 
-const NUDGE_SRC = fs.readFileSync(
-  path.join(__dirname, '..', 'NotificationNudges.js'),
-  'utf8',
-)
+const NUDGE_SRC = fs.readFileSync(path.join(__dirname, '..', 'NotificationNudges.js'), 'utf8')
 
 describe('Notification intensity scheduling — defect regression', () => {
   // ── Defect 1: reconcileNotificationSchedule must cancel wilt-warning ──
 
   describe('reconcileNotificationSchedule cancels wilt-warning on intensity change', () => {
     test('1. reconcileNotificationSchedule includes wilt-warning in cancel list', () => {
-      const reconcileStart = NOTIF_SRC.indexOf('export async function reconcileNotificationSchedule')
+      const reconcileStart = NOTIF_SRC.indexOf(
+        'export async function reconcileNotificationSchedule',
+      )
       const reconcileSection = NOTIF_SRC.substring(reconcileStart, reconcileStart + 800)
       expect(reconcileSection).toContain("safeCancel('wilt-warning')")
     })
 
     test('2. wilt-warning cancel is in the enabled-reschedule block (not just disabled block)', () => {
-      const reconcileStart = NOTIF_SRC.indexOf('export async function reconcileNotificationSchedule')
+      const reconcileStart = NOTIF_SRC.indexOf(
+        'export async function reconcileNotificationSchedule',
+      )
       const reconcileSection = NOTIF_SRC.substring(reconcileStart)
 
       // Find the block after the enabled check that reschedules
@@ -41,13 +39,17 @@ describe('Notification intensity scheduling — defect regression', () => {
 
   describe('reconcileNotificationSchedule calls refreshNudges', () => {
     test('3. reconcileNotificationSchedule calls refreshNudges', () => {
-      const reconcileStart = NOTIF_SRC.indexOf('export async function reconcileNotificationSchedule')
+      const reconcileStart = NOTIF_SRC.indexOf(
+        'export async function reconcileNotificationSchedule',
+      )
       const reconcileSection = NOTIF_SRC.substring(reconcileStart, reconcileStart + 1000)
       expect(reconcileSection).toMatch(/refreshNudges/)
     })
 
     test('4. refreshNudges call is wrapped in try/catch for safety', () => {
-      const reconcileStart = NOTIF_SRC.indexOf('export async function reconcileNotificationSchedule')
+      const reconcileStart = NOTIF_SRC.indexOf(
+        'export async function reconcileNotificationSchedule',
+      )
       const reconcileSection = NOTIF_SRC.substring(reconcileStart)
       const refreshIdx = reconcileSection.indexOf('refreshNudges')
       const surroundingCode = reconcileSection.substring(refreshIdx - 80, refreshIdx + 120)

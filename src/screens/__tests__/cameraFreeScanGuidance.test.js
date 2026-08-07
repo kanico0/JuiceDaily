@@ -5,10 +5,7 @@
 const fs = require('fs')
 const path = require('path')
 
-const SOURCE = fs.readFileSync(
-  path.join(__dirname, '..', 'CameraScreen.js'),
-  'utf8',
-)
+const SOURCE = fs.readFileSync(path.join(__dirname, '..', 'CameraScreen.js'), 'utf8')
 
 describe('Item 10: Camera free-scan guidance', () => {
   test('1. guest first-scan notice mentions free scan with no account needed', () => {

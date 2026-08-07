@@ -1,3 +1,5 @@
+import { getAdvancedBlendModalContent } from '../../components/AdvancedBlendModal'
+
 jest.mock('@react-native-async-storage/async-storage', () => ({
   getItem: jest.fn(),
   setItem: jest.fn(),
@@ -14,8 +16,6 @@ jest.mock('../../services/supabase/supabaseClient', () => ({
 jest.mock('../../services/supabase/identity', () => ({
   getAccessToken: jest.fn(),
 }))
-
-import { getAdvancedBlendModalContent } from '../../components/AdvancedBlendModal'
 
 describe('getAdvancedBlendModalContent', () => {
   describe('fifth_ingredient_notice stage', () => {
@@ -134,10 +134,7 @@ describe('getAdvancedBlendModalContent', () => {
 describe('AdvancedBlendModal — completion premature dismissal regression', () => {
   const fs = require('fs')
   const path = require('path')
-  const SOURCE = fs.readFileSync(
-    path.join(__dirname, '..', 'AdvancedBlendModal.js'),
-    'utf8',
-  )
+  const SOURCE = fs.readFileSync(path.join(__dirname, '..', 'AdvancedBlendModal.js'), 'utf8')
 
   test('1. allowBackdropDismiss flag exists and is gated by isCompletion', () => {
     expect(SOURCE).toMatch(/allowBackdropDismiss\s*=\s*!isCompletion/)
@@ -174,7 +171,10 @@ describe('AdvancedBlendModal — completion premature dismissal regression', () 
 describe('HomeScreen — resetLoggedOnFocus does not dismiss completion_confirmation', () => {
   const fs = require('fs')
   const path = require('path')
-  const HOME_SRC = fs.readFileSync(path.join(__dirname, '..', '..', 'screens', 'HomeScreen.js'), 'utf8')
+  const HOME_SRC = fs.readFileSync(
+    path.join(__dirname, '..', '..', 'screens', 'HomeScreen.js'),
+    'utf8',
+  )
 
   test('1. resetLoggedOnFocus guards setShowAdvancedBlendModal with completion_confirmation check', () => {
     const focusMatch = HOME_SRC.match(/const resetLoggedOnFocus = \(\) => \{([\s\S]*?)\n    \}/)

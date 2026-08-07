@@ -354,8 +354,20 @@ function EntryDetailsModal({
 
   return (
     <Modal visible={visible} transparent animationType="fade">
-      <Pressable style={ms.overlay} onPress={onClose}>
-        <Pressable style={ms.card} onPress={(e) => e.stopPropagation()}>
+      <View
+        style={[
+          ms.overlay,
+          {
+            paddingTop: insets.top + SPACE.xl,
+            paddingBottom: insets.bottom + SPACE.xl,
+          },
+        ]}
+      >
+        {/* Backdrop — separate Pressable behind the card for outside-tap dismissal */}
+        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+
+        {/* Card — regular View, no Pressable wrapper, no overflow:hidden */}
+        <View style={ms.card}>
           <View style={ms.cardHeader}>
             <Text style={ms.cardTitle}>Entry Details</Text>
             <Pressable
@@ -474,8 +486,8 @@ function EntryDetailsModal({
               <Text style={ms.deleteBtnText}>Delete Entry</Text>
             </Pressable>
           </ScrollView>
-        </Pressable>
-      </Pressable>
+        </View>
+      </View>
     </Modal>
   )
 }
@@ -852,7 +864,6 @@ const ms = StyleSheet.create({
     width: '100%',
     maxHeight: '90%',
     flex: 1,
-    overflow: 'hidden',
   },
   cardHeader: {
     flexDirection: 'row',
@@ -863,6 +874,8 @@ const ms = StyleSheet.create({
     paddingBottom: SPACE.md,
     borderBottomWidth: 0.5,
     borderBottomColor: 'rgba(255,255,255,0.06)',
+    borderTopLeftRadius: RADIUS.xl,
+    borderTopRightRadius: RADIUS.xl,
   },
   cardTitle: {
     fontSize: FONT_SIZE.lg,

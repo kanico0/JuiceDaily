@@ -140,10 +140,11 @@ describe('Advanced History Scrollable Details', () => {
     expect(scrollSection).toContain('showsVerticalScrollIndicator')
   })
 
-  // 17. Long-content regression: Card has overflow hidden so ScrollView clips properly
-  test('17. Card style has overflow hidden for proper scroll clipping', () => {
+  // 17. Long-content regression: Card does NOT use overflow:hidden
+  // (overflow:hidden interferes with ScrollView on Android Fabric)
+  test('17. Card style does not use overflow hidden (Fabric scroll fix)', () => {
     const cardIdx = HISTORY_SRC.indexOf('card:')
     const cardSection = HISTORY_SRC.substring(cardIdx, cardIdx + 300)
-    expect(cardSection).toContain('overflow')
+    expect(cardSection).not.toContain("overflow: 'hidden'")
   })
 })

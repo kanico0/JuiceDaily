@@ -160,12 +160,15 @@ export async function fetchScanQuota(): Promise<ScanQuotaSnapshot | null> {
   if (!isServerScanAvailable()) return null
   try {
     const res = await authedFetch('scan-quota', { method: 'GET' })
-    if (!res.ok) return null
+    if (!res.ok) {
+      console.debug(`[quota] fetchScanQuota status=${res.status}`)
+      return null
+    }
     const body = await res.json()
     return parseQuota(body.quota ?? body)
   } catch (e) {
     if (e instanceof ScanQuotaError) throw e
-    if (__DEV__) console.warn('[quota] fetchScanQuota failed:', (e as Error)?.message)
+    console.debug(`[quota] fetchScanQuota error=${(e as Error)?.name ?? 'unknown'}`)
     return null
   }
 }

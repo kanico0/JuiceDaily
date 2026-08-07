@@ -1520,6 +1520,19 @@ function BrowseHome({ onScan, onBrowse, onExample, onExplore, onViewToday, onWel
         <LiquidNutrientOrb isReduced={isReduced} />
       </View>
 
+      {/* Glow Journey progress indicator */}
+      {glowJourney && (
+        <GlowJourneyDrop
+          streakCount={glowJourney.glowStreak.count}
+          entries={glowJourney.entries}
+          lifetimeDays={glowJourney.lifetimeQualifyingDays}
+          weeklyQualifyingDays={glowJourney.weeklyQualifyingDays}
+          weeklyLeafStates={glowJourney.weeklyLeafStates}
+          onPress={glowJourney.handleGlowJourneyPress}
+          isReduced={isReduced}
+        />
+      )}
+
       <Text style={obStyles.heroHeadline}>Welcome to Juicing</Text>
       <Text style={obStyles.heroSub}>
         {isReturning ? 'Here\'s your day at a glance.' : 'Explore at your own pace. Scan when you\'re ready.'}
@@ -1947,19 +1960,6 @@ function BrowseHome({ onScan, onBrowse, onExample, onExplore, onViewToday, onWel
           </Pressable>
         )}
       </View>
-
-      {/* Glow Journey progress indicator */}
-      {glowJourney && (
-        <GlowJourneyDrop
-          streakCount={glowJourney.glowStreak.count}
-          entries={glowJourney.entries}
-          lifetimeDays={glowJourney.lifetimeQualifyingDays}
-          weeklyQualifyingDays={glowJourney.weeklyQualifyingDays}
-          weeklyLeafStates={glowJourney.weeklyLeafStates}
-          onPress={glowJourney.handleGlowJourneyPress}
-          isReduced={isReduced}
-        />
-      )}
 
       <Text style={obStyles.reassurance}>{isReturning ? 'Your daily journey continues.' : 'Ready when you are.'}</Text>
 

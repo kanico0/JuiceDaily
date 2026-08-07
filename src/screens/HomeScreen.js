@@ -1605,10 +1605,14 @@ export default function JuiceSnapScreen({ navigation, route }) {
               source: logSource,
             })
 
-            // Show completion confirmation
+            // Show completion confirmation — pause here so the user
+            // can read the result before we navigate away.
+            // The log + navigation will resume when the user dismisses
+            // the completion modal (see onDismiss handler).
             setAdvancedBlendStage('completion_confirmation')
             setAdvancedBlendRemaining(remaining)
             setShowAdvancedBlendModal(true)
+            return
           }
         } catch (err) {
           if (err instanceof BlendAllowanceError && err.code === 'advanced_blend_limit_reached') {
@@ -2081,7 +2085,16 @@ export default function JuiceSnapScreen({ navigation, route }) {
           })
           navigation.navigate('Paywall', { source: 'advanced_blend' })
         }}
-        onDismiss={() => setShowAdvancedBlendModal(false)}
+        onDismiss={() => {
+          setShowAdvancedBlendModal(false)
+          // When the user dismisses the completion confirmation,
+          // resume the logging + navigation flow. The analysis result
+          // is cached in analysisCompletedRef/analysisResultRef so the
+          // retry will skip the blend check and proceed to log.
+          if (advancedBlendStage === 'completion_confirmation') {
+            executeLogToChallenge()
+          }
+        }}
         onConfirm={handleAdvancedBlendConfirm}
         onRetry={async () => {
           setShowAdvancedBlendModal(false)

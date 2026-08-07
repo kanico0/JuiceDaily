@@ -94,6 +94,7 @@ export default function AdvancedBlendModal ({
   const showConfirmButton = isPreConfirm
   const showUpgradeButton = isExhausted
   const showRetryButton = isNetworkRetry
+  const allowBackdropDismiss = !isCompletion
 
   return (
     <Modal
@@ -107,7 +108,7 @@ export default function AdvancedBlendModal ({
         <View style={styles.overlay}>
           <Pressable
             style={styles.backdrop}
-            onPress={onDismiss}
+            onPress={allowBackdropDismiss ? onDismiss : undefined}
             accessibilityLabel="Dismiss Advanced Blend message"
           />
           <View style={styles.card} accessibilityViewIsModal accessibilityRole="alert">
@@ -123,15 +124,17 @@ export default function AdvancedBlendModal ({
                   <Sparkles size={22} color="#B8F2C7" />
                 )}
               </View>
-              <Pressable
-                style={styles.closeButton}
-                onPress={onDismiss}
-                hitSlop={8}
-                accessibilityRole="button"
-                accessibilityLabel="Close Advanced Blend message"
-              >
-                <X size={20} color="#B8C8BD" />
-              </Pressable>
+              {allowBackdropDismiss && (
+                <Pressable
+                  style={styles.closeButton}
+                  onPress={onDismiss}
+                  hitSlop={8}
+                  accessibilityRole="button"
+                  accessibilityLabel="Close Advanced Blend message"
+                >
+                  <X size={20} color="#B8C8BD" />
+                </Pressable>
+              )}
             </View>
             <ScrollView
               bounces={false}

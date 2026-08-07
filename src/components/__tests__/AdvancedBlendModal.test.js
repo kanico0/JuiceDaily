@@ -128,3 +128,43 @@ describe('getAdvancedBlendModalContent', () => {
     })
   })
 })
+
+// ── Regression: Premature dismissal of completion message ──────
+
+describe('AdvancedBlendModal — completion premature dismissal regression', () => {
+  const fs = require('fs')
+  const path = require('path')
+  const SOURCE = fs.readFileSync(
+    path.join(__dirname, '..', 'AdvancedBlendModal.js'),
+    'utf8',
+  )
+
+  test('1. allowBackdropDismiss flag exists and is gated by isCompletion', () => {
+    expect(SOURCE).toMatch(/allowBackdropDismiss\s*=\s*!isCompletion/)
+  })
+
+  test('2. backdrop onPress is undefined when allowBackdropDismiss is false', () => {
+    expect(SOURCE).toMatch(/onPress=\{allowBackdropDismiss\s*\?\s*onDismiss\s*:\s*undefined\}/)
+  })
+
+  test('3. close button is conditionally rendered with allowBackdropDismiss', () => {
+    expect(SOURCE).toMatch(/\{allowBackdropDismiss\s*&&\s*\(/)
+  })
+
+  test('4. completion stage still renders an OK button for explicit dismissal', () => {
+    const completionSection = SOURCE.substring(
+      SOURCE.indexOf('!showConfirmButton && !showRetryButton && !showUpgradeButton'),
+    )
+    expect(completionSection).toContain('OK')
+    expect(completionSection).toContain('onDismiss')
+  })
+
+  test('5. isCompletion flag is derived from completion_confirmation stage', () => {
+    expect(SOURCE).toMatch(/isCompletion\s*=\s*stage\s*===\s*['"]completion_confirmation['"]/)
+  })
+
+  test('6. non-completion stages still allow backdrop dismissal', () => {
+    const backdropIdx = SOURCE.indexOf('allowBackdropDismiss ? onDismiss : undefined')
+    expect(backdropIdx).toBeGreaterThan(-1)
+  })
+})

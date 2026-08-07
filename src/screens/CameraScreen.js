@@ -204,8 +204,8 @@ export default function CameraScreen({
         {guestFirstScan && !isProcessing && !error && (
           <View style={styles.firstScanNotice}>
             <Text style={styles.firstScanNoticeText}>
-              Your first produce scan is free — no account needed.{'\n'}
-              Create a free account for your next scan.
+              Your first scan is free — no account needed.{'\n'}
+              Point at produce, tap the button, and we'll identify it instantly.
             </Text>
           </View>
         )}
@@ -219,6 +219,9 @@ export default function CameraScreen({
             <View style={[styles.corner, styles.cornerBR]} />
           </View>
           <Text style={styles.guideText}>Place produce within the frame</Text>
+          <Text style={styles.guideHint}>
+            Tap the button below to scan — we'll identify your produce and estimate nutrition.
+          </Text>
         </View>
 
         {/* API error fallback panel — full choices so user is never stuck */}
@@ -390,6 +393,14 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
     marginTop: 16,
+  },
+  guideHint: {
+    color: 'rgba(255,255,255,0.45)',
+    fontSize: 12,
+    fontWeight: '400',
+    marginTop: 6,
+    textAlign: 'center',
+    paddingHorizontal: 24,
   },
   firstScanNotice: {
     marginHorizontal: 20,

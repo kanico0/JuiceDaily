@@ -16,21 +16,18 @@ import { SUPABASE_ANON_KEY, SUPABASE_URL } from '../subscriptions/subscriptionCo
 
 let client: SupabaseClient | null = null
 let appStateHooked = false
-let fetchInterceptorInstalled = false
 
-function installFetchInterceptor(): void {
-  if (fetchInterceptorInstalled) return
-  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return
-  fetchInterceptorInstalled = true
+export function createSupabaseFetch(): typeof globalThis.fetch {
+  const anonKey = SUPABASE_ANON_KEY!
+  const supabaseOrigin = SUPABASE_URL!.replace(/\/$/, '')
 
-  const supabaseOrigin = SUPABASE_URL.replace(/\/$/, '')
-
-  const originalFetch = globalThis.fetch
-
-  globalThis.fetch = function patchedFetch(
+  return async function supabaseFetch(
     input: RequestInfo | URL,
     init?: RequestInit,
   ): Promise<Response> {
+    let resolvedInput: RequestInfo =
+      typeof input === 'string' ? input : input instanceof URL ? input.toString() : input
+
     try {
       const url =
         typeof input === 'string'
@@ -39,17 +36,17 @@ function installFetchInterceptor(): void {
             ? input.toString()
             : (input as Request).url
 
-      if (url && url.startsWith(supabaseOrigin)) {
+      if (url && (url === supabaseOrigin || url.startsWith(supabaseOrigin + '/'))) {
         const headers = new Headers(init?.headers)
         if (!headers.has('apikey') || !headers.get('apikey')) {
-          headers.set('apikey', SUPABASE_ANON_KEY!)
+          headers.set('apikey', anonKey)
         }
         init = { ...init, headers }
       }
     } catch {
       // If URL parsing fails, proceed with original request
     }
-    return originalFetch.call(globalThis, input, init)
+    return globalThis.fetch.call(globalThis, resolvedInput, init)
   }
 }
 
@@ -61,14 +58,15 @@ export function getSupabase(): SupabaseClient | null {
   if (client) return client
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return null
 
-  installFetchInterceptor()
-
   client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     auth: {
       storage: AsyncStorage,
       autoRefreshToken: true,
       persistSession: true,
       detectSessionInUrl: false,
+    },
+    global: {
+      fetch: createSupabaseFetch(),
     },
   })
 

@@ -1,4 +1,4 @@
-import { getSupabase } from '../supabase/supabaseClient'
+import { createSupabaseFetch, getSupabase } from '../supabase/supabaseClient'
 
 jest.mock('react-native-url-polyfill/auto', () => ({}))
 
@@ -35,9 +35,10 @@ jest.mock('../subscriptions/subscriptionConfig', () => ({
   PRIVACY_URL: null,
 }))
 
-describe('Supabase fetch interceptor — apikey enforcement', () => {
+describe('Supabase client-scoped fetch — apikey enforcement', () => {
   let originalFetch: typeof globalThis.fetch
   let mockFetch: jest.Mock
+  let scopedFetch: typeof globalThis.fetch
 
   beforeAll(() => {
     originalFetch = globalThis.fetch
@@ -49,6 +50,7 @@ describe('Supabase fetch interceptor — apikey enforcement', () => {
       } as Response),
     )
     globalThis.fetch = mockFetch
+    scopedFetch = createSupabaseFetch()
     getSupabase()
   })
 
@@ -61,7 +63,7 @@ describe('Supabase fetch interceptor — apikey enforcement', () => {
   })
 
   it('16. every production Supabase direct fetch includes apikey', async () => {
-    await globalThis.fetch('https://test-project.supabase.co/auth/v1/token', {
+    await scopedFetch('https://test-project.supabase.co/auth/v1/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
     })
@@ -73,7 +75,7 @@ describe('Supabase fetch interceptor — apikey enforcement', () => {
   })
 
   it('17. background startup request includes apikey', async () => {
-    await globalThis.fetch('https://test-project.supabase.co/auth/v1/session', {
+    await scopedFetch('https://test-project.supabase.co/auth/v1/session', {
       headers: {},
     })
 
@@ -84,7 +86,7 @@ describe('Supabase fetch interceptor — apikey enforcement', () => {
   })
 
   it('20. caller extras cannot remove or blank apikey', async () => {
-    await globalThis.fetch('https://test-project.supabase.co/functions/v1/analyze-scan', {
+    await scopedFetch('https://test-project.supabase.co/functions/v1/analyze-scan', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -100,7 +102,7 @@ describe('Supabase fetch interceptor — apikey enforcement', () => {
 
   it('21. retries preserve required headers', async () => {
     for (let i = 0; i < 3; i++) {
-      await globalThis.fetch('https://test-project.supabase.co/auth/v1/token', {
+      await scopedFetch('https://test-project.supabase.co/auth/v1/token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
       })
@@ -142,7 +144,7 @@ describe('Supabase fetch interceptor — apikey enforcement', () => {
   })
 
   it('does not intercept non-Supabase requests', async () => {
-    await globalThis.fetch('https://api.revenuecat.com/v1/subscribers', {
+    await scopedFetch('https://api.revenuecat.com/v1/subscribers', {
       headers: { Authorization: 'Bearer xyz' },
     })
 
@@ -153,18 +155,91 @@ describe('Supabase fetch interceptor — apikey enforcement', () => {
   })
 
   it('25. the exact previously failing request is covered by regression test', async () => {
-    await globalThis.fetch(
-      'https://test-project.supabase.co/auth/v1/token?grant_type=refresh_token',
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refresh_token: 'mock' }),
-      },
-    )
+    await scopedFetch('https://test-project.supabase.co/auth/v1/token?grant_type=refresh_token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh_token: 'mock' }),
+    })
 
     const call = mockFetch.mock.calls[0]
     const init = call[1] as RequestInit
     const headers = new Headers(init.headers)
     expect(headers.get('apikey')).toBe('test-anon-key-1234')
+  })
+
+  it('26. globalThis.fetch is not replaced by client initialization', () => {
+    expect(globalThis.fetch).toBe(mockFetch)
+  })
+
+  it('27. lookalike Supabase hostname is not intercepted', async () => {
+    await scopedFetch('https://test-project.supabase.co.evil.com/auth/v1/token', {
+      headers: {},
+    })
+
+    const call = mockFetch.mock.calls[0]
+    const init = call[1] as RequestInit
+    const headers = new Headers(init.headers)
+    expect(headers.get('apikey')).toBeNull()
+  })
+
+  it('28. URL object input is handled correctly', async () => {
+    const url = new URL('https://test-project.supabase.co/auth/v1/session')
+    await scopedFetch(url, { headers: {} })
+
+    const call = mockFetch.mock.calls[0]
+    const init = call[1] as RequestInit
+    const headers = new Headers(init.headers)
+    expect(headers.get('apikey')).toBe('test-anon-key-1234')
+  })
+
+  it('29. valid existing apikey is preserved', async () => {
+    await scopedFetch('https://test-project.supabase.co/auth/v1/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: 'caller-provided-key',
+      },
+    })
+
+    const call = mockFetch.mock.calls[0]
+    const init = call[1] as RequestInit
+    const headers = new Headers(init.headers)
+    expect(headers.get('apikey')).toBe('caller-provided-key')
+  })
+
+  it('30. Authorization header is preserved', async () => {
+    await scopedFetch('https://test-project.supabase.co/auth/v1/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer my-jwt-token',
+      },
+    })
+
+    const call = mockFetch.mock.calls[0]
+    const init = call[1] as RequestInit
+    const headers = new Headers(init.headers)
+    expect(headers.get('Authorization')).toBe('Bearer my-jwt-token')
+    expect(headers.get('apikey')).toBe('test-anon-key-1234')
+  })
+
+  it('31. request body and method are preserved', async () => {
+    const body = JSON.stringify({ refresh_token: 'abc123' })
+    await scopedFetch('https://test-project.supabase.co/auth/v1/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body,
+    })
+
+    const call = mockFetch.mock.calls[0]
+    const init = call[1] as RequestInit
+    expect(init.method).toBe('POST')
+    expect(init.body).toBe(body)
+  })
+
+  it('32. multiple getSupabase calls return the same singleton', () => {
+    const c1 = getSupabase()
+    const c2 = getSupabase()
+    expect(c1).toBe(c2)
   })
 })

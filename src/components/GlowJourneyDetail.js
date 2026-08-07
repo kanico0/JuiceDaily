@@ -62,6 +62,16 @@ function GlowJourneyDetail({
               />
             </View>
 
+            {/* How it works guidance */}
+            <View style={styles.guidanceBanner}>
+              <Text style={styles.guidanceTitle}>Your Glow Journey</Text>
+              <Text style={styles.guidanceBody}>
+                Each day you juice, your Glow Drop grows brighter. Build streaks by
+                juicing on consecutive days, hit your weekly goal of {WEEKLY_GLOW_GOAL} days,
+                and progress through lifetime stages — from First Drop to Radiant.
+              </Text>
+            </View>
+
             {/* Streak */}
             <DetailRow
               label="Glow Streak"
@@ -209,6 +219,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: SEMANTIC_SPACE.md,
     marginBottom: SEMANTIC_SPACE.sm,
+  },
+  guidanceBanner: {
+    backgroundColor: SEMANTIC_COLORS.surface,
+    borderRadius: SEMANTIC_RADIUS.large,
+    paddingHorizontal: SEMANTIC_SPACE.md,
+    paddingVertical: SEMANTIC_SPACE.md,
+    marginBottom: SEMANTIC_SPACE.md,
+  },
+  guidanceTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: SEMANTIC_COLORS.textPrimary,
+    marginBottom: 4,
+  },
+  guidanceBody: {
+    fontSize: 13,
+    color: SEMANTIC_COLORS.textSecondary,
+    lineHeight: 19,
   },
   detailRow: {
     flexDirection: 'row',

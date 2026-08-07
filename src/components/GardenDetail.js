@@ -112,6 +112,16 @@ function GardenDetail({
             />
           </View>
 
+          {/* How it works guidance */}
+          <View style={styles.guidanceBanner}>
+            <Text style={styles.guidanceTitle}>How your garden grows</Text>
+            <Text style={styles.guidanceBody}>
+              Every time you scan or log a juice, the produce you use is planted here.
+              Discover new ingredients to grow new areas, unlock colors, and complete
+              your Rainbow Harvest. Tap any area below to see what you've grown.
+            </Text>
+          </View>
+
           {/* Stats summary */}
           <View style={styles.statsRow}>
             <View style={styles.statItem}>
@@ -300,6 +310,23 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: SEMANTIC_SPACE.lg,
     paddingBottom: SEMANTIC_SPACE.xxxl,
+  },
+  guidanceBanner: {
+    backgroundColor: SEMANTIC_COLORS.surface,
+    borderRadius: SEMANTIC_RADIUS.large,
+    paddingHorizontal: SEMANTIC_SPACE.md,
+    paddingVertical: SEMANTIC_SPACE.md,
+    marginBottom: SEMANTIC_SPACE.md,
+  },
+  guidanceTitle: {
+    ...SEMANTIC_TYPOGRAPHY.bodyStrong,
+    color: SEMANTIC_COLORS.textPrimary,
+    marginBottom: 4,
+  },
+  guidanceBody: {
+    ...SEMANTIC_TYPOGRAPHY.body,
+    color: SEMANTIC_COLORS.textSecondary,
+    lineHeight: 20,
   },
   artworkContainer: {
     alignItems: 'center',

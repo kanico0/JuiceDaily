@@ -45,6 +45,7 @@ import MeshGradientBg from '../components/MeshGradientBg'
 import {
   loadNotificationSettings,
   saveNotificationSettings,
+  reconcileNotificationSchedule,
 } from '../services/NotificationService'
 import { setComebackRemindersEnabled } from '../services/DormantReminderService'
 import { useFlags, DEFAULT_FLAGS } from '../services/FeatureFlags'
@@ -665,6 +666,12 @@ export default function SettingsScreen({ navigation }) {
       saveNotificationSettings(updated)
       return updated
     })
+    // When intensity changes, immediately reconcile notification schedule
+    // and refresh nudges so the new cap takes effect without a restart.
+    if (key === 'intensity') {
+      reconcileNotificationSchedule().catch(() => {})
+      refreshNudges().catch(() => {})
+    }
   }, [])
 
   const handleComebackReminderToggle = useCallback((enabled) => {

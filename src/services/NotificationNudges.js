@@ -17,6 +17,12 @@ import { Platform } from 'react-native'
 import { getGlowState } from './glowStreak'
 import { getDevNow } from '../utils/DevClock'
 import { getNudgeSettings } from './NudgeSettingsStore'
+import {
+  loadNotificationSettings,
+  canSendNotification,
+  isTimeInQuietHours,
+  incrementSentToday,
+} from './NotificationService'
 
 // ── Notification IDs ─────────────────────────────────────────
 
@@ -79,6 +85,26 @@ async function safeSchedule({ id, title, body, data, triggerDate }) {
   if (!available) return false
   try {
     await safeCancel(id)
+
+    // Respect NotificationService intensity caps and quiet hours
+    const notifSettings = await loadNotificationSettings()
+    if (!notifSettings.enabled) return false
+
+    // For near-future nudges, check the daily cap right now
+    const isNearFuture = !triggerDate || (triggerDate - Date.now() < 60000)
+    if (isNearFuture) {
+      const allowed = await canSendNotification(notifSettings)
+      if (!allowed) return false
+    }
+
+    // Check if the scheduled trigger time falls in quiet hours
+    if (triggerDate && !isTimeInQuietHours(triggerDate.getHours(), triggerDate.getMinutes(), notifSettings)) {
+      // not in quiet hours — OK to schedule
+    } else if (triggerDate) {
+      // trigger falls in quiet hours — skip scheduling
+      return false
+    }
+
     const content = {
       title,
       body,
@@ -93,6 +119,7 @@ async function safeSchedule({ id, title, body, data, triggerDate }) {
       trigger: triggerDate ? { date: triggerDate } : null,
       identifier: id,
     })
+    if (isNearFuture) await incrementSentToday()
     return true
   } catch {
     return false

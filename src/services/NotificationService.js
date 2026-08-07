@@ -66,7 +66,7 @@ const DEFAULT_SETTINGS = {
   typicalJuiceMinute: 30,
 }
 
-const INTENSITY_CAPS = {
+export const INTENSITY_CAPS = {
   zen: 1,
   balanced: 3,
   'high-vibe': 5,
@@ -198,14 +198,14 @@ async function getSentToday() {
   } catch (e) { return 0 }
 }
 
-async function incrementSentToday() {
+export async function incrementSentToday() {
   try {
     const count = await getSentToday()
     await AsyncStorage.setItem(KEYS.SENT_TODAY, String(count + 1))
   } catch (e) { /* ignore */ }
 }
 
-async function canSendNotification(settings, isEmergency = false) {
+export async function canSendNotification(settings, isEmergency = false) {
   if (!settings.enabled) return false
 
   // Frequency cap
@@ -235,7 +235,7 @@ async function canSendNotification(settings, isEmergency = false) {
 
 // ── Check if a scheduled time is in quiet hours ──────────────
 
-function isTimeInQuietHours(hour, minute, settings) {
+export function isTimeInQuietHours(hour, minute, settings) {
   const targetMin = hour * 60 + minute
   const quietStartMin = settings.quietStart.hour * 60 + settings.quietStart.minute
   const quietEndMin = settings.quietEnd.hour * 60 + settings.quietEnd.minute
@@ -685,6 +685,43 @@ export async function scheduleMercyAlert(streak, freezerPasses) {
 
 export async function cancelMercyAlert() {
   await safeCancel('streak-shield')
+}
+
+// ── Reconcile / Reschedule on intensity change ──────────────
+
+export async function reconcileNotificationSchedule() {
+  const settings = await loadNotificationSettings()
+  if (!settings.enabled) {
+    // Cancel all non-emergency scheduled notifications
+    const ids = [
+      'identity-affirmation',
+      'educational-tip',
+      'saturday-rainbow-nudge',
+      'streak-shield',
+      'wilt-warning',
+    ]
+    await Promise.all(ids.map(safeCancel))
+    return
+  }
+
+  // Cancel and reschedule ordinary motivational notifications so the
+  // new intensity cap takes effect immediately without requiring a
+  // restart or foregrounding.
+  await safeCancel('identity-affirmation')
+  await safeCancel('educational-tip')
+  await safeCancel('saturday-rainbow-nudge')
+  await safeCancel('streak-shield')
+  await safeCancel('wilt-warning')
+
+  // Reschedule the ones that don't require external state
+  await scheduleIdentityTrigger()
+  await scheduleEducational()
+
+  // Reconcile nudges so the new intensity cap applies to them too
+  try {
+    const { refreshNudges } = require('./NotificationNudges')
+    await refreshNudges()
+  } catch (e) { /* nudges module unavailable — non-fatal */ }
 }
 
 export async function cancelSaturdayNudge() {

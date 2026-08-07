@@ -28,6 +28,7 @@ import {
   DEVICE_POOL_LIMIT,
   isDeviceUsageCurrentPeriod,
 } from './deviceRecallBits.ts'
+import { serverIntegrityLog } from './integrityServerLog.ts'
 
 export interface DeviceRecallVerification {
   ok: boolean
@@ -219,10 +220,12 @@ export function verifyMockIntegrity(
 export async function verifyPlayIntegrity(opts: VerifyOptions): Promise<DeviceRecallVerification> {
   // Handle mock tokens in development
   if (opts.isMock || opts.token.startsWith('mock_integrity:')) {
+    serverIntegrityLog('verify_called', 'mock', true, undefined, { path: 'mock' })
     return verifyMockIntegrity(opts.token, opts.expectedRequestHash)
   }
 
   if (!opts.cloudProjectNumber || !opts.serviceAccountJson) {
+    serverIntegrityLog('verify_called', 'unknown', false, 'missing_credentials')
     // Missing credentials: fail open in observe, fail closed in enforce
     return {
       ok: opts.enforcementMode !== 'enforce',
@@ -244,14 +247,13 @@ export async function verifyPlayIntegrity(opts: VerifyOptions): Promise<DeviceRe
     // Step 1: Exchange the integrity token for a verdict using
     // Google Play Integrity API.
     // POST https://playintegrity.googleapis.com/v1/{resource}:decodeIntegrityToken
-    const url =
-      `https://playintegrity.googleapis.com/v1/projects/${opts.cloudProjectNumber}:decodeIntegrityToken`
+    const url = `https://playintegrity.googleapis.com/v1/projects/${opts.cloudProjectNumber}:decodeIntegrityToken`
 
     const resp = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${await getAccessToken(opts.serviceAccountJson)}`,
+        Authorization: `Bearer ${await getAccessToken(opts.serviceAccountJson)}`,
       },
       body: JSON.stringify({
         integrityToken: opts.token,
@@ -262,6 +264,13 @@ export async function verifyPlayIntegrity(opts: VerifyOptions): Promise<DeviceRe
       // Classify by HTTP status: 429/5xx = retryable, 400 = configuration error
       const httpStatus = resp.status
       const isRetryable = httpStatus === 429 || httpStatus >= 500
+      serverIntegrityLog(
+        'verification_result',
+        'unknown',
+        false,
+        isRetryable ? 'google_api_transient' : 'google_api_config',
+        { httpStatus },
+      )
       return {
         ok: opts.enforcementMode !== 'enforce',
         verificationStatus: 'failure',
@@ -282,6 +291,7 @@ export async function verifyPlayIntegrity(opts: VerifyOptions): Promise<DeviceRe
     const payload = verdict.tokenPayloadExternal?.payload
 
     if (!payload) {
+      serverIntegrityLog('verification_result', 'unknown', false, 'no_payload')
       // Malformed successful Google response — not proven tampering.
       // Could be a Google-side issue or API version mismatch.
       return {
@@ -302,6 +312,7 @@ export async function verifyPlayIntegrity(opts: VerifyOptions): Promise<DeviceRe
 
     // Step 2: Verify package name
     if (payload.appPackageName !== opts.expectedPackageName) {
+      serverIntegrityLog('verification_result', 'unknown', false, 'package_name_mismatch')
       return {
         ok: false,
         verificationStatus: 'failure',
@@ -320,6 +331,7 @@ export async function verifyPlayIntegrity(opts: VerifyOptions): Promise<DeviceRe
 
     // Step 3: Verify request hash
     if (payload.requestHash !== opts.expectedRequestHash) {
+      serverIntegrityLog('verification_result', 'unknown', false, 'request_hash_mismatch')
       return {
         ok: false,
         verificationStatus: 'failure',
@@ -340,7 +352,9 @@ export async function verifyPlayIntegrity(opts: VerifyOptions): Promise<DeviceRe
     const tokenTime = new Date(payload.timestamp * 1000)
     const now = new Date()
     const ageMs = now.getTime() - tokenTime.getTime()
-    if (ageMs > 10 * 60 * 1000) { // 10 minute max
+    if (ageMs > 10 * 60 * 1000) {
+      // 10 minute max
+      serverIntegrityLog('verification_result', 'unknown', false, 'stale_token', { ageMs })
       return {
         ok: false,
         verificationStatus: 'failure',
@@ -358,15 +372,15 @@ export async function verifyPlayIntegrity(opts: VerifyOptions): Promise<DeviceRe
     }
 
     // Step 5: Evaluate app recognition
-    const appRecognition = payload.appRecognitionVerdict === 'PLAY_RECOGNIZED'
-      ? 'recognized'
-      : 'unrecognized'
+    const appRecognition =
+      payload.appRecognitionVerdict === 'PLAY_RECOGNIZED' ? 'recognized' : 'unrecognized'
 
     // Step 6: Evaluate device integrity
-    const deviceIntegrity =
-      payload.deviceIntegrity?.deviceRecognitionVerdict?.includes('MEETS_DEVICE_INTEGRITY')
-        ? 'passed'
-        : 'failed'
+    const deviceIntegrity = payload.deviceIntegrity?.deviceRecognitionVerdict?.includes(
+      'MEETS_DEVICE_INTEGRITY',
+    )
+      ? 'passed'
+      : 'failed'
 
     // Step 7: Read Device Recall values
     const deviceRecall = payload.deviceRecall
@@ -377,6 +391,7 @@ export async function verifyPlayIntegrity(opts: VerifyOptions): Promise<DeviceRe
     // so the scan falls back to account quota instead of granting
     // unearned device pool scans.
     if (!deviceRecall) {
+      serverIntegrityLog('device_recall_present', 'unknown', false, 'device_recall_unavailable')
       return {
         ok: true, // Allow scan — fall back to account quota
         verificationStatus: 'success',
@@ -418,6 +433,11 @@ export async function verifyPlayIntegrity(opts: VerifyOptions): Promise<DeviceRe
       deviceRemaining = calculateDeviceRemaining(bits, timestamps)
     }
 
+    serverIntegrityLog('device_recall_decoded', 'unknown', true, undefined, {
+      deviceUsed,
+      deviceRemaining,
+    })
+
     // Step 9: Derive device recall state key for audit.
     // This is NOT a stable device identifier or HMAC. It is a
     // concatenation of the Device Recall bits and timestamp
@@ -446,6 +466,7 @@ export async function verifyPlayIntegrity(opts: VerifyOptions): Promise<DeviceRe
       failureCategory: integrityPassed ? null : 'confirmed_security_failure',
     }
   } catch (_e) {
+    serverIntegrityLog('verification_result', 'unknown', false, 'verification_error')
     return {
       ok: opts.enforcementMode !== 'enforce',
       verificationStatus: 'failure',
@@ -616,7 +637,9 @@ async function getAccessToken(serviceAccountJson: string): Promise<string> {
 
   // Validate required response fields
   if (
-    !tokenData.access_token || !tokenData.token_type || typeof tokenData.expires_in !== 'number'
+    !tokenData.access_token ||
+    !tokenData.token_type ||
+    typeof tokenData.expires_in !== 'number'
   ) {
     console.error('[playIntegrity] OAuth response missing required fields')
     throw new Error('Google OAuth2 response missing access_token, token_type, or expires_in')

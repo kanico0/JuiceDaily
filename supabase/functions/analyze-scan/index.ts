@@ -26,6 +26,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2'
 import { evaluateScanUser, extractBearerToken } from '../_shared/authGate.ts'
 import { verifyPlayIntegrity } from '../_shared/playIntegrityVerifier.ts'
 import { calculateEffectiveFreeRemaining } from '../_shared/deviceRecallBits.ts'
+import { serverIntegrityLog, maskUserId } from '../_shared/integrityServerLog.ts'
 
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages'
 const MODEL = Deno.env.get('ANTHROPIC_MODEL') || 'claude-sonnet-4-6'
@@ -36,30 +37,75 @@ const MAX_IMAGE_BASE64_CHARS = 1_500_000 // ~1.1MB binary
 // Used in the Anthropic prompt so the model returns valid catalog IDs
 // instead of inventing placeholders like "prod_001".
 const PRODUCE_CATALOG: Record<string, string> = {
-  kale: 'Kale', spinach: 'Spinach', swiss_chard: 'Swiss Chard',
-  collard_greens: 'Collard Greens', dandelion_greens: 'Dandelion Greens',
-  arugula: 'Arugula', romaine: 'Romaine Lettuce', bok_choy: 'Bok Choy',
-  wheatgrass: 'Wheatgrass', parsley: 'Parsley', cilantro: 'Cilantro',
-  mint: 'Mint', basil: 'Basil', aloe_vera: 'Aloe Vera', watercress: 'Watercress',
-  broccoli: 'Broccoli', cabbage_green: 'Green Cabbage', cabbage_red: 'Red Cabbage',
-  cauliflower: 'Cauliflower', kohlrabi: 'Kohlrabi',
-  carrot: 'Carrot', celery: 'Celery', beet: 'Beet', cucumber: 'Cucumber',
-  fennel: 'Fennel', sweet_potato: 'Sweet Potato', turnip: 'Turnip',
-  celeriac: 'Celeriac', jicama: 'Jicama', zucchini: 'Zucchini',
-  asparagus: 'Asparagus', radish: 'Radish', ginger: 'Ginger', turmeric: 'Turmeric',
+  kale: 'Kale',
+  spinach: 'Spinach',
+  swiss_chard: 'Swiss Chard',
+  collard_greens: 'Collard Greens',
+  dandelion_greens: 'Dandelion Greens',
+  arugula: 'Arugula',
+  romaine: 'Romaine Lettuce',
+  bok_choy: 'Bok Choy',
+  wheatgrass: 'Wheatgrass',
+  parsley: 'Parsley',
+  cilantro: 'Cilantro',
+  mint: 'Mint',
+  basil: 'Basil',
+  aloe_vera: 'Aloe Vera',
+  watercress: 'Watercress',
+  broccoli: 'Broccoli',
+  cabbage_green: 'Green Cabbage',
+  cabbage_red: 'Red Cabbage',
+  cauliflower: 'Cauliflower',
+  kohlrabi: 'Kohlrabi',
+  carrot: 'Carrot',
+  celery: 'Celery',
+  beet: 'Beet',
+  cucumber: 'Cucumber',
+  fennel: 'Fennel',
+  sweet_potato: 'Sweet Potato',
+  turnip: 'Turnip',
+  celeriac: 'Celeriac',
+  jicama: 'Jicama',
+  zucchini: 'Zucchini',
+  asparagus: 'Asparagus',
+  radish: 'Radish',
+  ginger: 'Ginger',
+  turmeric: 'Turmeric',
   garlic: 'Garlic',
-  bell_pepper_red: 'Red Bell Pepper', bell_pepper_yellow: 'Yellow Bell Pepper',
-  bell_pepper_green: 'Green Bell Pepper', jalapeño: 'Jalapeño', cayenne: 'Cayenne Pepper',
+  bell_pepper_red: 'Red Bell Pepper',
+  bell_pepper_yellow: 'Yellow Bell Pepper',
+  bell_pepper_green: 'Green Bell Pepper',
+  jalapeño: 'Jalapeño',
+  cayenne: 'Cayenne Pepper',
   tomato: 'Tomato',
-  apple: 'Green Apple', apple_green: 'Green Apple', apple_red: 'Red Apple',
-  lemon: 'Lemon', lime: 'Lime', orange: 'Orange', grapefruit: 'Grapefruit',
-  pineapple: 'Pineapple', watermelon: 'Watermelon', pomegranate: 'Pomegranate',
-  mango: 'Mango', papaya: 'Papaya', kiwi: 'Kiwi', pear: 'Pear',
-  grape: 'Red Grape', strawberry: 'Strawberry', blueberry: 'Blueberry',
-  raspberry: 'Raspberry', blackberry: 'Blackberry', cranberry: 'Cranberry',
-  cherry: 'Tart Cherry', cantaloupe: 'Cantaloupe', honeydew: 'Honeydew Melon',
-  coconut_water: 'Coconut Water', passion_fruit: 'Passion Fruit',
-  peach: 'Peach', plum: 'Plum', nectarine: 'Nectarine',
+  apple: 'Green Apple',
+  apple_green: 'Green Apple',
+  apple_red: 'Red Apple',
+  lemon: 'Lemon',
+  lime: 'Lime',
+  orange: 'Orange',
+  grapefruit: 'Grapefruit',
+  pineapple: 'Pineapple',
+  watermelon: 'Watermelon',
+  pomegranate: 'Pomegranate',
+  mango: 'Mango',
+  papaya: 'Papaya',
+  kiwi: 'Kiwi',
+  pear: 'Pear',
+  grape: 'Red Grape',
+  strawberry: 'Strawberry',
+  blueberry: 'Blueberry',
+  raspberry: 'Raspberry',
+  blackberry: 'Blackberry',
+  cranberry: 'Cranberry',
+  cherry: 'Tart Cherry',
+  cantaloupe: 'Cantaloupe',
+  honeydew: 'Honeydew Melon',
+  coconut_water: 'Coconut Water',
+  passion_fruit: 'Passion Fruit',
+  peach: 'Peach',
+  plum: 'Plum',
+  nectarine: 'Nectarine',
 }
 
 const corsHeaders = {
@@ -67,14 +113,14 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, content-type',
 }
 
-function json (status: number, body: Record<string, unknown>): Response {
+function json(status: number, body: Record<string, unknown>): Response {
   return new Response(JSON.stringify(body), {
     status,
     headers: { 'Content-Type': 'application/json', ...corsHeaders },
   })
 }
 
-function quotaFromRpc (raw: unknown): Record<string, unknown> | null {
+function quotaFromRpc(raw: unknown): Record<string, unknown> | null {
   if (!raw || typeof raw !== 'object') return null
   const q = raw as Record<string, unknown>
   const limit = Number(q.scan_limit ?? 0)
@@ -92,10 +138,12 @@ function quotaFromRpc (raw: unknown): Record<string, unknown> | null {
   }
 }
 
-async function sha256Hex (text: string): Promise<string> {
+async function sha256Hex(text: string): Promise<string> {
   const data = new TextEncoder().encode(text.slice(0, 4096))
   const digest = await crypto.subtle.digest('SHA-256', data)
-  return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, '0')).join('')
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('')
 }
 
 Deno.serve(async (req) => {
@@ -149,6 +197,11 @@ Deno.serve(async (req) => {
   const isGuest = gate.isGuest === true
 
   const requestId = String(body.requestId ?? '')
+  serverIntegrityLog('request_accepted', requestId, true)
+  serverIntegrityLog('user_classification', requestId, true, undefined, {
+    class: isGuest ? 'guest' : 'durable',
+    uid: maskUserId(userId),
+  })
   const imageBase64 = String(body.imageBase64 ?? '')
   const mediaType = String(body.mediaType ?? 'image/jpeg')
   const depthDataMm = Array.isArray(body.depthDataMm) ? (body.depthDataMm as number[]) : null
@@ -171,10 +224,20 @@ Deno.serve(async (req) => {
   let quota: Record<string, unknown> | null = null
   let supportBonusRemaining = 0
   const devicePoolMode = Deno.env.get('DEVICE_FREE_POOL_MODE') ?? 'off'
+  serverIntegrityLog('pool_mode', requestId, true, undefined, { mode: devicePoolMode })
   let isProUser = false
   let deviceVerification: Awaited<ReturnType<typeof verifyPlayIntegrity>> | null = null
   let deviceRecallStateKey: string | null = null
   let effectiveRemaining: number | null = null
+
+  const integrityFieldStatus = !integrityToken
+    ? 'absent'
+    : integrityToken.length === 0
+      ? 'blank'
+      : 'nonblank'
+  serverIntegrityLog('integrity_field', requestId, true, undefined, {
+    status: integrityFieldStatus,
+  })
 
   if (isGuest) {
     // Guest scan: reserve the guest journey (one per user).
@@ -235,6 +298,9 @@ Deno.serve(async (req) => {
     }
     const reserve = reserveData as Record<string, unknown>
     quota = quotaFromRpc(reserve.quota)
+    if (reserve.ok) {
+      serverIntegrityLog('account_reservation', requestId, true, undefined, { status: 'reserved' })
+    }
     if (!reserve.ok) {
       // Account quota exhausted — try support exception bonus scan
       const { data: excData } = await admin.rpc('consume_support_exception', {
@@ -243,11 +309,14 @@ Deno.serve(async (req) => {
       const exc = excData as Record<string, unknown> | null
       if (exc?.ok) {
         // Support exception consumed — re-reserve with the bonus
-        const { data: retryReserveData, error: retryReserveError } = await admin.rpc('reserve_scan', {
-          p_user_id: userId,
-          p_request_id: requestId,
-          p_image_hash: imageHash,
-        })
+        const { data: retryReserveData, error: retryReserveError } = await admin.rpc(
+          'reserve_scan',
+          {
+            p_user_id: userId,
+            p_request_id: requestId,
+            p_image_hash: imageHash,
+          },
+        )
         if (retryReserveError) {
           console.error('[analyze-scan] retry reserve failed:', retryReserveError.message)
           return json(500, { message: 'Quota check failed' })
@@ -255,11 +324,16 @@ Deno.serve(async (req) => {
         const retryReserve = retryReserveData as Record<string, unknown>
         quota = quotaFromRpc(retryReserve.quota)
         if (!retryReserve.ok) {
+          serverIntegrityLog('account_reservation', requestId, false, 'rejected')
           return json(429, { code: 'monthly_limit_reached', message: 'Scan limit reached', quota })
         }
-        supportBonusRemaining = exc.bonus_remaining as number ?? 0
+        serverIntegrityLog('account_reservation', requestId, true, undefined, {
+          status: 'reserved',
+        })
+        supportBonusRemaining = (exc.bonus_remaining as number) ?? 0
       } else {
         const code = String(reserve.code ?? 'monthly_limit_reached')
+        serverIntegrityLog('account_reservation', requestId, false, 'rejected')
         return json(429, { code, message: 'Scan limit reached', quota })
       }
     }
@@ -269,14 +343,16 @@ Deno.serve(async (req) => {
     // the device pool entirely — their Pro quota is account-based.
     isProUser = (quota as Record<string, unknown> | null)?.plan === 'pro'
 
-    if (devicePoolMode !== 'off' && !isProUser && integrityToken) {
-      const expectedRequestHash = [
-        requestId,
-        userId,
-        'analyze_scan',
-        imageHash,
-      ].join('|')
+    const verificationBlockEntered =
+      devicePoolMode !== 'off' && !isProUser && Boolean(integrityToken)
+    serverIntegrityLog('verification_block', requestId, true, undefined, {
+      entered: verificationBlockEntered,
+    })
 
+    if (devicePoolMode !== 'off' && !isProUser && integrityToken) {
+      const expectedRequestHash = [requestId, userId, 'analyze_scan', imageHash].join('|')
+
+      serverIntegrityLog('verify_called', requestId, true)
       deviceVerification = await verifyPlayIntegrity({
         token: integrityToken,
         expectedPackageName: Deno.env.get('PLAY_INTEGRITY_PACKAGE_NAME') ?? 'com.juicingapp.app',
@@ -287,10 +363,32 @@ Deno.serve(async (req) => {
         enforcementMode: devicePoolMode,
       })
 
+      serverIntegrityLog(
+        'verification_result',
+        requestId,
+        deviceVerification.ok,
+        deviceVerification.reasonCode,
+        { integrityStatus: deviceVerification.integrityStatus },
+      )
+
       deviceRecallStateKey = deviceVerification.deviceRecallStateKey
 
+      const recallPresent = deviceVerification.deviceBits != null
+      serverIntegrityLog('device_recall_present', requestId, recallPresent, undefined, {
+        present: recallPresent,
+      })
+      const recallDecoded = recallPresent && deviceVerification.deviceTimestamps != null
+      serverIntegrityLog('device_recall_decoded', requestId, recallDecoded, undefined, {
+        decoded: recallDecoded,
+      })
+
       // In enforce mode, block if device pool is exhausted or integrity failed
-      if (devicePoolMode === 'enforce') {
+      const isEnforce = devicePoolMode === 'enforce'
+      serverIntegrityLog('enforcement_attempted', requestId, false, undefined, {
+        attempted: isEnforce,
+      })
+
+      if (isEnforce) {
         if (!deviceVerification.ok) {
           // If a support exception was consumed, allow the scan to proceed.
           // Support exceptions bypass device pool enforcement but do NOT
@@ -314,44 +412,61 @@ Deno.serve(async (req) => {
             })
           }
         } else if (deviceRecallStateKey) {
-          const { error: deviceReserveError } = await admin.rpc(
-            'reserve_device_scan',
-            {
-              p_request_id: requestId,
-              p_user_id: userId,
-              p_device_recall_state_key: deviceRecallStateKey,
-              p_device_used: deviceVerification.deviceUsed,
-              p_enforcement_mode: devicePoolMode,
-              p_integrity_status: deviceVerification.integrityStatus,
-            },
-          )
+          serverIntegrityLog('device_reservation', requestId, true, undefined, {
+            status: 'reserved_enforce',
+          })
+          const { error: deviceReserveError } = await admin.rpc('reserve_device_scan', {
+            p_request_id: requestId,
+            p_user_id: userId,
+            p_device_recall_state_key: deviceRecallStateKey,
+            p_device_used: deviceVerification.deviceUsed,
+            p_enforcement_mode: devicePoolMode,
+            p_integrity_status: deviceVerification.integrityStatus,
+          })
           if (deviceReserveError) {
             console.error('[analyze-scan] device reserve failed:', deviceReserveError.message)
           }
         }
+      } else {
+        serverIntegrityLog('device_reservation', requestId, true, undefined, {
+          status: 'skipped_observe',
+        })
       }
 
       // Calculate effective remaining for response
-      const accountRemaining = (quota as Record<string, unknown> | null)?.remaining as number ?? 0
+      const accountRemaining = ((quota as Record<string, unknown> | null)?.remaining as number) ?? 0
       effectiveRemaining = calculateEffectiveFreeRemaining(
         accountRemaining,
         deviceVerification.deviceRemaining,
       )
-    } else if (isProUser) {
-      effectiveRemaining = (quota as Record<string, unknown> | null)?.remaining as number ?? null
+      serverIntegrityLog('effective_remaining', requestId, true, undefined, { calculated: true })
+      serverIntegrityLog('observe_decision', requestId, true, undefined, {
+        completed: true,
+        enforced: false,
+      })
+    } else {
+      serverIntegrityLog('device_reservation', requestId, true, undefined, {
+        status: 'skipped_observe',
+      })
+      if (isProUser) {
+        effectiveRemaining =
+          ((quota as Record<string, unknown> | null)?.remaining as number) ?? null
+      }
     }
   }
 
   // ── Call Anthropic ─────────────────────────────────────────
   const KNOWN_IDS = Object.keys(PRODUCE_CATALOG).join(', ')
 
-  const systemPrompt = depthDataMm && depthDataMm.length > 0
-    ? `You are a produce identification expert for a cold-pressed juicing app. Use the LiDAR depth data (mm) for volumetric weight estimation. Return ONLY a valid JSON array of {"produceId","name","count","estimatedWeightG","confidence"}. Use one of these produceId values: ${KNOWN_IDS}. If you cannot identify the produce with confidence, omit it.`
-    : `You are a produce identification expert. Return ONLY a valid JSON array, no markdown. For each produce item: {"produceId":"<id>","name":"<name>","count":<n>,"estimatedWeightG":<g>,"confidence":<0-1>}. Use one of these produceId values: ${KNOWN_IDS}. If you cannot identify the produce with confidence, omit it.`
+  const systemPrompt =
+    depthDataMm && depthDataMm.length > 0
+      ? `You are a produce identification expert for a cold-pressed juicing app. Use the LiDAR depth data (mm) for volumetric weight estimation. Return ONLY a valid JSON array of {"produceId","name","count","estimatedWeightG","confidence"}. Use one of these produceId values: ${KNOWN_IDS}. If you cannot identify the produce with confidence, omit it.`
+      : `You are a produce identification expert. Return ONLY a valid JSON array, no markdown. For each produce item: {"produceId":"<id>","name":"<name>","count":<n>,"estimatedWeightG":<g>,"confidence":<0-1>}. Use one of these produceId values: ${KNOWN_IDS}. If you cannot identify the produce with confidence, omit it.`
 
-  const userText = depthDataMm && depthDataMm.length > 0
-    ? `Identify all produce in this image. LiDAR depth data (mm): [${depthDataMm.join(',')}]`
-    : 'Identify all produce items in this image. Estimate count and weight for each.'
+  const userText =
+    depthDataMm && depthDataMm.length > 0
+      ? `Identify all produce in this image. LiDAR depth data (mm): [${depthDataMm.join(',')}]`
+      : 'Identify all produce items in this image. Estimate count and weight for each.'
 
   try {
     const controller = new AbortController()
@@ -369,13 +484,18 @@ Deno.serve(async (req) => {
         model: MODEL,
         max_tokens: 300,
         system: systemPrompt,
-        messages: [{
-          role: 'user',
-          content: [
-            { type: 'image', source: { type: 'base64', media_type: mediaType, data: imageBase64 } },
-            { type: 'text', text: userText },
-          ],
-        }],
+        messages: [
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'image',
+                source: { type: 'base64', media_type: mediaType, data: imageBase64 },
+              },
+              { type: 'text', text: userText },
+            ],
+          },
+        ],
       }),
     })
     clearTimeout(timer)
@@ -384,7 +504,10 @@ Deno.serve(async (req) => {
       // Diagnostic: log provider error details (sanitized — no key, no image)
       const errBody = await anthropicRes.text().catch(() => '')
       const sanitizedErr = errBody.substring(0, 500).replace(/sk-[A-Za-z0-9_\-.]+/g, 'REDACTED_KEY')
-      console.error(`[analyze-scan] Anthropic error: status=${anthropicRes.status} body=${sanitizedErr}`)
+      console.error(
+        `[analyze-scan] Anthropic error: status=${anthropicRes.status} body=${sanitizedErr}`,
+      )
+      serverIntegrityLog('analysis', requestId, false, 'provider_failure')
       // Technical/provider failure → release, no credit spent.
       if (isGuest) {
         await admin.rpc('release_guest_scan', {
@@ -405,12 +528,21 @@ Deno.serve(async (req) => {
       })
       // Also release device reservation if one was made
       if (deviceRecallStateKey && devicePoolMode === 'enforce') {
-        await Promise.resolve(admin.rpc('release_device_scan', {
-          p_request_id: requestId,
-          p_failure_reason: `provider_${anthropicRes.status}`,
-        })).catch(() => {})
+        await Promise.resolve(
+          admin.rpc('release_device_scan', {
+            p_request_id: requestId,
+            p_failure_reason: `provider_${anthropicRes.status}`,
+          }),
+        ).catch(() => {})
       }
       const releasedQuota = quotaFromRpc((releaseData as Record<string, unknown>)?.quota)
+      serverIntegrityLog('account_finalization', requestId, false, 'released')
+      serverIntegrityLog('device_finalization', requestId, true, undefined, {
+        status:
+          deviceRecallStateKey && devicePoolMode === 'enforce'
+            ? 'released_enforce'
+            : 'skipped_observe',
+      })
       return json(502, { message: 'Vision provider error', quota: releasedQuota })
     }
 
@@ -423,11 +555,16 @@ Deno.serve(async (req) => {
     // (e.g. "prod_001") that have no display name or nutrients.
     let hasValidItem = false
     try {
-      const cleaned = rawText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+      const cleaned = rawText
+        .replace(/```json\n?/g, '')
+        .replace(/```\n?/g, '')
+        .trim()
       const parsed = JSON.parse(cleaned)
       if (Array.isArray(parsed)) {
         hasValidItem = parsed.some((it: Record<string, unknown>) => {
-          const id = String(it.produceId ?? '').toLowerCase().trim()
+          const id = String(it.produceId ?? '')
+            .toLowerCase()
+            .trim()
           return id && id in PRODUCE_CATALOG
         })
       }
@@ -437,6 +574,7 @@ Deno.serve(async (req) => {
 
     if (!hasValidItem) {
       // No valid produce identified — release, no credit spent.
+      serverIntegrityLog('analysis', requestId, false, 'no_valid_result')
       if (isGuest) {
         await admin.rpc('release_guest_scan', {
           p_user_id: userId,
@@ -456,28 +594,51 @@ Deno.serve(async (req) => {
       })
       // Also release device reservation if one was made
       if (deviceRecallStateKey && devicePoolMode === 'enforce') {
-        await Promise.resolve(admin.rpc('release_device_scan', {
-          p_request_id: requestId,
-          p_failure_reason: 'no_valid_produce',
-        })).catch(() => {})
+        await Promise.resolve(
+          admin.rpc('release_device_scan', {
+            p_request_id: requestId,
+            p_failure_reason: 'no_valid_produce',
+          }),
+        ).catch(() => {})
       }
       const releasedQuota = quotaFromRpc((releaseData as Record<string, unknown>)?.quota)
+      serverIntegrityLog('account_finalization', requestId, false, 'released')
+      serverIntegrityLog('device_finalization', requestId, true, undefined, {
+        status:
+          deviceRecallStateKey && devicePoolMode === 'enforce'
+            ? 'released_enforce'
+            : 'skipped_observe',
+      })
       return json(200, { rawText, quota: releasedQuota })
     }
 
     // Usable result → commit the reservation.
     // Also commit device reservation if one was made.
+    serverIntegrityLog('analysis', requestId, true, undefined, { validResult: true })
+
     if (deviceRecallStateKey && devicePoolMode === 'enforce') {
-      await Promise.resolve(admin.rpc('commit_device_scan', {
-        p_request_id: requestId,
-      })).catch((e: Error) => {
+      serverIntegrityLog('device_finalization', requestId, true, undefined, {
+        status: 'committed_enforce',
+      })
+      await Promise.resolve(
+        admin.rpc('commit_device_scan', {
+          p_request_id: requestId,
+        }),
+      ).catch((e: Error) => {
         console.error('[analyze-scan] device commit failed:', e?.message)
+      })
+    } else {
+      serverIntegrityLog('device_finalization', requestId, true, undefined, {
+        status: 'skipped_observe',
       })
     }
 
     if (isGuest) {
       // Guest scan: commit the scan quota (counts as 1 of 5 free
       // monthly scans) and finalize the guest scan stage.
+      serverIntegrityLog('account_finalization', requestId, true, undefined, {
+        status: 'committed',
+      })
       const { data: commitData } = await admin.rpc('commit_scan', {
         p_user_id: userId,
         p_request_id: requestId,
@@ -497,12 +658,14 @@ Deno.serve(async (req) => {
       p_estimated_cost: null,
     })
     if (commitError) console.error('[analyze-scan] commit failed:', commitError.message)
+    serverIntegrityLog('account_finalization', requestId, true, undefined, { status: 'committed' })
     const committedQuota = quotaFromRpc((commitData as Record<string, unknown>)?.quota) ?? quota
 
     // Return effective remaining for free users with device pool
-    const responseQuota = effectiveRemaining != null && !isProUser
-      ? { ...committedQuota, effectiveRemaining }
-      : committedQuota
+    const responseQuota =
+      effectiveRemaining != null && !isProUser
+        ? { ...committedQuota, effectiveRemaining }
+        : committedQuota
 
     const response: Record<string, unknown> = { rawText, quota: responseQuota }
     if (supportBonusRemaining > 0) {
@@ -532,10 +695,12 @@ Deno.serve(async (req) => {
     })
     // Also release device reservation if one was made
     if (deviceRecallStateKey && devicePoolMode === 'enforce') {
-      await Promise.resolve(admin.rpc('release_device_scan', {
-        p_request_id: requestId,
-        p_failure_reason: 'provider_timeout',
-      })).catch(() => {})
+      await Promise.resolve(
+        admin.rpc('release_device_scan', {
+          p_request_id: requestId,
+          p_failure_reason: 'provider_timeout',
+        }),
+      ).catch(() => {})
     }
     const releasedQuota = quotaFromRpc((releaseData as Record<string, unknown>)?.quota)
     console.error('[analyze-scan] provider call failed:', (e as Error)?.message)

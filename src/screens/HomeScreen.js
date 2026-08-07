@@ -657,6 +657,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
   const [blendCheckInProgress, setBlendCheckInProgress] = useState(false)
   const blendOperationIdRef = useRef(null)
   const blendApprovedRef = useRef(false)
+  const advancedBlendStageRef = useRef(advancedBlendStage)
   const isLoggingRef = useRef(false)
   const analysisCompletedRef = useRef(false)
   const analysisResultRef = useRef(null)
@@ -724,7 +725,11 @@ export default function JuiceSnapScreen({ navigation, route }) {
         setIsLogged(false)
       }
       // Reset stale modal state from prior log/camera attempts
-      setShowAdvancedBlendModal(false)
+      // but preserve the completion_confirmation modal so the user
+      // can explicitly acknowledge the result before dismissal.
+      if (advancedBlendStageRef.current !== 'completion_confirmation') {
+        setShowAdvancedBlendModal(false)
+      }
       setShowAccountGate(false)
       // Increment attempt ID to invalidate any in-flight camera attempt
       // before resetting the guard.  Without this, a stale attempt can
@@ -742,6 +747,10 @@ export default function JuiceSnapScreen({ navigation, route }) {
     const unsubscribe = navigation?.addListener?.('focus', resetLoggedOnFocus)
     return () => { if (typeof unsubscribe === 'function') unsubscribe() }
   }, [navigation])
+
+  useEffect(() => {
+    advancedBlendStageRef.current = advancedBlendStage
+  }, [advancedBlendStage])
 
   // Fetch authoritative Advanced Blend allowance from server on mount and
   // on focus so the pre-analysis modal shows the correct remaining count
@@ -2034,6 +2043,8 @@ export default function JuiceSnapScreen({ navigation, route }) {
           }}
           onAccountRequired={() => setShowAccountGate(true)}
           guestFirstScan={guestFirstScan}
+          quotaRemaining={filmRollRemaining}
+          isProUser={isPro}
         />
       </Modal>
 

@@ -22,6 +22,8 @@ export default function CameraScreen({
   onManualEntry,
   onAccountRequired,
   guestFirstScan,
+  quotaRemaining,
+  isProUser,
 }) {
   const {
     cameraRef,
@@ -31,8 +33,6 @@ export default function CameraScreen({
     onMountError,
     takePhoto,
     resetCamera,
-    startReadyTimeout,
-    CAMERA_READY_TIMEOUT_MS,
   } = useCamera()
 
   const [isProcessing, setIsProcessing] = useState(false)
@@ -44,8 +44,6 @@ export default function CameraScreen({
   useEffect(() => {
     if (cameraState.hasPermission === null || cameraState.hasPermission === false) {
       requestAccess()
-    } else if (cameraState.hasPermission === true && cameraState.phase === 'camera_mounting') {
-      startReadyTimeout()
     }
   }, [])
 
@@ -222,6 +220,15 @@ export default function CameraScreen({
           <Text style={styles.guideHint}>
             Tap the button below to scan — we'll identify your produce and estimate nutrition.
           </Text>
+
+          {/* Free quota guidance — suppressed for Pro users */}
+          {!isProUser && !isProcessing && !error && (
+            <Text style={styles.quotaGuidance}>
+              {quotaRemaining !== null && quotaRemaining !== undefined
+                ? `Free plan: ${quotaRemaining} Juice Snap${quotaRemaining === 1 ? '' : 's'} remaining. Frame your produce carefully before taking the photo.`
+                : 'Free Juice Snaps are limited. Frame your produce carefully before taking the photo.'}
+            </Text>
+          )}
         </View>
 
         {/* API error fallback panel — full choices so user is never stuck */}
@@ -399,6 +406,14 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '400',
     marginTop: 6,
+    textAlign: 'center',
+    paddingHorizontal: 24,
+  },
+  quotaGuidance: {
+    color: 'rgba(255,255,255,0.6)',
+    fontSize: 11,
+    fontWeight: '400',
+    marginTop: 8,
     textAlign: 'center',
     paddingHorizontal: 24,
   },

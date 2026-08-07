@@ -168,3 +168,31 @@ describe('AdvancedBlendModal — completion premature dismissal regression', () 
     expect(backdropIdx).toBeGreaterThan(-1)
   })
 })
+
+// ── Regression: HomeScreen resetLoggedOnFocus preserves completion modal ──
+
+describe('HomeScreen — resetLoggedOnFocus does not dismiss completion_confirmation', () => {
+  const fs = require('fs')
+  const path = require('path')
+  const HOME_SRC = fs.readFileSync(path.join(__dirname, '..', '..', 'screens', 'HomeScreen.js'), 'utf8')
+
+  test('1. resetLoggedOnFocus guards setShowAdvancedBlendModal with completion_confirmation check', () => {
+    const focusMatch = HOME_SRC.match(/const resetLoggedOnFocus = \(\) => \{([\s\S]*?)\n    \}/)
+    expect(focusMatch).toBeTruthy()
+    const body = focusMatch[1]
+    expect(body).toContain('completion_confirmation')
+    expect(body).toContain('advancedBlendStageRef.current')
+    expect(body).toMatch(/advancedBlendStageRef\.current\s*!==\s*['"]completion_confirmation['"]/)
+  })
+
+  test('2. advancedBlendStageRef is kept in sync with advancedBlendStage state', () => {
+    expect(HOME_SRC).toMatch(/advancedBlendStageRef\.current\s*=\s*advancedBlendStage/)
+  })
+
+  test('3. non-completion stages still get setShowAdvancedBlendModal(false) on focus', () => {
+    const focusMatch = HOME_SRC.match(/const resetLoggedOnFocus = \(\) => \{([\s\S]*?)\n    \}/)
+    expect(focusMatch).toBeTruthy()
+    const body = focusMatch[1]
+    expect(body).toContain('setShowAdvancedBlendModal(false)')
+  })
+})

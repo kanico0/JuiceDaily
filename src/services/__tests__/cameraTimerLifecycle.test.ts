@@ -57,10 +57,7 @@ describe('Camera timer lifecycle (Defect 1)', () => {
     })
 
     expect(hookRef.current).not.toBeNull()
-
-    TestRenderer.act(() => {
-      hookRef.current.startReadyTimeout()
-    })
+    // Timer is armed automatically by the permission effect on mount
 
     TestRenderer.act(() => {
       hookRef.current.onCameraReady()
@@ -87,10 +84,7 @@ describe('Camera timer lifecycle (Defect 1)', () => {
     TestRenderer.act(() => {
       renderer = TestRenderer.create(React.createElement(TestComponent, { hookRef }))
     })
-
-    TestRenderer.act(() => {
-      hookRef.current.startReadyTimeout()
-    })
+    // Timer is armed automatically by the permission effect on mount
 
     const mockTakePicture = jest.fn().mockResolvedValue({
       base64: 'mockbase64',
@@ -124,10 +118,7 @@ describe('Camera timer lifecycle (Defect 1)', () => {
     TestRenderer.act(() => {
       renderer = TestRenderer.create(React.createElement(TestComponent, { hookRef }))
     })
-
-    TestRenderer.act(() => {
-      hookRef.current.startReadyTimeout()
-    })
+    // Timer is armed automatically by the permission effect on mount
 
     TestRenderer.act(() => {
       hookRef.current.resetCamera()
@@ -160,10 +151,7 @@ describe('Camera timer lifecycle (Defect 1)', () => {
     TestRenderer.act(() => {
       renderer = TestRenderer.create(React.createElement(TestComponent, { hookRef }))
     })
-
-    TestRenderer.act(() => {
-      hookRef.current.startReadyTimeout()
-    })
+    // Timer is armed automatically by the permission effect on mount
 
     TestRenderer.act(() => {
       hookRef.current.onCameraReady()
@@ -187,10 +175,7 @@ describe('Camera timer lifecycle (Defect 1)', () => {
     TestRenderer.act(() => {
       renderer = TestRenderer.create(React.createElement(TestComponent, { hookRef }))
     })
-
-    TestRenderer.act(() => {
-      hookRef.current.startReadyTimeout()
-    })
+    // Timer is armed automatically by the permission effect on mount
 
     TestRenderer.act(() => {
       hookRef.current.onMountError({ message: 'Camera failed' })
@@ -216,10 +201,7 @@ describe('Camera timer lifecycle (Defect 1)', () => {
     TestRenderer.act(() => {
       renderer = TestRenderer.create(React.createElement(TestComponent, { hookRef }))
     })
-
-    TestRenderer.act(() => {
-      hookRef.current.startReadyTimeout()
-    })
+    // Timer is armed automatically by the permission effect on mount
 
     const mockTakePicture = jest.fn().mockResolvedValue({
       base64: 'mockbase64',
@@ -254,10 +236,7 @@ describe('Camera timer lifecycle (Defect 1)', () => {
     TestRenderer.act(() => {
       renderer = TestRenderer.create(React.createElement(TestComponent, { hookRef }))
     })
-
-    TestRenderer.act(() => {
-      hookRef.current.startReadyTimeout()
-    })
+    // Timer is armed automatically by the permission effect on mount
 
     TestRenderer.act(() => {
       renderer.unmount()

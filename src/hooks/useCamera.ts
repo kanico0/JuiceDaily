@@ -85,7 +85,7 @@ export function useCamera() {
         // Only fire if still in mounting phase — if the camera
         // became ready or capture started, the timer should have
         // been cleared already. This is a defensive check.
-        if (prev.phase === 'camera_mounting' && !prev.isCapturing) {
+        if (prev.phase === 'camera_mounting') {
           return {
             ...prev,
             isReady: false,
@@ -241,7 +241,5 @@ export function useCamera() {
     onMountError,
     takePhoto,
     resetCamera,
-    startReadyTimeout,
-    CAMERA_READY_TIMEOUT_MS,
   }
 }

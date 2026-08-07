@@ -90,8 +90,8 @@ describe('Camera Native Readiness and Abort Lifecycle', () => {
 
   // 12. Native ready callback produces camera_ready
   test('12. onCameraReady sets phase to camera_ready', () => {
-    const readyIdx = USE_CAMERA_SRC.indexOf('onCameraReady')
-    const section = USE_CAMERA_SRC.substring(readyIdx, readyIdx + 300)
+    const readyIdx = USE_CAMERA_SRC.indexOf('const onCameraReady = useCallback')
+    const section = USE_CAMERA_SRC.substring(readyIdx, readyIdx + 400)
     expect(section).toContain('camera_ready')
   })
 
@@ -119,7 +119,7 @@ describe('Camera Native Readiness and Abort Lifecycle', () => {
   // 16. Permission approval resumes automatically
   test('16. Permission granted transitions to camera_mounting', () => {
     const grantedIdx = USE_CAMERA_SRC.indexOf('if (granted)')
-    const section = USE_CAMERA_SRC.substring(grantedIdx, grantedIdx + 200)
+    const section = USE_CAMERA_SRC.substring(grantedIdx, grantedIdx + 300)
     expect(section).toContain('camera_mounting')
   })
 

@@ -49,7 +49,7 @@ describe('Post-login camera initialization', () => {
   test('13. onCameraReady cancels the timeout', () => {
     const source = fs.readFileSync(path.resolve(ROOT, 'src/hooks/useCamera.ts'), 'utf-8')
     const match = source.match(
-      /const onCameraReady = useCallback\(\(\) => \{([\s\S]*?)\}, \[clearReadyTimer\]\)/,
+      /const onCameraReady = useCallback\(\(\) => \{([\s\S]*?)\}, \[clearReadyTimer, clearFallbackProbe\]\)/,
     )
     expect(match).toBeTruthy()
     expect(match[1]).toContain('clearReadyTimer()')
@@ -58,7 +58,7 @@ describe('Post-login camera initialization', () => {
   test('14. resetCamera clears timer and resets state', () => {
     const source = fs.readFileSync(path.resolve(ROOT, 'src/hooks/useCamera.ts'), 'utf-8')
     const match = source.match(
-      /const resetCamera = useCallback\(\(\) => \{([\s\S]*?)\}, \[clearReadyTimer\]\)/,
+      /const resetCamera = useCallback\(\(\) => \{([\s\S]*?)\}, \[clearReadyTimer, clearFallbackProbe\]\)/,
     )
     expect(match).toBeTruthy()
     expect(match[1]).toContain('clearReadyTimer()')

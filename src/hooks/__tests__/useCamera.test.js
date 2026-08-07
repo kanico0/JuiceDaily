@@ -16,10 +16,7 @@
 const fs = require('fs')
 const path = require('path')
 
-const SOURCE = fs.readFileSync(
-  path.join(__dirname, '..', 'useCamera.ts'),
-  'utf8',
-)
+const SOURCE = fs.readFileSync(path.join(__dirname, '..', 'useCamera.ts'), 'utf8')
 
 const CAM_SCREEN_SRC = fs.readFileSync(
   path.join(__dirname, '..', '..', 'screens', 'CameraScreen.js'),
@@ -39,14 +36,14 @@ describe('Item 9: Camera timeout false positive fix', () => {
   })
 
   test('3. onCameraReady clears the timer', () => {
-    const onReadyIdx = SOURCE.indexOf('onCameraReady')
-    const onReadySection = SOURCE.substring(onReadyIdx, onReadyIdx + 200)
+    const onReadyIdx = SOURCE.indexOf('const onCameraReady = useCallback')
+    const onReadySection = SOURCE.substring(onReadyIdx, onReadyIdx + 300)
     expect(onReadySection).toContain('clearReadyTimer')
   })
 
   test('4. takePhoto clears the timer defensively', () => {
     const takePhotoIdx = SOURCE.indexOf('takePhoto')
-    const takePhotoSection = SOURCE.substring(takePhotoIdx, takePhotoIdx + 300)
+    const takePhotoSection = SOURCE.substring(takePhotoIdx, takePhotoIdx + 500)
     expect(takePhotoSection).toContain('clearReadyTimer')
   })
 
@@ -87,13 +84,13 @@ describe('Item 9: Camera timeout false positive fix', () => {
   test('11. timeout callback is a no-op when phase is not camera_mounting', () => {
     // The callback returns prev unchanged if phase !== camera_mounting
     const timeoutIdx = SOURCE.indexOf('setTimeout(() => {')
-    const timeoutSection = SOURCE.substring(timeoutIdx, timeoutIdx + 800)
+    const timeoutSection = SOURCE.substring(timeoutIdx, timeoutIdx + 1200)
     // Must have a return prev (no-op) path
     expect(timeoutSection).toMatch(/return prev/)
   })
 
   test('12. onCameraReady transitions phase to camera_ready (not camera_mounting)', () => {
-    const onReadyIdx = SOURCE.indexOf('onCameraReady')
+    const onReadyIdx = SOURCE.indexOf('const onCameraReady = useCallback')
     const onReadySection = SOURCE.substring(onReadyIdx, onReadyIdx + 400)
     expect(onReadySection).toMatch(/camera_ready/)
   })

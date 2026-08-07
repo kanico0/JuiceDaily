@@ -16,6 +16,11 @@ import { identifyProduce, ImageProcessingError } from '../services/ClaudeVisionS
 import { recordMeaningfulActivity } from '../services/DormantReminderService'
 import colors from '../constants/colors'
 
+function camQaScreen(tag, extra) {
+  const payload = extra ? ' ' + JSON.stringify(extra) : ''
+  console.log(`[CAM_QA] ${tag}${payload}`)
+}
+
 export default function CameraScreen({
   onClose,
   onProduceIdentified,
@@ -40,8 +45,17 @@ export default function CameraScreen({
   // true when the error is an API/analysis failure (not camera failure)
   const [isApiError, setIsApiError] = useState(false)
 
+  // Screen mount/unmount logging
+  useEffect(() => {
+    camQaScreen('CAMERA_SCREEN_MOUNT')
+    return () => {
+      camQaScreen('CAMERA_SCREEN_UNMOUNT')
+    }
+  }, [])
+
   // Request permission on mount if needed
   useEffect(() => {
+    camQaScreen('CAMERA_SCREEN_MOUNT_EFFECT', { hasPermission: cameraState.hasPermission, phase: cameraState.phase })
     if (cameraState.hasPermission === null || cameraState.hasPermission === false) {
       requestAccess()
     }
@@ -142,6 +156,7 @@ export default function CameraScreen({
   // this guard ensures analysis is never interrupted by a stale
   // camera error display.
   if (cameraState.phase === 'error' && cameraState.mountError && !isProcessing) {
+    camQaScreen('ERROR_CARD_RENDERED', { mountError: cameraState.mountError, phase: cameraState.phase })
     return (
       <View style={styles.container}>
         <View style={styles.permissionCard}>
@@ -168,6 +183,8 @@ export default function CameraScreen({
 
   // Camera is mounting — show loading state
   const isMounting = cameraState.phase === 'camera_mounting' && !cameraState.isReady
+
+  camQaScreen('CAMERA_SCREEN_RENDER', { phase: cameraState.phase, isReady: cameraState.isReady, isMounting, hasPermission: cameraState.hasPermission })
 
   return (
     <View style={styles.container}>

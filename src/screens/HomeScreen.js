@@ -607,13 +607,80 @@ function seedPreloadIngredients(preload, organicMode) {
     if (typeof item === 'string') {
       return { produceId: item, weightG: 150, isOrganic: getDefaultOrganic(organicMode), portionEntryMode: 'weight' }
     }
-    return {
+
+    const baseIngredient = {
       produceId: item.produceId,
       weightG: item.weightG || 150,
       isOrganic: typeof item.isOrganic === 'boolean' ? item.isOrganic : getDefaultOrganic(organicMode),
       portionEntryMode: item.portionEntryMode || 'weight',
       portionMetadata: item.portionMetadata || undefined,
     }
+
+    // Normalize quantity-mode ingredients through the canonical
+    // recomputeFromQuantityChange path. This ensures portionMetadata
+    // has the correct keys (unitKey, sizeKey, enteredQuantity,
+    // inputMode, estimatedRawWeightG, etc.) that validation expects.
+    // Without this, Make Again reconstruction produces a legacy-shaped
+    // portionMetadata ({unit, size, quantity}) that fails validation
+    // even though the values are visually correct.
+    if (
+      baseIngredient.portionEntryMode === 'quantity' &&
+      isProduceQuantitySupported(item.produceId)
+    ) {
+      const meta = item.portionMetadata
+      // If metadata already has canonical keys, it's already normalized
+      const hasCanonicalKeys = meta && meta.unitKey && meta.enteredQuantity != null
+      if (!hasCanonicalKeys) {
+        // Extract values from either canonical or legacy metadata shape
+        const rawQuantity = meta?.enteredQuantity ?? meta?.quantity ?? item.quantity ?? 1
+        const rawUnitKey = meta?.unitKey ?? meta?.unit ?? null
+        const rawSizeKey = meta?.sizeKey ?? meta?.size ?? null
+
+        const defaultUnit = getDefaultPortionUnit(item.produceId)
+        if (defaultUnit) {
+          const unitKey = rawUnitKey || defaultUnit.unitKey
+          const sizes = getSupportedSizes(item.produceId, unitKey)
+          const hasSML = sizes.some((s) => s.sizeKey !== 'standard')
+          const sizeKey = rawSizeKey
+            || (hasSML
+              ? (sizes.find((s) => s.sizeKey === 'medium') || sizes[0])?.sizeKey
+              : null)
+
+          const normalizedResult = recomputeFromQuantityChange({
+            produceId: item.produceId,
+            quantity: rawQuantity,
+            unitKey,
+            sizeKey: sizeKey || undefined,
+          })
+
+          if (normalizedResult) {
+            baseIngredient.portionMetadata = normalizedResult.metadata
+            baseIngredient.weightG = normalizedResult.weightG
+            baseIngredient.pendingUnitKey = unitKey
+            baseIngredient.pendingSizeKey = sizeKey || null
+          } else {
+            // Fallback: initialize with defaults like the manual-entry path
+            const fallbackSize = hasSML
+              ? (sizes.find((s) => s.sizeKey === 'medium') || sizes[0])
+              : null
+            const fallbackResult = recomputeFromQuantityChange({
+              produceId: item.produceId,
+              quantity: 1,
+              unitKey: defaultUnit.unitKey,
+              sizeKey: fallbackSize?.sizeKey || undefined,
+            })
+            if (fallbackResult) {
+              baseIngredient.portionMetadata = fallbackResult.metadata
+              baseIngredient.weightG = fallbackResult.weightG
+              baseIngredient.pendingUnitKey = defaultUnit.unitKey
+              baseIngredient.pendingSizeKey = fallbackSize?.sizeKey || null
+            }
+          }
+        }
+      }
+    }
+
+    return baseIngredient
   })
 }
 

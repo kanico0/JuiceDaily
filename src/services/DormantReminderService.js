@@ -73,7 +73,11 @@ function scheduleDormantReminders(activityDate) {
             sound: 'glass_clink.wav',
             ...(Platform.OS === 'android' ? { channelId: 'nudges' } : {}),
           },
-          trigger: { date: triggerDate },
+          trigger: {
+            type: Notifications.SchedulableTriggerInputTypes.DATE,
+            date: triggerDate,
+            ...(Platform.OS === 'android' ? { channelId: 'nudges' } : {}),
+          },
         })
       } catch {}
     }))

@@ -138,9 +138,16 @@ async function safeSchedule({ id, title, body, data, triggerDate }) {
       content.channelId = 'nudges'
     }
     const triggerIso = triggerDate ? new Date(triggerDate).toISOString() : 'immediate'
+    const trigger = triggerDate
+      ? {
+          type: Notifications.SchedulableTriggerInputTypes.DATE,
+          date: triggerDate,
+          channelId: 'nudges',
+        }
+      : null
     const result = await Notifications.scheduleNotificationAsync({
       content,
-      trigger: triggerDate ? { date: triggerDate } : null,
+      trigger,
       identifier: id,
     })
     console.log('[nudges] safeSchedule OK | id:', id, 'trigger:', triggerIso, 'result:', result || '(no id returned)')

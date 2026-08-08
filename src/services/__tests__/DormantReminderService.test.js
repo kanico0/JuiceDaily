@@ -14,6 +14,7 @@ jest.mock('@react-native-async-storage/async-storage', () => ({
 }))
 
 jest.mock('expo-notifications', () => ({
+  SchedulableTriggerInputTypes: { DATE: 'date' },
   getAllScheduledNotificationsAsync: jest.fn(() => Promise.resolve(
     Array.from(mockScheduled, ([identifier, notification]) => ({ identifier, ...notification }))
   )),

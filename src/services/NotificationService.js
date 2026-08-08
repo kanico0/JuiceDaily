@@ -302,10 +302,17 @@ async function scheduleNotif({ id, title, body, data, triggerDate, categoryId, i
   }
 
   const triggerIso = triggerDate ? new Date(triggerDate).toISOString() : 'immediate'
+  const trigger = triggerDate
+    ? {
+        type: Notifications.SchedulableTriggerInputTypes.DATE,
+        date: triggerDate,
+        channelId: ANDROID_CHANNEL_ID,
+      }
+    : null
   try {
     const result = await Notifications.scheduleNotificationAsync({
       content,
-      trigger: triggerDate ? { date: triggerDate } : null,
+      trigger,
       identifier: id,
     })
     console.log('[notif] scheduleNotif OK | id:', id, 'trigger:', triggerIso, 'result:', result || '(no id returned)')

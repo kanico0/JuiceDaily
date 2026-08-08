@@ -25,7 +25,6 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { LinearGradient } from 'expo-linear-gradient'
 import * as Haptics from 'expo-haptics'
 import {
-  Camera,
   Scan,
   Target,
   Sparkles,
@@ -50,6 +49,7 @@ import {
 } from 'lucide-react-native'
 import MeshGradientBg from '../components/MeshGradientBg'
 import LiquidNutrientOrb from '../components/LiquidNutrientOrb'
+import SnapIcon from '../components/SnapIcon'
 import { DARK, RADIUS, FONT_SIZE, FONT_WEIGHT, SEMANTIC_COLORS } from '../constants/tokens'
 import { useReducedMotion, DURATION, EASING, LIQUID_SPRING, LIQUID_SPRING_SNAPPY } from '../utils/motion'
 import { trackEvent } from '../services/AnalyticsService'
@@ -484,7 +484,7 @@ function BrowseIdeasModal({ visible, onDismiss, onScanReady, isReduced, navigati
                 end={{ x: 1, y: 1 }}
                 style={browseStyles.scanReadyGradient}
               >
-                <Camera size={18} color="#FFFFFF" />
+                <SnapIcon size={18} color="#FFFFFF" />
                 <Text style={browseStyles.scanReadyText}>Scan when ready</Text>
               </LinearGradient>
             </TouchableOpacity>
@@ -831,7 +831,7 @@ function ExampleScanModal({ visible, onDismiss, onTryScan, isReduced }) {
                 end={{ x: 1, y: 1 }}
                 style={exStyles.tryGradient}
               >
-                <Camera size={18} color="#FFFFFF" />
+                <SnapIcon size={18} color="#FFFFFF" />
                 <Text style={exStyles.tryText}>Try scanning my produce</Text>
               </LinearGradient>
             </TouchableOpacity>
@@ -1088,7 +1088,7 @@ function HeroStep({ onScan, onBrowse, onExample, onExplore, onNotReady, showSeco
             end={{ x: 1, y: 0.8 }}
             style={obStyles.primaryBtnGradient}
           >
-            <Camera size={22} color="#FFFFFF" />
+            <SnapIcon size={22} color="#FFFFFF" />
             <Text style={obStyles.primaryBtnText}>
               {isAnticipating ? 'Analyzing\u2026' : 'Reveal My Nutrients'}
             </Text>
@@ -1324,7 +1324,7 @@ function ScanHome({ onScan, onBrowse, onExample, onExplore, totalLogs, showSecon
             end={{ x: 1, y: 0.8 }}
             style={obStyles.primaryBtnGradient}
           >
-            <Camera size={22} color="#FFFFFF" />
+            <SnapIcon size={22} color="#FFFFFF" />
             <Text style={obStyles.primaryBtnText}>
               {isAnticipating ? 'Analyzing…' : 'Reveal My Nutrients'}
             </Text>
@@ -1774,7 +1774,7 @@ function BrowseHome({ onScan, onBrowse, onExample, onExplore, onViewToday, onWel
                 accessibilityRole="button"
                 accessibilityLabel="Try a scan"
               >
-                <Camera size={18} color="#FFFFFF" />
+                <SnapIcon size={18} color="#FFFFFF" />
                 <Text style={focusStyles.modalCtaText}>Try a Scan</Text>
               </Pressable>
             </View>
@@ -1866,7 +1866,7 @@ function BrowseHome({ onScan, onBrowse, onExample, onExplore, onViewToday, onWel
             end={{ x: 1, y: 0.8 }}
             style={obStyles.primaryBtnGradient}
           >
-            <Camera size={22} color="#FFFFFF" />
+            <SnapIcon size={22} color="#FFFFFF" />
             <Text style={obStyles.primaryBtnText}>{isReturning ? 'Scan Produce' : 'Reveal My Nutrients'}</Text>
           </LinearGradient>
         </Pressable>

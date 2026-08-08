@@ -8,7 +8,8 @@ import { View, Text, StyleSheet, Pressable } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { LinearGradient } from 'expo-linear-gradient'
 import * as Haptics from 'expo-haptics'
-import { Camera, Home } from 'lucide-react-native'
+import { Home } from 'lucide-react-native'
+import SnapIcon from '../components/SnapIcon'
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -100,7 +101,7 @@ export default function IntroLaunchScreen({ onReveal, onSeeHow, onExplore }) {
               end={{ x: 1, y: 0.8 }}
               style={styles.primaryGradient}
             >
-              <Camera size={22} color="#FFFFFF" />
+              <SnapIcon size={22} color="#FFFFFF" />
               <Text style={styles.primaryText}>Reveal My Nutrients</Text>
             </LinearGradient>
           </Pressable>

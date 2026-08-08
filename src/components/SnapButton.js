@@ -1,7 +1,7 @@
 import React, { useRef, useEffect } from 'react'
 import { TouchableOpacity, Text, StyleSheet, View, Animated } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
-import { Camera } from 'lucide-react-native'
+import SnapIcon from './SnapIcon'
 
 export default function SnapButton({ onPress }) {
   const scaleAnim = useRef(new Animated.Value(0.95)).current
@@ -39,7 +39,7 @@ export default function SnapButton({ onPress }) {
           {/* Glass edge highlight */}
           <View style={styles.edgeGlow} />
           <Animated.View style={[styles.iconWrapper, { opacity: glowAnim }]}>
-            <Camera size={26} color="#FFFFFF" strokeWidth={2.5} />
+            <SnapIcon size={26} color="#FFFFFF" />
           </Animated.View>
           <Text style={styles.label}>Snap Produce</Text>
         </LinearGradient>

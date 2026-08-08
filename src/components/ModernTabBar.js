@@ -7,8 +7,9 @@
 import React from 'react'
 import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { CalendarDays, History, Compass, Scan } from 'lucide-react-native'
+import { CalendarDays, History, Compass } from 'lucide-react-native'
 import { useNavigation } from '@react-navigation/native'
+import SnapIcon from './SnapIcon'
 
 const TAB_ICONS = {
   TodayTab: CalendarDays,
@@ -74,7 +75,7 @@ export default function ModernTabBar({ state, descriptors, navigation }) {
                   accessibilityRole="button"
                   accessibilityLabel="Scan produce"
                 >
-                  <Scan size={26} color="#FFFFFF" />
+                  <SnapIcon size={26} color="#FFFFFF" />
                 </TouchableOpacity>
               </View>
             )}

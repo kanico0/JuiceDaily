@@ -7,7 +7,8 @@ import {
   Pressable,
 } from 'react-native'
 import * as Haptics from 'expo-haptics'
-import { Leaf, Sparkles, X, Camera } from 'lucide-react-native'
+import { Leaf, Sparkles, X } from 'lucide-react-native'
+import SnapIcon from './SnapIcon'
 import { SEMANTIC_COLORS, SEMANTIC_SPACE, SEMANTIC_RADIUS, SEMANTIC_TYPOGRAPHY, FONT_WEIGHT } from '../constants/tokens'
 import { card, sectionHeading, primaryAction, primaryActionLabel } from '../constants/styleRecipes'
 import { trackEvent } from '../services/AnalyticsService'
@@ -129,7 +130,7 @@ export default function FocusNutrientCard({ onScan, isReduced }) {
               accessibilityRole="button"
               accessibilityLabel="Try a scan"
             >
-              <Camera size={18} color={SEMANTIC_COLORS.textOnAccent} />
+              <SnapIcon size={18} color={SEMANTIC_COLORS.textOnAccent} />
               <Text style={styles.modalCtaText}>Try a Scan</Text>
             </Pressable>
           </View>

@@ -10,4 +10,7 @@ module.exports = {
     'src/services/NutritionScoreEngine.ts',
     '!**/node_modules/**',
   ],
+  moduleNameMapper: {
+    '\\.(png|jpg|jpeg|gif|svg)$': '<rootDir>/jestAssetStub.js',
+  },
 }

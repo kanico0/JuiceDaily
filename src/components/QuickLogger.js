@@ -22,9 +22,10 @@ import {
 import { LinearGradient } from 'expo-linear-gradient'
 import * as Haptics from 'expo-haptics'
 import {
-  Droplets, Zap, Flame, ChevronLeft, Check, X, Camera, PenLine, Plus, Minus, Search, Leaf,
+  Droplets, Zap, Flame, ChevronLeft, Check, X, PenLine, Plus, Minus, Search, Leaf,
 } from 'lucide-react-native'
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import SnapIcon from './SnapIcon'
 import { DARK, RADIUS, SPACE, FONT_SIZE, FONT_WEIGHT } from '../constants/tokens'
 import { useReducedMotion, DURATION, EASING } from '../utils/motion'
 import { processJuiceBatch, PRODUCE_DATA } from '../services/JuiceEngine'
@@ -478,7 +479,7 @@ export default function QuickLogger({ visible, onDismiss, onLogComplete, onCusto
                   accessibilityLabel="Snap a photo of your juice ingredients"
                 >
                   <View style={[qlStyles.typeIcon, { backgroundColor: 'rgba(206,147,216,0.1)' }]}>
-                    <Camera size={18} color="#CE93D8" />
+                    <SnapIcon size={18} color="#CE93D8" />
                   </View>
                   <View style={qlStyles.typeContent}>
                     <Text style={qlStyles.typeLabel}>Snap a Photo</Text>

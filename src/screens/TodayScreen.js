@@ -20,7 +20,6 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { LinearGradient } from 'expo-linear-gradient'
 import * as Haptics from 'expo-haptics'
 import {
-  Camera,
   Settings,
   Droplets,
   Compass,
@@ -31,6 +30,7 @@ import {
   Sparkles,
 } from 'lucide-react-native'
 import MeshGradientBg from '../components/MeshGradientBg'
+import SnapIcon from '../components/SnapIcon'
 import NutrientHaloCard from '../components/NutrientHaloCard'
 import WeeklyPillarView from '../components/WeeklyPillarView'
 import QuickLogger from '../components/QuickLogger'
@@ -656,7 +656,7 @@ export default function TodayScreen({ navigation }) {
                         end={{ x: 1, y: 1 }}
                         style={styles.scanAgainGradient}
                       >
-                        <Camera size={18} color={SEMANTIC_COLORS.textOnAccent} />
+                        <SnapIcon size={18} color={SEMANTIC_COLORS.textOnAccent} />
                         <Text style={styles.scanAgainText}>Log Another Juice</Text>
                       </LinearGradient>
                     </TouchableOpacity>
@@ -813,7 +813,7 @@ export default function TodayScreen({ navigation }) {
                       end={{ x: 1, y: 1 }}
                       style={styles.scanCtaGradient}
                     >
-                      <Camera size={22} color={SEMANTIC_COLORS.textOnAccent} />
+                      <SnapIcon size={22} color={SEMANTIC_COLORS.textOnAccent} />
                       <Text style={styles.scanCtaText}>Scan My Produce</Text>
                     </LinearGradient>
                   </TouchableOpacity>

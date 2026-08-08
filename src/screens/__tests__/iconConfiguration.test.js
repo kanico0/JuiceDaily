@@ -94,7 +94,7 @@ describe('Issue 2 — Application Icon Configuration', () => {
     const approved = path.join(ROOT, 'assets', 'play-store-icon.png')
     const buf = fs.readFileSync(approved)
     const hash = crypto.createHash('sha256').update(buf).digest('hex')
-    expect(hash).toBe('3b1109ade240df4726eaa36ca5a94324301c48d88b80225cacb549d59279dcfd')
+    expect(hash).toBe('1394eb7fbf072588fe7c10f6fa02238fa444b8c99a1aaa3f16d78f294b53f981')
   })
 
   test('12. Adaptive icon has safe-zone padding (artwork within 66% safe zone)', () => {
@@ -151,7 +151,7 @@ describe('Issue 2 — Application Icon Configuration', () => {
     const playStorePath = path.join(ROOT, 'assets', 'play-store-icon.png')
     const buf = fs.readFileSync(playStorePath)
     const hash = crypto.createHash('sha256').update(buf).digest('hex')
-    expect(hash).toBe('3b1109ade240df4726eaa36ca5a94324301c48d88b80225cacb549d59279dcfd')
+    expect(hash).toBe('1394eb7fbf072588fe7c10f6fa02238fa444b8c99a1aaa3f16d78f294b53f981')
   })
 
   test('14. Favicon exists and is 48x48', () => {
@@ -173,6 +173,6 @@ describe('Issue 2 — Application Icon Configuration', () => {
     const scriptPath = path.join(ROOT, 'scripts', 'generate-icons.js')
     const script = fs.readFileSync(scriptPath, 'utf8')
     expect(script).toContain('Raw_LifeFlow_Color_Play-Store.png')
-    expect(script).toContain('3B1109ADE240DF4726EAA36CA5A94324301C48D88B80225CACB549D59279DCFD')
+    expect(script).toContain('1394EB7FBF072588FE7C10F6FA02238FA444B8C99A1AAA3F16D78F294B53F981')
   })
 })

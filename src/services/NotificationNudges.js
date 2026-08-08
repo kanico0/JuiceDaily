@@ -37,21 +37,33 @@ const IDS = {
 
 let available = true
 try {
-  Notifications.getPermissionsAsync().catch(() => { available = false })
-} catch {
+  Notifications.getPermissionsAsync().catch((e) => {
+    available = false
+    console.warn('[nudges] availability guard set to FALSE — getPermissionsAsync rejected:', e?.name || 'unknown', e?.message || '')
+  })
+} catch (e) {
   available = false
+  console.warn('[nudges] availability guard set to FALSE — synchronous throw:', e?.name || 'unknown', e?.message || '')
 }
 
 // ── Permissions ──────────────────────────────────────────────
 
 export async function ensurePermissions() {
-  if (!available) return false
+  if (!available) {
+    console.warn('[nudges] ensurePermissions SKIP — available=false')
+    return false
+  }
   try {
     const { status: existing } = await Notifications.getPermissionsAsync()
-    if (existing === 'granted') return true
+    if (existing === 'granted') {
+      console.log('[nudges] ensurePermissions OK — already granted')
+      return true
+    }
     const { status } = await Notifications.requestPermissionsAsync()
+    console.log('[nudges] ensurePermissions requestPermissionsAsync → status:', status)
     return status === 'granted'
-  } catch {
+  } catch (e) {
+    console.warn('[nudges] ensurePermissions FAIL:', e?.name || 'unknown', e?.message || '')
     return false
   }
 }
@@ -68,8 +80,9 @@ export async function setAndroidNotificationChannel() {
       lightColor: '#81C784',
       sound: 'glass_clink.wav',
     })
-  } catch {
-    // Channel setup failed — non-fatal
+    console.log('[nudges] setAndroidNotificationChannel OK | channelId: nudges')
+  } catch (e) {
+    console.warn('[nudges] setAndroidNotificationChannel FAIL:', e?.name || 'unknown', e?.message || '')
   }
 }
 
@@ -82,19 +95,28 @@ async function safeCancel(id) {
 }
 
 async function safeSchedule({ id, title, body, data, triggerDate }) {
-  if (!available) return false
+  if (!available) {
+    console.warn('[nudges] safeSchedule SKIP — available=false | id:', id)
+    return false
+  }
   try {
     await safeCancel(id)
 
     // Respect NotificationService intensity caps and quiet hours
     const notifSettings = await loadNotificationSettings()
-    if (!notifSettings.enabled) return false
+    if (!notifSettings.enabled) {
+      console.warn('[nudges] safeSchedule BLOCKED — settings.enabled=false | id:', id)
+      return false
+    }
 
     // For near-future nudges, check the daily cap right now
     const isNearFuture = !triggerDate || (triggerDate - Date.now() < 60000)
     if (isNearFuture) {
       const allowed = await canSendNotification(notifSettings)
-      if (!allowed) return false
+      if (!allowed) {
+        console.warn('[nudges] safeSchedule BLOCKED by canSendNotification | id:', id, 'intensity:', notifSettings.intensity)
+        return false
+      }
     }
 
     // Check if the scheduled trigger time falls in quiet hours
@@ -102,6 +124,7 @@ async function safeSchedule({ id, title, body, data, triggerDate }) {
       // not in quiet hours — OK to schedule
     } else if (triggerDate) {
       // trigger falls in quiet hours — skip scheduling
+      console.warn('[nudges] safeSchedule BLOCKED by quiet hours | id:', id, 'trigger:', new Date(triggerDate).toISOString())
       return false
     }
 
@@ -114,14 +137,17 @@ async function safeSchedule({ id, title, body, data, triggerDate }) {
     if (Platform.OS === 'android') {
       content.channelId = 'nudges'
     }
-    await Notifications.scheduleNotificationAsync({
+    const triggerIso = triggerDate ? new Date(triggerDate).toISOString() : 'immediate'
+    const result = await Notifications.scheduleNotificationAsync({
       content,
       trigger: triggerDate ? { date: triggerDate } : null,
       identifier: id,
     })
+    console.log('[nudges] safeSchedule OK | id:', id, 'trigger:', triggerIso, 'result:', result || '(no id returned)')
     if (isNearFuture) await incrementSentToday()
     return true
-  } catch {
+  } catch (e) {
+    console.warn('[nudges] safeSchedule FAIL | id:', id, 'error:', e?.name || 'unknown', e?.message || '')
     return false
   }
 }
@@ -242,6 +268,7 @@ export async function cancelAllNudges() {
 export async function refreshNudges() {
   try {
     const settings = await getNudgeSettings()
+    console.log('[nudges] refreshNudges START | enabled:', settings.nudges_enabled, 'daily:', settings.nudges_daily_enabled, 'streakRisk:', settings.nudges_streakRisk_enabled, 'weekly:', settings.nudges_weekly_enabled)
 
     // Master toggle off → cancel everything
     if (!settings.nudges_enabled) {
@@ -285,6 +312,19 @@ export async function refreshNudges() {
       )
     } else {
       await safeCancel(IDS.WEEKLY)
+    }
+
+    // Diagnostic: dump all scheduled notifications after refresh
+    try {
+      const scheduled = await Notifications.getAllScheduledNotificationsAsync()
+      console.log('[nudges] refreshNudges DIAGNOSTIC | scheduledCount:', scheduled.length)
+      for (const s of scheduled) {
+        const trigger = s.trigger
+        const triggerStr = trigger?.date || (trigger?.hour !== undefined ? `${trigger.hour}:${trigger.minute}` : JSON.stringify(trigger || {}))
+        console.log('[nudges] scheduled | id:', s.identifier, 'trigger:', triggerStr)
+      }
+    } catch (e) {
+      console.warn('[nudges] refreshNudges DIAGNOSTIC FAIL:', e?.name || 'unknown', e?.message || '')
     }
   } catch (e) {
     console.warn('[NotificationNudges] refreshNudges error:', e)

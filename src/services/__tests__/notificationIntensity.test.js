@@ -17,7 +17,7 @@ describe('Notification intensity scheduling — defect regression', () => {
       const reconcileStart = NOTIF_SRC.indexOf(
         'export async function reconcileNotificationSchedule',
       )
-      const reconcileSection = NOTIF_SRC.substring(reconcileStart, reconcileStart + 800)
+      const reconcileSection = NOTIF_SRC.substring(reconcileStart, reconcileStart + 1200)
       expect(reconcileSection).toContain("safeCancel('wilt-warning')")
     })
 
@@ -42,7 +42,7 @@ describe('Notification intensity scheduling — defect regression', () => {
       const reconcileStart = NOTIF_SRC.indexOf(
         'export async function reconcileNotificationSchedule',
       )
-      const reconcileSection = NOTIF_SRC.substring(reconcileStart, reconcileStart + 1000)
+      const reconcileSection = NOTIF_SRC.substring(reconcileStart, reconcileStart + 2000)
       expect(reconcileSection).toMatch(/refreshNudges/)
     })
 
@@ -67,13 +67,13 @@ describe('Notification intensity scheduling — defect regression', () => {
 
     test('6. safeSchedule calls incrementSentToday after scheduling', () => {
       const safeScheduleStart = NUDGE_SRC.indexOf('async function safeSchedule')
-      const safeScheduleSection = NUDGE_SRC.substring(safeScheduleStart, safeScheduleStart + 2000)
+      const safeScheduleSection = NUDGE_SRC.substring(safeScheduleStart, safeScheduleStart + 3000)
       expect(safeScheduleSection).toMatch(/incrementSentToday/)
     })
 
     test('7. incrementSentToday is called only for near-future nudges', () => {
       const safeScheduleStart = NUDGE_SRC.indexOf('async function safeSchedule')
-      const safeScheduleSection = NUDGE_SRC.substring(safeScheduleStart, safeScheduleStart + 2000)
+      const safeScheduleSection = NUDGE_SRC.substring(safeScheduleStart, safeScheduleStart + 3000)
       expect(safeScheduleSection).toMatch(/isNearFuture[\s\S]*incrementSentToday/)
     })
   })
@@ -103,14 +103,14 @@ describe('Notification intensity scheduling — defect regression', () => {
 
     test('11. scheduleNotif still checks cap for near-future only', () => {
       const scheduleStart = NOTIF_SRC.indexOf('async function scheduleNotif')
-      const scheduleSection = NOTIF_SRC.substring(scheduleStart, scheduleStart + 800)
+      const scheduleSection = NOTIF_SRC.substring(scheduleStart, scheduleStart + 1200)
       expect(scheduleSection).toMatch(/isNearFuture/)
       expect(scheduleSection).toMatch(/canSendNotification/)
     })
 
     test('12. scheduleNotif increments sentToday for near-future', () => {
       const scheduleStart = NOTIF_SRC.indexOf('async function scheduleNotif')
-      const scheduleSection = NOTIF_SRC.substring(scheduleStart, scheduleStart + 2000)
+      const scheduleSection = NOTIF_SRC.substring(scheduleStart, scheduleStart + 3000)
       expect(scheduleSection).toMatch(/isNearFuture[\s\S]*incrementSentToday/)
     })
 
@@ -124,13 +124,13 @@ describe('Notification intensity scheduling — defect regression', () => {
   describe('Nudge quiet hours check is preserved', () => {
     test('14. safeSchedule checks isTimeInQuietHours for trigger time', () => {
       const safeScheduleStart = NUDGE_SRC.indexOf('async function safeSchedule')
-      const safeScheduleSection = NUDGE_SRC.substring(safeScheduleStart, safeScheduleStart + 1200)
+      const safeScheduleSection = NUDGE_SRC.substring(safeScheduleStart, safeScheduleStart + 2000)
       expect(safeScheduleSection).toMatch(/isTimeInQuietHours/)
     })
 
     test('15. safeSchedule checks canSendNotification for near-future', () => {
       const safeScheduleStart = NUDGE_SRC.indexOf('async function safeSchedule')
-      const safeScheduleSection = NUDGE_SRC.substring(safeScheduleStart, safeScheduleStart + 1200)
+      const safeScheduleSection = NUDGE_SRC.substring(safeScheduleStart, safeScheduleStart + 2000)
       expect(safeScheduleSection).toMatch(/canSendNotification/)
     })
   })

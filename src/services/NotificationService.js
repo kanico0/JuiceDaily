@@ -29,9 +29,13 @@ LogBox.ignoreLogs(['expo-notifications: Android push notification'])
 // Availability guard — notifications are non-functional in Expo Go on Android (SDK 53+)
 let notificationsAvailable = true
 try {
-  Notifications.getPermissionsAsync().catch(() => { notificationsAvailable = false })
+  Notifications.getPermissionsAsync().catch((e) => {
+    notificationsAvailable = false
+    console.warn('[notif] availability guard set to FALSE — getPermissionsAsync rejected:', e?.name || 'unknown', e?.message || '')
+  })
 } catch (e) {
   notificationsAvailable = false
+  console.warn('[notif] availability guard set to FALSE — synchronous throw:', e?.name || 'unknown', e?.message || '')
 }
 
 // ── Storage Keys ─────────────────────────────────────────────
@@ -89,8 +93,9 @@ async function ensureAndroidChannel() {
       sound: 'glass_clink.wav',
     })
     channelCreated = true
-  } catch {
-    // Channel setup failed — non-fatal
+    console.log('[notif] ensureAndroidChannel OK | channelId:', ANDROID_CHANNEL_ID)
+  } catch (e) {
+    console.warn('[notif] ensureAndroidChannel FAIL:', e?.name || 'unknown', e?.message || '')
   }
 }
 
@@ -147,7 +152,10 @@ async function registerCategories() {
 // ── Permission ───────────────────────────────────────────────
 
 export async function requestNotificationPermission() {
-  if (!notificationsAvailable) return false
+  if (!notificationsAvailable) {
+    console.warn('[notif] requestNotificationPermission SKIP — notificationsAvailable=false')
+    return false
+  }
   try {
     const { status: existing } = await Notifications.getPermissionsAsync()
     let finalStatus = existing
@@ -155,12 +163,13 @@ export async function requestNotificationPermission() {
       const { status } = await Notifications.requestPermissionsAsync()
       finalStatus = status
     }
+    console.log('[notif] requestNotificationPermission → finalStatus:', finalStatus)
     if (finalStatus === 'granted') {
       await registerCategories()
     }
     return finalStatus === 'granted'
   } catch (e) {
-    // Notifications unavailable (Expo Go SDK 53+ Android)
+    console.warn('[notif] requestNotificationPermission FAIL:', e?.name || 'unknown', e?.message || '')
     return false
   }
 }
@@ -249,7 +258,10 @@ export function isTimeInQuietHours(hour, minute, settings) {
 // ── Core Schedule Function ───────────────────────────────────
 
 async function scheduleNotif({ id, title, body, data, triggerDate, categoryId, isEmergency }) {
-  if (!notificationsAvailable) return false
+  if (!notificationsAvailable) {
+    console.warn('[notif] scheduleNotif SKIP — notificationsAvailable=false | id:', id)
+    return false
+  }
   const settings = await loadNotificationSettings()
 
   // For immediate/near-future: check caps now
@@ -257,13 +269,19 @@ async function scheduleNotif({ id, title, body, data, triggerDate, categoryId, i
   const isNearFuture = !triggerDate || (triggerDate - Date.now() < 60000)
   if (isNearFuture) {
     const allowed = await canSendNotification(settings, isEmergency)
-    if (!allowed) return false
+    if (!allowed) {
+      console.warn('[notif] scheduleNotif BLOCKED by canSendNotification | id:', id, 'enabled:', settings.enabled, 'intensity:', settings.intensity)
+      return false
+    }
   }
 
   // Check if scheduled time falls in quiet hours (skip for emergencies)
   if (triggerDate && !isEmergency) {
     const d = new Date(triggerDate)
-    if (isTimeInQuietHours(d.getHours(), d.getMinutes(), settings)) return false
+    if (isTimeInQuietHours(d.getHours(), d.getMinutes(), settings)) {
+      console.warn('[notif] scheduleNotif BLOCKED by quiet hours | id:', id, 'trigger:', d.toISOString())
+      return false
+    }
   }
 
   await ensureAndroidChannel()
@@ -283,15 +301,18 @@ async function scheduleNotif({ id, title, body, data, triggerDate, categoryId, i
     content.categoryIdentifier = categoryId
   }
 
+  const triggerIso = triggerDate ? new Date(triggerDate).toISOString() : 'immediate'
   try {
-    await Notifications.scheduleNotificationAsync({
+    const result = await Notifications.scheduleNotificationAsync({
       content,
       trigger: triggerDate ? { date: triggerDate } : null,
       identifier: id,
     })
+    console.log('[notif] scheduleNotif OK | id:', id, 'trigger:', triggerIso, 'result:', result || '(no id returned)')
     if (isNearFuture) await incrementSentToday()
     return true
   } catch (e) {
+    console.warn('[notif] scheduleNotif FAIL | id:', id, 'trigger:', triggerIso, 'error:', e?.name || 'unknown', e?.message || '')
     return false
   }
 }
@@ -691,6 +712,7 @@ export async function cancelMercyAlert() {
 
 export async function reconcileNotificationSchedule() {
   const settings = await loadNotificationSettings()
+  console.log('[notif] reconcileNotificationSchedule START | enabled:', settings.enabled, 'intensity:', settings.intensity, 'affirmations:', settings.affirmations, 'vitalityReminders:', settings.vitalityReminders)
   if (!settings.enabled) {
     // Cancel all non-emergency scheduled notifications
     const ids = [
@@ -721,7 +743,22 @@ export async function reconcileNotificationSchedule() {
   try {
     const { refreshNudges } = require('./NotificationNudges')
     await refreshNudges()
-  } catch (e) { /* nudges module unavailable — non-fatal */ }
+  } catch (e) {
+    console.warn('[notif] reconcileNotificationSchedule — refreshNudges error:', e?.name || 'unknown', e?.message || '')
+  }
+
+  // Diagnostic: dump all scheduled notifications after reconciliation
+  try {
+    const scheduled = await Notifications.getAllScheduledNotificationsAsync()
+    console.log('[notif] reconcileNotificationSchedule DIAGNOSTIC | scheduledCount:', scheduled.length)
+    for (const s of scheduled) {
+      const trigger = s.trigger
+      const triggerStr = trigger?.date || trigger?.hour !== undefined ? `${trigger.hour || ''}:${trigger.minute || ''}` : JSON.stringify(trigger || {})
+      console.log('[notif] scheduled | id:', s.identifier, 'trigger:', triggerStr)
+    }
+  } catch (e) {
+    console.warn('[notif] reconcileNotificationSchedule DIAGNOSTIC FAIL:', e?.name || 'unknown', e?.message || '')
+  }
 }
 
 export async function cancelSaturdayNudge() {

@@ -2,10 +2,8 @@
 // Regression tests for global notification intensity cap
 // enforcement across NotificationService + NotificationNudges.
 //
-// The sentToday counter only governs near-future delivery.
-// Far-future scheduled notifications bypass canSendNotification(),
-// so enforceGlobalNotificationCap() must cancel excess
-// ordinary notifications per local calendar day.
+// ALL user-facing notifications count toward the cap — no
+// exemptions (Freezer Pass retired in 1.0.20).
 // ─────────────────────────────────────────────────────────────
 
 const mockStorage = new Map()
@@ -52,7 +50,7 @@ const {
   enforceGlobalNotificationCap,
   INTENSITY_CAPS,
   __capPolicy,
-} = require('../NotificationService')
+} = require('../NotificationCapPolicy')
 
 // Helper: create a mock scheduled notification
 function makeNotif(id, dayOffset, hour = 12, extra = {}) {
@@ -64,7 +62,7 @@ function makeNotif(id, dayOffset, hour = 12, extra = {}) {
   }
 }
 
-// Helper: populate mockScheduled with a set of ordinary notifications
+// Helper: populate mockScheduled with a set of notifications
 function setScheduled(notifs) {
   mockScheduled.clear()
   for (const n of notifs) {
@@ -79,9 +77,9 @@ describe('Global notification intensity cap — enforceGlobalNotificationCap', (
     jest.clearAllMocks()
   })
 
-  // ── 1. Zen with 5 ordinary candidates → only 1 scheduled ──
+  // ── 1. Zen with 5 mixed notification types → exactly 1 ──
 
-  test('1. Zen with 5 ordinary candidates → only 1 scheduled for that local day', async () => {
+  test('1. Zen with 5 mixed notification types → exactly 1 scheduled', async () => {
     const five = [
       makeNotif('identity-affirmation', 0, 7),
       makeNotif('nudge-daily-glow', 0, 8),
@@ -98,9 +96,9 @@ describe('Global notification intensity cap — enforceGlobalNotificationCap', (
     expect(mockScheduled.has('identity-affirmation')).toBe(true)
   })
 
-  // ── 2. Balanced with 5 ordinary candidates → only 3 scheduled ──
+  // ── 2. Balanced with 5 candidates → only 3 scheduled ──
 
-  test('2. Balanced with 5 ordinary candidates → only 3 scheduled', async () => {
+  test('2. Balanced with 5 candidates → only 3 scheduled', async () => {
     const five = [
       makeNotif('identity-affirmation', 0, 7),
       makeNotif('nudge-daily-glow', 0, 8),
@@ -113,15 +111,14 @@ describe('Global notification intensity cap — enforceGlobalNotificationCap', (
     const cancelled = await enforceGlobalNotificationCap({ enabled: true, intensity: 'balanced' })
     expect(cancelled.length).toBe(2)
     expect(mockScheduled.size).toBe(3)
-    // Top 3 by priority: identity-affirmation, nudge-daily-glow, educational-tip
     expect(mockScheduled.has('identity-affirmation')).toBe(true)
     expect(mockScheduled.has('nudge-daily-glow')).toBe(true)
     expect(mockScheduled.has('educational-tip')).toBe(true)
   })
 
-  // ── 3. High-Vibe with 6+ ordinary candidates → only 5 scheduled ──
+  // ── 3. High-Vibe with 6+ candidates → only 5 scheduled ──
 
-  test('3. High-Vibe with 6+ ordinary candidates → only 5 scheduled', async () => {
+  test('3. High-Vibe with 6+ candidates → only 5 scheduled', async () => {
     const six = [
       makeNotif('identity-affirmation', 0, 7),
       makeNotif('nudge-daily-glow', 0, 8),
@@ -135,9 +132,7 @@ describe('Global notification intensity cap — enforceGlobalNotificationCap', (
     const cancelled = await enforceGlobalNotificationCap({ enabled: true, intensity: 'high-vibe' })
     expect(cancelled.length).toBe(1)
     expect(mockScheduled.size).toBe(5)
-    // wilt-warning (priority 6) should be cancelled
     expect(mockScheduled.has('wilt-warning')).toBe(false)
-    // Top 5 should remain
     expect(mockScheduled.has('identity-affirmation')).toBe(true)
     expect(mockScheduled.has('nudge-daily-glow')).toBe(true)
     expect(mockScheduled.has('educational-tip')).toBe(true)
@@ -148,22 +143,20 @@ describe('Global notification intensity cap — enforceGlobalNotificationCap', (
   // ── 4. Combined NotificationService + NotificationNudges cannot exceed cap ──
 
   test('4. Combined NotificationService + NotificationNudges cannot exceed cap', async () => {
-    // Mix of IDs from both services on the same day
     const mixed = [
-      makeNotif('identity-affirmation', 0, 7),    // NotificationService
-      makeNotif('educational-tip', 0, 12),         // NotificationService
-      makeNotif('saturday-rainbow-nudge', 0, 10),  // NotificationService
-      makeNotif('wilt-warning', 0, 15),            // NotificationService
-      makeNotif('nudge-daily-glow', 0, 8),        // NotificationNudges
-      makeNotif('nudge-streak-risk', 0, 18),      // NotificationNudges
-      makeNotif('nudge-weekly-summary', 0, 19),   // NotificationNudges
+      makeNotif('identity-affirmation', 0, 7),
+      makeNotif('educational-tip', 0, 12),
+      makeNotif('saturday-rainbow-nudge', 0, 10),
+      makeNotif('wilt-warning', 0, 15),
+      makeNotif('nudge-daily-glow', 0, 8),
+      makeNotif('nudge-streak-risk', 0, 18),
+      makeNotif('nudge-weekly-summary', 0, 19),
     ]
     setScheduled(mixed)
 
     const cancelled = await enforceGlobalNotificationCap({ enabled: true, intensity: 'balanced' })
     expect(cancelled.length).toBe(4)
     expect(mockScheduled.size).toBe(3)
-    // Top 3 by priority: identity-affirmation, nudge-daily-glow, educational-tip
     expect(mockScheduled.has('identity-affirmation')).toBe(true)
     expect(mockScheduled.has('nudge-daily-glow')).toBe(true)
     expect(mockScheduled.has('educational-tip')).toBe(true)
@@ -172,7 +165,6 @@ describe('Global notification intensity cap — enforceGlobalNotificationCap', (
   // ── 5. Reconciliation removes excess when moving High-Vibe → Zen ──
 
   test('5. Reconciliation removes excess when moving High-Vibe → Zen', async () => {
-    // Simulate 5 notifications already scheduled (high-vibe allowed)
     const five = [
       makeNotif('identity-affirmation', 0, 7),
       makeNotif('nudge-daily-glow', 0, 8),
@@ -182,7 +174,6 @@ describe('Global notification intensity cap — enforceGlobalNotificationCap', (
     ]
     setScheduled(five)
 
-    // Now enforce Zen
     const cancelled = await enforceGlobalNotificationCap({ enabled: true, intensity: 'zen' })
     expect(cancelled.length).toBe(4)
     expect(mockScheduled.size).toBe(1)
@@ -192,64 +183,27 @@ describe('Global notification intensity cap — enforceGlobalNotificationCap', (
   // ── 6. Moving Zen → Balanced allows additional schedules ──
 
   test('6. Moving Zen → Balanced allows additional schedules', async () => {
-    // Only 1 scheduled (Zen enforced previously)
     const one = [makeNotif('identity-affirmation', 0, 7)]
     setScheduled(one)
 
-    // Enforce Balanced — should NOT cancel anything (1 < 3)
     const cancelled = await enforceGlobalNotificationCap({ enabled: true, intensity: 'balanced' })
     expect(cancelled.length).toBe(0)
     expect(mockScheduled.size).toBe(1)
-    // The caller would then reschedule additional notifications
   })
 
-  // ── 7. Quiet hours still work (source-level check) ──
+  // ── 7. Quiet hours still work ──
 
-  test('7. Quiet hours function still exists and works', () => {
-    const { isTimeInQuietHours } = require('../NotificationService')
+  test('7. Quiet hours function still works', () => {
+    const { isTimeInQuietHours } = require('../NotificationCapPolicy')
     const settings = { quietStart: { hour: 21, minute: 30 }, quietEnd: { hour: 6, minute: 30 } }
-    expect(isTimeInQuietHours(22, 0, settings)).toBe(true)   // 10 PM — quiet
-    expect(isTimeInQuietHours(10, 0, settings)).toBe(false)  // 10 AM — not quiet
-    expect(isTimeInQuietHours(3, 0, settings)).toBe(true)    // 3 AM — quiet
+    expect(isTimeInQuietHours(22, 0, settings)).toBe(true)
+    expect(isTimeInQuietHours(10, 0, settings)).toBe(false)
+    expect(isTimeInQuietHours(3, 0, settings)).toBe(true)
   })
 
-  // ── 8. Exempt emergency notifications do not consume ordinary cap ──
+  // ── 8. Dormant/onboarding/one-shot notifications count toward cap ──
 
-  test('8. freezer-morning (emergency) does not consume ordinary cap', async () => {
-    const withEmergency = [
-      makeNotif('identity-affirmation', 0, 7),
-      makeNotif('nudge-daily-glow', 0, 8),
-      makeNotif('freezer-morning', 0, 7, { data: { type: 'freezer_morning' } }),
-    ]
-    setScheduled(withEmergency)
-
-    // Zen = 1 ordinary. freezer-morning is exempt.
-    const cancelled = await enforceGlobalNotificationCap({ enabled: true, intensity: 'zen' })
-    expect(cancelled.length).toBe(1)
-    expect(mockScheduled.size).toBe(2)
-    // freezer-morning should NOT be cancelled
-    expect(mockScheduled.has('freezer-morning')).toBe(true)
-    // identity-affirmation (higher priority) kept, nudge-daily-glow cancelled
-    expect(mockScheduled.has('identity-affirmation')).toBe(true)
-    expect(mockScheduled.has('nudge-daily-glow')).toBe(false)
-  })
-
-  test('8b. streak-shield with freezerPasses > 0 is exempt', async () => {
-    const withEmergency = [
-      makeNotif('identity-affirmation', 0, 7),
-      makeNotif('nudge-daily-glow', 0, 8),
-      makeNotif('streak-shield', 0, 20, { data: { freezerPasses: 2 } }),
-    ]
-    setScheduled(withEmergency)
-
-    const cancelled = await enforceGlobalNotificationCap({ enabled: true, intensity: 'zen' })
-    expect(cancelled.length).toBe(1)
-    expect(mockScheduled.size).toBe(2)
-    // streak-shield with freezerPasses should NOT be cancelled
-    expect(mockScheduled.has('streak-shield')).toBe(true)
-  })
-
-  test('8c. dormant-reminder is exempt', async () => {
+  test('8. Dormant reminders count toward the same cap', async () => {
     const withDormant = [
       makeNotif('identity-affirmation', 0, 7),
       makeNotif('nudge-daily-glow', 0, 8),
@@ -257,15 +211,97 @@ describe('Global notification intensity cap — enforceGlobalNotificationCap', (
     ]
     setScheduled(withDormant)
 
+    // Zen = 1/day. Day 1 has 2 → cancel 1. Day 7 has 1 → OK.
     const cancelled = await enforceGlobalNotificationCap({ enabled: true, intensity: 'zen' })
     expect(cancelled.length).toBe(1)
-    expect(mockScheduled.size).toBe(2)
+    // identity-affirmation (priority 0) kept, nudge-daily-glow (priority 1) cancelled
+    expect(mockScheduled.has('identity-affirmation')).toBe(true)
+    expect(mockScheduled.has('nudge-daily-glow')).toBe(false)
     expect(mockScheduled.has('dormant-reminder-day-7')).toBe(true)
   })
 
-  // ── 9. Typed Expo DATE trigger format remains correct (source check) ──
+  test('8b. Onboarding notifications count toward the same cap', async () => {
+    const withOnboarding = [
+      makeNotif('identity-affirmation', 0, 7),
+      makeNotif('onboarding-1', 0, 9),
+      makeNotif('onboarding-2', 0, 10),
+    ]
+    setScheduled(withOnboarding)
 
-  test('9. Typed DATE trigger format remains in scheduleNotif', () => {
+    const cancelled = await enforceGlobalNotificationCap({ enabled: true, intensity: 'zen' })
+    expect(cancelled.length).toBe(2)
+    expect(mockScheduled.size).toBe(1)
+    // identity-affirmation (priority 0) > onboarding-* (priority 15)
+    expect(mockScheduled.has('identity-affirmation')).toBe(true)
+  })
+
+  test('8c. Surprise notifications count toward the same cap', async () => {
+    const withSurprise = [
+      makeNotif('identity-affirmation', 0, 7),
+      makeNotif('surprise-5', 0, 14),
+    ]
+    setScheduled(withSurprise)
+
+    const cancelled = await enforceGlobalNotificationCap({ enabled: true, intensity: 'zen' })
+    expect(cancelled.length).toBe(1)
+    expect(mockScheduled.has('identity-affirmation')).toBe(true)
+    expect(mockScheduled.has('surprise-5')).toBe(false)
+  })
+
+  test('8d. Weight milestone notifications count toward the same cap', async () => {
+    const withWeight = [
+      makeNotif('identity-affirmation', 0, 7),
+      makeNotif('weight-10', 0, 14),
+    ]
+    setScheduled(withWeight)
+
+    const cancelled = await enforceGlobalNotificationCap({ enabled: true, intensity: 'zen' })
+    expect(cancelled.length).toBe(1)
+    expect(mockScheduled.has('identity-affirmation')).toBe(true)
+    expect(mockScheduled.has('weight-10')).toBe(false)
+  })
+
+  // ── 9. freezer-morning is NO LONGER exempt — counts toward cap ──
+
+  test('9. freezer-morning counts toward cap (no exemption)', async () => {
+    const withFreezer = [
+      makeNotif('identity-affirmation', 0, 7),
+      makeNotif('nudge-daily-glow', 0, 8),
+      makeNotif('freezer-morning', 0, 7, { data: { type: 'freezer_morning' } }),
+    ]
+    setScheduled(withFreezer)
+
+    // Zen = 1/day. freezer-morning is no longer exempt.
+    const cancelled = await enforceGlobalNotificationCap({ enabled: true, intensity: 'zen' })
+    expect(cancelled.length).toBe(2)
+    expect(mockScheduled.size).toBe(1)
+    // identity-affirmation (priority 0) kept
+    expect(mockScheduled.has('identity-affirmation')).toBe(true)
+    // freezer-morning (priority 8) cancelled
+    expect(mockScheduled.has('freezer-morning')).toBe(false)
+  })
+
+  // ── 10. streak-shield with freezerPasses data is NO LONGER exempt ──
+
+  test('10. streak-shield with freezerPasses data is NOT exempt', async () => {
+    const withShield = [
+      makeNotif('identity-affirmation', 0, 7),
+      makeNotif('nudge-daily-glow', 0, 8),
+      makeNotif('streak-shield', 0, 20, { data: { freezerPasses: 5 } }),
+    ]
+    setScheduled(withShield)
+
+    const cancelled = await enforceGlobalNotificationCap({ enabled: true, intensity: 'zen' })
+    expect(cancelled.length).toBe(2)
+    expect(mockScheduled.size).toBe(1)
+    expect(mockScheduled.has('identity-affirmation')).toBe(true)
+    // streak-shield (priority 4) cancelled because identity-affirmation is higher
+    expect(mockScheduled.has('streak-shield')).toBe(false)
+  })
+
+  // ── 11. Typed Expo DATE trigger format remains correct (source check) ──
+
+  test('11. Typed DATE trigger format remains in scheduleNotif', () => {
     const fs = require('fs')
     const path = require('path')
     const src = fs.readFileSync(path.join(__dirname, '..', 'NotificationService.js'), 'utf8')
@@ -274,9 +310,9 @@ describe('Global notification intensity cap — enforceGlobalNotificationCap', (
     expect(section).toMatch(/SchedulableTriggerInputTypes\.DATE/)
   })
 
-  // ── 10. No duplicate identifiers/schedules ──
+  // ── 12. No duplicates (idempotent enforcement) ──
 
-  test('10. enforceGlobalNotificationCap does not create duplicates', async () => {
+  test('12. enforceGlobalNotificationCap is idempotent', async () => {
     const three = [
       makeNotif('identity-affirmation', 0, 7),
       makeNotif('nudge-daily-glow', 0, 8),
@@ -284,42 +320,74 @@ describe('Global notification intensity cap — enforceGlobalNotificationCap', (
     ]
     setScheduled(three)
 
-    // Balanced = 3, so nothing should be cancelled
     const cancelled = await enforceGlobalNotificationCap({ enabled: true, intensity: 'balanced' })
     expect(cancelled.length).toBe(0)
     expect(mockScheduled.size).toBe(3)
-    // Run again — idempotent
     const cancelled2 = await enforceGlobalNotificationCap({ enabled: true, intensity: 'balanced' })
     expect(cancelled2.length).toBe(0)
     expect(mockScheduled.size).toBe(3)
   })
 
+  // ── 13. Multi-day: cap applies independently per local day ──
+
+  test('13. Multi-day: cap applies independently per local day', async () => {
+    const multiDay = [
+      makeNotif('identity-affirmation', 0, 7),
+      makeNotif('nudge-daily-glow', 0, 8),
+      makeNotif('educational-tip', 0, 12),
+      makeNotif('streak-shield', 1, 20),
+      makeNotif('wilt-warning', 1, 15),
+    ]
+    setScheduled(multiDay)
+
+    const cancelled = await enforceGlobalNotificationCap({ enabled: true, intensity: 'zen' })
+    expect(cancelled.length).toBe(3)
+    expect(mockScheduled.size).toBe(2)
+    expect(mockScheduled.has('identity-affirmation')).toBe(true)
+    expect(mockScheduled.has('streak-shield')).toBe(true)
+    expect(mockScheduled.has('wilt-warning')).toBe(false)
+  })
+
+  // ── 14. Disabled notifications: no enforcement ──
+
+  test('14. Disabled notifications: enforceGlobalNotificationCap returns empty', async () => {
+    const three = [
+      makeNotif('identity-affirmation', 0, 7),
+      makeNotif('nudge-daily-glow', 0, 8),
+      makeNotif('educational-tip', 0, 12),
+    ]
+    setScheduled(three)
+
+    const cancelled = await enforceGlobalNotificationCap({ enabled: false, intensity: 'zen' })
+    expect(cancelled.length).toBe(0)
+  })
+
   // ── Cap policy unit tests ──
 
   describe('Cap policy helpers', () => {
-    test('ORDINARY_NOTIFICATION_PRIORITY has 8 entries in priority order', () => {
-      expect(__capPolicy.ORDINARY_NOTIFICATION_PRIORITY).toHaveLength(8)
-      expect(__capPolicy.ORDINARY_NOTIFICATION_PRIORITY[0]).toBe('identity-affirmation')
-      expect(__capPolicy.ORDINARY_NOTIFICATION_PRIORITY[7]).toBe('nudge-weekly-summary')
-    })
-
-    test('isOrdinaryNotification identifies ordinary IDs', () => {
-      expect(__capPolicy.isOrdinaryNotification({ identifier: 'identity-affirmation' })).toBe(true)
-      expect(__capPolicy.isOrdinaryNotification({ identifier: 'nudge-daily-glow' })).toBe(true)
-      expect(__capPolicy.isOrdinaryNotification({ identifier: 'freezer-morning' })).toBe(false)
-      expect(__capPolicy.isOrdinaryNotification({ identifier: 'dormant-reminder-day-7' })).toBe(false)
+    test('NOTIFICATION_PRIORITY includes all notification types', () => {
+      expect(__capPolicy.NOTIFICATION_PRIORITY).toContain('identity-affirmation')
+      expect(__capPolicy.NOTIFICATION_PRIORITY).toContain('nudge-daily-glow')
+      expect(__capPolicy.NOTIFICATION_PRIORITY).toContain('freezer-morning')
+      expect(__capPolicy.NOTIFICATION_PRIORITY).toContain('dormant-reminder-day-7')
+      expect(__capPolicy.NOTIFICATION_PRIORITY).toContain('surprise-')
+      expect(__capPolicy.NOTIFICATION_PRIORITY).toContain('weight-')
+      expect(__capPolicy.NOTIFICATION_PRIORITY).toContain('onboarding-')
     })
 
     test('getNotificationPriority returns lower number for higher priority', () => {
       expect(__capPolicy.getNotificationPriority('identity-affirmation')).toBe(0)
       expect(__capPolicy.getNotificationPriority('nudge-weekly-summary')).toBe(7)
-      expect(__capPolicy.getNotificationPriority('unknown-id')).toBe(8)
+      // Prefix matches
+      expect(__capPolicy.getNotificationPriority('surprise-5')).toBeLessThan(__capPolicy.NOTIFICATION_PRIORITY.length)
+      expect(__capPolicy.getNotificationPriority('weight-10')).toBeLessThan(__capPolicy.NOTIFICATION_PRIORITY.length)
+      expect(__capPolicy.getNotificationPriority('onboarding-1')).toBeLessThan(__capPolicy.NOTIFICATION_PRIORITY.length)
     })
 
     test('getLocalDayKey groups by local calendar date', () => {
-      const ts = new Date(2026, 7, 8, 23, 30, 0).getTime() // Aug 8, 2026 11:30 PM
+      const ts = new Date(2026, 7, 8, 23, 30, 0).getTime()
       expect(__capPolicy.getLocalDayKey(ts)).toBe('2026-08-08')
-      const ts2 = new Date(2026, 7, 9, 0, 15, 0).getTime() // Aug 9, 2026 12:15 AM
+      const ts2 = new Date(2026, 7, 9, 0, 15, 0).getTime()
       expect(__capPolicy.getLocalDayKey(ts2)).toBe('2026-08-09')
     })
 
@@ -330,44 +398,30 @@ describe('Global notification intensity cap — enforceGlobalNotificationCap', (
     })
   })
 
-  // ── Multi-day grouping test ──
+  // ── Architecture: no circular dependency ──
 
-  test('Multi-day: cap applies independently per local day', async () => {
-    // Use unique IDs per day to avoid Map key collision in mock.
-    // In real expo-notifications, same identifier overwrites, so
-    // each notification ID is unique per schedule.
-    const multiDay = [
-      makeNotif('identity-affirmation', 0, 7),    // Day 1
-      makeNotif('nudge-daily-glow', 0, 8),        // Day 1
-      makeNotif('educational-tip', 0, 12),        // Day 1
-      makeNotif('streak-shield', 1, 20),          // Day 2
-      makeNotif('wilt-warning', 1, 15),           // Day 2
-    ]
-    setScheduled(multiDay)
+  describe('Architecture: no circular dependency', () => {
+    test('NotificationCapPolicy does not import NotificationService', () => {
+      const fs = require('fs')
+      const path = require('path')
+      const src = fs.readFileSync(path.join(__dirname, '..', 'NotificationCapPolicy.js'), 'utf8')
+      expect(src).not.toMatch(/from\s+['"]\.\/NotificationService['"]/)
+      expect(src).not.toMatch(/require\(['"]\.\/NotificationService['"]\)/)
+    })
 
-    // Zen = 1/day. Day 1 has 3 → cancel 2. Day 2 has 2 → cancel 1.
-    const cancelled = await enforceGlobalNotificationCap({ enabled: true, intensity: 'zen' })
-    expect(cancelled.length).toBe(3)
-    expect(mockScheduled.size).toBe(2)
-    // Day 1: identity-affirmation (priority 0) kept
-    expect(mockScheduled.has('identity-affirmation')).toBe(true)
-    // Day 2: streak-shield (priority 4) vs wilt-warning (priority 5)
-    // streak-shield has higher priority, so wilt-warning cancelled
-    expect(mockScheduled.has('streak-shield')).toBe(true)
-    expect(mockScheduled.has('wilt-warning')).toBe(false)
-  })
+    test('NotificationCapPolicy does not import NotificationNudges', () => {
+      const fs = require('fs')
+      const path = require('path')
+      const src = fs.readFileSync(path.join(__dirname, '..', 'NotificationCapPolicy.js'), 'utf8')
+      expect(src).not.toMatch(/from\s+['"]\.\/NotificationNudges['"]/)
+      expect(src).not.toMatch(/require\(['"]\.\/NotificationNudges['"]\)/)
+    })
 
-  // ── Disabled notifications: no enforcement ──
-
-  test('Disabled notifications: enforceGlobalNotificationCap returns empty', async () => {
-    const three = [
-      makeNotif('identity-affirmation', 0, 7),
-      makeNotif('nudge-daily-glow', 0, 8),
-      makeNotif('educational-tip', 0, 12),
-    ]
-    setScheduled(three)
-
-    const cancelled = await enforceGlobalNotificationCap({ enabled: false, intensity: 'zen' })
-    expect(cancelled.length).toBe(0)
+    test('NotificationNudges imports cap policy from NotificationCapPolicy', () => {
+      const fs = require('fs')
+      const path = require('path')
+      const src = fs.readFileSync(path.join(__dirname, '..', 'NotificationNudges.js'), 'utf8')
+      expect(src).toMatch(/from\s+['"]\.\/NotificationCapPolicy['"]/)
+    })
   })
 })

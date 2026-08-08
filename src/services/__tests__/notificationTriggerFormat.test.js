@@ -16,6 +16,8 @@ const path = require('path')
 
 const NOTIF_SRC = fs.readFileSync(path.join(__dirname, '..', 'NotificationService.js'), 'utf8')
 
+const CAP_POLICY_SRC = fs.readFileSync(path.join(__dirname, '..', 'NotificationCapPolicy.js'), 'utf8')
+
 const NUDGE_SRC = fs.readFileSync(path.join(__dirname, '..', 'NotificationNudges.js'), 'utf8')
 
 const DORMANT_SRC = fs.readFileSync(path.join(__dirname, '..', 'DormantReminderService.js'), 'utf8')
@@ -121,9 +123,9 @@ describe('Notification trigger format — Expo SDK 54+ typed trigger', () => {
 
   describe('Intensity caps remain unchanged', () => {
     test('14. INTENSITY_CAPS still defines zen=1, balanced=3, high-vibe=5', () => {
-      expect(NOTIF_SRC).toMatch(/zen:\s*1/)
-      expect(NOTIF_SRC).toMatch(/balanced:\s*3/)
-      expect(NOTIF_SRC).toMatch(/'high-vibe':\s*5/)
+      expect(CAP_POLICY_SRC).toMatch(/zen:\s*1/)
+      expect(CAP_POLICY_SRC).toMatch(/balanced:\s*3/)
+      expect(CAP_POLICY_SRC).toMatch(/'high-vibe':\s*5/)
     })
   })
 
@@ -131,8 +133,8 @@ describe('Notification trigger format — Expo SDK 54+ typed trigger', () => {
 
   describe('Quiet-hours behavior remains unchanged', () => {
     test('15. isTimeInQuietHours still checks quietStart and quietEnd', () => {
-      const quietStart = NOTIF_SRC.indexOf('export function isTimeInQuietHour')
-      const quietSection = NOTIF_SRC.substring(quietStart, quietStart + 500)
+      const quietStart = CAP_POLICY_SRC.indexOf('export function isTimeInQuietHours')
+      const quietSection = CAP_POLICY_SRC.substring(quietStart, quietStart + 500)
       expect(quietSection).toMatch(/quietStart/)
       expect(quietSection).toMatch(/quietEnd/)
     })

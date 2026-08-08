@@ -5,12 +5,20 @@
 //   1. Tap the version display 7 times in Settings
 //   2. Enter passcode 7918
 //
+// BUILD-TIME PRODUCTION SAFETY GATE:
+//   EXPO_PUBLIC_ENABLE_DEVELOPER_TOOLS env var controls whether
+//   the unlock gesture can work at all.
+//   - QA/local builds: set EXPO_PUBLIC_ENABLE_DEVELOPER_TOOLS=1
+//   - Production Google Play builds: default disabled (unset or 0)
+//   When disabled, 7 taps + 7918 cannot expose Developer Flags.
+//
 // The unlock persists in AsyncStorage so the user does not need
 // to re-enter the sequence every time. A "Disable Developer Mode"
 // action is available inside the unlocked developer area.
 //
 // This gate does NOT protect secrets or privileged backend
 // operations. It only hides QA/developer UI from ordinary users.
+// Developer mode never grants real RevenueCat/server Pro entitlement.
 // ─────────────────────────────────────────────────────────────
 
 import { useState, useEffect, useCallback, useRef } from 'react'
@@ -21,6 +29,11 @@ const REQUIRED_TAPS = 7
 const REQUIRED_PASSCODE = '7918'
 const TAP_RESET_TIMEOUT_MS = 3000 // Reset tap counter after 3s of inactivity
 
+// Build-time production safety gate.
+// QA/local builds set EXPO_PUBLIC_ENABLE_DEVELOPER_TOOLS=1.
+// Production Google Play builds leave it unset (disabled).
+export const DEVELOPER_TOOLS_ENABLED = process.env.EXPO_PUBLIC_ENABLE_DEVELOPER_TOOLS === '1'
+
 export function useDeveloperMode() {
   const [unlocked, setUnlocked] = useState(false)
   const [tapCount, setTapCount] = useState(0)
@@ -28,8 +41,9 @@ export function useDeveloperMode() {
   const [passcodeError, setPasscodeError] = useState(false)
   const tapTimerRef = useRef(null)
 
-  // Load persisted unlock state on mount
+  // Load persisted unlock state on mount — only if developer tools are enabled
   useEffect(() => {
+    if (!DEVELOPER_TOOLS_ENABLED) return
     AsyncStorage.getItem(DEV_MODE_KEY).then((val) => {
       if (val === 'true') setUnlocked(true)
     }).catch(() => {})
@@ -48,6 +62,8 @@ export function useDeveloperMode() {
   }, [tapCount])
 
   const handleVersionTap = useCallback(() => {
+    // Production gate: taps do nothing if developer tools are disabled
+    if (!DEVELOPER_TOOLS_ENABLED) return
     if (unlocked) return // Already unlocked — no need to count
     const newCount = tapCount + 1
     setTapCount(newCount)
@@ -59,6 +75,11 @@ export function useDeveloperMode() {
   }, [tapCount, unlocked])
 
   const submitPasscode = useCallback(async (code) => {
+    // Production gate: passcode cannot unlock if developer tools are disabled
+    if (!DEVELOPER_TOOLS_ENABLED) {
+      setPasscodeError(true)
+      return false
+    }
     if (code === REQUIRED_PASSCODE) {
       setUnlocked(true)
       setShowPasscodePrompt(false)
@@ -97,6 +118,7 @@ export function useDeveloperMode() {
     submitPasscode,
     cancelPasscode,
     disableDeveloperMode,
+    developerToolsEnabled: DEVELOPER_TOOLS_ENABLED,
   }
 }
 

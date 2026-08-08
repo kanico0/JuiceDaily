@@ -19,11 +19,10 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { LinearGradient } from 'expo-linear-gradient'
 import { BlurView } from 'expo-blur'
 import * as Haptics from 'expo-haptics'
-import { Search, Wine, Droplets, Lightbulb, Award, Snowflake, Settings, Clock, Lock, Crown, BookOpen } from 'lucide-react-native'
+import { Search, Wine, Droplets, Lightbulb, Award, Settings, Clock, Lock, Crown, BookOpen } from 'lucide-react-native'
 import SpectrumRings from '../components/SpectrumRings'
 import WeeklySpectrumBar from '../components/WeeklySpectrumBar'
 import MeshGradientBg from '../components/MeshGradientBg'
-import { MercyModal, ThawRecipeSuggestion } from '../components/FreezerPassModal'
 import WelcomeModal from '../components/WelcomeModal'
 import PaywallModal from '../components/PaywallModal'
 import { useChallenge, DAILY_PILLARS, WEEKLY_COLORS } from '../services/ChallengeStore'
@@ -155,7 +154,7 @@ function ClinkToast({ visible, userName }) {
 
 export default function DashboardScreen({ navigation, route }) {
   const [showAccountGate, setShowAccountGate] = useState(false)
-  const { challenge, todayLog, vitalityScore, weeklyDiversity, weeklyStats, useFreezerPass, completeOnboarding, logJuice } = useChallenge()
+  const { challenge, todayLog, vitalityScore, weeklyDiversity, weeklyStats, completeOnboarding, logJuice } = useChallenge()
   const { isPro, hasFeatureAccess, pro } = usePro()
   const { isEnabled } = useFlags()
   const { useSoonItems } = usePantry()
@@ -163,10 +162,7 @@ export default function DashboardScreen({ navigation, route }) {
   const [showPaywall, setShowPaywall] = useState(false)
   const paywallShownRef = useRef(false)
   const [clinkUser, setClinkUser] = React.useState(null)
-  const [showMercy, setShowMercy] = useState(false)
   const toastTimer = useRef(null)
-  const isFrozen = challenge.isFrozen || false
-  const freezerPasses = challenge.freezerPasses || 0
   const [showQuickLogger, setShowQuickLogger] = useState(false)
   const [showRewardSplash, setShowRewardSplash] = useState(false)
   const [showFirstLaunch, setShowFirstLaunch] = useState(false)
@@ -365,12 +361,6 @@ export default function DashboardScreen({ navigation, route }) {
                     ? `🔥 ${challenge.streak} day streak`
                     : `🔥 ${challenge.streak}`}
                 </Text>
-                {freezerPasses > 0 && (
-                  <View style={styles.freezerPill}>
-                    <Snowflake size={10} color="#90CAF9" />
-                    <Text style={styles.freezerPillText}>×{freezerPasses}</Text>
-                  </View>
-                )}
               </View>
             </View>
 
@@ -522,13 +512,6 @@ export default function DashboardScreen({ navigation, route }) {
               )}
             </View>
           </TouchableOpacity>
-
-          {/* ═══ FROZEN STATE: Thaw recipe suggestion ═══════════ */}
-          {isFrozen && (
-            <ThawRecipeSuggestion
-              onPress={() => navigation.navigate('ScanFlow')}
-            />
-          )}
 
           {/* ═══ LEARN — NOVICE JOURNEY ═══════════════════════ */}
           <TouchableOpacity
@@ -700,14 +683,6 @@ export default function DashboardScreen({ navigation, route }) {
       {/* Clink toast */}
       <ClinkToast visible={!!clinkUser} userName={clinkUser?.name || ''} />
 
-      {/* Mercy modal (Freezer Pass used) */}
-      <MercyModal
-        visible={showMercy}
-        onDismiss={() => setShowMercy(false)}
-        streak={challenge.streak}
-        passesRemaining={freezerPasses}
-      />
-
       {/* Onboarding Welcome Modal */}
       <WelcomeModal
         visible={showOnboarding}
@@ -840,22 +815,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: '#FF9800',
-  },
-  freezerPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    backgroundColor: 'rgba(100,181,246,0.08)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 24,
-    borderWidth: 0.5,
-    borderColor: 'rgba(100,181,246,0.15)',
-  },
-  freezerPillText: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#90CAF9',
   },
   heroBody: {
     alignItems: 'center',

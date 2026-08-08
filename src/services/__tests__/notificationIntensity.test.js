@@ -7,6 +7,8 @@ const path = require('path')
 
 const NOTIF_SRC = fs.readFileSync(path.join(__dirname, '..', 'NotificationService.js'), 'utf8')
 
+const CAP_POLICY_SRC = fs.readFileSync(path.join(__dirname, '..', 'NotificationCapPolicy.js'), 'utf8')
+
 const NUDGE_SRC = fs.readFileSync(path.join(__dirname, '..', 'NotificationNudges.js'), 'utf8')
 
 describe('Notification intensity scheduling — defect regression', () => {
@@ -61,8 +63,9 @@ describe('Notification intensity scheduling — defect regression', () => {
   // ── Defect 3: NotificationNudges must increment sentToday for near-future ──
 
   describe('NotificationNudges increments sentToday for near-future nudges', () => {
-    test('5. NotificationNudges imports incrementSentToday from NotificationService', () => {
+    test('5. NotificationNudges imports incrementSentToday from NotificationCapPolicy', () => {
       expect(NUDGE_SRC).toMatch(/incrementSentToday/)
+      expect(NUDGE_SRC).toMatch(/NotificationCapPolicy/)
     })
 
     test('6. safeSchedule calls incrementSentToday after scheduling', () => {
@@ -82,21 +85,21 @@ describe('Notification intensity scheduling — defect regression', () => {
 
   describe('Existing intensity cap behavior is preserved', () => {
     test('8. INTENSITY_CAPS still defines zen=1, balanced=3, high-vibe=5', () => {
-      expect(NOTIF_SRC).toMatch(/zen:\s*1/)
-      expect(NOTIF_SRC).toMatch(/balanced:\s*3/)
-      expect(NOTIF_SRC).toMatch(/'high-vibe':\s*5/)
+      expect(CAP_POLICY_SRC).toMatch(/zen:\s*1/)
+      expect(CAP_POLICY_SRC).toMatch(/balanced:\s*3/)
+      expect(CAP_POLICY_SRC).toMatch(/'high-vibe':\s*5/)
     })
 
     test('9. canSendNotification checks frequency cap', () => {
-      const canSendStart = NOTIF_SRC.indexOf('export async function canSendNotification')
-      const canSendSection = NOTIF_SRC.substring(canSendStart, canSendStart + 400)
+      const canSendStart = CAP_POLICY_SRC.indexOf('export async function canSendNotification')
+      const canSendSection = CAP_POLICY_SRC.substring(canSendStart, canSendStart + 400)
       expect(canSendSection).toMatch(/INTENSITY_CAPS/)
       expect(canSendSection).toMatch(/sent\s*>=\s*cap/)
     })
 
     test('10. canSendNotification checks quiet hours', () => {
-      const canSendStart = NOTIF_SRC.indexOf('export async function canSendNotification')
-      const canSendSection = NOTIF_SRC.substring(canSendStart, canSendStart + 800)
+      const canSendStart = CAP_POLICY_SRC.indexOf('export async function canSendNotification')
+      const canSendSection = CAP_POLICY_SRC.substring(canSendStart, canSendStart + 800)
       expect(canSendSection).toMatch(/quietStart/)
       expect(canSendSection).toMatch(/quietEnd/)
     })
@@ -114,8 +117,8 @@ describe('Notification intensity scheduling — defect regression', () => {
       expect(scheduleSection).toMatch(/isNearFuture[\s\S]*incrementSentToday/)
     })
 
-    test('13. incrementSentToday is exported from NotificationService', () => {
-      expect(NOTIF_SRC).toMatch(/export\s+async\s+function\s+incrementSentToday/)
+    test('13. incrementSentToday is exported from NotificationCapPolicy', () => {
+      expect(CAP_POLICY_SRC).toMatch(/export\s+async\s+function\s+incrementSentToday/)
     })
   })
 

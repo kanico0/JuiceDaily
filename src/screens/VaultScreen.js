@@ -101,7 +101,7 @@ function PackCard({ pack, onBuy, isPurchased }) {
 
 export default function VaultScreen({ navigation }) {
   const {
-    pro, isPro, subscribe, buySnapPack, buyFreezerPack,
+    pro, isPro, subscribe, buySnapPack,
     buyRecipePack, hasRecipePack,
   } = usePro()
   const { quota: serverQuota } = useQuota()
@@ -125,8 +125,7 @@ export default function VaultScreen({ navigation }) {
 
   const handleBuyPack = (pack) => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
-    if (pack.type === 'freezer') buyFreezerPack(pack.quantity)
-    else if (pack.type === 'snap') buySnapPack()
+    if (pack.type === 'snap') buySnapPack()
     else if (pack.type === 'recipe_pack') buyRecipePack(pack.id)
   }
 
@@ -260,11 +259,6 @@ export default function VaultScreen({ navigation }) {
             />
 
             <View style={styles.packsGrid}>
-              <PackCard
-                pack={IAP_PACKS.freezer_3}
-                onBuy={handleBuyPack}
-                isPurchased={false}
-              />
               <PackCard
                 pack={IAP_PACKS.snap_10}
                 onBuy={handleBuyPack}

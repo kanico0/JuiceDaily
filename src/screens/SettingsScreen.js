@@ -895,13 +895,6 @@ export default function SettingsScreen({ navigation }) {
             value={settings.vitalityReminders}
             onValueChange={(v) => updateSetting('vitalityReminders', v)}
           />
-          <SettingRow
-            label="Freezer Pass Alerts"
-            description="High-priority alerts to save your streak"
-            value={settings.freezerAlerts}
-            onValueChange={(v) => updateSetting('freezerAlerts', v)}
-            emergency
-          />
         </View>
 
         {/* ═══ B. THE "SOCIAL FEED" (Community) ════════════ */}
@@ -1002,8 +995,7 @@ export default function SettingsScreen({ navigation }) {
           <View style={styles.quietNote}>
             <Shield size={12} color="#90CAF9" />
             <Text style={styles.quietNoteText}>
-              All non-emergency notifications are silenced during this window.
-              Freezer Pass alerts will bypass quiet hours if your streak is at risk.
+              All notifications are silenced during this window.
             </Text>
           </View>
         </View>
@@ -1222,7 +1214,7 @@ export default function SettingsScreen({ navigation }) {
             <MessageCircle size={16} color="#90CAF9" />
             <View style={styles.helpInfo}>
               <Text style={styles.helpLabel}>App FAQ</Text>
-              <Text style={styles.helpDesc}>Rings, streaks, Freezer Passes & more</Text>
+              <Text style={styles.helpDesc}>Rings, streaks & more</Text>
             </View>
             <Text style={styles.helpArrow}>→</Text>
           </TouchableOpacity>

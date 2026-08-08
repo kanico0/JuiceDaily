@@ -23,7 +23,7 @@ import {
   isTimeInQuietHours,
   incrementSentToday,
   enforceGlobalNotificationCap,
-} from './NotificationService'
+} from './NotificationCapPolicy'
 
 // ── Notification IDs ─────────────────────────────────────────
 

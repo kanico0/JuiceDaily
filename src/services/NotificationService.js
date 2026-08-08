@@ -22,6 +22,17 @@ import {
   getWeightMilestone,
 } from '../constants/NotificationLibrary'
 import { recordMeaningfulActivity } from './DormantReminderService'
+import {
+  INTENSITY_CAPS,
+  DEFAULT_SETTINGS,
+  loadNotificationSettings,
+  saveNotificationSettings,
+  getSentToday,
+  incrementSentToday,
+  canSendNotification,
+  isTimeInQuietHours,
+  enforceGlobalNotificationCap,
+} from './NotificationCapPolicy'
 
 // Suppress the known Expo Go SDK 53+ Android push notification warning
 LogBox.ignoreLogs(['expo-notifications: Android push notification'])
@@ -50,30 +61,16 @@ const KEYS = {
   PREV_JUICE_COUNT: '@notif_prev_juice_count',
 }
 
-// ── Default Settings ─────────────────────────────────────────
-
-const DEFAULT_SETTINGS = {
-  enabled: true,
-  intensity: 'balanced',
-  quietStart: { hour: 21, minute: 30 },
-  quietEnd: { hour: 6, minute: 30 },
-  affirmations: true,
-  vitalityReminders: true,
-  freezerAlerts: true,
-  glassClinks: true,
-  weeklyLeaderboard: true,
-  privacyMode: false,
-  inventoryAlerts: true,
-  shoppingReminders: true,
-  comebackReminders: true,
-  typicalJuiceHour: 7,
-  typicalJuiceMinute: 30,
-}
-
-export const INTENSITY_CAPS = {
-  zen: 1,
-  balanced: 3,
-  'high-vibe': 5,
+// Re-export shared cap policy for backward compatibility
+export {
+  INTENSITY_CAPS,
+  DEFAULT_SETTINGS,
+  loadNotificationSettings,
+  saveNotificationSettings,
+  canSendNotification,
+  isTimeInQuietHours,
+  incrementSentToday,
+  enforceGlobalNotificationCap,
 }
 
 const ANDROID_CHANNEL_ID = 'rawlifeflow-reminders'
@@ -124,7 +121,6 @@ async function registerCategories() {
     ])
     await Notifications.setNotificationCategoryAsync('STREAK_ALERT', [
       { identifier: 'LOG_NOW', buttonTitle: 'Log Now', options: { opensAppToForeground: true } },
-      { identifier: 'USE_FREEZER', buttonTitle: 'Use Freezer Pass 🧊', options: { opensAppToForeground: true } },
     ])
     await Notifications.setNotificationCategoryAsync('WILT_WARNING', [
       { identifier: 'VIEW_RECIPE', buttonTitle: 'View Recipe', options: { opensAppToForeground: true } },
@@ -133,10 +129,6 @@ async function registerCategories() {
     await Notifications.setNotificationCategoryAsync('SOCIAL', [
       { identifier: 'CLINK_BACK', buttonTitle: 'Clink Back 🥂', options: { opensAppToForeground: true } },
       { identifier: 'LOG_NOW', buttonTitle: 'Log Now', options: { opensAppToForeground: true } },
-    ])
-    await Notifications.setNotificationCategoryAsync('FREEZER_MORNING', [
-      { identifier: 'LOG_NOW', buttonTitle: 'Log Now', options: { opensAppToForeground: true } },
-      { identifier: 'VIEW_RECIPE', buttonTitle: 'View Recipe', options: { opensAppToForeground: true } },
     ])
     await Notifications.setNotificationCategoryAsync('SURPRISE', [
       { identifier: 'LOG_NOW', buttonTitle: 'Log Now', options: { opensAppToForeground: true } },
@@ -174,214 +166,11 @@ export async function requestNotificationPermission() {
   }
 }
 
-// ── Settings Persistence ─────────────────────────────────────
-
-export async function loadNotificationSettings() {
-  try {
-    const raw = await AsyncStorage.getItem('@notification_settings')
-    if (raw) return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) }
-  } catch (e) { /* ignore */ }
-  return { ...DEFAULT_SETTINGS }
-}
-
-export async function saveNotificationSettings(settings) {
-  try {
-    await AsyncStorage.setItem('@notification_settings', JSON.stringify(settings))
-  } catch (e) { /* ignore */ }
-}
-
-// ── Frequency Cap ────────────────────────────────────────────
-// No more than N notifications per 24-hour period
-
-async function getSentToday() {
-  try {
-    const dateStr = await AsyncStorage.getItem(KEYS.SENT_DATE)
-    const today = new Date().toISOString().split('T')[0]
-    if (dateStr !== today) {
-      await AsyncStorage.setItem(KEYS.SENT_DATE, today)
-      await AsyncStorage.setItem(KEYS.SENT_TODAY, '0')
-      return 0
-    }
-    const count = parseInt(await AsyncStorage.getItem(KEYS.SENT_TODAY) || '0', 10)
-    return count
-  } catch (e) { return 0 }
-}
-
-export async function incrementSentToday() {
-  try {
-    const count = await getSentToday()
-    await AsyncStorage.setItem(KEYS.SENT_TODAY, String(count + 1))
-  } catch (e) { /* ignore */ }
-}
-
-export async function canSendNotification(settings, isEmergency = false) {
-  if (!settings.enabled) return false
-
-  // Frequency cap
-  const sent = await getSentToday()
-  const cap = INTENSITY_CAPS[settings.intensity] || 3
-  if (sent >= cap && !isEmergency) return false
-
-  // Quiet hours check (Freezer Pass alerts bypass quiet hours)
-  if (!isEmergency) {
-    const now = new Date()
-    const hour = now.getHours()
-    const minute = now.getMinutes()
-    const currentMinutes = hour * 60 + minute
-    const quietStartMin = settings.quietStart.hour * 60 + settings.quietStart.minute
-    const quietEndMin = settings.quietEnd.hour * 60 + settings.quietEnd.minute
-
-    if (quietStartMin > quietEndMin) {
-      // Quiet hours span midnight (e.g., 21:30 - 06:30)
-      if (currentMinutes >= quietStartMin || currentMinutes < quietEndMin) return false
-    } else {
-      if (currentMinutes >= quietStartMin && currentMinutes < quietEndMin) return false
-    }
-  }
-
-  return true
-}
-
-// ── Global Notification Cap Policy ───────────────────────────
-// The sentToday counter only governs near-future/immediate delivery.
-// Far-future scheduled notifications bypass canSendNotification().
-// This function enforces the intensity cap ACROSS all scheduled
-// ordinary notifications from both NotificationService and
-// NotificationNudges, grouped by local calendar day.
-
-// Ordinary notification IDs that count against the daily intensity cap.
-// Lower index = higher priority (kept first when cap is exceeded).
-const ORDINARY_NOTIFICATION_PRIORITY = [
-  'identity-affirmation',     // 1. Core daily affirmation
-  'nudge-daily-glow',         // 2. User's primary daily reminder
-  'educational-tip',          // 3. Educational/vitality content
-  'nudge-streak-risk',        // 4. Streak protector
-  'streak-shield',            // 5. Streak shield (loss aversion)
-  'wilt-warning',             // 6. Ingredient spoilage warning
-  'saturday-rainbow-nudge',   // 7. Weekend rainbow diversity
-  'nudge-weekly-summary',     // 8. Weekly glow summary
-]
-
-// Notification ID prefixes that are always exempt from the cap.
-// These are one-shot or long-delay notifications that operate
-// outside the daily ordinary notification flow.
-const EXEMPT_PREFIXES = ['dormant-reminder-', 'surprise-', 'weight-', 'onboarding-']
-
-// Notification IDs that are always exempt (emergencies).
-const ALWAYS_EXEMPT_IDS = ['freezer-morning']
-
-function isExemptNotification(notif) {
-  const id = notif.identifier
-  if (ALWAYS_EXEMPT_IDS.includes(id)) return true
-  if (EXEMPT_PREFIXES.some((prefix) => id.startsWith(prefix))) return true
-  // streak-shield is exempt when it has freezerPasses (emergency mode)
-  if (id === 'streak-shield') {
-    const fp = notif?.content?.data?.freezerPasses
-    if (fp && fp > 0) return true
-  }
-  return false
-}
-
-function isOrdinaryNotification(notif) {
-  if (isExemptNotification(notif)) return false
-  return ORDINARY_NOTIFICATION_PRIORITY.includes(notif.identifier)
-}
-
-function getNotificationPriority(id) {
-  const idx = ORDINARY_NOTIFICATION_PRIORITY.indexOf(id)
-  return idx === -1 ? ORDINARY_NOTIFICATION_PRIORITY.length : idx
-}
-
-function getLocalDayKey(timestamp) {
-  const d = new Date(timestamp)
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-}
-
-// Exported for testing
-export const __capPolicy = {
-  ORDINARY_NOTIFICATION_PRIORITY,
-  EXEMPT_PREFIXES,
-  ALWAYS_EXEMPT_IDS,
-  isExemptNotification,
-  isOrdinaryNotification,
-  getNotificationPriority,
-  getLocalDayKey,
-}
-
-/**
- * Enforce the global daily intensity cap across all scheduled
- * ordinary notifications from both NotificationService and
- * NotificationNudges. Cancels excess lowest-priority notifications
- * per local calendar day.
- *
- * @param {object} settings - Notification settings with intensity
- * @returns {Promise<string[]>} Array of cancelled notification IDs
- */
-export async function enforceGlobalNotificationCap(settings) {
-  if (!settings || !settings.enabled) return []
-  const cap = INTENSITY_CAPS[settings.intensity] || 3
-
-  let scheduled
-  try {
-    scheduled = await Notifications.getAllScheduledNotificationsAsync()
-  } catch (e) {
-    console.warn('[cap] enforceGlobalNotificationCap — getAllScheduledNotificationsAsync FAIL:', e?.message || '')
-    return []
-  }
-
-  // Group ordinary notifications by local calendar day
-  const byDay = new Map()
-  for (const notif of scheduled) {
-    if (!isOrdinaryNotification(notif)) continue
-    const trigger = notif.trigger
-    if (!trigger || !trigger.date) continue
-    const dayKey = getLocalDayKey(trigger.date)
-    if (!byDay.has(dayKey)) byDay.set(dayKey, [])
-    byDay.get(dayKey).push(notif)
-  }
-
-  // For each day, cancel excess lowest-priority notifications
-  const toCancel = []
-  for (const [dayKey, notifs] of byDay) {
-    if (notifs.length <= cap) continue
-    // Sort by priority (highest priority first)
-    notifs.sort((a, b) => getNotificationPriority(a.identifier) - getNotificationPriority(b.identifier))
-    // Cancel the excess (lowest priority)
-    const excess = notifs.slice(cap)
-    for (const notif of excess) {
-      toCancel.push(notif.identifier)
-    }
-  }
-
-  if (toCancel.length > 0) {
-    console.log('[cap] enforceGlobalNotificationCap | intensity:', settings.intensity, 'cap:', cap, 'cancelling:', toCancel.length, 'excess | ids:', toCancel.join(', '))
-    await Promise.all(toCancel.map((id) => {
-      console.log('[cap] cancelling excess notification | id:', id)
-      return safeCancel(id)
-    }))
-  } else {
-    console.log('[cap] enforceGlobalNotificationCap | intensity:', settings.intensity, 'cap:', cap, 'no excess found')
-  }
-
-  return toCancel
-}
-
-// ── Check if a scheduled time is in quiet hours ──────────────
-
-export function isTimeInQuietHours(hour, minute, settings) {
-  const targetMin = hour * 60 + minute
-  const quietStartMin = settings.quietStart.hour * 60 + settings.quietStart.minute
-  const quietEndMin = settings.quietEnd.hour * 60 + settings.quietEnd.minute
-
-  if (quietStartMin > quietEndMin) {
-    return targetMin >= quietStartMin || targetMin < quietEndMin
-  }
-  return targetMin >= quietStartMin && targetMin < quietEndMin
-}
-
 // ── Core Schedule Function ───────────────────────────────────
+// isEmergency parameter retained for backward compatibility but
+// no longer bypasses cap or quiet hours — all notifications count.
 
-async function scheduleNotif({ id, title, body, data, triggerDate, categoryId, isEmergency }) {
+async function scheduleNotif({ id, title, body, data, triggerDate, categoryId }) {
   if (!notificationsAvailable) {
     console.warn('[notif] scheduleNotif SKIP — notificationsAvailable=false | id:', id)
     return false
@@ -392,15 +181,15 @@ async function scheduleNotif({ id, title, body, data, triggerDate, categoryId, i
   // For far-future scheduled: we trust the trigger-time quiet hours check
   const isNearFuture = !triggerDate || (triggerDate - Date.now() < 60000)
   if (isNearFuture) {
-    const allowed = await canSendNotification(settings, isEmergency)
+    const allowed = await canSendNotification(settings)
     if (!allowed) {
       console.warn('[notif] scheduleNotif BLOCKED by canSendNotification | id:', id, 'enabled:', settings.enabled, 'intensity:', settings.intensity)
       return false
     }
   }
 
-  // Check if scheduled time falls in quiet hours (skip for emergencies)
-  if (triggerDate && !isEmergency) {
+  // Check if scheduled time falls in quiet hours
+  if (triggerDate) {
     const d = new Date(triggerDate)
     if (isTimeInQuietHours(d.getHours(), d.getMinutes(), settings)) {
       console.warn('[notif] scheduleNotif BLOCKED by quiet hours | id:', id, 'trigger:', d.toISOString())
@@ -546,7 +335,7 @@ export async function scheduleWiltWarning(lastIngredients) {
 // If Vitality Rings at 0% at 8:00 PM
 // ═══════════════════════════════════════════════════════════════
 
-export async function scheduleStreakShield(streak, freezerPasses) {
+export async function scheduleStreakShield(streak) {
   await safeCancel('streak-shield')
   const settings = await loadNotificationSettings()
   if (!settings.vitalityReminders) return
@@ -560,17 +349,13 @@ export async function scheduleStreakShield(streak, freezerPasses) {
 
   const template = pickRandom(STREAK_SHIELD)
 
-  // This is an emergency if freezer passes exist (bypasses quiet hours)
-  const isEmergency = settings.freezerAlerts && freezerPasses > 0
-
   await scheduleNotif({
     id: 'streak-shield',
     title: template.title,
     body: fillTemplate(template.body, { streak: String(streak) }),
-    data: { type: 'streak_shield', action: 'open_dashboard', freezerPasses },
+    data: { type: 'streak_shield', action: 'open_dashboard' },
     triggerDate: evening,
     categoryId: 'STREAK_ALERT',
-    isEmergency,
   })
 }
 
@@ -625,30 +410,15 @@ export async function scheduleSaturdayNudge(weeklyDiversity) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// Freezer Pass Morning-After
+// Freezer Pass Morning-After — RETIRED in 1.0.20
+// Freezer Pass functionality has been retired. This function is
+// kept as a no-op that only cancels any legacy scheduled
+// freezer-morning notifications. It no longer schedules new ones.
 // ═══════════════════════════════════════════════════════════════
 
-export async function scheduleFreezerMorning(streak) {
+export async function scheduleFreezerMorning() {
+  // Retired: cancel any legacy freezer-morning notifications
   await safeCancel('freezer-morning')
-  const settings = await loadNotificationSettings()
-  if (!settings.freezerAlerts) return
-
-  const template = pickRandom(FREEZER_PASS_MORNING)
-
-  const now = new Date()
-  const morning = new Date(now)
-  morning.setDate(morning.getDate() + 1)
-  morning.setHours(7, 30, 0, 0)
-
-  await scheduleNotif({
-    id: 'freezer-morning',
-    title: template.title,
-    body: fillTemplate(template.body, { streak: String(streak) }),
-    data: { type: 'freezer_morning', action: 'open_dashboard' },
-    triggerDate: morning,
-    categoryId: 'FREEZER_MORNING',
-    isEmergency: true,
-  })
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -774,8 +544,6 @@ export async function orchestrateNotifications({
   weeklyDiversity,
   todayLog,
   streak,
-  freezerPasses,
-  isFrozen,
   totalWeightG,
   lastIngredients,
 }) {
@@ -797,15 +565,13 @@ export async function orchestrateNotifications({
   // 5. Streak Shield (if rings at 0% today)
   const hasJuicedToday = todayLog.base || todayLog.power || todayLog.kick
   if (!hasJuicedToday && streak > 0) {
-    await scheduleStreakShield(streak, freezerPasses)
+    await scheduleStreakShield(streak)
   } else {
     await safeCancel('streak-shield')
   }
 
-  // 6. Freezer Pass morning-after
-  if (isFrozen) {
-    await scheduleFreezerMorning(streak)
-  }
+  // 6. Freezer Pass morning-after — RETIRED, just cancel legacy
+  await scheduleFreezerMorning()
 
   // 7. Wilt warning (inactivity)
   if (lastIngredients && lastIngredients.length > 0) {
@@ -813,7 +579,7 @@ export async function orchestrateNotifications({
   }
 
   // 8. Enforce global daily intensity cap across all scheduled
-  // ordinary notifications from both NotificationService and
+  // notifications from both NotificationService and
   // NotificationNudges. This cancels excess lowest-priority
   // notifications per local calendar day.
   const settings = await loadNotificationSettings()
@@ -852,19 +618,20 @@ export async function reconcileNotificationSchedule() {
   const settings = await loadNotificationSettings()
   console.log('[notif] reconcileNotificationSchedule START | enabled:', settings.enabled, 'intensity:', settings.intensity, 'affirmations:', settings.affirmations, 'vitalityReminders:', settings.vitalityReminders)
   if (!settings.enabled) {
-    // Cancel all non-emergency scheduled notifications
+    // Cancel all scheduled notifications
     const ids = [
       'identity-affirmation',
       'educational-tip',
       'saturday-rainbow-nudge',
       'streak-shield',
       'wilt-warning',
+      'freezer-morning', // Legacy — cancel if present
     ]
     await Promise.all(ids.map(safeCancel))
     return
   }
 
-  // Cancel and reschedule ordinary motivational notifications so the
+  // Cancel and reschedule motivational notifications so the
   // new intensity cap takes effect immediately without requiring a
   // restart or foregrounding.
   await safeCancel('identity-affirmation')
@@ -872,6 +639,7 @@ export async function reconcileNotificationSchedule() {
   await safeCancel('saturday-rainbow-nudge')
   await safeCancel('streak-shield')
   await safeCancel('wilt-warning')
+  await safeCancel('freezer-morning') // Legacy — cancel if present
 
   // Reschedule the ones that don't require external state
   await scheduleIdentityTrigger()

@@ -779,12 +779,10 @@ export function ChallengeProvider({ children }) {
       weeklyDiversity,
       todayLog,
       streak: state.streak,
-      freezerPasses: state.freezerPasses || 0,
-      isFrozen: state.isFrozen || false,
       totalWeightG: state.totalProduceWeightG || 0,
       lastIngredients,
     })
-  }, [weeklyDiversity, todayLog, state.streak, state.freezerPasses, state.isFrozen, lastIngredients])
+  }, [weeklyDiversity, todayLog, state.streak, lastIngredients])
 
   // Re-orchestrate notifications on app foreground so that settings
   // changes (intensity, affirmation toggle, vitality toggle) take
@@ -796,15 +794,13 @@ export function ChallengeProvider({ children }) {
           weeklyDiversity,
           todayLog,
           streak: state.streak,
-          freezerPasses: state.freezerPasses || 0,
-          isFrozen: state.isFrozen || false,
           totalWeightG: state.totalProduceWeightG || 0,
           lastIngredients,
         })
       }
     })
     return () => subscription.remove()
-  }, [weeklyDiversity, todayLog, state.streak, state.freezerPasses, state.isFrozen, lastIngredients])
+  }, [weeklyDiversity, todayLog, state.streak, lastIngredients])
 
   // Track juice logs for surprise & delight + wilt warning timestamp
   const prevJuiceCountRef = useRef(totalJuiceCount)

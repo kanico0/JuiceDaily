@@ -1,7 +1,7 @@
 // ─────────────────────────────────────────────────────────────
 // SettingsScreen.js — "Preferences & Privacy"
 // Notification Control Center with categorized toggles,
-// Quiet Hours picker, Intensity slider, Ghost Mode
+// Quiet Hours picker, Intensity slider
 // ─────────────────────────────────────────────────────────────
 
 import React, { useState, useEffect, useCallback, useRef } from 'react'
@@ -24,17 +24,13 @@ import * as Haptics from 'expo-haptics'
 import {
   ArrowLeft,
   Bell,
-  Users,
   ChefHat,
   Moon,
   Shield,
   Info,
   Snowflake,
-  Eye,
-  EyeOff,
   HelpCircle,
   BookOpen,
-  MessageCircle,
   FlaskConical,
   Sparkles,
   Crown,
@@ -897,48 +893,6 @@ export default function SettingsScreen({ navigation }) {
           />
         </View>
 
-        {/* ═══ B. THE "SOCIAL FEED" (Community) ════════════ */}
-        <SectionHeader
-          icon={<Users size={18} color="#CE93D8" />}
-          title="The Social Feed"
-          subtitle="Community"
-        />
-
-        <View style={styles.settingsGroup}>
-          <SettingRow
-            label="Glass Clinks"
-            description="Get notified when friends toast your juices"
-            value={settings.glassClinks}
-            onValueChange={(v) => updateSetting('glassClinks', v)}
-          />
-          <SettingRow
-            label="Weekly Leaderboard"
-            description="How you rank in the community"
-            value={settings.weeklyLeaderboard}
-            onValueChange={(v) => updateSetting('weeklyLeaderboard', v)}
-          />
-
-          {/* Ghost Mode */}
-          <View style={styles.ghostRow}>
-            <View style={styles.ghostInfo}>
-              <View style={styles.ghostIconRow}>
-                {settings.privacyMode
-                  ? <EyeOff size={16} color="#8B949E" />
-                  : <Eye size={16} color="#81C784" />
-                }
-                <Text style={styles.ghostLabel}>Ghost Mode</Text>
-              </View>
-              <Text style={styles.ghostDesc}>
-                Hide your vitality rings and rainbow status from the Juice Community feed
-              </Text>
-            </View>
-            <EmeraldSwitch
-              value={settings.privacyMode}
-              onValueChange={(v) => updateSetting('privacyMode', v)}
-            />
-          </View>
-        </View>
-
         {/* ═══ C. THE "KITCHEN" (Utility) ══════════════════ */}
         <SectionHeader
           icon={<ChefHat size={18} color="#81C784" />}
@@ -947,18 +901,6 @@ export default function SettingsScreen({ navigation }) {
         />
 
         <View style={styles.settingsGroup}>
-          <SettingRow
-            label="Inventory Alerts"
-            description="'Wilt Warnings' for produce in your Fridge Forager"
-            value={settings.inventoryAlerts}
-            onValueChange={(v) => updateSetting('inventoryAlerts', v)}
-          />
-          <SettingRow
-            label="Shopping Reminders"
-            description="What you need to complete your Weekly Rainbow"
-            value={settings.shoppingReminders}
-            onValueChange={(v) => updateSetting('shoppingReminders', v)}
-          />
           <SettingRow
             label="Comeback Reminders"
             description="Gentle reminders after time away from juice logging"
@@ -1207,14 +1149,6 @@ export default function SettingsScreen({ navigation }) {
             <View style={styles.helpInfo}>
               <Text style={styles.helpLabel}>Juicer Buyer's Guide</Text>
               <Text style={styles.helpDesc}>Top-rated cold-press & centrifugal models</Text>
-            </View>
-            <Text style={styles.helpArrow}>→</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.helpRow} activeOpacity={0.7}>
-            <MessageCircle size={16} color="#90CAF9" />
-            <View style={styles.helpInfo}>
-              <Text style={styles.helpLabel}>App FAQ</Text>
-              <Text style={styles.helpDesc}>Rings, streaks & more</Text>
             </View>
             <Text style={styles.helpArrow}>→</Text>
           </TouchableOpacity>
@@ -1789,16 +1723,6 @@ const styles = StyleSheet.create({
     borderWidth: 0.5, borderColor: 'rgba(100,181,246,0.1)',
   },
   emergencyText: { fontSize: 10, color: '#90CAF9', fontWeight: '600' },
-
-  // Ghost Mode
-  ghostRow: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 16, paddingVertical: 14,
-  },
-  ghostInfo: { flex: 1, marginRight: 12 },
-  ghostIconRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 },
-  ghostLabel: { fontSize: 14, fontWeight: '700', color: '#C9D1D9' },
-  ghostDesc: { fontSize: 12, color: '#90A4AE', lineHeight: 16 },
 
   // Quiet Hours
   quietCard: {

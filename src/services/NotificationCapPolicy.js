@@ -37,11 +37,6 @@ export const DEFAULT_SETTINGS = {
   affirmations: true,
   vitalityReminders: true,
   freezerAlerts: true, // Legacy field — tolerated, no longer drives behavior
-  glassClinks: true,
-  weeklyLeaderboard: true,
-  privacyMode: false,
-  inventoryAlerts: true,
-  shoppingReminders: true,
   comebackReminders: true,
   typicalJuiceHour: 7,
   typicalJuiceMinute: 30,
@@ -138,10 +133,10 @@ export const NOTIFICATION_PRIORITY = [
   'educational-tip',          // 3. Educational/vitality content
   'nudge-streak-risk',        // 4. Streak protector
   'streak-shield',            // 5. Streak shield (loss aversion)
-  'wilt-warning',             // 6. Ingredient spoilage warning
-  'saturday-rainbow-nudge',   // 7. Weekend rainbow diversity
-  'nudge-weekly-summary',     // 8. Weekly glow summary
-  'freezer-morning',          // 9. (Legacy — no longer scheduled)
+  'nudge-weekly-summary',     // 6. Weekly glow summary
+  'freezer-morning',          // 7. (Legacy — no longer scheduled)
+  'wilt-warning',             // 8. (Retired 1.0.20 — kept for cap priority legacy)
+  'saturday-rainbow-nudge',   // 9. (Retired 1.0.20 — kept for cap priority legacy)
   'dormant-reminder-day-7',   // 10. Comeback reminder 7-day
   'dormant-reminder-day-14',  // 11. Comeback reminder 14-day
   'dormant-reminder-day-30',  // 12. Comeback reminder 30-day

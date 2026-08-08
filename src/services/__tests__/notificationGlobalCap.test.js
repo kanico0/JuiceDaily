@@ -87,7 +87,7 @@ describe('Global notification intensity cap — enforceGlobalNotificationCap', (
       makeNotif('nudge-daily-glow', 0, 8),
       makeNotif('educational-tip', 0, 12),
       makeNotif('nudge-streak-risk', 0, 18),
-      makeNotif('saturday-rainbow-nudge', 0, 10),
+      makeNotif('nudge-weekly-summary', 0, 10),
     ]
     setScheduled(five)
 
@@ -106,7 +106,7 @@ describe('Global notification intensity cap — enforceGlobalNotificationCap', (
       makeNotif('nudge-daily-glow', 0, 8),
       makeNotif('educational-tip', 0, 12),
       makeNotif('nudge-streak-risk', 0, 18),
-      makeNotif('saturday-rainbow-nudge', 0, 10),
+      makeNotif('nudge-weekly-summary', 0, 10),
     ]
     setScheduled(five)
 
@@ -127,14 +127,14 @@ describe('Global notification intensity cap — enforceGlobalNotificationCap', (
       makeNotif('educational-tip', 0, 12),
       makeNotif('nudge-streak-risk', 0, 18),
       makeNotif('streak-shield', 0, 20),
-      makeNotif('wilt-warning', 0, 15),
+      makeNotif('nudge-weekly-summary', 0, 15),
     ]
     setScheduled(six)
 
     const cancelled = await enforceGlobalNotificationCap({ enabled: true, intensity: 'high-vibe' })
     expect(cancelled.length).toBe(1)
     expect(mockScheduled.size).toBe(5)
-    expect(mockScheduled.has('wilt-warning')).toBe(false)
+    expect(mockScheduled.has('nudge-weekly-summary')).toBe(false)
     expect(mockScheduled.has('identity-affirmation')).toBe(true)
     expect(mockScheduled.has('nudge-daily-glow')).toBe(true)
     expect(mockScheduled.has('educational-tip')).toBe(true)
@@ -148,11 +148,11 @@ describe('Global notification intensity cap — enforceGlobalNotificationCap', (
     const mixed = [
       makeNotif('identity-affirmation', 0, 7),
       makeNotif('educational-tip', 0, 12),
-      makeNotif('saturday-rainbow-nudge', 0, 10),
-      makeNotif('wilt-warning', 0, 15),
+      makeNotif('nudge-weekly-summary', 0, 10),
+      makeNotif('dormant-reminder-day-7', 0, 15),
       makeNotif('nudge-daily-glow', 0, 8),
       makeNotif('nudge-streak-risk', 0, 18),
-      makeNotif('nudge-weekly-summary', 0, 19),
+      makeNotif('streak-shield', 0, 19),
     ]
     setScheduled(mixed)
 
@@ -338,7 +338,7 @@ describe('Global notification intensity cap — enforceGlobalNotificationCap', (
       makeNotif('nudge-daily-glow', 0, 8),
       makeNotif('educational-tip', 0, 12),
       makeNotif('streak-shield', 1, 20),
-      makeNotif('wilt-warning', 1, 15),
+      makeNotif('nudge-weekly-summary', 1, 15),
     ]
     setScheduled(multiDay)
 
@@ -347,7 +347,7 @@ describe('Global notification intensity cap — enforceGlobalNotificationCap', (
     expect(mockScheduled.size).toBe(2)
     expect(mockScheduled.has('identity-affirmation')).toBe(true)
     expect(mockScheduled.has('streak-shield')).toBe(true)
-    expect(mockScheduled.has('wilt-warning')).toBe(false)
+    expect(mockScheduled.has('nudge-weekly-summary')).toBe(false)
   })
 
   // ── 14. Disabled notifications: no enforcement ──
@@ -379,7 +379,7 @@ describe('Global notification intensity cap — enforceGlobalNotificationCap', (
 
     test('getNotificationPriority returns lower number for higher priority', () => {
       expect(__capPolicy.getNotificationPriority('identity-affirmation')).toBe(0)
-      expect(__capPolicy.getNotificationPriority('nudge-weekly-summary')).toBe(7)
+      expect(__capPolicy.getNotificationPriority('nudge-weekly-summary')).toBe(5)
       // Prefix matches
       expect(__capPolicy.getNotificationPriority('surprise-5')).toBeLessThan(__capPolicy.NOTIFICATION_PRIORITY.length)
       expect(__capPolicy.getNotificationPriority('weight-10')).toBeLessThan(__capPolicy.NOTIFICATION_PRIORITY.length)

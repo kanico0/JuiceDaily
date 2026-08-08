@@ -10,12 +10,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 import {
   AFFIRMATIONS,
   EDUCATIONAL,
-  WILT_WARNINGS,
   FREEZER_PASS_MORNING,
   STREAK_SHIELD,
   ONBOARDING_SEQUENCE,
   NOTIFICATION_CATEGORIES,
-  COLOR_EMOJI,
   pickRandom,
   fillTemplate,
   getSurpriseForCount,
@@ -120,14 +118,6 @@ async function registerCategories() {
       { identifier: 'LOG_NOW', buttonTitle: 'Log Now', options: { opensAppToForeground: true } },
     ])
     await Notifications.setNotificationCategoryAsync('STREAK_ALERT', [
-      { identifier: 'LOG_NOW', buttonTitle: 'Log Now', options: { opensAppToForeground: true } },
-    ])
-    await Notifications.setNotificationCategoryAsync('WILT_WARNING', [
-      { identifier: 'VIEW_RECIPE', buttonTitle: 'View Recipe', options: { opensAppToForeground: true } },
-      { identifier: 'SNOOZE', buttonTitle: 'Remind Later', options: { opensAppToForeground: false } },
-    ])
-    await Notifications.setNotificationCategoryAsync('SOCIAL', [
-      { identifier: 'CLINK_BACK', buttonTitle: 'Clink Back 🥂', options: { opensAppToForeground: true } },
       { identifier: 'LOG_NOW', buttonTitle: 'Log Now', options: { opensAppToForeground: true } },
     ])
     await Notifications.setNotificationCategoryAsync('SURPRISE', [
@@ -283,51 +273,14 @@ export async function scheduleIdentityTrigger() {
 
 // ═══════════════════════════════════════════════════════════════
 // TRIGGER 2: Inventory Trigger (36-hour Inactivity Wilt Warning)
+// RETIRED in 1.0.20 — Inventory Alerts setting removed.
+// Function retained as a no-op that cancels any legacy scheduled
+// wilt-warning notification so it cannot fire on upgraded devices.
 // ═══════════════════════════════════════════════════════════════
 
-export async function scheduleWiltWarning(lastIngredients) {
+export async function scheduleWiltWarning() {
+  // Retired — cancel any previously scheduled wilt-warning
   await safeCancel('wilt-warning')
-  const settings = await loadNotificationSettings()
-  if (!settings.inventoryAlerts) return
-
-  const lastTs = await AsyncStorage.getItem(KEYS.LAST_JUICE_TS)
-  if (!lastTs) return
-
-  const lastJuice = new Date(lastTs)
-  const wiltTime = new Date(lastJuice.getTime() + 36 * 60 * 60 * 1000)
-  const now = new Date()
-
-  // If 36 hours haven't passed, schedule for when they do
-  if (wiltTime <= now) {
-    // Already past 36 hours — send soon (next non-quiet window)
-    const soon = new Date(now.getTime() + 5 * 60 * 1000)
-    const template = pickRandom(WILT_WARNINGS)
-    const lastIng = lastIngredients?.[0]?.produceId || 'produce'
-    const ingName = lastIng.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
-
-    await scheduleNotif({
-      id: 'wilt-warning',
-      title: template.title,
-      body: fillTemplate(template.body, { last_ingredient: ingName }),
-      data: { type: 'wilt_warning', action: 'open_fridge_forager' },
-      triggerDate: soon,
-      categoryId: 'WILT_WARNING',
-    })
-  } else {
-    // Schedule for the 36-hour mark
-    const template = pickRandom(WILT_WARNINGS)
-    const lastIng = lastIngredients?.[0]?.produceId || 'produce'
-    const ingName = lastIng.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
-
-    await scheduleNotif({
-      id: 'wilt-warning',
-      title: template.title,
-      body: fillTemplate(template.body, { last_ingredient: ingName }),
-      data: { type: 'wilt_warning', action: 'open_fridge_forager' },
-      triggerDate: wiltTime,
-      categoryId: 'WILT_WARNING',
-    })
-  }
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -361,52 +314,14 @@ export async function scheduleStreakShield(streak) {
 
 // ═══════════════════════════════════════════════════════════════
 // Saturday Rainbow Nudge
+// RETIRED in 1.0.20 — Shopping Reminders setting removed.
+// Function retained as a no-op that cancels any legacy scheduled
+// saturday-rainbow-nudge notification so it cannot fire on upgraded devices.
 // ═══════════════════════════════════════════════════════════════
 
-export async function scheduleSaturdayNudge(weeklyDiversity) {
+export async function scheduleSaturdayNudge() {
+  // Retired — cancel any previously scheduled saturday-rainbow-nudge
   await safeCancel('saturday-rainbow-nudge')
-
-  const colorOrder = ['red', 'orange', 'yellow', 'green', 'purple', 'white']
-  const missing = colorOrder.filter((c) => !weeklyDiversity[c])
-  if (missing.length === 0) return
-
-  const settings = await loadNotificationSettings()
-  if (!settings.shoppingReminders) return
-
-  const colorNames = missing.slice(0, 2).map((c) => {
-    const names = { red: 'Red', orange: 'Orange', yellow: 'Yellow', green: 'Green', purple: 'Purple', white: 'White' }
-    return names[c] || c
-  })
-  const emojis = missing.slice(0, 2).map((c) => COLOR_EMOJI[c] || '').join('')
-
-  const suggestions = {
-    red: 'Beet or Pomegranate',
-    orange: 'Carrot or Mango',
-    yellow: 'Lemon or Pineapple',
-    green: 'Kale or Spinach',
-    purple: 'Blueberries or Red Cabbage',
-    white: 'Cauliflower or Garlic',
-  }
-  const suggestText = missing.slice(0, 2).map((c) => suggestions[c]).join(' or ')
-
-  const body = `Almost there, Architect! ${emojis} Your ${colorNames.join(' and ')} ring${missing.length > 1 ? 's are' : ' is'} still ghosted. Grab some ${suggestText} today to secure your Weekend Warrior Badge.`
-
-  const now = new Date()
-  const dayOfWeek = now.getDay()
-  const daysUntilSaturday = (6 - dayOfWeek + 7) % 7 || 7
-  const saturday = new Date(now)
-  saturday.setDate(now.getDate() + daysUntilSaturday)
-  saturday.setHours(10, 0, 0, 0)
-  if (saturday <= now) saturday.setDate(saturday.getDate() + 7)
-
-  await scheduleNotif({
-    id: 'saturday-rainbow-nudge',
-    title: '🌈 Weekend Rainbow Check',
-    body,
-    data: { type: 'saturday_nudge', action: 'open_weekly_report' },
-    triggerDate: saturday,
-    categoryId: 'WILT_WARNING',
-  })
 }
 
 // ═══════════════════════════════════════════════════════════════

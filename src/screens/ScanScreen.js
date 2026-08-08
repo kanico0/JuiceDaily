@@ -19,6 +19,7 @@ import {
   FlatList,
   TextInput,
   BackHandler,
+  Share,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { LinearGradient } from 'expo-linear-gradient'
@@ -1475,6 +1476,34 @@ function BrowseHome({ onScan, onBrowse, onExample, onExplore, onViewToday, onWel
     trackEvent('weekly_summary_dismissed')
   }, [isReduced, weeklyFade])
 
+  // Share Glow — open Android native share sheet with weekly summary text
+  const handleShareGlow = useCallback(async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    trackEvent('share_glow_tapped')
+    const parts = ['🌟 My RawLifeFlow weekly glow']
+    if (weeklySummary) {
+      if (weeklySummary.glowStreak) {
+        parts.push(`${weeklySummary.glowStreak}-day glow streak`)
+      }
+      if (weeklySummary.juicesThisWeek) {
+        parts.push(`${weeklySummary.juicesThisWeek} juice${weeklySummary.juicesThisWeek !== 1 ? 's' : ''} this week`)
+      }
+      if (weeklySummary.highlightNutrient) {
+        parts.push(`Top nutrient: ${weeklySummary.highlightNutrient}`)
+      }
+    }
+    parts.push('#RawLifeFlow #JuicingDaily')
+    const message = parts.join('\n')
+    try {
+      await Share.share({
+        message,
+        dialogTitle: 'Share your Glow',
+      })
+    } catch (e) {
+      console.warn('[shareGlow] Share.share failed:', e?.message || e)
+    }
+  }, [weeklySummary])
+
   // ── Achievement state ──
   const [pendingAchievement, setPendingAchievement] = useState(null)
 
@@ -1569,7 +1598,7 @@ function BrowseHome({ onScan, onBrowse, onExample, onExplore, onViewToday, onWel
             </Pressable>
             <Pressable
               style={({ pressed }) => [weeklyStyles.secondaryBtn, pressed && { opacity: 0.6 }]}
-              onPress={handleDismissWeekly}
+              onPress={handleShareGlow}
               hitSlop={8}
               accessibilityRole="button"
               accessibilityLabel="Share glow"
@@ -1661,17 +1690,15 @@ function BrowseHome({ onScan, onBrowse, onExample, onExplore, onViewToday, onWel
               <Text style={focusStyles.label}>Today's Focus</Text>
               <Text style={focusStyles.name}>{focusNutrient.name}</Text>
             </View>
-            {!focusSwapped && (
-              <Pressable
-                onPress={handleSwapFocus}
-                hitSlop={10}
-                style={({ pressed }) => [focusStyles.swapBtn, pressed && { opacity: 0.6 }]}
-                accessibilityRole="button"
-                accessibilityLabel="Swap nutrient"
-              >
-                <Text style={focusStyles.swapText}>Swap</Text>
-              </Pressable>
-            )}
+            <Pressable
+              onPress={handleSwapFocus}
+              hitSlop={10}
+              style={({ pressed }) => [focusStyles.swapBtn, pressed && { opacity: 0.6 }]}
+              accessibilityRole="button"
+              accessibilityLabel="Swap nutrient"
+            >
+              <Text style={focusStyles.swapText}>Swap</Text>
+            </Pressable>
           </View>
           <Text style={focusStyles.benefit}>{focusNutrient.benefit}</Text>
           <View style={focusStyles.comboRow}>

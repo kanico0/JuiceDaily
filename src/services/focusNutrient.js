@@ -12,7 +12,8 @@ import { getDevNow } from '../utils/DevClock'
 
 const KEY_DATE = 'focusNutrient_date'
 const KEY_ID = 'focusNutrient_id'
-const KEY_SWAP_DATE = 'focusNutrient_swapUsedDate'
+const KEY_SWAP_DATE = 'focusNutrient_swapUsedDate' // Legacy — no longer blocks swapping
+const KEY_SWAP_COUNT = 'focusNutrient_swapCount'
 
 // ── Built-in nutrient catalog ────────────────────────────────
 
@@ -287,30 +288,42 @@ export async function getFocusForToday() {
   return chooseFocusForToday()
 }
 
-// Swap once per day — pick a different nutrient
+// Swap to a different nutrient — allows repeated swaps with deduplication.
+// Each swap excludes the CURRENT nutrient and picks a different one.
+// No daily swap quota — user can cycle through alternatives freely.
+// Legacy KEY_SWAP_DATE is cleared so old values cannot block swapping.
 export async function swapFocusToday() {
   const today = getTodayKey()
-  const swapDate = await AsyncStorage.getItem(KEY_SWAP_DATE)
+  const currentId = await AsyncStorage.getItem(KEY_ID)
 
-  if (swapDate === today) {
+  // Build candidate pool excluding the current nutrient
+  const available = FOCUS_NUTRIENTS.filter((n) => n.id !== currentId)
+
+  // Handle edge case: pool of 0 (shouldn't happen with 16 nutrients, but guard)
+  if (available.length === 0) {
     return { swapped: false, nutrient: await getFocusForToday() }
   }
 
-  const currentId = await AsyncStorage.getItem(KEY_ID)
-  const available = FOCUS_NUTRIENTS.filter((n) => n.id !== currentId)
-  const index = dateSeed(today + '_swap') % available.length
+  // Deterministic-but-varied pick: use date + currentId + swap count for entropy
+  // This ensures repeated swaps cycle through different nutrients
+  const swapCount = await AsyncStorage.getItem(KEY_SWAP_COUNT) || '0'
+  const seedKey = `${today}_${currentId}_${swapCount}`
+  const index = dateSeed(seedKey) % available.length
   const picked = available[index]
 
   await AsyncStorage.multiSet([
     [KEY_DATE, today],
     [KEY_ID, picked.id],
-    [KEY_SWAP_DATE, today],
+    [KEY_SWAP_COUNT, String(Number(swapCount) + 1)],
   ])
+
+  // Clear legacy KEY_SWAP_DATE so it cannot block future swaps
+  await AsyncStorage.removeItem(KEY_SWAP_DATE)
 
   return { swapped: true, nutrient: picked }
 }
 
 // Dev reset
 export async function resetFocusForToday() {
-  await AsyncStorage.multiRemove([KEY_DATE, KEY_ID, KEY_SWAP_DATE])
+  await AsyncStorage.multiRemove([KEY_DATE, KEY_ID, KEY_SWAP_DATE, KEY_SWAP_COUNT])
 }

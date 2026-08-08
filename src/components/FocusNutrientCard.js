@@ -48,17 +48,15 @@ export default function FocusNutrientCard({ onScan, isReduced }) {
             <Text style={styles.label}>Today's Focus</Text>
             <Text style={styles.name}>{focusNutrient.name}</Text>
           </View>
-          {!focusSwapped && (
-            <Pressable
-              onPress={handleSwapFocus}
-              hitSlop={10}
-              style={({ pressed }) => [styles.swapBtn, pressed && { opacity: 0.6 }]}
-              accessibilityRole="button"
-              accessibilityLabel="Swap nutrient"
-            >
-              <Text style={styles.swapText}>Swap</Text>
-            </Pressable>
-          )}
+          <Pressable
+            onPress={handleSwapFocus}
+            hitSlop={10}
+            style={({ pressed }) => [styles.swapBtn, pressed && { opacity: 0.6 }]}
+            accessibilityRole="button"
+            accessibilityLabel="Swap nutrient"
+          >
+            <Text style={styles.swapText}>Swap</Text>
+          </Pressable>
         </View>
         <Text style={styles.benefit}>{focusNutrient.benefit}</Text>
         <View style={styles.comboRow}>

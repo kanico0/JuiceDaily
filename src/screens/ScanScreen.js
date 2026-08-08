@@ -1516,10 +1516,6 @@ function BrowseHome({ onScan, onBrowse, onExample, onExplore, onViewToday, onWel
 
   return (
     <Animated.View style={[obStyles.stepWrap, { opacity: fadeAnim }]}>
-      <View style={obStyles.orbWrap}>
-        <LiquidNutrientOrb isReduced={isReduced} />
-      </View>
-
       {/* Glow Journey progress indicator */}
       {glowJourney && (
         <GlowJourneyDrop

@@ -77,6 +77,8 @@ import { resetFocusForToday } from '../services/focusNutrient'
 import { resetAchievements } from '../services/achievements'
 import { resetWeeklySummary } from '../services/weeklySummary'
 import { BUILD_TARGET } from '../utils/buildTarget'
+import { APP_VERSION, APP_VERSION_CODE } from '../utils/appVersion'
+import { useDeveloperMode } from '../hooks/useDeveloperMode'
 import { clearState } from '../services/storage'
 import { getNudgeSettings, setNudgeSettings, resetNudgeSettings } from '../services/NudgeSettingsStore'
 import {
@@ -578,6 +580,17 @@ export default function SettingsScreen({ navigation }) {
   const { totalLogCount, resetLog } = useJuiceLog()
   const [profileNameInput, setProfileNameInput] = useState('')
   const [showDevFlags, setShowDevFlags] = useState(false)
+  const {
+    unlocked: devModeUnlocked,
+    tapCount: devTapCount,
+    showPasscodePrompt,
+    passcodeError,
+    handleVersionTap,
+    submitPasscode,
+    cancelPasscode,
+    disableDeveloperMode,
+  } = useDeveloperMode()
+  const [passcodeInput, setPasscodeInput] = useState('')
   const [devClockOffset, setDevClockOffset] = useState(getDevDayOffset())
   const [nudgeSettings, setNudgeSettingsLocal] = useState(null)
   const [nudgePermDenied, setNudgePermDenied] = useState(false)
@@ -1217,21 +1230,104 @@ export default function SettingsScreen({ navigation }) {
 
         <WellnessSettingsDisclaimer />
 
-        {/* ═══ DEVELOPER FLAGS ═════════════════════════════ */}
-        <SectionHeader
-          icon={<FlaskConical size={18} color="#FFD54F" />}
-          title="Developer Flags"
-          subtitle="Toggle new features for testing"
-        />
-
-        <View style={styles.settingsGroup}>
+        {/* ═══ APP VERSION (hidden developer mode unlock gesture) ═══ */}
+        <View style={devStyles.versionRow}>
           <TouchableOpacity
-            style={styles.settingRow}
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-              setShowDevFlags((v) => !v)
+              handleVersionTap()
             }}
             activeOpacity={0.7}
+            style={devStyles.versionTapArea}
+          >
+            <Text style={devStyles.versionText}>
+              RawLifeFlow v{APP_VERSION} ({APP_VERSION_CODE})
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* ═══ DEVELOPER PASSCODE PROMPT ═════════════════════ */}
+        {showPasscodePrompt && (
+          <View style={devStyles.passcodeOverlay}>
+            <View style={devStyles.passcodeCard}>
+              <Text style={devStyles.passcodeTitle}>Developer Access</Text>
+              <Text style={devStyles.passcodeHint}>Enter passcode</Text>
+              <TextInput
+                style={devStyles.passcodeInput}
+                value={passcodeInput}
+                onChangeText={setPasscodeInput}
+                placeholder="••••"
+                placeholderTextColor="#5A6B5A"
+                keyboardType="numeric"
+                secureTextEntry
+                maxLength={4}
+                autoFocus
+              />
+              {passcodeError && (
+                <Text style={devStyles.passcodeError}>Incorrect passcode</Text>
+              )}
+              <View style={devStyles.passcodeBtnRow}>
+                <TouchableOpacity
+                  style={devStyles.passcodeCancelBtn}
+                  onPress={() => {
+                    cancelPasscode()
+                    setPasscodeInput('')
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={devStyles.passcodeCancelText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={devStyles.passcodeSubmitBtn}
+                  onPress={async () => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+                    const ok = await submitPasscode(passcodeInput)
+                    if (!ok) {
+                      setPasscodeInput('')
+                    }
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={devStyles.passcodeSubmitText}>Unlock</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        )}
+
+        {/* ═══ DEVELOPER FLAGS (gated by hidden unlock) ═════════════════ */}
+        {devModeUnlocked && (
+          <>
+            <SectionHeader
+              icon={<FlaskConical size={18} color="#FFD54F" />}
+              title="Developer Flags"
+              subtitle="Toggle new features for testing"
+            />
+
+            <View style={styles.settingsGroup}>
+              {/* Disable Developer Mode */}
+              <TouchableOpacity
+                style={[styles.settingRow, devStyles.disableDevBtn]}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+                  disableDeveloperMode()
+                  setShowDevFlags(false)
+                }}
+                activeOpacity={0.7}
+              >
+                <View style={styles.settingInfo}>
+                  <Text style={devStyles.disableDevText}>Disable Developer Mode</Text>
+                  <Text style={styles.settingDesc}>Hide developer controls</Text>
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.settingRow}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+                  setShowDevFlags((v) => !v)
+                }}
+                activeOpacity={0.7}
           >
             <View style={styles.settingInfo}>
               <Text style={styles.settingLabel}>
@@ -1584,6 +1680,8 @@ export default function SettingsScreen({ navigation }) {
             </>
           )}
         </View>
+          </>
+        )}
 
         <View style={{ height: 40 }} />
       </ScrollView>
@@ -1887,6 +1985,110 @@ const devStyles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     color: '#64B5F6',
+  },
+  // ── Version display (hidden dev mode unlock target) ──
+  versionRow: {
+    alignItems: 'center',
+    paddingVertical: 12,
+    marginTop: 4,
+  },
+  versionTapArea: {
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+  },
+  versionText: {
+    fontSize: 12,
+    color: '#5A6B5A',
+    fontWeight: '500',
+  },
+  // ── Passcode prompt ──
+  passcodeOverlay: {
+    position: 'absolute',
+    top: 0, left: 0, right: 0, bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  passcodeCard: {
+    width: 280,
+    borderRadius: 20,
+    backgroundColor: '#0E1A14',
+    borderWidth: 0.5,
+    borderColor: 'rgba(255,255,255,0.1)',
+    padding: 24,
+    alignItems: 'center',
+  },
+  passcodeTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#E6EDF3',
+    marginBottom: 4,
+  },
+  passcodeHint: {
+    fontSize: 12,
+    color: '#8B949E',
+    marginBottom: 16,
+  },
+  passcodeInput: {
+    width: 120,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: 0.5,
+    borderColor: 'rgba(255,255,255,0.1)',
+    textAlign: 'center',
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#E6EDF3',
+    letterSpacing: 8,
+    marginBottom: 12,
+  },
+  passcodeError: {
+    fontSize: 12,
+    color: '#EF5350',
+    marginBottom: 12,
+  },
+  passcodeBtnRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  passcodeCancelBtn: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: 0.5,
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  passcodeCancelText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#8B949E',
+  },
+  passcodeSubmitBtn: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 10,
+    backgroundColor: 'rgba(129,199,132,0.15)',
+    borderWidth: 0.5,
+    borderColor: 'rgba(129,199,132,0.3)',
+  },
+  passcodeSubmitText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#81C784',
+  },
+  // ── Disable Developer Mode button ──
+  disableDevBtn: {
+    backgroundColor: 'rgba(239,83,80,0.08)',
+    borderBottomWidth: 0.5,
+    borderBottomColor: 'rgba(239,83,80,0.15)',
+  },
+  disableDevText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#EF5350',
   },
 })
 

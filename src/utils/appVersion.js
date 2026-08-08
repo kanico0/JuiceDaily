@@ -6,7 +6,7 @@
 // ─────────────────────────────────────────────────────────────
 
 // eslint-disable-next-line import/no-unresolved
-import appJson from '../../../app.json'
+import appJson from '../../app.json'
 
 export const APP_VERSION = appJson.expo.version || '1.0.0'
 export const APP_VERSION_CODE = appJson.expo.android?.versionCode || 1

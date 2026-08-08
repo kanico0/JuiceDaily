@@ -53,12 +53,14 @@ const {
 } = require('../NotificationCapPolicy')
 
 // Helper: create a mock scheduled notification
+// Uses the real expo-notifications trigger format: { channelId, value, repeats, type }
+// where `value` is the Unix timestamp in milliseconds.
 function makeNotif(id, dayOffset, hour = 12, extra = {}) {
   const date = new Date(2026, 7, 8 + dayOffset, hour, 0, 0, 0)
   return {
     identifier: id,
     content: { data: extra.data || {} },
-    trigger: { type: 'date', date: date.getTime(), channelId: 'nudges' },
+    trigger: { type: 'date', value: date.getTime(), repeats: false, channelId: 'nudges' },
   }
 }
 

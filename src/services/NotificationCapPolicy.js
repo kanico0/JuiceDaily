@@ -201,11 +201,16 @@ export async function enforceGlobalNotificationCap(settings) {
   }
 
   // Group ALL notifications by local calendar day
+  // expo-notifications trigger format: { channelId, value, repeats, type }
+  // where `value` is the Unix timestamp in milliseconds.
+  // Some versions may also expose `date` — check both.
   const byDay = new Map()
   for (const notif of scheduled) {
     const trigger = notif.trigger
-    if (!trigger || !trigger.date) continue
-    const dayKey = getLocalDayKey(trigger.date)
+    if (!trigger) continue
+    const ts = trigger.value || trigger.date
+    if (!ts || typeof ts !== 'number') continue
+    const dayKey = getLocalDayKey(ts)
     if (!byDay.has(dayKey)) byDay.set(dayKey, [])
     byDay.get(dayKey).push(notif)
   }

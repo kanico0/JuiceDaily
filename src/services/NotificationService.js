@@ -242,6 +242,130 @@ export async function canSendNotification(settings, isEmergency = false) {
   return true
 }
 
+// ── Global Notification Cap Policy ───────────────────────────
+// The sentToday counter only governs near-future/immediate delivery.
+// Far-future scheduled notifications bypass canSendNotification().
+// This function enforces the intensity cap ACROSS all scheduled
+// ordinary notifications from both NotificationService and
+// NotificationNudges, grouped by local calendar day.
+
+// Ordinary notification IDs that count against the daily intensity cap.
+// Lower index = higher priority (kept first when cap is exceeded).
+const ORDINARY_NOTIFICATION_PRIORITY = [
+  'identity-affirmation',     // 1. Core daily affirmation
+  'nudge-daily-glow',         // 2. User's primary daily reminder
+  'educational-tip',          // 3. Educational/vitality content
+  'nudge-streak-risk',        // 4. Streak protector
+  'streak-shield',            // 5. Streak shield (loss aversion)
+  'wilt-warning',             // 6. Ingredient spoilage warning
+  'saturday-rainbow-nudge',   // 7. Weekend rainbow diversity
+  'nudge-weekly-summary',     // 8. Weekly glow summary
+]
+
+// Notification ID prefixes that are always exempt from the cap.
+// These are one-shot or long-delay notifications that operate
+// outside the daily ordinary notification flow.
+const EXEMPT_PREFIXES = ['dormant-reminder-', 'surprise-', 'weight-', 'onboarding-']
+
+// Notification IDs that are always exempt (emergencies).
+const ALWAYS_EXEMPT_IDS = ['freezer-morning']
+
+function isExemptNotification(notif) {
+  const id = notif.identifier
+  if (ALWAYS_EXEMPT_IDS.includes(id)) return true
+  if (EXEMPT_PREFIXES.some((prefix) => id.startsWith(prefix))) return true
+  // streak-shield is exempt when it has freezerPasses (emergency mode)
+  if (id === 'streak-shield') {
+    const fp = notif?.content?.data?.freezerPasses
+    if (fp && fp > 0) return true
+  }
+  return false
+}
+
+function isOrdinaryNotification(notif) {
+  if (isExemptNotification(notif)) return false
+  return ORDINARY_NOTIFICATION_PRIORITY.includes(notif.identifier)
+}
+
+function getNotificationPriority(id) {
+  const idx = ORDINARY_NOTIFICATION_PRIORITY.indexOf(id)
+  return idx === -1 ? ORDINARY_NOTIFICATION_PRIORITY.length : idx
+}
+
+function getLocalDayKey(timestamp) {
+  const d = new Date(timestamp)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+// Exported for testing
+export const __capPolicy = {
+  ORDINARY_NOTIFICATION_PRIORITY,
+  EXEMPT_PREFIXES,
+  ALWAYS_EXEMPT_IDS,
+  isExemptNotification,
+  isOrdinaryNotification,
+  getNotificationPriority,
+  getLocalDayKey,
+}
+
+/**
+ * Enforce the global daily intensity cap across all scheduled
+ * ordinary notifications from both NotificationService and
+ * NotificationNudges. Cancels excess lowest-priority notifications
+ * per local calendar day.
+ *
+ * @param {object} settings - Notification settings with intensity
+ * @returns {Promise<string[]>} Array of cancelled notification IDs
+ */
+export async function enforceGlobalNotificationCap(settings) {
+  if (!settings || !settings.enabled) return []
+  const cap = INTENSITY_CAPS[settings.intensity] || 3
+
+  let scheduled
+  try {
+    scheduled = await Notifications.getAllScheduledNotificationsAsync()
+  } catch (e) {
+    console.warn('[cap] enforceGlobalNotificationCap — getAllScheduledNotificationsAsync FAIL:', e?.message || '')
+    return []
+  }
+
+  // Group ordinary notifications by local calendar day
+  const byDay = new Map()
+  for (const notif of scheduled) {
+    if (!isOrdinaryNotification(notif)) continue
+    const trigger = notif.trigger
+    if (!trigger || !trigger.date) continue
+    const dayKey = getLocalDayKey(trigger.date)
+    if (!byDay.has(dayKey)) byDay.set(dayKey, [])
+    byDay.get(dayKey).push(notif)
+  }
+
+  // For each day, cancel excess lowest-priority notifications
+  const toCancel = []
+  for (const [dayKey, notifs] of byDay) {
+    if (notifs.length <= cap) continue
+    // Sort by priority (highest priority first)
+    notifs.sort((a, b) => getNotificationPriority(a.identifier) - getNotificationPriority(b.identifier))
+    // Cancel the excess (lowest priority)
+    const excess = notifs.slice(cap)
+    for (const notif of excess) {
+      toCancel.push(notif.identifier)
+    }
+  }
+
+  if (toCancel.length > 0) {
+    console.log('[cap] enforceGlobalNotificationCap | intensity:', settings.intensity, 'cap:', cap, 'cancelling:', toCancel.length, 'excess | ids:', toCancel.join(', '))
+    await Promise.all(toCancel.map((id) => {
+      console.log('[cap] cancelling excess notification | id:', id)
+      return safeCancel(id)
+    }))
+  } else {
+    console.log('[cap] enforceGlobalNotificationCap | intensity:', settings.intensity, 'cap:', cap, 'no excess found')
+  }
+
+  return toCancel
+}
+
 // ── Check if a scheduled time is in quiet hours ──────────────
 
 export function isTimeInQuietHours(hour, minute, settings) {
@@ -687,6 +811,13 @@ export async function orchestrateNotifications({
   if (lastIngredients && lastIngredients.length > 0) {
     await scheduleWiltWarning(lastIngredients)
   }
+
+  // 8. Enforce global daily intensity cap across all scheduled
+  // ordinary notifications from both NotificationService and
+  // NotificationNudges. This cancels excess lowest-priority
+  // notifications per local calendar day.
+  const settings = await loadNotificationSettings()
+  await enforceGlobalNotificationCap(settings)
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -753,6 +884,10 @@ export async function reconcileNotificationSchedule() {
   } catch (e) {
     console.warn('[notif] reconcileNotificationSchedule — refreshNudges error:', e?.name || 'unknown', e?.message || '')
   }
+
+  // Enforce global daily intensity cap across all scheduled
+  // ordinary notifications from both services.
+  await enforceGlobalNotificationCap(settings)
 
   // Diagnostic: dump all scheduled notifications after reconciliation
   try {

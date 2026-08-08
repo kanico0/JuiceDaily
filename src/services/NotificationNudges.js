@@ -22,6 +22,7 @@ import {
   canSendNotification,
   isTimeInQuietHours,
   incrementSentToday,
+  enforceGlobalNotificationCap,
 } from './NotificationService'
 
 // ── Notification IDs ─────────────────────────────────────────
@@ -320,6 +321,11 @@ export async function refreshNudges() {
     } else {
       await safeCancel(IDS.WEEKLY)
     }
+
+    // Enforce global daily intensity cap across all scheduled
+    // ordinary notifications from both services.
+    const notifSettings = await loadNotificationSettings()
+    await enforceGlobalNotificationCap(notifSettings)
 
     // Diagnostic: dump all scheduled notifications after refresh
     try {

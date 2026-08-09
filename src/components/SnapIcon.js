@@ -3,26 +3,35 @@
 // Used by all Snap/camera-action entry points (buttons, CTAs, FAB).
 // NOT used for: flash, flip, gallery, permission graphics, marketing,
 // launcher icon, or decorative camera artwork.
+//
+// IMPORTANT: The approved artwork is a full-color branded PNG.
+// Do NOT apply tintColor — that would turn it into a monochrome
+// silhouette and destroy the recognizable artwork.
+// For disabled/exhausted states, reduce opacity via the `disabled`
+// prop or pass an explicit `style` with opacity.
 
 import React from 'react'
 import { Image, StyleSheet } from 'react-native'
 
-const SNAP_ICONAsset = require('../../assets/Raw_LifeFlow_Camera_Icon.png')
+const SNAP_ICON_ASSET = require('../../assets/Raw_LifeFlow_Camera_Icon.png')
 
-// Default tint for white-on-gradient contexts (most Snap CTAs).
-// Pass `null` to render the asset as-is (full-color branded icon).
-export default function SnapIcon({ size = 24, color = '#FFFFFF', style, resizeMode = 'contain' }) {
-  // When a tint color is requested, render the image with tintColor so it
-  // matches the previous lucide Camera glyph appearance on gradient buttons.
-  // When color is null, render the full-color branded artwork.
-  const tintStyle = color
-    ? { tintColor: color, width: size, height: size }
-    : { width: size, height: size }
+export default function SnapIcon({ size = 24, color = null, style, resizeMode = 'contain', disabled = false }) {
+  // Render the full-color artwork as-is. Never apply tintColor —
+  // the approved PNG has its own colors that must be preserved.
+  // The `color` prop is accepted for API compatibility but ignored
+  // (the artwork is always full-color). Callers that previously
+  // relied on a white monochrome glyph should instead use the
+  // full-color artwork on a contrasting background.
+  const baseStyle = {
+    width: size,
+    height: size,
+    opacity: disabled ? 0.35 : 1,
+  }
 
   return (
     <Image
-      source={SNAP_ICONAsset}
-      style={[styles.base, tintStyle, style]}
+      source={SNAP_ICON_ASSET}
+      style={[styles.base, baseStyle, style]}
       resizeMode={resizeMode}
       accessibilityLabel="RawLifeFlow snap icon"
     />

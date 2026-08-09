@@ -87,9 +87,19 @@ describe('SnapIcon component', () => {
     expect(snapIconSource).toMatch(/size/)
   })
 
-  it('SnapIcon accepts color prop for tinting', () => {
-    expect(snapIconSource).toMatch(/color/)
-    expect(snapIconSource).toMatch(/tintColor/)
+  it('SnapIcon does NOT apply tintColor in style (preserves full-color artwork)', () => {
+    // tintColor may appear in comments explaining why NOT to use it,
+    // but must NOT appear in any style object or prop
+    expect(snapIconSource).not.toMatch(/tintColor\s*:/)
+    expect(snapIconSource).not.toMatch(/tintColor\s*=/)
+  })
+
+  it('SnapIcon accepts disabled prop for exhausted state', () => {
+    expect(snapIconSource).toMatch(/disabled/)
+  })
+
+  it('SnapIcon renders full-color artwork (no monochrome transformation)', () => {
+    expect(snapIconSource).toMatch(/full-color/)
   })
 })
 

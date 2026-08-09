@@ -22,7 +22,7 @@ const configSource = fs.readFileSync(configPath, 'utf8')
 const proStorePath = path.resolve(__dirname, '../../services/ProStore.js')
 const proStoreSource = fs.readFileSync(proStorePath, 'utf8')
 
-const migrationPath = path.resolve(__dirname, '../../../supabase/migrations/0011_quota_1_12.sql')
+const migrationPath = path.resolve(__dirname, '../../../supabase/migrations/0013_quota_1_12.sql')
 const migrationSource = fs.readFileSync(migrationPath, 'utf8')
 
 const monetizationPath = path.resolve(__dirname, '../../../supabase/migrations/0001_monetization.sql')
@@ -81,7 +81,7 @@ describe('Quota 1/12 — source audit', () => {
 })
 
 describe('Quota 1/12 — backend migration', () => {
-  it('migration 0011_quota_1_12.sql exists', () => {
+  it('migration 0013_quota_1_12.sql exists', () => {
     expect(fs.existsSync(migrationPath)).toBe(true)
   })
 

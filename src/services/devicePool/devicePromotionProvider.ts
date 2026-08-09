@@ -20,8 +20,8 @@ export interface AttestationRequestContext {
   challenge: string
   // Authenticated Supabase user UUID
   userId: string
-  // Intended action (always 'analyze_scan' for this provider)
-  action: 'analyze_scan'
+  // Intended action
+  action: 'analyze_scan' | 'analyze_blend'
   // Canonical request payload digest (server-controlled)
   requestPayloadDigest: string
 }

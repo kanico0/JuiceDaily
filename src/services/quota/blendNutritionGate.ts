@@ -20,7 +20,12 @@
 // confirmation, reused across retries. A new attempt gets a new ID.
 // ─────────────────────────────────────────────────────────────
 
-import { processJuiceBatch, type ScannedIngredient, type JuiceResult, type JuiceMethod } from '../JuiceEngine'
+import {
+  processJuiceBatch,
+  type ScannedIngredient,
+  type JuiceResult,
+  type JuiceMethod,
+} from '../JuiceEngine'
 import {
   reserveBlendAllowance,
   finalizeBlendAllowance,
@@ -28,14 +33,57 @@ import {
   classifyBlend,
   countDistinctProduceIds,
   BlendAllowanceError,
-  isDevBypass,
   type BlendAllowanceResult,
 } from './blendAllowanceService'
+import { getAccessToken } from '../supabase/identity'
+import { isDevicePoolEnabled } from '../devicePool/devicePoolConfig'
+import { getDevicePromotionProvider } from '../devicePool/devicePromotionProviderFactory'
+import type { AttestationRequestContext } from '../devicePool/devicePromotionProvider'
+
 export interface AuthorizedJuiceResult extends JuiceResult {
   allowance: BlendAllowanceResult | null
 }
 
-export async function authorizeAndProcessBatch (
+// ── Device pool attestation for Advanced Blend ────────────────
+// Requests a Play Integrity token bound to the blend request.
+// Only requested when the device pool is enabled.
+async function getBlendAttestation(
+  requestId: string,
+  userId: string,
+): Promise<{ token: string; isMock: boolean } | null> {
+  if (!isDevicePoolEnabled()) return null
+
+  const provider = getDevicePromotionProvider()
+  if (!provider.isSupported()) return null
+
+  const ctx: AttestationRequestContext = {
+    challenge: requestId,
+    userId,
+    action: 'analyze_blend',
+    requestPayloadDigest: 'reserve',
+  }
+
+  try {
+    const result = await provider.getAttestationForScan(ctx)
+    if (!result.token) return null
+    return { token: result.token, isMock: result.isMock }
+  } catch {
+    return null
+  }
+}
+
+function extractUserIdFromToken(token: string): string | null {
+  try {
+    const payload = token.split('.')[1]
+    if (!payload) return null
+    const decoded = JSON.parse(atob(payload))
+    return decoded?.sub ?? null
+  } catch {
+    return null
+  }
+}
+
+export async function authorizeAndProcessBatch(
   scannedItems: ScannedIngredient[],
   juiceMethod: JuiceMethod = 'cold_pressed',
   operationId?: string,
@@ -56,12 +104,41 @@ export async function authorizeAndProcessBatch (
   // server-authoritative analyze-blend Edge Function. The guest's
   // first Advanced Blend consumes allowance 1 of 3, keyed to the
   // Supabase UUID which is preserved across email upgrade.
-  const requestId = operationId ?? `advanced-blend-fallback-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
-  const reservation = await reserveBlendAllowance(scannedItems, requestId)
+  const requestId =
+    operationId ?? `advanced-blend-fallback-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+
+  // ── Request Play Integrity token for device pool verification ──
+  let integrityToken: string | undefined
+  let integrityTokenIsMock: boolean | undefined
+
+  if (isDevicePoolEnabled()) {
+    const accessToken = await getAccessToken()
+    if (accessToken) {
+      const userId = extractUserIdFromToken(accessToken)
+      if (userId) {
+        const attestation = await getBlendAttestation(requestId, userId)
+        if (attestation) {
+          integrityToken = attestation.token
+          integrityTokenIsMock = attestation.isMock
+        }
+      }
+    }
+  }
+
+  const reservation = await reserveBlendAllowance(
+    scannedItems,
+    requestId,
+    integrityToken,
+    integrityTokenIsMock,
+  )
 
   try {
     const result = processJuiceBatch(scannedItems, juiceMethod)
-    await finalizeBlendAllowance(reservation.requestId)
+    // Pass the same integrity token to finalize for Device Recall write.
+    // The server reuses the same request hash as reserve so the token
+    // is valid for both operations (Google allows token reuse for
+    // Device Recall writes for up to 14 days).
+    await finalizeBlendAllowance(reservation.requestId, integrityToken, integrityTokenIsMock)
     return { ...result, allowance: reservation }
   } catch (err) {
     await releaseBlendAllowance(reservation.requestId)

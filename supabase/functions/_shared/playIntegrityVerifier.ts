@@ -23,10 +23,13 @@
 // ─────────────────────────────────────────────────────────────
 
 import {
-  calculateDeviceRemaining,
-  decodeDeviceUsageCount,
-  DEVICE_POOL_LIMIT,
-  isDeviceUsageCurrentPeriod,
+  FREE_DEVICE_SNAP_LIMIT,
+  FREE_DEVICE_BLEND_LIMIT,
+  deviceSnapRemaining,
+  deviceBlendRemaining,
+  isSnapConsumedThisMonth,
+  decodeBlendDeviceUsed,
+  currentYyyymm,
 } from './deviceRecallBits.ts'
 import { serverIntegrityLog } from './integrityServerLog.ts'
 
@@ -37,21 +40,23 @@ export interface DeviceRecallVerification {
   // Sanitized status for telemetry (never raw token or device ID)
   integrityStatus: 'verified' | 'unavailable' | 'failed' | 'mock'
   // Request-scoped audit value derived from Device Recall bits and
-  // timestamps at verification time. NOT a stable device identifier.
+  // write dates at verification time. NOT a stable device identifier.
   // Cannot be used to join multiple accounts on the same device.
   deviceRecallStateKey: string | null
-  // Device Recall bits
+  // Device Recall bits (from deviceRecall.values)
   deviceBits: { bitFirst: boolean; bitSecond: boolean; bitThird: boolean } | null
-  // Device Recall timestamps
-  deviceTimestamps: {
-    bitFirstTimestamp: string | null
-    bitSecondTimestamp: string | null
-    bitThirdTimestamp: string | null
+  // Device Recall write dates (from deviceRecall.writeDates as YYYYMM integers)
+  deviceWriteDates: {
+    yyyymmFirst: number | null
+    yyyymmSecond: number | null
+    yyyymmThird: number | null
   } | null
-  // Device usage count for current period
-  deviceUsed: number
-  // Device remaining for current period
-  deviceRemaining: number
+  // Device Snap remaining (0 or 1, based on bitFirst + yyyymmFirst)
+  deviceSnapRemaining: number
+  // Device Blend remaining (0-3, based on bitSecond/bitThird)
+  deviceBlendRemaining: number
+  // Whether Device Recall was available/evaluated
+  deviceRecallAvailable: boolean
   // Sanitized reason code
   reasonCode: string
   // Whether the app is recognized/licensed by Google Play
@@ -143,7 +148,10 @@ export function shouldBlockScan(
   if (category === null) return false
   if (category === 'confirmed_security_failure') return true
   if (category === 'user_remediable_platform_state') return true
-  if (category === 'unsupported_environment') return false // Fall back to account quota
+  // Unsupported environment (Device Recall unavailable/unevaluated):
+  // In enforce mode, fail-closed for FREE AI-cost features.
+  // In observe mode, fail-open (allow under account quota, log).
+  if (category === 'unsupported_environment') return enforcementMode === 'enforce'
   if (category === 'configuration_error') return enforcementMode === 'enforce'
   // Retryable: block only in enforce mode (fail-closed)
   // In observe mode: allow (fail-open)
@@ -163,9 +171,10 @@ export function verifyMockIntegrity(
       integrityStatus: 'failed',
       deviceRecallStateKey: null,
       deviceBits: null,
-      deviceTimestamps: null,
-      deviceUsed: 0,
-      deviceRemaining: DEVICE_POOL_LIMIT,
+      deviceWriteDates: null,
+      deviceSnapRemaining: FREE_DEVICE_SNAP_LIMIT,
+      deviceBlendRemaining: FREE_DEVICE_BLEND_LIMIT,
+      deviceRecallAvailable: true,
       reasonCode: 'mock_token_invalid',
       appRecognition: 'unknown',
       deviceIntegrity: 'unknown',
@@ -184,9 +193,10 @@ export function verifyMockIntegrity(
       integrityStatus: 'failed',
       deviceRecallStateKey: null,
       deviceBits: null,
-      deviceTimestamps: null,
-      deviceUsed: 0,
-      deviceRemaining: DEVICE_POOL_LIMIT,
+      deviceWriteDates: null,
+      deviceSnapRemaining: FREE_DEVICE_SNAP_LIMIT,
+      deviceBlendRemaining: FREE_DEVICE_BLEND_LIMIT,
+      deviceRecallAvailable: true,
       reasonCode: 'request_hash_mismatch',
       appRecognition: 'unknown',
       deviceIntegrity: 'unknown',
@@ -201,13 +211,14 @@ export function verifyMockIntegrity(
     integrityStatus: 'mock',
     deviceRecallStateKey: `mock_pool_${installId}`,
     deviceBits: { bitFirst: false, bitSecond: false, bitThird: false },
-    deviceTimestamps: {
-      bitFirstTimestamp: null,
-      bitSecondTimestamp: null,
-      bitThirdTimestamp: null,
+    deviceWriteDates: {
+      yyyymmFirst: null,
+      yyyymmSecond: null,
+      yyyymmThird: null,
     },
-    deviceUsed: 0,
-    deviceRemaining: DEVICE_POOL_LIMIT,
+    deviceSnapRemaining: FREE_DEVICE_SNAP_LIMIT,
+    deviceBlendRemaining: FREE_DEVICE_BLEND_LIMIT,
+    deviceRecallAvailable: true,
     reasonCode: 'mock_verified',
     appRecognition: 'recognized',
     deviceIntegrity: 'passed',
@@ -233,9 +244,10 @@ export async function verifyPlayIntegrity(opts: VerifyOptions): Promise<DeviceRe
       integrityStatus: 'unavailable',
       deviceRecallStateKey: null,
       deviceBits: null,
-      deviceTimestamps: null,
-      deviceUsed: 0,
-      deviceRemaining: DEVICE_POOL_LIMIT,
+      deviceWriteDates: null,
+      deviceSnapRemaining: FREE_DEVICE_SNAP_LIMIT,
+      deviceBlendRemaining: FREE_DEVICE_BLEND_LIMIT,
+      deviceRecallAvailable: false,
       reasonCode: 'missing_credentials',
       appRecognition: 'unknown',
       deviceIntegrity: 'unknown',
@@ -277,9 +289,10 @@ export async function verifyPlayIntegrity(opts: VerifyOptions): Promise<DeviceRe
         integrityStatus: 'unavailable',
         deviceRecallStateKey: null,
         deviceBits: null,
-        deviceTimestamps: null,
-        deviceUsed: 0,
-        deviceRemaining: DEVICE_POOL_LIMIT,
+        deviceWriteDates: null,
+        deviceSnapRemaining: FREE_DEVICE_SNAP_LIMIT,
+        deviceBlendRemaining: FREE_DEVICE_BLEND_LIMIT,
+        deviceRecallAvailable: false,
         reasonCode: isRetryable ? 'google_api_transient' : 'google_api_config',
         appRecognition: 'unknown',
         deviceIntegrity: 'unknown',
@@ -300,9 +313,10 @@ export async function verifyPlayIntegrity(opts: VerifyOptions): Promise<DeviceRe
         integrityStatus: 'failed',
         deviceRecallStateKey: null,
         deviceBits: null,
-        deviceTimestamps: null,
-        deviceUsed: 0,
-        deviceRemaining: DEVICE_POOL_LIMIT,
+        deviceWriteDates: null,
+        deviceSnapRemaining: FREE_DEVICE_SNAP_LIMIT,
+        deviceBlendRemaining: FREE_DEVICE_BLEND_LIMIT,
+        deviceRecallAvailable: false,
         reasonCode: 'no_payload',
         appRecognition: 'unknown',
         deviceIntegrity: 'unknown',
@@ -319,9 +333,10 @@ export async function verifyPlayIntegrity(opts: VerifyOptions): Promise<DeviceRe
         integrityStatus: 'failed',
         deviceRecallStateKey: null,
         deviceBits: null,
-        deviceTimestamps: null,
-        deviceUsed: 0,
-        deviceRemaining: DEVICE_POOL_LIMIT,
+        deviceWriteDates: null,
+        deviceSnapRemaining: FREE_DEVICE_SNAP_LIMIT,
+        deviceBlendRemaining: FREE_DEVICE_BLEND_LIMIT,
+        deviceRecallAvailable: false,
         reasonCode: 'package_name_mismatch',
         appRecognition: 'unrecognized',
         deviceIntegrity: 'unknown',
@@ -338,9 +353,10 @@ export async function verifyPlayIntegrity(opts: VerifyOptions): Promise<DeviceRe
         integrityStatus: 'failed',
         deviceRecallStateKey: null,
         deviceBits: null,
-        deviceTimestamps: null,
-        deviceUsed: 0,
-        deviceRemaining: DEVICE_POOL_LIMIT,
+        deviceWriteDates: null,
+        deviceSnapRemaining: FREE_DEVICE_SNAP_LIMIT,
+        deviceBlendRemaining: FREE_DEVICE_BLEND_LIMIT,
+        deviceRecallAvailable: false,
         reasonCode: 'request_hash_mismatch',
         appRecognition: 'unknown',
         deviceIntegrity: 'unknown',
@@ -361,9 +377,10 @@ export async function verifyPlayIntegrity(opts: VerifyOptions): Promise<DeviceRe
         integrityStatus: 'failed',
         deviceRecallStateKey: null,
         deviceBits: null,
-        deviceTimestamps: null,
-        deviceUsed: 0,
-        deviceRemaining: DEVICE_POOL_LIMIT,
+        deviceWriteDates: null,
+        deviceSnapRemaining: FREE_DEVICE_SNAP_LIMIT,
+        deviceBlendRemaining: FREE_DEVICE_BLEND_LIMIT,
+        deviceRecallAvailable: false,
         reasonCode: 'stale_token',
         appRecognition: 'unknown',
         deviceIntegrity: 'unknown',
@@ -383,70 +400,80 @@ export async function verifyPlayIntegrity(opts: VerifyOptions): Promise<DeviceRe
       : 'failed'
 
     // Step 7: Read Device Recall values
+    // Google's API structure:
+    //   deviceRecall.values.bitFirst / bitSecond / bitThird (booleans)
+    //   deviceRecall.writeDates.yyyymmFirst / yyyymmSecond / yyyymmThird (integers, YYYYMM)
+    //
+    // Empty/unevaluated Device Recall: { values: {}, writeDates: {} }
+    // This is NOT a fresh device — it means Device Recall is unavailable.
     const deviceRecall = payload.deviceRecall
 
-    // If Device Recall data is absent (null), do NOT treat as trusted
-    // fresh zero. Device Recall is a beta feature that may not be
-    // provisioned for all devices. Classify as unsupported_environment
-    // so the scan falls back to account quota instead of granting
-    // unearned device pool scans.
-    if (!deviceRecall) {
+    // If Device Recall data is absent or empty, classify as unavailable.
+    // In enforce mode: fail-closed for FREE AI-cost features.
+    // In observe mode: fail-open (allow under account quota, log).
+    // Pro users always bypass Device Recall regardless.
+    const recallValues = deviceRecall?.values
+    const recallWriteDates = deviceRecall?.writeDates
+    const hasRecallData = recallValues != null && Object.keys(recallValues).length > 0
+
+    if (!hasRecallData) {
       serverIntegrityLog('device_recall_present', 'unknown', false, 'device_recall_unavailable')
       return {
-        ok: true, // Allow scan — fall back to account quota
+        ok: true, // Integrity itself passed; Device Recall is unavailable
         verificationStatus: 'success',
         integrityStatus: 'verified',
         deviceRecallStateKey: null,
         deviceBits: null,
-        deviceTimestamps: null,
-        deviceUsed: 0,
-        deviceRemaining: DEVICE_POOL_LIMIT,
+        deviceWriteDates: null,
+        deviceSnapRemaining: FREE_DEVICE_SNAP_LIMIT,
+        deviceBlendRemaining: FREE_DEVICE_BLEND_LIMIT,
+        deviceRecallAvailable: false,
         reasonCode: 'device_recall_unavailable',
         appRecognition,
         deviceIntegrity,
-        failureCategory: null,
+        failureCategory: 'unsupported_environment',
       }
     }
 
+    // Read bit values from deviceRecall.values
     const bits = {
-      bitFirst: deviceRecall.bitFirst === true,
-      bitSecond: deviceRecall.bitSecond === true,
-      bitThird: deviceRecall.bitThird === true,
+      bitFirst: recallValues.bitFirst === true,
+      bitSecond: recallValues.bitSecond === true,
+      bitThird: recallValues.bitThird === true,
     }
 
-    const timestamps = {
-      bitFirstTimestamp: deviceRecall.bitFirstTimestamp ?? null,
-      bitSecondTimestamp: deviceRecall.bitSecondTimestamp ?? null,
-      bitThirdTimestamp: deviceRecall.bitThirdTimestamp ?? null,
+    // Read write dates from deviceRecall.writeDates (YYYYMM integers)
+    const writeDates = {
+      yyyymmFirst:
+        typeof recallWriteDates?.yyyymmFirst === 'number' ? recallWriteDates.yyyymmFirst : null,
+      yyyymmSecond:
+        typeof recallWriteDates?.yyyymmSecond === 'number' ? recallWriteDates.yyyymmSecond : null,
+      yyyymmThird:
+        typeof recallWriteDates?.yyyymmThird === 'number' ? recallWriteDates.yyyymmThird : null,
     }
 
-    // Step 8: Calculate device usage
-    let deviceUsed = 0
-    let deviceRemaining = DEVICE_POOL_LIMIT
-
-    if (!isDeviceUsageCurrentPeriod(timestamps)) {
-      // Previous period — reset to zero
-      deviceUsed = 0
-      deviceRemaining = DEVICE_POOL_LIMIT
-    } else {
-      deviceUsed = decodeDeviceUsageCount(bits)
-      deviceRemaining = calculateDeviceRemaining(bits, timestamps)
-    }
+    // Step 8: Calculate device remaining for Snap and Blend independently
+    const snapRemaining = deviceSnapRemaining(bits.bitFirst, writeDates.yyyymmFirst)
+    const blendRemaining = deviceBlendRemaining(bits.bitSecond, bits.bitThird)
 
     serverIntegrityLog('device_recall_decoded', 'unknown', true, undefined, {
-      deviceUsed,
-      deviceRemaining,
+      snapRemaining,
+      blendRemaining,
+      bitFirst: bits.bitFirst,
+      bitSecond: bits.bitSecond,
+      bitThird: bits.bitThird,
+      yyyymmFirst: writeDates.yyyymmFirst,
     })
 
     // Step 9: Derive device recall state key for audit.
     // This is NOT a stable device identifier or HMAC. It is a
-    // concatenation of the Device Recall bits and timestamp
+    // concatenation of the Device Recall bits and write dates
     // observed at verification time. It cannot join multiple
     // accounts on the same physical device. Google Device Recall
     // does not provide a stable device identifier.
     const deviceRecallStateKey = `dr_${bits.bitFirst ? 1 : 0}${bits.bitSecond ? 1 : 0}${
       bits.bitThird ? 1 : 0
-    }_${timestamps.bitFirstTimestamp ?? ''}`
+    }_${writeDates.yyyymmFirst ?? ''}`
 
     // Step 10: Determine if integrity verification passed
     const integrityPassed = appRecognition === 'recognized' && deviceIntegrity === 'passed'
@@ -457,9 +484,10 @@ export async function verifyPlayIntegrity(opts: VerifyOptions): Promise<DeviceRe
       integrityStatus: integrityPassed ? 'verified' : 'failed',
       deviceRecallStateKey,
       deviceBits: bits,
-      deviceTimestamps: timestamps,
-      deviceUsed,
-      deviceRemaining,
+      deviceWriteDates: writeDates,
+      deviceSnapRemaining: snapRemaining,
+      deviceBlendRemaining: blendRemaining,
+      deviceRecallAvailable: true,
       reasonCode: integrityPassed ? 'verified' : 'integrity_failed',
       appRecognition,
       deviceIntegrity,
@@ -473,9 +501,10 @@ export async function verifyPlayIntegrity(opts: VerifyOptions): Promise<DeviceRe
       integrityStatus: 'unavailable',
       deviceRecallStateKey: null,
       deviceBits: null,
-      deviceTimestamps: null,
-      deviceUsed: 0,
-      deviceRemaining: DEVICE_POOL_LIMIT,
+      deviceWriteDates: null,
+      deviceSnapRemaining: FREE_DEVICE_SNAP_LIMIT,
+      deviceBlendRemaining: FREE_DEVICE_BLEND_LIMIT,
+      deviceRecallAvailable: false,
       reasonCode: 'verification_error',
       appRecognition: 'unknown',
       deviceIntegrity: 'unknown',
@@ -559,7 +588,7 @@ export function getCachedTokenExpiry(): number | null {
   return cachedAccessToken?.expiresAt ?? null
 }
 
-async function getAccessToken(serviceAccountJson: string): Promise<string> {
+export async function getAccessToken(serviceAccountJson: string): Promise<string> {
   // Check in-memory cache first
   const now = Math.floor(Date.now() / 1000)
   if (cachedAccessToken && cachedAccessToken.expiresAt - now > TOKEN_SAFETY_BUFFER_SECONDS) {

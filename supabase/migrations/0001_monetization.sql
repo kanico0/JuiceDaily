@@ -190,7 +190,7 @@ begin
 
   -- Plan transitions: change LIMIT mid-window, preserve `used`
   -- (upgrade: 1 used of 1 → 11 remaining of 12; downgrade: used>=1 → 0 free left).
-  -- Limits are read from quota_limits() — see 0011_quota_1_12.sql for current values.
+  -- Limits are read from quota_limits() — see 0013_quota_1_12.sql for current values.
   if v_is_pro and q.plan = 'free' then
     q.plan := 'pro';
     q.scan_limit := v_limits.pro_limit;

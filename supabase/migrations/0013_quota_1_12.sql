@@ -1,5 +1,5 @@
 -- ─────────────────────────────────────────────────────────────
--- 0011_quota_1_12.sql — Update scan quota limits to Free=1, Pro=12
+-- 0013_quota_1_12.sql — Update scan quota limits to Free=1, Pro=12
 --
 -- Policy change:
 --   FREE: 1 successful AI Snap per monthly quota window

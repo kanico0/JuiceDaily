@@ -25,7 +25,13 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { evaluateScanUser, extractBearerToken } from '../_shared/authGate.ts'
 import { verifyPlayIntegrity } from '../_shared/playIntegrityVerifier.ts'
-import { calculateEffectiveFreeRemaining } from '../_shared/deviceRecallBits.ts'
+import {
+  effectiveSnapRemaining,
+  deviceSnapRemaining,
+  isSnapConsumedThisMonth,
+  FREE_DEVICE_SNAP_LIMIT,
+} from '../_shared/deviceRecallBits.ts'
+import { writeDeviceRecall } from '../_shared/deviceRecallWriter.ts'
 import { serverIntegrityLog, maskUserId } from '../_shared/integrityServerLog.ts'
 
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages'
@@ -285,6 +291,8 @@ Deno.serve(async (req) => {
       return json(429, { code, message: 'Scan limit reached', quota })
     }
     quota = quotaFromRpc(qReserve.quota)
+    // Guests are always Free users (no Pro guest concept)
+    isProUser = false
   } else {
     // Durable user: reserve from the monthly quota.
     const { data: reserveData, error: reserveError } = await admin.rpc('reserve_scan', {
@@ -338,120 +346,148 @@ Deno.serve(async (req) => {
       }
     }
 
-    // ── Device pool verification ───────────────────────────────
-    // The device pool applies only to FREE users. Pro users bypass
-    // the device pool entirely — their Pro quota is account-based.
+    // Determine Pro status from quota plan
     isProUser = (quota as Record<string, unknown> | null)?.plan === 'pro'
+  }
 
-    const verificationBlockEntered =
-      devicePoolMode !== 'off' && !isProUser && Boolean(integrityToken)
-    serverIntegrityLog('verification_block', requestId, true, undefined, {
-      entered: verificationBlockEntered,
+  // ── Device pool verification (applies to BOTH guest and durable Free) ──
+  // The device pool applies only to FREE users. Pro users bypass
+  // the device pool entirely — their Pro quota is account-based.
+  // Guests are always Free and must go through device verification.
+  const deviceRecallWriteEnabled = Deno.env.get('DEVICE_RECALL_WRITE_ENABLED') === '1'
+  const verificationBlockEntered = devicePoolMode !== 'off' && !isProUser && Boolean(integrityToken)
+  serverIntegrityLog('verification_block', requestId, true, undefined, {
+    entered: verificationBlockEntered,
+  })
+
+  if (devicePoolMode !== 'off' && !isProUser && integrityToken) {
+    const expectedRequestHash = [requestId, userId, 'analyze_scan', imageHash].join('|')
+
+    serverIntegrityLog('verify_called', requestId, true)
+    deviceVerification = await verifyPlayIntegrity({
+      token: integrityToken,
+      expectedPackageName: Deno.env.get('PLAY_INTEGRITY_PACKAGE_NAME') ?? 'com.juicingapp.app',
+      expectedRequestHash,
+      cloudProjectNumber: Deno.env.get('PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER') ?? '',
+      serviceAccountJson: Deno.env.get('PLAY_INTEGRITY_SERVICE_ACCOUNT') ?? '',
+      isMock: isMockToken,
+      enforcementMode: devicePoolMode,
     })
 
-    if (devicePoolMode !== 'off' && !isProUser && integrityToken) {
-      const expectedRequestHash = [requestId, userId, 'analyze_scan', imageHash].join('|')
+    serverIntegrityLog(
+      'verification_result',
+      requestId,
+      deviceVerification.ok,
+      deviceVerification.reasonCode,
+      { integrityStatus: deviceVerification.integrityStatus },
+    )
 
-      serverIntegrityLog('verify_called', requestId, true)
-      deviceVerification = await verifyPlayIntegrity({
-        token: integrityToken,
-        expectedPackageName: Deno.env.get('PLAY_INTEGRITY_PACKAGE_NAME') ?? 'com.juicingapp.app',
-        expectedRequestHash,
-        cloudProjectNumber: Deno.env.get('PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER') ?? '',
-        serviceAccountJson: Deno.env.get('PLAY_INTEGRITY_SERVICE_ACCOUNT') ?? '',
-        isMock: isMockToken,
-        enforcementMode: devicePoolMode,
-      })
+    deviceRecallStateKey = deviceVerification.deviceRecallStateKey
 
-      serverIntegrityLog(
-        'verification_result',
-        requestId,
-        deviceVerification.ok,
-        deviceVerification.reasonCode,
-        { integrityStatus: deviceVerification.integrityStatus },
-      )
+    const recallPresent = deviceVerification.deviceBits != null
+    serverIntegrityLog('device_recall_present', requestId, recallPresent, undefined, {
+      present: recallPresent,
+    })
+    const recallDecoded = recallPresent && deviceVerification.deviceWriteDates != null
+    serverIntegrityLog('device_recall_decoded', requestId, recallDecoded, undefined, {
+      decoded: recallDecoded,
+    })
 
-      deviceRecallStateKey = deviceVerification.deviceRecallStateKey
+    // In enforce mode, block if device pool is exhausted or integrity failed
+    // or Device Recall is unavailable (fail-closed for Free AI-cost features).
+    const isEnforce = devicePoolMode === 'enforce'
+    serverIntegrityLog('enforcement_attempted', requestId, false, undefined, {
+      attempted: isEnforce,
+    })
 
-      const recallPresent = deviceVerification.deviceBits != null
-      serverIntegrityLog('device_recall_present', requestId, recallPresent, undefined, {
-        present: recallPresent,
-      })
-      const recallDecoded = recallPresent && deviceVerification.deviceTimestamps != null
-      serverIntegrityLog('device_recall_decoded', requestId, recallDecoded, undefined, {
-        decoded: recallDecoded,
-      })
+    if (isEnforce) {
+      // Check for blocking conditions:
+      // 1. Integrity verification failed (security or technical)
+      // 2. Device Recall unavailable (fail-closed in enforce)
+      // 3. Device Snap exhausted for this month
+      const integrityFailed = !deviceVerification.ok
+      const recallUnavailable = !deviceVerification.deviceRecallAvailable
+      const snapExhausted =
+        deviceVerification.deviceRecallAvailable && deviceVerification.deviceSnapRemaining === 0
 
-      // In enforce mode, block if device pool is exhausted or integrity failed
-      const isEnforce = devicePoolMode === 'enforce'
-      serverIntegrityLog('enforcement_attempted', requestId, false, undefined, {
-        attempted: isEnforce,
-      })
-
-      if (isEnforce) {
-        if (!deviceVerification.ok) {
-          // If a support exception was consumed, allow the scan to proceed.
-          // Support exceptions bypass device pool enforcement but do NOT
-          // reset the device pool, modify Device Recall bits, or grant Pro.
-          if (supportBonusRemaining > 0) {
-            console.log(
-              '[analyze-scan] device pool exhausted but support exception active, allowing scan',
-            )
+      if (integrityFailed || recallUnavailable || snapExhausted) {
+        // If a support exception was consumed, allow the scan to proceed.
+        // Support exceptions bypass device pool enforcement but do NOT
+        // reset the device pool, modify Device Recall bits, or grant Pro.
+        if (supportBonusRemaining > 0) {
+          console.log(
+            '[analyze-scan] device pool exhausted but support exception active, allowing scan',
+          )
+        } else {
+          // Release the account reservation before returning
+          if (isGuest) {
+            await admin.rpc('release_guest_scan', {
+              p_user_id: userId,
+              p_request_id: requestId,
+              p_failure_category: `integrity_${deviceVerification.reasonCode}`,
+            })
+            await admin.rpc('release_guest_journey', {
+              p_user_id: userId,
+              p_journey_id: guestJourneyId!,
+            })
           } else {
-            // Release the account reservation before returning
             await admin.rpc('release_scan', {
               p_user_id: userId,
               p_request_id: requestId,
               p_failure_category: `integrity_${deviceVerification.reasonCode}`,
             })
-            return json(429, {
-              code: 'device_pool_exhausted',
-              message: 'Free Juice Snaps used for this month on this device',
-              quota: { ...quota, effectiveRemaining: 0 },
-              deviceRemaining: deviceVerification.deviceRemaining,
-            })
           }
-        } else if (deviceRecallStateKey) {
-          serverIntegrityLog('device_reservation', requestId, true, undefined, {
-            status: 'reserved_enforce',
+          const blockCode = recallUnavailable
+            ? 'device_recall_unavailable'
+            : 'device_pool_exhausted'
+          return json(429, {
+            code: blockCode,
+            message: recallUnavailable
+              ? 'Device verification unavailable. Install from Google Play or upgrade to Pro.'
+              : 'Free Juice Snaps used for this month on this device',
+            quota: { ...quota, effectiveRemaining: 0 },
+            deviceSnapRemaining: deviceVerification.deviceSnapRemaining,
           })
-          const { error: deviceReserveError } = await admin.rpc('reserve_device_scan', {
-            p_request_id: requestId,
-            p_user_id: userId,
-            p_device_recall_state_key: deviceRecallStateKey,
-            p_device_used: deviceVerification.deviceUsed,
-            p_enforcement_mode: devicePoolMode,
-            p_integrity_status: deviceVerification.integrityStatus,
-          })
-          if (deviceReserveError) {
-            console.error('[analyze-scan] device reserve failed:', deviceReserveError.message)
-          }
         }
-      } else {
+      } else if (deviceRecallStateKey) {
         serverIntegrityLog('device_reservation', requestId, true, undefined, {
-          status: 'skipped_observe',
+          status: 'reserved_enforce',
         })
+        const { error: deviceReserveError } = await admin.rpc('reserve_device_scan', {
+          p_request_id: requestId,
+          p_user_id: userId,
+          p_device_recall_state_key: deviceRecallStateKey,
+          p_device_used: deviceVerification.deviceSnapRemaining === 0 ? 1 : 0,
+          p_enforcement_mode: devicePoolMode,
+          p_integrity_status: deviceVerification.integrityStatus,
+        })
+        if (deviceReserveError) {
+          console.error('[analyze-scan] device reserve failed:', deviceReserveError.message)
+        }
       }
-
-      // Calculate effective remaining for response
-      const accountRemaining = ((quota as Record<string, unknown> | null)?.remaining as number) ?? 0
-      effectiveRemaining = calculateEffectiveFreeRemaining(
-        accountRemaining,
-        deviceVerification.deviceRemaining,
-      )
-      serverIntegrityLog('effective_remaining', requestId, true, undefined, { calculated: true })
-      serverIntegrityLog('observe_decision', requestId, true, undefined, {
-        completed: true,
-        enforced: false,
-      })
     } else {
       serverIntegrityLog('device_reservation', requestId, true, undefined, {
         status: 'skipped_observe',
       })
-      if (isProUser) {
-        effectiveRemaining =
-          ((quota as Record<string, unknown> | null)?.remaining as number) ?? null
-      }
+    }
+
+    // Calculate effective remaining for response
+    const accountRemaining = ((quota as Record<string, unknown> | null)?.remaining as number) ?? 0
+    const devSnapRemaining = deviceVerification.deviceRecallAvailable
+      ? deviceVerification.deviceSnapRemaining
+      : FREE_DEVICE_SNAP_LIMIT // In observe mode, fall back to full allowance if unavailable
+    effectiveRemaining = effectiveSnapRemaining(accountRemaining, devSnapRemaining)
+    serverIntegrityLog('effective_remaining', requestId, true, undefined, { calculated: true })
+    serverIntegrityLog('observe_decision', requestId, true, undefined, {
+      completed: true,
+      enforced: false,
+    })
+  } else {
+    serverIntegrityLog('device_reservation', requestId, true, undefined, {
+      status: 'skipped_observe',
+    })
+    if (isProUser) {
+      effectiveRemaining = ((quota as Record<string, unknown> | null)?.remaining as number) ?? null
     }
   }
 
@@ -649,6 +685,31 @@ Deno.serve(async (req) => {
         p_user_id: userId,
         p_journey_id: guestJourneyId!,
       })
+
+      // ── Device Recall write: mark bitFirst=true for this month ──
+      // Only write if: Free user, write enabled, device recall available,
+      // and we have a verified integrity token.
+      if (
+        deviceRecallWriteEnabled &&
+        !isProUser &&
+        deviceVerification?.deviceRecallAvailable &&
+        deviceVerification?.ok &&
+        integrityToken
+      ) {
+        const writeResult = await writeDeviceRecall({
+          integrityToken,
+          packageName: Deno.env.get('PLAY_INTEGRITY_PACKAGE_NAME') ?? 'com.juicingapp.app',
+          serviceAccountJson: Deno.env.get('PLAY_INTEGRITY_SERVICE_ACCOUNT') ?? '',
+          newValues: { bitFirst: true },
+          operation: 'snap',
+        })
+        serverIntegrityLog('device_recall_write_result', requestId, writeResult.ok, undefined, {
+          operation: 'snap',
+          attempts: writeResult.attempts,
+          residualRisk: writeResult.residualRisk,
+        })
+      }
+
       return json(200, { rawText, quota: committedQuota, isGuest: true })
     }
 
@@ -660,6 +721,30 @@ Deno.serve(async (req) => {
     if (commitError) console.error('[analyze-scan] commit failed:', commitError.message)
     serverIntegrityLog('account_finalization', requestId, true, undefined, { status: 'committed' })
     const committedQuota = quotaFromRpc((commitData as Record<string, unknown>)?.quota) ?? quota
+
+    // ── Device Recall write: mark bitFirst=true for this month ──
+    // Only write if: Free user, write enabled, device recall available,
+    // and we have a verified integrity token.
+    if (
+      deviceRecallWriteEnabled &&
+      !isProUser &&
+      deviceVerification?.deviceRecallAvailable &&
+      deviceVerification?.ok &&
+      integrityToken
+    ) {
+      const writeResult = await writeDeviceRecall({
+        integrityToken,
+        packageName: Deno.env.get('PLAY_INTEGRITY_PACKAGE_NAME') ?? 'com.juicingapp.app',
+        serviceAccountJson: Deno.env.get('PLAY_INTEGRITY_SERVICE_ACCOUNT') ?? '',
+        newValues: { bitFirst: true },
+        operation: 'snap',
+      })
+      serverIntegrityLog('device_recall_write_result', requestId, writeResult.ok, undefined, {
+        operation: 'snap',
+        attempts: writeResult.attempts,
+        residualRisk: writeResult.residualRisk,
+      })
+    }
 
     // Return effective remaining for free users with device pool
     const responseQuota =

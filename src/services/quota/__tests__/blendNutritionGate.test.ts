@@ -25,6 +25,20 @@ jest.mock('../guestJourneyService', () => ({
   isGuestJourneyAvailable: jest.fn(),
   isGuestJourneyCompleted: jest.fn(),
 }))
+// Mock device pool modules to prevent native module loading
+jest.mock('../../devicePool/devicePoolConfig', () => ({
+  isDevicePoolEnabled: jest.fn(() => false),
+  getDevicePoolMode: jest.fn(() => 'off'),
+  selectProviderType: jest.fn(() => 'unsupported'),
+}))
+jest.mock('../../devicePool/devicePromotionProviderFactory', () => ({
+  getDevicePromotionProvider: jest.fn(() => ({
+    isSupported: jest.fn(() => false),
+    getAttestationForScan: jest.fn(),
+    getDevelopmentStatus: jest.fn(() => 'test'),
+    getProviderName: jest.fn(() => 'mock'),
+  })),
+}))
 import { authorizeAndProcessBatch } from '../blendNutritionGate'
 import { createOperationId } from '../blendAllowanceService'
 import { processJuiceBatch, type ScannedIngredient } from '../../JuiceEngine'

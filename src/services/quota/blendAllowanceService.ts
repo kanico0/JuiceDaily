@@ -47,7 +47,7 @@ export class BlendAllowanceError extends Error {
   code: string
   result: BlendAllowanceResult | null
 
-  constructor (code: string, message: string, result: BlendAllowanceResult | null = null) {
+  constructor(code: string, message: string, result: BlendAllowanceResult | null = null) {
     super(message)
     this.name = 'BlendAllowanceError'
     this.code = code
@@ -62,11 +62,11 @@ export const FREE_ADVANCED_BLEND_ALLOWANCE = 3
 
 // ── Helpers ────────────────────────────────────────────────
 
-export function classifyBlend (distinctIngredientCount: number): BlendType {
+export function classifyBlend(distinctIngredientCount: number): BlendType {
   return distinctIngredientCount >= 5 ? 'advanced' : 'simple'
 }
 
-export function countDistinctProduceIds (ingredients: { produceId: string }[]): number {
+export function countDistinctProduceIds(ingredients: { produceId: string }[]): number {
   const ids = new Set<string>()
   for (const ing of ingredients) {
     if (typeof ing.produceId === 'string' && ing.produceId.length > 0) {
@@ -81,20 +81,14 @@ export function countDistinctProduceIds (ingredients: { produceId: string }[]): 
 // Advanced Blend analyses for Free users.
 // Pro users get unlimited (returns null).
 
-export function getAdvancedBlendRemaining (
-  usedCount: number,
-  isPro: boolean,
-): number | null {
+export function getAdvancedBlendRemaining(usedCount: number, isPro: boolean): number | null {
   if (isPro) return null
   return Math.max(0, FREE_ADVANCED_BLEND_ALLOWANCE - usedCount)
 }
 
 // ── Display text for remaining count ─────────────────────────
 
-export function getAdvancedBlendRemainingText (
-  usedCount: number,
-  isPro: boolean,
-): string {
+export function getAdvancedBlendRemainingText(usedCount: number, isPro: boolean): string {
   if (isPro) return 'Unlimited Advanced Blend analyses with Pro'
   const remaining = getAdvancedBlendRemaining(usedCount, isPro)
   if (remaining === null) return 'Unlimited Advanced Blend analyses with Pro'
@@ -113,7 +107,7 @@ export function getAdvancedBlendRemainingText (
 
 let _counter = 0
 
-export function createOperationId (): string {
+export function createOperationId(): string {
   _counter += 1
   const ts = Date.now().toString(36)
   const rand = Math.random().toString(36).slice(2, 10)
@@ -123,7 +117,7 @@ export function createOperationId (): string {
 
 // Ingredient fingerprint for transaction metadata only.
 // NOT used as the idempotency key — the operationId is.
-export function ingredientFingerprint (ingredients: { produceId: string }[]): string {
+export function ingredientFingerprint(ingredients: { produceId: string }[]): string {
   const ids = ingredients
     .map((i) => i.produceId)
     .filter((id): id is string => typeof id === 'string' && id.length > 0)
@@ -135,21 +129,23 @@ export function ingredientFingerprint (ingredients: { produceId: string }[]): st
 
 // ── Server URL ──────────────────────────────────────────────
 
-function functionUrl (): string {
+function functionUrl(): string {
   return `${SUPABASE_URL}/functions/v1/analyze-blend`
 }
 
 // ── Dev bypass: only in __DEV__ when Supabase is not configured ──
 
-export function isDevBypass (): boolean {
+export function isDevBypass(): boolean {
   return __DEV__ && !SUPABASE_CONFIGURED
 }
 
 // ── Reserve an allowance unit ───────────────────────────────
 
-export async function reserveBlendAllowance (
+export async function reserveBlendAllowance(
   ingredients: { produceId: string }[],
   operationId: string,
+  integrityToken?: string,
+  isMockToken?: boolean,
 ): Promise<BlendAllowanceResult> {
   const distinctCount = countDistinctProduceIds(ingredients)
   const blendType = classifyBlend(distinctCount)
@@ -194,7 +190,10 @@ export async function reserveBlendAllowance (
 
   const token = await getAccessToken()
   if (!token) {
-    throw new BlendAllowanceError('unauthenticated', 'No authenticated user for blend allowance check')
+    throw new BlendAllowanceError(
+      'unauthenticated',
+      'No authenticated user for blend allowance check',
+    )
   }
 
   const ingredientIds = ingredients
@@ -215,6 +214,8 @@ export async function reserveBlendAllowance (
         requestId: operationId,
         ingredientIds,
         ingredientFingerprint: ingredientFingerprint(ingredients),
+        integrityToken: integrityToken ?? '',
+        isMockToken: isMockToken ?? false,
       }),
     })
   } catch (e) {
@@ -238,7 +239,11 @@ export async function reserveBlendAllowance (
       blendType: (body.blend_type === 'advanced' ? 'advanced' : 'simple') as BlendType,
       requestId: String(body.request_id ?? operationId),
     }
-    throw new BlendAllowanceError(result.code, body.message ?? 'Advanced Blend allowance reached', result)
+    throw new BlendAllowanceError(
+      result.code,
+      body.message ?? 'Advanced Blend allowance reached',
+      result,
+    )
   }
 
   if (res.status === 401) {
@@ -246,7 +251,10 @@ export async function reserveBlendAllowance (
   }
 
   if (!res.ok) {
-    throw new BlendAllowanceError('server_error', body.message ?? `Allowance check failed (${res.status})`)
+    throw new BlendAllowanceError(
+      'server_error',
+      body.message ?? `Allowance check failed (${res.status})`,
+    )
   }
 
   return {
@@ -264,7 +272,11 @@ export async function reserveBlendAllowance (
 
 // ── Finalize a reservation (commit after successful nutrition) ──
 
-export async function finalizeBlendAllowance (requestId: string): Promise<void> {
+export async function finalizeBlendAllowance(
+  requestId: string,
+  integrityToken?: string,
+  isMockToken?: boolean,
+): Promise<void> {
   if (isDevBypass()) return
   if (!SUPABASE_CONFIGURED) return
 
@@ -275,7 +287,12 @@ export async function finalizeBlendAllowance (requestId: string): Promise<void> 
     await fetch(functionUrl(), {
       method: 'POST',
       headers: buildAuthedHeaders(token),
-      body: JSON.stringify({ action: 'finalize', requestId }),
+      body: JSON.stringify({
+        action: 'finalize',
+        requestId,
+        integrityToken: integrityToken ?? '',
+        isMockToken: isMockToken ?? false,
+      }),
     })
   } catch (e) {
     if (e instanceof SupabaseConfigError) return
@@ -285,7 +302,7 @@ export async function finalizeBlendAllowance (requestId: string): Promise<void> 
 
 // ── Release a reservation (cancel on failure) ───────────────
 
-export async function releaseBlendAllowance (requestId: string): Promise<void> {
+export async function releaseBlendAllowance(requestId: string): Promise<void> {
   if (isDevBypass()) return
   if (!SUPABASE_CONFIGURED) return
 
@@ -306,7 +323,7 @@ export async function releaseBlendAllowance (requestId: string): Promise<void> {
 
 // ── Fetch allowance snapshot (display only) ─────────────────
 
-export async function fetchBlendAllowance (): Promise<BlendAllowanceResult | null> {
+export async function fetchBlendAllowance(): Promise<BlendAllowanceResult | null> {
   if (!SUPABASE_CONFIGURED) return null
 
   const token = await getAccessToken()

@@ -37,6 +37,14 @@ describe('Quota 1/12 — source audit', () => {
     expect(configSource).toMatch(/export\s+const\s+PRO_MONTHLY_SCAN_LIMIT\s*=\s*12\b/)
   })
 
+  it('PRO_DAILY_SCAN_SAFETY_LIMIT = 10 (unchanged anti-abuse safeguard)', () => {
+    expect(configSource).toMatch(/export\s+const\s+PRO_DAILY_SCAN_SAFETY_LIMIT\s*=\s*10\b/)
+  })
+
+  it('PRO_DAILY_SCAN_SAFETY_LIMIT is NOT 4', () => {
+    expect(configSource).not.toMatch(/PRO_DAILY_SCAN_SAFETY_LIMIT\s*=\s*4\b/)
+  })
+
   it('FREE_MONTHLY_SCAN_LIMIT is NOT 5', () => {
     expect(configSource).not.toMatch(/FREE_MONTHLY_SCAN_LIMIT\s*=\s*5\b/)
   })
@@ -77,8 +85,12 @@ describe('Quota 1/12 — backend migration', () => {
     expect(fs.existsSync(migrationPath)).toBe(true)
   })
 
-  it('quota_limits() returns 1, 12, 4', () => {
-    expect(migrationSource).toMatch(/select\s+1,\s*12,\s*4/i)
+  it('quota_limits() returns 1, 12, 10 (daily safety limit unchanged)', () => {
+    expect(migrationSource).toMatch(/select\s+1,\s*12,\s*10/i)
+  })
+
+  it('migration does NOT return 4 as daily safety limit', () => {
+    expect(migrationSource).not.toMatch(/select\s+1,\s*12,\s*4/i)
   })
 
   it('migration updates existing free rows to scan_limit = 1', () => {

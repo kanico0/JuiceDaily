@@ -45,7 +45,7 @@ export const GOOGLE_BASE_PLANS = {
 
 export const FREE_MONTHLY_SCAN_LIMIT = 1
 export const PRO_MONTHLY_SCAN_LIMIT = 12
-export const PRO_DAILY_SCAN_SAFETY_LIMIT = 4
+export const PRO_DAILY_SCAN_SAFETY_LIMIT = 10
 
 export const FREE_WARNING_THRESHOLDS = [1, 1]
 export const PRO_WARNING_THRESHOLDS = [3, 1]

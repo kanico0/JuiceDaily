@@ -1,16 +1,9 @@
-const mockStorage = new Map()
 const mockScheduled = new Map()
 
 jest.mock('@react-native-async-storage/async-storage', () => ({
-  getItem: jest.fn((key) => Promise.resolve(mockStorage.get(key) || null)),
-  setItem: jest.fn((key, value) => {
-    mockStorage.set(key, value)
-    return Promise.resolve()
-  }),
-  removeItem: jest.fn((key) => {
-    mockStorage.delete(key)
-    return Promise.resolve()
-  }),
+  getItem: jest.fn(() => Promise.resolve(null)),
+  setItem: jest.fn(() => Promise.resolve()),
+  removeItem: jest.fn(() => Promise.resolve()),
 }))
 
 jest.mock('expo-notifications', () => ({
@@ -39,49 +32,65 @@ const {
   setComebackRemindersEnabled,
 } = require('../DormantReminderService')
 
-describe('DormantReminderService', () => {
+describe('DormantReminderService — retired (1.0.20)', () => {
   beforeEach(() => {
-    mockStorage.clear()
     mockScheduled.clear()
     jest.clearAllMocks()
-    jest.useFakeTimers()
-    jest.setSystemTime(new Date('2026-07-20T12:00:00.000Z'))
   })
 
-  afterEach(() => {
-    jest.useRealTimers()
-  })
+  test('cancelDormantReminders cancels all four dormant reminder IDs', async () => {
+    // Pre-populate with scheduled reminders
+    mockScheduled.set('dormant-reminder-day-7', { content: {} })
+    mockScheduled.set('dormant-reminder-day-14', { content: {} })
+    mockScheduled.set('dormant-reminder-day-30', { content: {} })
+    mockScheduled.set('dormant-reminder-day-60', { content: {} })
 
-  test('schedules one reminder at each supported dormant interval', async () => {
-    await recordMeaningfulActivity()
-
-    expect(Array.from(mockScheduled.keys())).toEqual([
-      'dormant-reminder-day-7',
-      'dormant-reminder-day-14',
-      'dormant-reminder-day-30',
-      'dormant-reminder-day-60',
-    ])
-    expect(mockScheduled.get('dormant-reminder-day-7').trigger.date).toEqual(new Date('2026-07-27T12:00:00.000Z'))
-    expect(mockScheduled.get('dormant-reminder-day-60').trigger.date).toEqual(new Date('2026-09-18T12:00:00.000Z'))
-  })
-
-  test('cancels the complete dormant sequence when comeback reminders are disabled', async () => {
-    await recordMeaningfulActivity()
-    await setComebackRemindersEnabled(false)
-
-    expect(mockScheduled.size).toBe(0)
-  })
-
-  test('reconciliation removes expired reminders and restores only upcoming ones', async () => {
-    mockStorage.set('@dormant_reminder_last_activity', '2026-07-10T12:00:00.000Z')
-    await reconcileDormantReminders()
-
-    expect(Array.from(mockScheduled.keys())).toEqual([
-      'dormant-reminder-day-14',
-      'dormant-reminder-day-30',
-      'dormant-reminder-day-60',
-    ])
     await cancelDormantReminders()
+
     expect(mockScheduled.size).toBe(0)
+  })
+
+  test('recordMeaningfulActivity is a no-op that only cancels (never schedules)', async () => {
+    mockScheduled.set('dormant-reminder-day-7', { content: {} })
+    await recordMeaningfulActivity()
+    expect(mockScheduled.size).toBe(0)
+    // Verify no new scheduling happened
+    const { scheduleNotificationAsync } = require('expo-notifications')
+    expect(scheduleNotificationAsync).not.toHaveBeenCalled()
+  })
+
+  test('reconcileDormantReminders is a no-op that only cancels (never schedules)', async () => {
+    mockScheduled.set('dormant-reminder-day-14', { content: {} })
+    await reconcileDormantReminders()
+    expect(mockScheduled.size).toBe(0)
+    const { scheduleNotificationAsync } = require('expo-notifications')
+    expect(scheduleNotificationAsync).not.toHaveBeenCalled()
+  })
+
+  test('setComebackRemindersEnabled is a no-op that only cancels (never schedules)', async () => {
+    mockScheduled.set('dormant-reminder-day-30', { content: {} })
+    await setComebackRemindersEnabled(true)
+    expect(mockScheduled.size).toBe(0)
+    const { scheduleNotificationAsync } = require('expo-notifications')
+    expect(scheduleNotificationAsync).not.toHaveBeenCalled()
+  })
+
+  test('legacy AsyncStorage comebackReminders=true cannot reactivate scheduling', async () => {
+    // Even if legacy storage has comebackReminders=true, no scheduling occurs
+    await recordMeaningfulActivity()
+    const { scheduleNotificationAsync } = require('expo-notifications')
+    expect(scheduleNotificationAsync).not.toHaveBeenCalled()
+  })
+
+  test('cancelDormantReminders does not cancel unrelated notifications', async () => {
+    mockScheduled.set('dormant-reminder-day-7', { content: {} })
+    mockScheduled.set('identity-affirmation', { content: {} })
+    mockScheduled.set('educational-tip', { content: {} })
+
+    await cancelDormantReminders()
+
+    expect(mockScheduled.has('dormant-reminder-day-7')).toBe(false)
+    expect(mockScheduled.has('identity-affirmation')).toBe(true)
+    expect(mockScheduled.has('educational-tip')).toBe(true)
   })
 })

@@ -37,7 +37,7 @@ export const DEFAULT_SETTINGS = {
   affirmations: true,
   vitalityReminders: true,
   freezerAlerts: true, // Legacy field — tolerated, no longer drives behavior
-  comebackReminders: true,
+  comebackReminders: true, // Legacy field — tolerated, no longer drives behavior (retired 1.0.20)
   typicalJuiceHour: 7,
   typicalJuiceMinute: 30,
 }

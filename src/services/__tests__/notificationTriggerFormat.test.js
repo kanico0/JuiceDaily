@@ -72,13 +72,20 @@ describe('Notification trigger format — Expo SDK 54+ typed trigger', () => {
     })
   })
 
-  // ── 3. DormantReminderService uses typed DATE trigger ──
+  // ── 3. DormantReminderService retired (1.0.20) ──
 
-  describe('DormantReminderService scheduleDormantReminders uses typed DATE trigger', () => {
-    test('8. scheduleDormantReminders includes SchedulableTriggerInputTypes.DATE', () => {
-      const dormantStart = DORMANT_SRC.indexOf('function scheduleDormantReminders')
-      const dormantSection = DORMANT_SRC.substring(dormantStart, dormantStart + 2000)
-      expect(dormantSection).toMatch(/SchedulableTriggerInputTypes\.DATE/)
+  describe('DormantReminderService retired — no scheduling functions', () => {
+    test('8. DormantReminderService no longer has scheduleDormantReminders function', () => {
+      expect(DORMANT_SRC).not.toMatch(/function scheduleDormantReminders/)
+    })
+
+    test('8b. DormantReminderService does not schedule notifications', () => {
+      expect(DORMANT_SRC).not.toMatch(/scheduleNotificationAsync/)
+    })
+
+    test('8c. DormantReminderService only cancels (no-op retirement)', () => {
+      expect(DORMANT_SRC).toMatch(/cancelDormantReminders/)
+      expect(DORMANT_SRC).toMatch(/RETIRED/)
     })
   })
 

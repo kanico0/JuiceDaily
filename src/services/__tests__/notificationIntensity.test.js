@@ -19,7 +19,7 @@ describe('Notification intensity scheduling — defect regression', () => {
       const reconcileStart = NOTIF_SRC.indexOf(
         'export async function reconcileNotificationSchedule',
       )
-      const reconcileSection = NOTIF_SRC.substring(reconcileStart, reconcileStart + 1200)
+      const reconcileSection = NOTIF_SRC.substring(reconcileStart, reconcileStart + 2000)
       expect(reconcileSection).toContain("safeCancel('wilt-warning')")
     })
 

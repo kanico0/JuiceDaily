@@ -541,6 +541,10 @@ export async function reconcileNotificationSchedule() {
       'streak-shield',
       'wilt-warning',
       'freezer-morning', // Legacy — cancel if present
+      'dormant-reminder-day-7', // Legacy — retired 1.0.20
+      'dormant-reminder-day-14', // Legacy — retired 1.0.20
+      'dormant-reminder-day-30', // Legacy — retired 1.0.20
+      'dormant-reminder-day-60', // Legacy — retired 1.0.20
     ]
     await Promise.all(ids.map(safeCancel))
     return
@@ -555,6 +559,10 @@ export async function reconcileNotificationSchedule() {
   await safeCancel('streak-shield')
   await safeCancel('wilt-warning')
   await safeCancel('freezer-morning') // Legacy — cancel if present
+  await safeCancel('dormant-reminder-day-7') // Legacy — retired 1.0.20
+  await safeCancel('dormant-reminder-day-14') // Legacy — retired 1.0.20
+  await safeCancel('dormant-reminder-day-30') // Legacy — retired 1.0.20
+  await safeCancel('dormant-reminder-day-60') // Legacy — retired 1.0.20
 
   // Reschedule the ones that don't require external state
   await scheduleIdentityTrigger()

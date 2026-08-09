@@ -42,16 +42,26 @@ describe('Kitchen Utility removal — SettingsScreen', () => {
   })
 })
 
-describe('Kitchen Utility removal — backend still functional', () => {
-  it('21. comebackReminders still in DEFAULT_SETTINGS (defaults to true)', () => {
+describe('Kitchen Utility removal — Comeback Reminders retired (1.0.20)', () => {
+  it('21. comebackReminders in DEFAULT_SETTINGS marked as legacy/tolerated', () => {
     expect(capPolicySource).toMatch(/comebackReminders:\s*true/)
+    expect(capPolicySource).toMatch(/Legacy.*tolerated.*no longer drives behavior.*retired/)
   })
 
-  it('21b. DormantReminderService still reads comebackReminders setting', () => {
-    expect(dormantServiceSource).toMatch(/comebackReminders/)
+  it('21b. DormantReminderService is retired (no scheduling)', () => {
+    expect(dormantServiceSource).toMatch(/RETIRED/)
+    expect(dormantServiceSource).not.toMatch(/scheduleNotificationAsync/)
   })
 
-  it('21c. DormantReminderService defaults to true when setting absent', () => {
-    expect(dormantServiceSource).toMatch(/comebackReminders\s*!==\s*false/)
+  it('21c. DormantReminderService does not read comebackReminders setting', () => {
+    // Legacy AsyncStorage values can no longer reactivate the feature
+    expect(dormantServiceSource).not.toMatch(/comebackReminders\s*!==\s*false/)
+  })
+
+  it('21d. DormantReminderService cancels all four dormant reminder IDs', () => {
+    expect(dormantServiceSource).toMatch(/dormant-reminder-day-7/)
+    expect(dormantServiceSource).toMatch(/dormant-reminder-day-14/)
+    expect(dormantServiceSource).toMatch(/dormant-reminder-day-30/)
+    expect(dormantServiceSource).toMatch(/dormant-reminder-day-60/)
   })
 })

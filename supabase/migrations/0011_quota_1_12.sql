@@ -5,7 +5,7 @@
 --   FREE: 1 successful AI Snap per monthly quota window
 --   PRO:  12 successful AI Snaps per monthly quota window
 --   Annual Pro: 12 per monthly synthetic window (not 144 upfront)
---   Pro daily safety limit: 4 (was 10, scaled with monthly limit)
+--   Pro daily safety limit: 10 (unchanged — anti-abuse safeguard, not marketed)
 --
 -- The initial guest/free Snap is INCLUDED in the allowance.
 -- Usage carries forward on upgrade (1 used of 1 Free → 1 used of 12 Pro).
@@ -23,7 +23,7 @@
 create or replace function public.quota_limits ()
 returns table (free_limit integer, pro_limit integer, pro_daily_limit integer)
 language sql immutable as $$
-  select 1, 12, 4
+  select 1, 12, 10
 $$;
 
 -- ── Update default scan_limit for new quota rows ──────────────

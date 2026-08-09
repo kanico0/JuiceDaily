@@ -160,8 +160,9 @@ describe('NotificationCapPolicy — retired settings defaults removed', () => {
     expect(capPolicySource).not.toMatch(/shoppingReminders/)
   })
 
-  it('DEFAULT_SETTINGS still includes comebackReminders', () => {
+  it('DEFAULT_SETTINGS still includes comebackReminders as legacy/tolerated', () => {
     expect(capPolicySource).toMatch(/comebackReminders/)
+    expect(capPolicySource).toMatch(/Legacy.*retired/)
   })
 })
 
@@ -211,5 +212,29 @@ describe('NotificationService — wilt-warning and saturday-rainbow-nudge retire
     const reconcileStart = notifServiceSource.indexOf('export async function reconcileNotificationSchedule')
     const reconcileSection = notifServiceSource.substring(reconcileStart, reconcileStart + 2000)
     expect(reconcileSection).toContain("safeCancel('saturday-rainbow-nudge')")
+  })
+
+  it('reconcileNotificationSchedule cancels dormant-reminder-day-7', () => {
+    const reconcileStart = notifServiceSource.indexOf('export async function reconcileNotificationSchedule')
+    const reconcileSection = notifServiceSource.substring(reconcileStart, reconcileStart + 2500)
+    expect(reconcileSection).toContain("safeCancel('dormant-reminder-day-7')")
+  })
+
+  it('reconcileNotificationSchedule cancels dormant-reminder-day-14', () => {
+    const reconcileStart = notifServiceSource.indexOf('export async function reconcileNotificationSchedule')
+    const reconcileSection = notifServiceSource.substring(reconcileStart, reconcileStart + 2500)
+    expect(reconcileSection).toContain("safeCancel('dormant-reminder-day-14')")
+  })
+
+  it('reconcileNotificationSchedule cancels dormant-reminder-day-30', () => {
+    const reconcileStart = notifServiceSource.indexOf('export async function reconcileNotificationSchedule')
+    const reconcileSection = notifServiceSource.substring(reconcileStart, reconcileStart + 2500)
+    expect(reconcileSection).toContain("safeCancel('dormant-reminder-day-30')")
+  })
+
+  it('reconcileNotificationSchedule cancels dormant-reminder-day-60', () => {
+    const reconcileStart = notifServiceSource.indexOf('export async function reconcileNotificationSchedule')
+    const reconcileSection = notifServiceSource.substring(reconcileStart, reconcileStart + 2500)
+    expect(reconcileSection).toContain("safeCancel('dormant-reminder-day-60')")
   })
 })

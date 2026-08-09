@@ -253,6 +253,15 @@ export const ALL_STORAGE_KEYS = [
 ] as const
 
 /**
+ * Prefixes for dynamically-keyed AsyncStorage entries that cannot
+ * be listed statically in ALL_STORAGE_KEYS. The nuclear reset
+ * uses getAllKeys() to find and remove any matching these prefixes.
+ */
+export const DYNAMIC_KEY_PREFIXES = [
+  '@rlf_notif_history_', // NotificationHistoryService (user-keyed)
+] as const
+
+/**
  * Nuclear reset — clears ALL app data from AsyncStorage.
  * Flushes any pending debounced writes first.
  */
@@ -263,6 +272,14 @@ export async function resetAllStorageKeys(): Promise<void> {
   }
   try {
     await AsyncStorage.multiRemove([...ALL_STORAGE_KEYS])
+    // Also clear dynamically-keyed entries (e.g. notification history)
+    const allKeys = await AsyncStorage.getAllKeys()
+    const dynamicKeys = allKeys.filter((k) =>
+      DYNAMIC_KEY_PREFIXES.some((prefix) => k.startsWith(prefix)),
+    )
+    if (dynamicKeys.length > 0) {
+      await AsyncStorage.multiRemove(dynamicKeys)
+    }
   } catch (e) {
     // Best-effort — some keys may not exist
     console.warn('[storage] resetAllStorageKeys failed:', (e as Error)?.message)

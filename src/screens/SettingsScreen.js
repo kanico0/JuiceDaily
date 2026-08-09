@@ -1090,6 +1090,26 @@ export default function SettingsScreen({ navigation }) {
           </>
         )}
 
+        {/* ═══ RECENT NOTIFICATIONS ═══════════════════════════ */}
+        <SectionHeader
+          icon={<Bell size={18} color="#8B949E" />}
+          title="Recent Notifications"
+          subtitle="Review your latest RawLifeFlow notifications"
+        />
+        <View style={styles.settingsGroup}>
+          <TouchableOpacity
+            style={styles.helpRow}
+            onPress={() => navigation.navigate('RecentNotifications')}
+            activeOpacity={0.7}
+          >
+            <View style={styles.helpRowLeft}>
+              <Text style={styles.helpLabel}>Recent Notifications</Text>
+              <Text style={styles.helpDesc}>View the full text of recent notifications</Text>
+            </View>
+            <Text style={styles.helpArrow}>›</Text>
+          </TouchableOpacity>
+        </View>
+
         {/* ═══ HELP & SUPPORT ═════════════════════════════════ */}
         {SUPABASE_CONFIGURED && <AccountSection />}
 

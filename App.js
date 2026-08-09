@@ -59,6 +59,9 @@ import { JuiceLogProvider, useJuiceLog } from './src/services/JuiceLogStore'
 import { refreshNudges } from './src/services/NotificationNudges'
 import { hydrateDevClock } from './src/utils/DevClock'
 import { reconcileDormantReminders } from './src/services/DormantReminderService'
+import { markNotificationOpened, reconcileWithPresentedNotifications } from './src/services/NotificationHistoryService'
+import NotificationDetailScreen from './src/screens/NotificationDetailScreen'
+import RecentNotificationsScreen from './src/screens/RecentNotificationsScreen'
 
 const RootStack = createNativeStackNavigator()
 const Tab = createBottomTabNavigator()
@@ -101,6 +104,8 @@ function addSharedScreens(StackNav) {
       <StackNav.Screen name="JuicerGuide" component={JuicerGuideScreen} />
       <StackNav.Screen name="ProduceRecipeResults" component={ProduceRecipeResultsScreen} />
       <StackNav.Screen name="Lesson" component={LessonScreen} />
+      <StackNav.Screen name="NotificationDetail" component={NotificationDetailScreen} />
+      <StackNav.Screen name="RecentNotifications" component={RecentNotificationsScreen} />
     </>
   )
 }
@@ -175,18 +180,91 @@ function RootNavigator() {
     reconcileDormantReminders().catch(() => {})
   }, [])
 
+  // ── Centralized notification response handler ──────────────
+  // Handles BOTH:
+  //   A. app already running/backgrounded (addNotificationResponseReceivedListener)
+  //   B. app launched from notification/cold start (getLastNotificationResponseAsync)
+  //
+  // Routes to NotificationDetail with the full notification payload.
+  // After handling, the response is consumed so restarting the app
+  // does not repeatedly reopen the same notification.
+  // Normal app launches NOT caused by a notification open normally.
   useEffect(() => {
-    const handleDormantReminder = (response) => {
+    let lastHandledResponseId = null
+
+    const handleNotificationResponse = (response) => {
+      if (!response) return
+
+      // Dedupe: don't handle the same response twice
+      const responseId = response?.notification?.request?.identifier
+        || response?.notification?.date
+        || Date.now()
+      if (lastHandledResponseId === responseId) return
+      lastHandledResponseId = responseId
+
       const data = response?.notification?.request?.content?.data
-      if (data?.type !== 'dormant_reminder' || !navigationRef.isReady()) return
-      navigationRef.navigate('Main', {
-        screen: 'TodayTab',
-        params: { screen: 'Dashboard', params: { openQuickLog: true } },
-      })
+      const title = response?.notification?.request?.content?.title || ''
+      const body = response?.notification?.request?.content?.body || ''
+
+      // Only handle RawLifeFlow notifications
+      if (!data?.rawLifeFlowNotification) {
+        // Legacy dormant_reminder handler (retired but kept for compat)
+        if (data?.type === 'dormant_reminder' && navigationRef.isReady()) {
+          navigationRef.navigate('Main', {
+            screen: 'TodayTab',
+            params: { screen: 'Dashboard', params: { openQuickLog: true } },
+          })
+        }
+        return
+      }
+
+      // Mark as opened in the archive
+      const scheduleIdentifier = data?.notificationId || response?.notification?.request?.identifier || ''
+      const fullText = data?.fullText || body || ''
+      const notificationType = data?.notificationType || data?.type || 'unknown'
+      const scheduledFor = typeof data?.scheduledFor === 'number' ? data.scheduledFor : null
+
+      markNotificationOpened({
+        scheduleIdentifier,
+        title,
+        fullText,
+        notificationType,
+        scheduledFor,
+      }).catch(() => {})
+
+      // Navigate to NotificationDetail
+      if (navigationRef.isReady()) {
+        navigationRef.navigate('NotificationDetail', {
+          notificationId: scheduleIdentifier,
+          title,
+          fullText,
+          notificationType,
+          scheduledFor,
+        })
+      }
     }
-    const subscription = Notifications.addNotificationResponseReceivedListener(handleDormantReminder)
-    Notifications.getLastNotificationResponseAsync().then(handleDormantReminder).catch(() => {})
+
+    // A. App already running / backgrounded
+    const subscription = Notifications.addNotificationResponseReceivedListener(
+      handleNotificationResponse,
+    )
+
+    // B. App launched from notification (cold start)
+    Notifications.getLastNotificationResponseAsync()
+      .then(handleNotificationResponse)
+      .catch(() => {})
+
     return () => subscription.remove()
+  }, [])
+
+  // Reconcile notification archive on app foreground
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (nextState) => {
+      if (appStateRef.current.match(/inactive|background/) && nextState === 'active') {
+        reconcileWithPresentedNotifications().catch(() => {})
+      }
+    })
+    return () => sub.remove()
   }, [])
 
   // Refresh nudge notifications on app foreground

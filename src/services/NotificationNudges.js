@@ -24,6 +24,7 @@ import {
   incrementSentToday,
   enforceGlobalNotificationCap,
 } from './NotificationCapPolicy'
+import { archiveScheduledNotification, removePendingArchiveEntry } from './NotificationHistoryService'
 
 // ── Notification IDs ─────────────────────────────────────────
 
@@ -92,6 +93,7 @@ export async function setAndroidNotificationChannel() {
 async function safeCancel(id) {
   try {
     await Notifications.cancelScheduledNotificationAsync(id)
+    await removePendingArchiveEntry(id).catch(() => {})
   } catch { /* ignore */ }
 }
 
@@ -129,10 +131,22 @@ async function safeSchedule({ id, title, body, data, triggerDate }) {
       return false
     }
 
+    const fullText = String(body || '')
+    const notificationType = String(data?.type || 'unknown')
+    const scheduledForMs = triggerDate ? new Date(triggerDate).getTime() : null
+
     const content = {
       title,
-      body,
-      data: { ...data, sentAt: new Date().toISOString() },
+      body: fullText,
+      data: {
+        ...data,
+        rawLifeFlowNotification: true,
+        notificationId: id,
+        notificationType,
+        fullText,
+        scheduledFor: scheduledForMs,
+        sentAt: new Date().toISOString(),
+      },
       sound: 'glass_clink.wav',
     }
     if (Platform.OS === 'android') {
@@ -153,6 +167,14 @@ async function safeSchedule({ id, title, body, data, triggerDate }) {
     })
     console.log('[nudges] safeSchedule OK | id:', id, 'trigger:', triggerIso, 'result:', result || '(no id returned)')
     if (isNearFuture) await incrementSentToday()
+    // Archive the notification for Recent Notifications page
+    await archiveScheduledNotification({
+      scheduleIdentifier: id,
+      title: String(title || ''),
+      fullText,
+      notificationType,
+      scheduledFor: scheduledForMs,
+    }).catch(() => {})
     return true
   } catch (e) {
     console.warn('[nudges] safeSchedule FAIL | id:', id, 'error:', e?.name || 'unknown', e?.message || '')

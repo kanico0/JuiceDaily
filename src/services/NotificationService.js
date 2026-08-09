@@ -20,6 +20,7 @@ import {
   getWeightMilestone,
 } from '../constants/NotificationLibrary'
 import { recordMeaningfulActivity } from './DormantReminderService'
+import { archiveScheduledNotification, removePendingArchiveEntry } from './NotificationHistoryService'
 import {
   INTENSITY_CAPS,
   DEFAULT_SETTINGS,
@@ -189,10 +190,25 @@ async function scheduleNotif({ id, title, body, data, triggerDate, categoryId })
 
   await ensureAndroidChannel()
 
+  // Build the notification data payload with the COMPLETE message.
+  // Android may visually truncate the body in the tray, but the
+  // full text is preserved in data.fullText for the detail screen.
+  const fullText = String(body || '')
+  const notificationType = String(data?.type || 'unknown')
+  const scheduledForMs = triggerDate ? new Date(triggerDate).getTime() : null
+
   const content = {
     title,
-    body,
-    data: { ...data, sentAt: new Date().toISOString() },
+    body: fullText,
+    data: {
+      ...data,
+      rawLifeFlowNotification: true,
+      notificationId: id,
+      notificationType,
+      fullText,
+      scheduledFor: scheduledForMs,
+      sentAt: new Date().toISOString(),
+    },
     sound: 'glass_clink.wav',
   }
 
@@ -220,6 +236,14 @@ async function scheduleNotif({ id, title, body, data, triggerDate, categoryId })
     })
     console.log('[notif] scheduleNotif OK | id:', id, 'trigger:', triggerIso, 'result:', result || '(no id returned)')
     if (isNearFuture) await incrementSentToday()
+    // Archive the notification for Recent Notifications page
+    await archiveScheduledNotification({
+      scheduleIdentifier: id,
+      title: String(title || ''),
+      fullText,
+      notificationType,
+      scheduledFor: scheduledForMs,
+    }).catch(() => {})
     return true
   } catch (e) {
     console.warn('[notif] scheduleNotif FAIL | id:', id, 'trigger:', triggerIso, 'error:', e?.name || 'unknown', e?.message || '')
@@ -232,6 +256,9 @@ async function scheduleNotif({ id, title, body, data, triggerDate, categoryId })
 async function safeCancel(id) {
   try {
     await Notifications.cancelScheduledNotificationAsync(id)
+    // Remove the pending archive entry so Recent Notifications
+    // doesn't claim the user received something that was canceled.
+    await removePendingArchiveEntry(id).catch(() => {})
   } catch (e) { /* ignore */ }
 }
 

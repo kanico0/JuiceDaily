@@ -19,6 +19,19 @@
 import * as Notifications from 'expo-notifications'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 
+// Lazy import to avoid pulling supabase/identity (and its transitive
+// deps like react-native-url-polyfill) at module load time. This
+// prevents test failures in modules that import NotificationCapPolicy
+// without mocking the full Supabase chain.
+let _removePendingArchiveEntry = null
+async function getRemovePendingArchiveEntry() {
+  if (!_removePendingArchiveEntry) {
+    const mod = await import('./NotificationHistoryService')
+    _removePendingArchiveEntry = mod.removePendingArchiveEntry
+  }
+  return _removePendingArchiveEntry
+}
+
 // ── Intensity Caps ───────────────────────────────────────────
 
 export const INTENSITY_CAPS = {
@@ -173,6 +186,10 @@ export function getLocalDayKey(timestamp) {
 async function safeCancel(id) {
   try {
     await Notifications.cancelScheduledNotificationAsync(id)
+    // Remove the pending archive entry so Recent Notifications
+    // doesn't claim the user received something that was canceled.
+    const removePending = await getRemovePendingArchiveEntry()
+    await removePending(id).catch(() => {})
   } catch (e) { /* ignore */ }
 }
 

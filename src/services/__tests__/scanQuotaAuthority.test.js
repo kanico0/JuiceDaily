@@ -537,7 +537,7 @@ describe('Scan quota server-authoritative architecture', () => {
       // checkSnapEligibility reads from client state (monthlySnapCount)
       const eligibilityIdx = code.indexOf('checkSnapEligibility')
       expect(eligibilityIdx).toBeGreaterThan(-1)
-      const eligibilityBody = code.slice(eligibilityIdx, eligibilityIdx + 800)
+      const eligibilityBody = code.slice(eligibilityIdx, eligibilityIdx + 1200)
       // It checks client state, not server
       expect(eligibilityBody).toMatch(/monthlySnapCount/)
       expect(eligibilityBody).toMatch(/snapPackBalance/)

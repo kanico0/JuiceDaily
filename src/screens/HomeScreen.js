@@ -44,6 +44,7 @@ import colors from '../constants/colors'
 import NUTRIENT_LIBRARY from '../constants/NutrientLibrary.json'
 import { EMPTY_BATCH, USDA_RDA } from '../constants/nutrition'
 import SnapButton from '../components/SnapButton'
+import SnapIcon from '../components/SnapIcon'
 import { useQuota } from '../services/quota/QuotaStore'
 import {
   selectQuotaLabel,
@@ -879,7 +880,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
     return false
   }, [batch.scannedIngredients])
 
-  const isSnapDepleted = selectQuotaExhausted(serverQuota) && !filmRollIsPro
+  const isSnapDepleted = selectQuotaExhausted(serverQuota)
 
   // Open manual entry when navigated with manualEntry: true
   useEffect(() => {
@@ -1944,22 +1945,65 @@ export default function JuiceSnapScreen({ navigation, route }) {
             batch={batch}
             scannedIngredients={batch.scannedIngredients}
             onUpdateItem={handleUpdateItem}
+            snapExhausted={isSnapDepleted}
           />
         </View>
 
         {/* ── Snap Produce (camera) ─────────────────────────── */}
-        {!isSnapDepleted && (
-          <View style={styles.buttonSection}>
-            <SnapButton onPress={handleSnap} />
-            {isPreparingCamera && (
-              <View style={styles.preparingCameraRow}>
-                <ActivityIndicator size="small" color="#64B5F6" />
-                <Text style={styles.preparingCameraText}>Preparing camera…</Text>
+        <View style={styles.buttonSection}>
+          {isSnapDepleted ? (
+            <View style={styles.depletedSnapContainer}>
+              <View style={styles.depletedSnapButton} pointerEvents="none">
+                <SnapIcon size={26} disabled style={styles.depletedSnapIcon} />
+                <Text style={styles.depletedSnapLabel}>Snap Produce</Text>
               </View>
-            )}
-            <QuotaMeter navigation={navigation} />
-          </View>
-        )}
+              <View style={styles.depletedOverlay} pointerEvents="none" />
+              <Text style={styles.depletedMessage}>
+                {filmRollIsPro
+                  ? "You've used your 12 AI Snaps for this month."
+                  : "You've used your complimentary AI Snap for this month."}
+              </Text>
+              <Text style={styles.depletedSubMessage}>
+                {filmRollIsPro
+                  ? 'Keep adding produce manually for free. Your next 12 AI Snaps arrive at the start of your next quota month.'
+                  : 'Keep adding produce manually for free, or upgrade to RawLifeFlow Pro for 12 AI Snaps each month.'}
+              </Text>
+              <View style={styles.depletedActions}>
+                <TouchableOpacity
+                  style={styles.depletedManualBtn}
+                  onPress={() => setIsManualMode(true)}
+                  activeOpacity={0.7}
+                  accessibilityRole="button"
+                  accessibilityLabel="Enter produce manually"
+                >
+                  <Text style={styles.depletedManualBtnText}>Enter Produce Manually</Text>
+                </TouchableOpacity>
+                {!filmRollIsPro && (
+                  <TouchableOpacity
+                    style={styles.depletedUpgradeBtn}
+                    onPress={() => navigation.navigate('Paywall', { source: 'snap_exhausted' })}
+                    activeOpacity={0.7}
+                    accessibilityRole="button"
+                    accessibilityLabel="Upgrade to Pro"
+                  >
+                    <Text style={styles.depletedUpgradeBtnText}>Upgrade to Pro</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            </View>
+          ) : (
+            <>
+              <SnapButton onPress={handleSnap} />
+              {isPreparingCamera && (
+                <View style={styles.preparingCameraRow}>
+                  <ActivityIndicator size="small" color="#64B5F6" />
+                  <Text style={styles.preparingCameraText}>Preparing camera…</Text>
+                </View>
+              )}
+              <QuotaMeter navigation={navigation} />
+            </>
+          )}
+        </View>
 
         {/* ── Manual Entry: Search + Ingredient Cloud ─────────── */}
         <View style={manualStyles.manualSection}>
@@ -2560,6 +2604,83 @@ const styles = StyleSheet.create({
     color: '#64B5F6',
     fontSize: 14,
     fontWeight: '500',
+  },
+  // ── Snap depleted (exhausted) state ──
+  depletedSnapContainer: {
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+  },
+  depletedSnapButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    paddingVertical: 18,
+    borderRadius: 28,
+    borderWidth: 0.5,
+    borderColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    width: '100%',
+    opacity: 0.4,
+  },
+  depletedSnapIcon: {
+    // Render the full-color artwork at reduced opacity (set on parent)
+  },
+  depletedOverlay: {
+    // Visual lock indicator is achieved via opacity on the button container
+  },
+  depletedSnapLabel: {
+    color: '#8B949E',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  depletedMessage: {
+    color: '#C9D1D9',
+    fontSize: 15,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginTop: 16,
+    marginBottom: 6,
+  },
+  depletedSubMessage: {
+    color: '#90A4AE',
+    fontSize: 13,
+    textAlign: 'center',
+    lineHeight: 19,
+    marginBottom: 16,
+  },
+  depletedActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  depletedManualBtn: {
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 22,
+    backgroundColor: 'rgba(129,199,132,0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(129,199,132,0.3)',
+  },
+  depletedManualBtnText: {
+    color: '#81C784',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  depletedUpgradeBtn: {
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 22,
+    backgroundColor: 'rgba(100,181,246,0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(100,181,246,0.3)',
+  },
+  depletedUpgradeBtnText: {
+    color: '#64B5F6',
+    fontSize: 14,
+    fontWeight: '600',
   },
   logButtonGradient: {
     flexDirection: 'row',

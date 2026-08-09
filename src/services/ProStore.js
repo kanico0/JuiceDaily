@@ -4,7 +4,7 @@
 // ─────────────────────────────────────────────────────────────
 
 import { createContext, useContext, useReducer, useCallback, useMemo } from 'react'
-import { FREE_MONTHLY_SCAN_LIMIT } from './subscriptions/subscriptionConfig'
+import { FREE_MONTHLY_SCAN_LIMIT, PRO_MONTHLY_SCAN_LIMIT } from './subscriptions/subscriptionConfig'
 
 // ── Subscription Plans ──────────────────────────────────────
 
@@ -101,7 +101,7 @@ export const PRO_FEATURES = {
   weeklyReports: { label: 'Weekly Reports', icon: 'BarChart3', tier: 'pro' },
   advancedNutrients: { label: 'Advanced Nutrient Data', icon: 'Microscope', tier: 'pro' },
   proRecipes: { label: 'Pro Recipe Categories', icon: 'ChefHat', tier: 'pro' },
-  unlimitedSnaps: { label: 'Unlimited AI Snaps', icon: 'Camera', tier: 'pro' },
+  unlimitedSnaps: { label: '12 AI Snaps per month', icon: 'Camera', tier: 'pro' },
   monthlyWrap: { label: 'Monthly Vitality Wrap', icon: 'Gift', tier: 'pro' },
   fridgeForager: { label: 'Fridge Forager', icon: 'Refrigerator', tier: 'pro' },
 }
@@ -286,12 +286,25 @@ export function ProProvider({ children }) {
   // enforcement or visible authoritative scan usage.
 
   const checkSnapEligibility = useCallback(() => {
-    if (isPro) return { eligible: true, remaining: Infinity, reason: null }
-
     const now = new Date()
     const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
     const isNewMonth = currentMonth !== state.currentMonth
     const usedThisMonth = isNewMonth ? 0 : state.monthlySnapCount
+
+    // Pro: 12 per monthly window
+    if (isPro) {
+      const proRemaining = Math.max(0, PRO_MONTHLY_SCAN_LIMIT - usedThisMonth)
+      if (proRemaining > 0) {
+        return { eligible: true, remaining: proRemaining, reason: null, source: 'pro' }
+      }
+      const monthName = now.toLocaleDateString('en-US', { month: 'long' })
+      return {
+        eligible: false,
+        remaining: 0,
+        reason: `You've used your ${PRO_MONTHLY_SCAN_LIMIT} AI Snaps for ${monthName}. Your next 12 AI Snaps arrive at the start of your next quota month.`,
+        source: 'exhausted',
+      }
+    }
 
     // Has snap pack balance
     if (state.snapPackBalance > 0) {
@@ -303,7 +316,7 @@ export function ProProvider({ children }) {
       }
     }
 
-    // Free monthly allotment
+    // Free monthly allotment (1/month)
     if (usedThisMonth < FREE_MONTHLY_SNAPS) {
       return {
         eligible: true,
@@ -318,7 +331,7 @@ export function ProProvider({ children }) {
     return {
       eligible: false,
       remaining: 0,
-      reason: `You've used your ${FREE_MONTHLY_SNAPS} Free Snaps for ${monthName}. Wellness Architects get unlimited AI scanning, instant nutrient breakdown, and Fridge Forager integration.`,
+      reason: `You've used your complimentary AI Snap for ${monthName}. Keep adding produce manually for free, or upgrade to RawLifeFlow Pro for 12 AI Snaps each month.`,
       source: 'exhausted',
     }
   }, [isPro, state.monthlySnapCount, state.snapPackBalance, state.currentMonth])
@@ -344,12 +357,19 @@ export function ProProvider({ children }) {
   // compatibility — do not use for visible authoritative scan usage.
 
   const snapInfo = useMemo(() => {
-    if (isPro) return { label: '∞ Pro', remaining: Infinity, total: Infinity }
-
     const now = new Date()
     const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
     const isNewMonth = currentMonth !== state.currentMonth
     const usedThisMonth = isNewMonth ? 0 : state.monthlySnapCount
+
+    if (isPro) {
+      const remaining = Math.max(0, PRO_MONTHLY_SCAN_LIMIT - usedThisMonth)
+      return {
+        label: `${remaining}/${PRO_MONTHLY_SCAN_LIMIT} Pro`,
+        remaining,
+        total: PRO_MONTHLY_SCAN_LIMIT,
+      }
+    }
 
     if (state.snapPackBalance > 0) {
       return {

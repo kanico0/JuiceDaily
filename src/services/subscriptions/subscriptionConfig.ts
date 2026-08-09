@@ -43,12 +43,12 @@ export const GOOGLE_BASE_PLANS = {
 
 // ── Quota constants (display only — server is authoritative) ─
 
-export const FREE_MONTHLY_SCAN_LIMIT = 5
-export const PRO_MONTHLY_SCAN_LIMIT = 60
-export const PRO_DAILY_SCAN_SAFETY_LIMIT = 10
+export const FREE_MONTHLY_SCAN_LIMIT = 1
+export const PRO_MONTHLY_SCAN_LIMIT = 12
+export const PRO_DAILY_SCAN_SAFETY_LIMIT = 4
 
-export const FREE_WARNING_THRESHOLDS = [2, 1]
-export const PRO_WARNING_THRESHOLDS = [10, 5]
+export const FREE_WARNING_THRESHOLDS = [1, 1]
+export const PRO_WARNING_THRESHOLDS = [3, 1]
 
 // ── Public keys from environment ─────────────────────────────
 

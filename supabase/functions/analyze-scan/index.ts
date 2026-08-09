@@ -257,7 +257,7 @@ Deno.serve(async (req) => {
     }
 
     // Also reserve from the monthly scan quota so the guest scan
-    // counts as 1 of 5 free scans. The quota is keyed to the
+    // counts as 1 of 1 free scans. The quota is keyed to the
     // Supabase UUID, which is preserved across email upgrade.
     const { data: quotaReserve, error: quotaError } = await admin.rpc('reserve_guest_scan', {
       p_user_id: userId,
@@ -634,8 +634,8 @@ Deno.serve(async (req) => {
     }
 
     if (isGuest) {
-      // Guest scan: commit the scan quota (counts as 1 of 5 free
-      // monthly scans) and finalize the guest scan stage.
+      // Guest scan: commit the scan quota (counts as 1 of 1 free
+      // monthly scan) and finalize the guest scan stage.
       serverIntegrityLog('account_finalization', requestId, true, undefined, {
         status: 'committed',
       })

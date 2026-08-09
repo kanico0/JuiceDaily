@@ -1,7 +1,7 @@
 // ─────────────────────────────────────────────────────────────
 // proStoreScanLimit.test.js — Verify ProStore uses the
-// centralized FREE_MONTHLY_SCAN_LIMIT (5) from
-// subscriptionConfig, not a hard-coded 3.
+// centralized FREE_MONTHLY_SCAN_LIMIT (1) from
+// subscriptionConfig, not a hard-coded value.
 // ─────────────────────────────────────────────────────────────
 
 const fs = require('fs')
@@ -28,16 +28,16 @@ describe('ProStore scan limit audit', () => {
     expect(PROSTORE_SRC).toMatch(/FREE_MONTHLY_SNAPS\s*=\s*FREE_MONTHLY_SCAN_LIMIT/)
   })
 
-  test('subscriptionConfig exports FREE_MONTHLY_SCAN_LIMIT = 5', () => {
-    expect(CONFIG_SRC).toMatch(/export\s+const\s+FREE_MONTHLY_SCAN_LIMIT\s*=\s*5/)
+  test('subscriptionConfig exports FREE_MONTHLY_SCAN_LIMIT = 1', () => {
+    expect(CONFIG_SRC).toMatch(/export\s+const\s+FREE_MONTHLY_SCAN_LIMIT\s*=\s*1/)
   })
 
-  test('checkSnapEligibility uses FREE_MONTHLY_SNAPS (now 5)', () => {
+  test('checkSnapEligibility uses FREE_MONTHLY_SNAPS (now 1)', () => {
     expect(PROSTORE_SRC).toContain('usedThisMonth < FREE_MONTHLY_SNAPS')
     expect(PROSTORE_SRC).toContain('FREE_MONTHLY_SNAPS - usedThisMonth')
   })
 
-  test('snapInfo label uses FREE_MONTHLY_SNAPS (now 5)', () => {
+  test('snapInfo label uses FREE_MONTHLY_SNAPS (now 1)', () => {
     expect(PROSTORE_SRC).toContain('${remaining}/${FREE_MONTHLY_SNAPS} Free')
     expect(PROSTORE_SRC).toContain('total: FREE_MONTHLY_SNAPS')
   })

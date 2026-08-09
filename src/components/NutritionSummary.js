@@ -181,7 +181,7 @@ const NUTRIENT_ROWS = [
   { icon: Pill, label: 'Folate', key: 'folate', unit: 'mcg', accent: BRAND.accent.folate },
 ]
 
-export default function NutritionSummary({ batch, scannedIngredients = [], onUpdateItem }) {
+export default function NutritionSummary({ batch, scannedIngredients = [], onUpdateItem, snapExhausted = false }) {
   const items = batch.items || batch.ingredients || []
   const { totals, veggieRatio } = batch
   const isEmpty = items.length === 0
@@ -284,7 +284,9 @@ export default function NutritionSummary({ batch, scannedIngredients = [], onUpd
           <Citrus size={48} color={colors.border} strokeWidth={1.5} />
           <Text style={styles.emptyTitle}>No produce yet</Text>
           <Text style={styles.emptySubtitle}>
-            Tap "Snap Produce" to scan your first item
+            {snapExhausted
+              ? 'Add produce manually below, or upgrade for more AI Snaps.'
+              : 'Tap "Snap Produce" or add produce manually.'}
           </Text>
         </View>
       ) : (

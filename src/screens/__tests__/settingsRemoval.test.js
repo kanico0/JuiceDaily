@@ -120,12 +120,15 @@ describe('SettingsScreen — dormant feature removal', () => {
     })
   })
 
-  describe('Comeback Reminders preserved', () => {
-    it('still contains "Comeback Reminders" setting', () => {
-      expect(source).toContain('Comeback Reminders')
+  describe('Comeback Reminders UI retired (Kitchen Utility removed)', () => {
+    it('no longer contains "Comeback Reminders" setting in UI', () => {
+      expect(source).not.toContain('Comeback Reminders')
     })
 
-    it('still references comebackReminders setting key', () => {
+    it('still references comebackReminders setting key in comments/defaults', () => {
+      // The setting remains in DEFAULT_SETTINGS and DormantReminderService,
+      // but the SettingsScreen no longer renders it as a user toggle.
+      // The comment in SettingsScreen may still mention it.
       expect(source).toMatch(/comebackReminders/)
     })
   })

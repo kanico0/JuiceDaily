@@ -24,7 +24,6 @@ import * as Haptics from 'expo-haptics'
 import {
   ArrowLeft,
   Bell,
-  ChefHat,
   Moon,
   Shield,
   Info,
@@ -43,7 +42,7 @@ import {
   saveNotificationSettings,
   reconcileNotificationSchedule,
 } from '../services/NotificationService'
-import { setComebackRemindersEnabled } from '../services/DormantReminderService'
+// DormantReminderService import removed — Kitchen Utility retired.
 import { useFlags, DEFAULT_FLAGS } from '../services/FeatureFlags'
 import { resetFirstLaunch } from '../components/FirstLaunchOrchestrator'
 import { usePro } from '../services/ProStore'
@@ -683,10 +682,9 @@ export default function SettingsScreen({ navigation }) {
     }
   }, [])
 
-  const handleComebackReminderToggle = useCallback((enabled) => {
-    updateSetting('comebackReminders', enabled)
-    setComebackRemindersEnabled(enabled).catch(() => {})
-  }, [updateSetting])
+  // Kitchen Utility section retired — comebackReminders setting remains
+  // in DEFAULT_SETTINGS (default: true) and is consumed by the dormant
+  // reminder service, but is no longer user-configurable from the UI.
 
   const handleTooltipDismiss = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
@@ -890,22 +888,6 @@ export default function SettingsScreen({ navigation }) {
             description="Alerts when rings are empty late in the day"
             value={settings.vitalityReminders}
             onValueChange={(v) => updateSetting('vitalityReminders', v)}
-          />
-        </View>
-
-        {/* ═══ C. THE "KITCHEN" (Utility) ══════════════════ */}
-        <SectionHeader
-          icon={<ChefHat size={18} color="#81C784" />}
-          title="The Kitchen"
-          subtitle="Utility"
-        />
-
-        <View style={styles.settingsGroup}>
-          <SettingRow
-            label="Comeback Reminders"
-            description="Gentle reminders after time away from juice logging"
-            value={settings.comebackReminders}
-            onValueChange={handleComebackReminderToggle}
           />
         </View>
 

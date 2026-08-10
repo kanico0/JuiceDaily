@@ -24,10 +24,7 @@
 
 import { getSupabase } from './supabaseClient'
 import { setAllowAnonFallback, ensureUser } from './identity'
-import {
-  logIn as revenueCatLogIn,
-  logOut as revenueCatLogOut,
-} from '../subscriptions/revenueCatClient'
+import { logIn as revenueCatLogIn } from '../subscriptions/revenueCatClient'
 
 // ── Types ────────────────────────────────────────────────────
 
@@ -273,50 +270,52 @@ export async function verifySignIn(rawEmail: string, token: string): Promise<Ver
 }
 
 // ── Sign out ─────────────────────────────────────────────────
-// Clears the local session and transitions RevenueCat away from
-// the departing user. Server-side data (quota usage, subscription
+// Clears the local session and transitions RevenueCat to the new
+// anonymous Supabase UUID. Server-side data (quota usage, subscription
 // record, history) stays attached to the UUID and is restored on
 // the next sign-in.
 //
-// Identity transition on signout:
-//   1. RevenueCat.logOut() — clears cached CustomerInfo for the
-//      departing user so no stale Pro entitlement can leak to the
-//      next session.
-//   2. Supabase.auth.signOut() — clears the local Supabase session.
-//   3. Re-enable anon fallback so ensureUser() can create a new
+// Identity transition on signout (no Purchases.logOut() needed):
+//   RevenueCat documents that direct Purchases.logIn(newUUID) is
+//   valid when switching between two custom App User IDs. This
+//   avoids creating an unnecessary transient $RCAnonymousID.
+//
+//   1. Supabase.auth.signOut() — clears the local Supabase session.
+//   2. Re-enable anon fallback so ensureUser() can create a new
 //      anonymous Supabase UUID.
-//   4. ensureUser() + notifyIdentityChanged() — associates
-//      RevenueCat with the new anonymous Supabase UUID so the
-//      next session starts with a clean Free identity.
+//   3. ensureUser() — creates a new anonymous Supabase UUID.
+//   4. notifyIdentityChanged(newUUID) — calls Purchases.logIn(newUUID)
+//      which directly switches RC from the old UUID to the new UUID.
+//      The SubscriptionStore's identity change listener then fetches
+//      fresh CustomerInfo for the new user (Free), clearing any
+//      stale Pro entitlement UI.
+//
+// Account A's Pro entitlement cannot appear for Account B because:
+//   - RC switches to the new UUID via logIn()
+//   - CustomerInfo is fetched for the new UUID (no Pro)
+//   - The subscriptions table is keyed by UUID (server-authoritative)
 
 export async function signOutAccount(): Promise<boolean> {
   const supabase = getSupabase()
   if (!supabase) return false
   try {
-    // 1. Log out of RevenueCat FIRST — prevents cached Pro from
-    //    leaking to the next anonymous session.
-    await revenueCatLogOut()
-
-    // 2. Sign out of Supabase.
+    // 1. Sign out of Supabase.
     const { error } = await supabase.auth.signOut()
-    if (error) {
-      // If Supabase signout fails, re-login RevenueCat to the
-      // current user to avoid leaving RC in a logged-out limbo.
-      const { data } = await supabase.auth.getSession()
-      if (data.session?.user?.id) await revenueCatLogIn(data.session.user.id)
-      return false
-    }
+    if (error) return false
 
-    // 3. Re-enable anon fallback — the next user starts fresh.
+    // 2. Re-enable anon fallback — the next user starts fresh.
     setAllowAnonFallback(true)
 
-    // 4. Create a new anonymous Supabase UUID and associate
-    //    RevenueCat with it. This ensures the next session has
-    //    a clean Free identity, not a stale Pro cache.
+    // 3. Create a new anonymous Supabase UUID.
     const newIdentity = await ensureUser()
-    if (newIdentity?.userId) {
-      await notifyIdentityChanged(newIdentity.userId)
-    }
+    if (!newIdentity?.userId) return false
+
+    // 4. Switch RevenueCat to the new UUID via direct logIn().
+    //    This clears any cached CustomerInfo for the departing user
+    //    and associates RC with the new anonymous UUID. The
+    //    SubscriptionStore listener fires and fetches fresh
+    //    CustomerInfo (Free) for the new user.
+    await notifyIdentityChanged(newIdentity.userId)
 
     return true
   } catch {

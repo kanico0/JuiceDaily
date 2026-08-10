@@ -28,24 +28,31 @@ const proStoreSource = fs.readFileSync(proStorePath, 'utf8')
 const identityPath = path.resolve(__dirname, '../../services/supabase/identity.ts')
 const identitySource = fs.readFileSync(identityPath, 'utf8')
 
-describe('RevenueCat identity logout correction', () => {
-  it('1. accountLink imports logOut from revenueCatClient', () => {
-    expect(accountLinkSource).toMatch(/logOut as revenueCatLogOut/)
+describe('RevenueCat identity switch (direct logIn, no logOut)', () => {
+  it('1. accountLink imports logIn (not logOut) from revenueCatClient', () => {
+    expect(accountLinkSource).toMatch(/logIn as revenueCatLogIn/)
+    expect(accountLinkSource).not.toMatch(/logOut as revenueCatLogOut/)
   })
 
   it('2. accountLink imports ensureUser from identity', () => {
     expect(accountLinkSource).toMatch(/ensureUser/)
   })
 
-  it('3. signOutAccount calls revenueCatLogOut before supabase signOut', () => {
-    const logOutPos = accountLinkSource.indexOf('revenueCatLogOut()')
-    const signOutPos = accountLinkSource.indexOf('supabase.auth.signOut()')
-    expect(logOutPos).toBeGreaterThan(-1)
-    expect(signOutPos).toBeGreaterThan(-1)
-    expect(logOutPos).toBeLessThan(signOutPos)
+  it('3. signOutAccount does NOT call revenueCatLogOut', () => {
+    const signOutSection = accountLinkSource.slice(
+      accountLinkSource.indexOf('export async function signOutAccount'),
+    )
+    expect(signOutSection).not.toMatch(/revenueCatLogOut/)
   })
 
-  it('4. signOutAccount re-enables anon fallback after signout', () => {
+  it('4. signOutAccount calls supabase.auth.signOut first', () => {
+    const signOutSection = accountLinkSource.slice(
+      accountLinkSource.indexOf('export async function signOutAccount'),
+    )
+    expect(signOutSection).toMatch(/supabase\.auth\.signOut\(\)/)
+  })
+
+  it('5. signOutAccount re-enables anon fallback after signout', () => {
     const signOutSection = accountLinkSource.slice(
       accountLinkSource.indexOf('export async function signOutAccount'),
     )
@@ -56,26 +63,25 @@ describe('RevenueCat identity logout correction', () => {
     expect(fallbackPos).toBeGreaterThan(signOutPos)
   })
 
-  it('5. signOutAccount creates new anonymous identity via ensureUser', () => {
+  it('6. signOutAccount creates new anonymous identity via ensureUser', () => {
     const signOutSection = accountLinkSource.slice(
       accountLinkSource.indexOf('export async function signOutAccount'),
     )
     expect(signOutSection).toMatch(/ensureUser\(\)/)
   })
 
-  it('6. signOutAccount notifies identity change with new UUID', () => {
+  it('7. signOutAccount switches RC via notifyIdentityChanged (direct logIn)', () => {
     const signOutSection = accountLinkSource.slice(
       accountLinkSource.indexOf('export async function signOutAccount'),
     )
     expect(signOutSection).toMatch(/notifyIdentityChanged/)
   })
 
-  it('7. revenueCatClient exports logOut function', () => {
-    expect(revenueCatClientSource).toMatch(/export async function logOut/)
-  })
-
-  it('8. logOut calls Purchases.logOut()', () => {
-    expect(revenueCatClientSource).toMatch(/Purchases\.logOut\(\)/)
+  it('8. signOutAccount documents direct logIn switch in comments', () => {
+    const signOutSection = accountLinkSource.slice(
+      accountLinkSource.indexOf('export async function signOutAccount'),
+    )
+    expect(signOutSection).toMatch(/direct.*logIn/i)
   })
 })
 

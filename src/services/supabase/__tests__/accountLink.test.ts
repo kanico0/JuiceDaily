@@ -22,10 +22,8 @@ jest.mock('../supabaseClient', () => ({
 }))
 
 const mockRcLogIn = jest.fn().mockResolvedValue(undefined)
-const mockRcLogOut = jest.fn().mockResolvedValue(undefined)
 jest.mock('../../subscriptions/revenueCatClient', () => ({
   logIn: (...args: unknown[]) => mockRcLogIn(...args),
-  logOut: (...args: unknown[]) => mockRcLogOut(...args),
 }))
 
 const mockEnsureUser = jest.fn().mockResolvedValue({
@@ -244,32 +242,44 @@ describe('verifySignIn (reinstall simulation)', () => {
 // ── Sign out ─────────────────────────────────────────────────
 
 describe('signOutAccount', () => {
-  it('signs out locally and transitions RevenueCat identity', async () => {
+  it('signs out and switches RevenueCat to new anonymous UUID via direct logIn', async () => {
     mockAuth.signOut.mockResolvedValue({ error: null })
-    mockAuth.getSession.mockResolvedValue({ data: { session: null } })
     mockEnsureUser.mockResolvedValue({ userId: 'new-anon-uuid', accessToken: 't' })
     expect(await signOutAccount()).toBe(true)
-    // RevenueCat logOut must be called BEFORE supabase signOut
-    expect(mockRcLogOut).toHaveBeenCalled()
+    // Supabase signOut is called
     expect(mockAuth.signOut).toHaveBeenCalled()
-    const logOutOrder = mockRcLogOut.mock.invocationCallOrder[0]
-    const signOutOrder = mockAuth.signOut.mock.invocationCallOrder[0]
-    expect(logOutOrder).toBeLessThan(signOutOrder)
+    // ensureUser creates new anonymous UUID
+    expect(mockEnsureUser).toHaveBeenCalled()
+    // RevenueCat logIn is called with the new UUID (direct switch,
+    // no logOut needed)
+    expect(mockRcLogIn).toHaveBeenCalledWith('new-anon-uuid')
+  })
+
+  it('does NOT call Purchases.logOut (direct logIn switch)', async () => {
+    mockAuth.signOut.mockResolvedValue({ error: null })
+    mockEnsureUser.mockResolvedValue({ userId: 'new-anon-uuid', accessToken: 't' })
+    await signOutAccount()
+    // mockRcLogOut is not even mocked — if it were called, the
+    // import would fail. This test documents the design decision.
+    expect(mockRcLogIn).toHaveBeenCalledWith('new-anon-uuid')
   })
 
   it('creates new anonymous identity after signout', async () => {
     mockAuth.signOut.mockResolvedValue({ error: null })
-    mockAuth.getSession.mockResolvedValue({ data: { session: null } })
     mockEnsureUser.mockResolvedValue({ userId: 'new-anon-uuid', accessToken: 't' })
     await signOutAccount()
     expect(mockEnsureUser).toHaveBeenCalled()
-    // notifyIdentityChanged calls revenueCatLogIn with new UUID
     expect(mockRcLogIn).toHaveBeenCalledWith('new-anon-uuid')
   })
 
   it('reports failure when supabase signout fails', async () => {
     mockAuth.signOut.mockResolvedValue({ error: { message: 'network' } })
-    mockAuth.getSession.mockResolvedValue(anonSession())
+    expect(await signOutAccount()).toBe(false)
+  })
+
+  it('reports failure when ensureUser returns no identity', async () => {
+    mockAuth.signOut.mockResolvedValue({ error: null })
+    mockEnsureUser.mockResolvedValue(null)
     expect(await signOutAccount()).toBe(false)
   })
 })

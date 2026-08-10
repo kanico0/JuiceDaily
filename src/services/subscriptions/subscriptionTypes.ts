@@ -21,7 +21,7 @@ export interface SubscriptionState {
   error: string | null
 }
 
-export function createInitialSubscriptionState (): SubscriptionState {
+export function createInitialSubscriptionState(): SubscriptionState {
   return {
     initialized: false,
     loading: false,
@@ -65,6 +65,7 @@ export type PurchaseOutcome =
   | { status: 'pending' }
   | { status: 'already_owned' }
   | { status: 'unavailable' }
+  | { status: 'account_required' }
   | { status: 'error'; message: string }
 
 export type RestoreOutcome =

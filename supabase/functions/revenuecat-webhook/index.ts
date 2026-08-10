@@ -4,6 +4,12 @@
 //
 // Security: requires "Authorization: Bearer <REVENUECAT_WEBHOOK_SECRET>".
 //
+// Identity resolution:
+//   Collects candidate IDs from app_user_id, original_app_user_id,
+//   and aliases[]. Resolves to a canonical Supabase UUID.
+//   $RCAnonymousID and email addresses are never treated as UUIDs.
+//   Conflicting UUIDs trigger reconciliation, not silent mutation.
+//
 // Idempotency + retry safety:
 //   - Event IDs are recorded in revenuecat_webhook_events.
 //   - On duplicate event ID:
@@ -13,25 +19,34 @@
 //     paying customer as Free — the next RevenueCat retry resumes.
 //
 // Event ordering:
-//   - Each event carries event_timestamp_ms.
-//   - Subscription state is applied via apply_revenuecat_event() RPC
-//     which atomically checks the incoming timestamp against the
-//     last applied timestamp using SELECT ... FOR UPDATE.
+//   - apply_revenuecat_event() uses pg_advisory_xact_lock(hashtext(uuid))
+//     to serialize concurrent invocations for the same user, including
+//     the brand-new subscriber case.
 //   - An older event arriving after a newer one is acknowledged but
 //     does NOT overwrite subscription state.
 //
-// REST reconciliation:
-//   RevenueCat recommends fetching current CustomerInfo after webhook
-//   receipt. This requires a RevenueCat Server API Key (secret) that
-//   is NOT currently configured. See report section 6.
+// REST reconciliation (preferred when configured):
+//   When REVENUECAT_SERVER_API_KEY is set, the webhook fetches current
+//   RevenueCat CustomerInfo and uses the "pro" entitlement as the
+//   authoritative current state. Event types serve as triggers and
+//   diagnostics, not as the sole basis for entitlement state.
+//   When the key is absent, falls back to event-type classification.
+//
 //   REVENUECAT_SERVER_API_KEY HUMAN CONFIGURATION REQUIRED
+//
+// TEST event handling:
+//   RevenueCat TEST webhooks are authenticated normally, acknowledged
+//   with success, and do NOT mutate any subscription. Used for
+//   dashboard connectivity verification.
 //
 // Secrets (Supabase function secrets):
 //   REVENUECAT_WEBHOOK_SECRET
-//   REVENUECAT_SERVER_API_KEY  (NOT YET CONFIGURED — see report)
+//   REVENUECAT_SERVER_API_KEY  (required for REST reconciliation)
 // ─────────────────────────────────────────────────────────────
 
 import { createClient } from 'npm:@supabase/supabase-js@2'
+import { resolveCanonicalUuid, type IdentityResolution } from './identityResolver.ts'
+import { fetchProEntitlement, type ProEntitlementState } from './revenueCatRest.ts'
 
 function json(status: number, body: Record<string, unknown>): Response {
   return new Response(JSON.stringify(body), {
@@ -41,27 +56,25 @@ function json(status: number, body: Record<string, unknown>): Response {
 }
 
 // ── Valid RevenueCat webhook event types for Google Play ──────
-// Reference: RevenueCat webhook documentation.
-// We handle only documented event types. No invented types.
+// Only documented types. No invented types.
 //
-// EXPIRATION         — access ends (includes pause-expiration via
-//                      expiration_reason = SUBSCRIPTION_PAUSED)
+// EXPIRATION         — access ends (includes pause-expiration)
 // INITIAL_PURCHASE   — first purchase, activates Pro
 // RENEWAL            — period renewal, extends access
 // CANCELLATION       — user cancelled, access continues until expiration
 // UNCANCELLATION     — user uncancelled, renewal re-enabled
 // BILLING_ISSUE      — payment problem, grace period until expiration
 // PRODUCT_CHANGE     — plan upgrade/downgrade
-// SUBSCRIPTION_PAUSED — scheduled pause, access continues through
-//                       current paid period; loss occurs on EXPIRATION
+// SUBSCRIPTION_PAUSED — scheduled pause, access through current paid period
 // SUBSCRIPTION_EXTENDED — period extended (e.g. promotional)
 // NON_RENEWING_PURCHASE — one-time purchase with entitlement
 // TRANSFER           — NOT a normal lifecycle event; uses
 //                      transferred_from[]/transferred_to[]
+// TEST               — RevenueCat connectivity test; no mutation
 
-// Events that end Pro access immediately.
+// Events that end Pro access immediately (event-type fallback only).
 const DEACTIVATING_TYPES = new Set(['EXPIRATION'])
-// Events that activate/extend access.
+// Events that activate/extend access (event-type fallback only).
 const ACTIVATING_TYPES = new Set([
   'INITIAL_PURCHASE',
   'RENEWAL',
@@ -70,13 +83,12 @@ const ACTIVATING_TYPES = new Set([
   'NON_RENEWING_PURCHASE',
   'SUBSCRIPTION_EXTENDED',
 ])
-// Events that keep access until expiration (grace/cancel-but-still-paid/paused).
-// SUBSCRIPTION_PAUSED: user retains Pro through the current paid period.
-//   Actual loss of entitlement occurs on EXPIRATION with
-//   expiration_reason = SUBSCRIPTION_PAUSED.
+// Events that keep access until expiration (grace/cancel/paused).
 const GRACE_TYPES = new Set(['CANCELLATION', 'BILLING_ISSUE', 'SUBSCRIPTION_PAUSED'])
 // TRANSFER: special handling — not a normal lifecycle event.
 const TRANSFER_TYPE = 'TRANSFER'
+// TEST: RevenueCat connectivity test — authenticate, acknowledge, no mutation.
+const TEST_TYPE = 'TEST'
 
 function planFromProductId(productId: string | null): string | null {
   if (!productId) return null
@@ -85,8 +97,7 @@ function planFromProductId(productId: string | null): string | null {
   return 'pro_monthly'
 }
 
-// Sanitize the event for diagnostic storage — strip any fields that
-// could contain secrets or PII. Keep only lifecycle-relevant metadata.
+// Sanitize the event for diagnostic storage — strip secrets/PII.
 function sanitizeEventForDetail(event: Record<string, unknown>): string {
   const safe: Record<string, unknown> = {
     type: event.type,
@@ -105,8 +116,73 @@ function sanitizeEventForDetail(event: Record<string, unknown>): string {
     original_transaction_id: event.original_transaction_id,
     transferred_from: event.transferred_from,
     transferred_to: event.transferred_to,
+    app_user_id: event.app_user_id,
+    original_app_user_id: event.original_app_user_id,
+    aliases: event.aliases,
   }
   return JSON.stringify(safe)
+}
+
+// Derive entitlement state from event type (fallback when REST
+// reconciliation is not available).
+function deriveStateFromEventType(
+  eventType: string,
+  expirationMs: number,
+  expirationDate: string | null,
+): { isActive: boolean; willRenew: boolean } {
+  const now = Date.now()
+  if (DEACTIVATING_TYPES.has(eventType)) {
+    return { isActive: false, willRenew: false }
+  }
+  if (GRACE_TYPES.has(eventType)) {
+    return {
+      isActive: !expirationDate || expirationMs > now,
+      willRenew: eventType !== 'CANCELLATION',
+    }
+  }
+  if (ACTIVATING_TYPES.has(eventType)) {
+    return { isActive: !expirationDate || expirationMs > now, willRenew: true }
+  }
+  // Unknown event type: default to expiration-based check.
+  // Do not deactivate — safer for the paying customer.
+  return { isActive: !expirationDate || expirationMs > now, willRenew: true }
+}
+
+// Derive subscription record fields from REST entitlement state.
+function deriveStateFromRest(
+  entitlement: ProEntitlementState,
+  event: Record<string, unknown>,
+): {
+  isActive: boolean
+  willRenew: boolean
+  store: string
+  plan: string | null
+  productId: string | null
+  expirationDate: string | null
+  purchaseDate: string | null
+} {
+  const eventProductId = (event.product_id as string) ?? null
+  const productId = entitlement.productId ?? eventProductId
+  const expirationDate = entitlement.expirationDate
+  const purchaseMs = Number(event.purchased_at_ms ?? 0)
+  const purchaseDate = purchaseMs > 0 ? new Date(purchaseMs).toISOString() : null
+  const store =
+    entitlement.store ??
+    (String(event.store ?? '').toUpperCase() === 'PLAY_STORE'
+      ? 'play_store'
+      : String(event.store ?? '').toUpperCase() === 'PROMOTIONAL'
+        ? 'promotional'
+        : 'app_store')
+
+  return {
+    isActive: entitlement.isActive,
+    willRenew: entitlement.willRenew,
+    store,
+    plan: planFromProductId(productId),
+    productId,
+    expirationDate,
+    purchaseDate,
+  }
 }
 
 Deno.serve(async (req) => {
@@ -131,7 +207,6 @@ Deno.serve(async (req) => {
   const event = (body.event ?? {}) as Record<string, unknown>
   const eventId = String(event.id ?? '')
   const eventType = String(event.type ?? '')
-  const appUserId = String(event.app_user_id ?? '')
   const environment =
     String(event.environment ?? 'PRODUCTION').toLowerCase() === 'sandbox' ? 'sandbox' : 'production'
   const eventTimestampMs = Number(event.event_timestamp_ms ?? 0)
@@ -142,16 +217,22 @@ Deno.serve(async (req) => {
   const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
   const admin = createClient(supabaseUrl, serviceKey)
 
+  // ── TEST event: authenticate, acknowledge, no mutation ─────
+  // RevenueCat sends TEST events to verify webhook connectivity.
+  // We authenticate normally and return success without touching
+  // any subscription state.
+  if (eventType === TEST_TYPE) {
+    // Log for diagnostics but do NOT insert into webhook_events
+    // (TEST events have no real event ID and should be stateless).
+    console.log('[revenuecat-webhook] TEST event received — acknowledged, no mutation')
+    return json(200, { ok: true, test: true })
+  }
+
   // ── Idempotency + retry safety ─────────────────────────────
-  // Try to insert the event as 'pending'. If the event ID already
-  // exists, check its status:
-  //   - 'processed'/'skipped' → already done, acknowledge duplicate
-  //   - 'pending'/'failed' → previous attempt crashed or failed;
-  //     RESUME processing (do not strand a paying customer as Free)
   const { error: insertError } = await admin.from('revenuecat_webhook_events').insert({
     event_id: eventId,
     event_type: eventType,
-    app_user_id: appUserId,
+    app_user_id: String(event.app_user_id ?? ''),
     environment,
     event_timestamp_ms: eventTimestampMs > 0 ? eventTimestampMs : null,
     status: 'pending',
@@ -169,12 +250,9 @@ Deno.serve(async (req) => {
 
       const existingStatus = existingEvent?.status
       if (existingStatus === 'processed' || existingStatus === 'skipped') {
-        // Already fully handled. Acknowledge quietly.
         return json(200, { ok: true, duplicate: true })
       }
-      // Status is 'pending' or 'failed' — previous attempt did not
-      // complete. Fall through to resume processing.
-      // Update detail with the latest event payload for diagnostics.
+      // Status is 'pending' or 'failed' — resume processing.
       await admin
         .from('revenuecat_webhook_events')
         .update({ detail: sanitizeEventForDetail(event), status: 'pending' })
@@ -185,33 +263,10 @@ Deno.serve(async (req) => {
     }
   }
 
-  // ── Map to the internal user ───────────────────────────────
-  // The App User ID is the Supabase auth user UUID.
-  const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-  if (!uuidPattern.test(appUserId)) {
-    // Anonymous RevenueCat IDs ($RCAnonymousID:...) cannot be mapped.
-    await admin
-      .from('revenuecat_webhook_events')
-      .update({ status: 'skipped', processed_at: new Date().toISOString() })
-      .eq('event_id', eventId)
-    return json(200, { ok: true, skipped: 'unmappable_app_user_id' })
-  }
-
   // ── TRANSFER handling ──────────────────────────────────────
-  // TRANSFER is NOT a normal subscription lifecycle event. It uses
-  // transferred_from[] and transferred_to[] arrays, not the standard
-  // app_user_id/product_id/expiration_at_ms fields.
-  //
-  // RawLifeFlow's intended Restore Behavior is "Keep with original
-  // App User ID" (human verification required). Under that policy,
-  // transfers should not occur. If a TRANSFER event arrives:
-  //   - Log it safely for diagnostics
-  //   - Do NOT guess subscription state from the transfer payload
-  //   - Mark as skipped (transfer not supported under current policy)
-  //
-  // If transfer behavior is later enabled, this handler must be
-  // updated to reconcile BOTH source and destination users by
-  // fetching current RevenueCat CustomerInfo for each affected ID.
+  // TRANSFER is NOT a normal lifecycle event. Uses transferred_from[]/
+  // transferred_to[]. Under "Keep with original App User ID" policy,
+  // transfers should not occur. Skip and log for diagnostics.
   if (eventType === TRANSFER_TYPE) {
     const transferredFrom = event.transferred_from as string[] | undefined
     const transferredTo = event.transferred_to as string[] | undefined
@@ -229,82 +284,106 @@ Deno.serve(async (req) => {
     return json(200, { ok: true, skipped: 'transfer_not_supported' })
   }
 
-  // ── REST reconciliation (NOT YET IMPLEMENTED) ──────────────
-  // RevenueCat recommends fetching current CustomerInfo after webhook
-  // receipt to make RevenueCat's state authoritative. This requires
-  // a RevenueCat Server API Key (secret) that is NOT currently
-  // configured in Supabase secrets.
-  //
-  // REVENUECAT_SERVER_API_KEY HUMAN CONFIGURATION REQUIRED
-  //
-  // When configured, the preferred flow would be:
-  //   1. Authenticate webhook
-  //   2. Idempotency/event log
-  //   3. Determine affected UUID
-  //   4. GET /v1/subscribers/{app_user_id} with Server API Key
-  //   5. Inspect entitlement "pro" active status
-  //   6. Atomically update subscriptions via apply_revenuecat_event()
-  //   7. resolve_quota()
-  //
-  // Until then, we derive entitlement state from the event payload
-  // using the documented event-type classification below.
+  // ── Identity resolution ────────────────────────────────────
+  // Collect candidate UUIDs from app_user_id, original_app_user_id,
+  // and aliases[]. Resolve to a single canonical Supabase UUID.
+  const resolution: IdentityResolution = resolveCanonicalUuid(event)
 
-  const productId = (event.product_id as string) ?? null
-  const expirationMs = Number(event.expiration_at_ms ?? 0)
-  const purchaseMs = Number(event.purchased_at_ms ?? 0)
-  const expirationDate = expirationMs > 0 ? new Date(expirationMs).toISOString() : null
-  const purchaseDate = purchaseMs > 0 ? new Date(purchaseMs).toISOString() : null
-  const store =
-    String(event.store ?? '').toUpperCase() === 'PLAY_STORE'
-      ? 'play_store'
-      : String(event.store ?? '').toUpperCase() === 'PROMOTIONAL'
-        ? 'promotional'
-        : 'app_store'
+  if (resolution.status === 'unmappable') {
+    await admin
+      .from('revenuecat_webhook_events')
+      .update({ status: 'skipped', processed_at: new Date().toISOString() })
+      .eq('event_id', eventId)
+    return json(200, { ok: true, skipped: resolution.reason })
+  }
 
-  // ── Determine active status by event type ──────────────────
-  // Only documented RevenueCat event types are handled.
-  const now = Date.now()
+  if (resolution.status === 'conflict') {
+    // More than one distinct valid UUID — do NOT silently choose.
+    // Log sanitized diagnostic state and skip normal mutation.
+    console.error(
+      '[revenuecat-webhook] Identity conflict — multiple UUIDs in event:',
+      JSON.stringify(resolution.uuids),
+    )
+    await admin
+      .from('revenuecat_webhook_events')
+      .update({ status: 'skipped', processed_at: new Date().toISOString() })
+      .eq('event_id', eventId)
+    return json(200, { ok: true, skipped: 'identity_conflict', uuids: resolution.uuids })
+  }
+
+  const canonicalUuid = resolution.uuid
+
+  // ── REST reconciliation (preferred when configured) ────────
+  // When REVENUECAT_SERVER_API_KEY is available, fetch current
+  // CustomerInfo and use the "pro" entitlement as authoritative.
+  // Event types serve as triggers/diagnostics, not guesswork.
+  const serverApiKey = Deno.env.get('REVENUECAT_SERVER_API_KEY')
+  const restConfigured = Boolean(serverApiKey)
+
   let isActive: boolean
   let willRenew: boolean
+  let store: string
+  let plan: string | null
+  let productId: string | null
+  let expirationDate: string | null
+  let purchaseDate: string | null
 
-  if (DEACTIVATING_TYPES.has(eventType)) {
-    // EXPIRATION → access ends now.
-    // (Includes pause-expiration: RevenueCat sends EXPIRATION with
-    // expiration_reason = SUBSCRIPTION_PAUSED when the pause period
-    // ends and the subscription is not resumed.)
-    isActive = false
-    willRenew = false
-  } else if (GRACE_TYPES.has(eventType)) {
-    // CANCELLATION → still paid until expiration, no renewal.
-    // BILLING_ISSUE → grace period, keep access until expiration.
-    // SUBSCRIPTION_PAUSED → user retains Pro through current paid
-    //   period. Actual loss occurs on EXPIRATION with
-    //   expiration_reason = SUBSCRIPTION_PAUSED.
-    isActive = !expirationDate || expirationMs > now
-    willRenew = eventType !== 'CANCELLATION'
-  } else if (ACTIVATING_TYPES.has(eventType)) {
-    // INITIAL_PURCHASE, RENEWAL, UNCANCELLATION, PRODUCT_CHANGE,
-    // NON_RENEWING_PURCHASE, SUBSCRIPTION_EXTENDED.
-    isActive = !expirationDate || expirationMs > now
-    willRenew = true
+  if (restConfigured) {
+    const restResult = await fetchProEntitlement(canonicalUuid, serverApiKey!)
+
+    if (!restResult.ok) {
+      // REST failure — do NOT incorrectly deactivate an existing
+      // paying subscriber from an ambiguous event. Leave event
+      // pending/failed so RevenueCat retry can recover.
+      console.error('[revenuecat-webhook] REST reconciliation failed:', restResult.error)
+      await admin
+        .from('revenuecat_webhook_events')
+        .update({ status: 'failed', processed_at: new Date().toISOString() })
+        .eq('event_id', eventId)
+      // Return 500 so RevenueCat retries.
+      return json(500, { message: 'REST reconciliation failed' })
+    }
+
+    const ent = restResult.entitlement!
+    const derived = deriveStateFromRest(ent, event)
+    isActive = derived.isActive
+    willRenew = derived.willRenew
+    store = derived.store
+    plan = derived.plan
+    productId = derived.productId
+    expirationDate = derived.expirationDate
+    purchaseDate = derived.purchaseDate
   } else {
-    // Unknown event type: default to expiration-based check.
-    // Do not deactivate — safer for the paying customer.
-    isActive = !expirationDate || expirationMs > now
-    willRenew = true
+    // Fallback: derive state from event type classification.
+    // This is less authoritative but safe for documented event types.
+    const expirationMs = Number(event.expiration_at_ms ?? 0)
+    expirationDate = expirationMs > 0 ? new Date(expirationMs).toISOString() : null
+    const purchaseMs = Number(event.purchased_at_ms ?? 0)
+    purchaseDate = purchaseMs > 0 ? new Date(purchaseMs).toISOString() : null
+    productId = (event.product_id as string) ?? null
+    store =
+      String(event.store ?? '').toUpperCase() === 'PLAY_STORE'
+        ? 'play_store'
+        : String(event.store ?? '').toUpperCase() === 'PROMOTIONAL'
+          ? 'promotional'
+          : 'app_store'
+
+    const derived = deriveStateFromEventType(eventType, expirationMs, expirationDate)
+    isActive = derived.isActive
+    willRenew = derived.willRenew
+    plan = planFromProductId(productId)
   }
 
   // ── Atomic subscription update ─────────────────────────────
-  // apply_revenuecat_event() uses SELECT ... FOR UPDATE to prevent
-  // race conditions. It only applies the update if the incoming
-  // event timestamp is >= the last applied timestamp.
+  // apply_revenuecat_event() uses pg_advisory_xact_lock(hashtext(uuid))
+  // to serialize concurrent invocations, including first-event case.
   const { data: applyResult, error: applyError } = await admin.rpc('apply_revenuecat_event', {
-    p_user_id: appUserId,
+    p_user_id: canonicalUuid,
     p_event_id: eventId,
     p_event_timestamp_ms: eventTimestampMs > 0 ? eventTimestampMs : null,
     p_is_active: isActive,
     p_store: store,
-    p_plan: planFromProductId(productId),
+    p_plan: plan,
     p_product_id: productId,
     p_original_transaction_id: (event.original_transaction_id as string) ?? null,
     p_purchase_date: purchaseDate,
@@ -325,7 +404,6 @@ Deno.serve(async (req) => {
 
   const applied = (applyResult as Record<string, unknown>)?.applied === true
   if (!applied) {
-    // Stale event — older than the last applied event. Skip.
     await admin
       .from('revenuecat_webhook_events')
       .update({ status: 'skipped', processed_at: new Date().toISOString() })
@@ -333,9 +411,8 @@ Deno.serve(async (req) => {
     return json(200, { ok: true, skipped: 'stale_event' })
   }
 
-  // Sync the quota plan (resolve_quota refreshes limits; never
-  // grants duplicate allowances on retries).
-  const { error: quotaError } = await admin.rpc('resolve_quota', { p_user_id: appUserId })
+  // Sync the quota plan.
+  const { error: quotaError } = await admin.rpc('resolve_quota', { p_user_id: canonicalUuid })
   if (quotaError) console.error('[revenuecat-webhook] quota sync failed:', quotaError.message)
 
   await admin

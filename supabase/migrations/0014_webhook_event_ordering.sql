@@ -14,7 +14,10 @@
 -- New RPC: apply_revenuecat_event()
 --   Atomically applies a subscription state update only if the
 --   incoming event timestamp is >= the last applied timestamp.
---   Prevents race conditions between concurrent webhook invocations.
+--   Uses pg_advisory_xact_lock(hashtext(user_uuid)) to protect
+--   the brand-new subscriber case (no existing row to FOR UPDATE).
+--   Prevents race conditions between concurrent webhook invocations
+--   for both existing and first-time subscribers.
 -- ─────────────────────────────────────────────────────────────
 
 -- ── Add event_timestamp_ms to webhook events ──────────────────
@@ -42,8 +45,20 @@ alter table public.subscriptions
 
 -- ── Atomic subscription update RPC ────────────────────────────
 -- Applies a subscription state update only if the incoming event
--- timestamp is >= the last applied timestamp. Uses SELECT ... FOR UPDATE
--- to prevent race conditions between concurrent webhook invocations.
+-- timestamp is >= the last applied timestamp.
+--
+-- Concurrency safety:
+--   Uses pg_advisory_xact_lock(hashtext(p_user_id::text)) to
+--   deterministically lock by user UUID for the entire transaction.
+--   This protects BOTH:
+--     - Existing rows (SELECT ... FOR UPDATE after advisory lock)
+--     - Brand-new rows (no existing row to FOR UPDATE, but the
+--       advisory lock serializes concurrent first-event inserts)
+--
+--   Two concurrent first events for the same UUID will serialize:
+--     Event A acquires advisory lock → checks (no row) → inserts
+--     Event B waits → acquires lock → checks (row from A) →
+--     compares timestamps → applies only if newer
 --
 -- Returns:
 --   { applied: true }  — subscription state was updated
@@ -68,8 +83,15 @@ declare
   v_existing public.subscriptions;
   v_last_ts bigint;
 begin
-  -- Lock the subscription row for the duration of this transaction.
-  -- If no row exists, there's no stale-event risk — insert below.
+  -- ── Deterministic advisory lock by user UUID ────────────
+  -- Serializes concurrent webhook invocations for the same user,
+  -- including the brand-new subscriber case (no existing row).
+  -- The lock is automatically released at transaction end.
+  perform pg_advisory_xact_lock(hashtext(p_user_id::text));
+
+  -- ── Lock the existing subscription row (if any) ─────────
+  -- Now safe under the advisory lock — no concurrent first-event
+  -- insert can race with this SELECT.
   select * into v_existing
     from public.subscriptions
    where user_id = p_user_id

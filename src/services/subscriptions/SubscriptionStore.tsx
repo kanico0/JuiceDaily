@@ -32,7 +32,7 @@ import {
   restorePurchases as rcRestore,
 } from './revenueCatClient'
 import { ensureUser } from '../supabase/identity'
-import { addIdentityChangeListener } from '../supabase/accountLink'
+import { addIdentityChangeListener, isDurableUser } from '../supabase/accountLink'
 import { subscriptionAnalytics } from './subscriptionAnalytics'
 import {
   createInitialSubscriptionState,
@@ -48,7 +48,10 @@ interface SubscriptionContextValue {
   offering: OfferingSnapshot | null
   purchasing: boolean
   isPro: boolean
-  purchase: (plan: Extract<PlanId, 'pro_monthly' | 'pro_annual'>, source?: string) => Promise<PurchaseOutcome>
+  purchase: (
+    plan: Extract<PlanId, 'pro_monthly' | 'pro_annual'>,
+    source?: string,
+  ) => Promise<PurchaseOutcome>
   restore: () => Promise<RestoreOutcome>
   refresh: () => Promise<void>
   openManagement: () => Promise<void>
@@ -56,15 +59,17 @@ interface SubscriptionContextValue {
 
 const SubscriptionContext = createContext<SubscriptionContextValue | null>(null)
 
-export function SubscriptionProvider ({ children }: { children: React.ReactNode }) {
+export function SubscriptionProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<SubscriptionState>(createInitialSubscriptionState())
   const [offering, setOffering] = useState<OfferingSnapshot | null>(null)
   const [purchasing, setPurchasing] = useState(false)
   const purchasingRef = useRef(false)
-  const packagesRef = useRef<{ monthly: PurchasesPackage | null; annual: PurchasesPackage | null }>({
-    monthly: null,
-    annual: null,
-  })
+  const packagesRef = useRef<{ monthly: PurchasesPackage | null; annual: PurchasesPackage | null }>(
+    {
+      monthly: null,
+      annual: null,
+    },
+  )
   const wasProRef = useRef(false)
 
   const applyCustomerInfo = useCallback((infoDerived: Partial<SubscriptionState>) => {
@@ -102,7 +107,7 @@ export function SubscriptionProvider ({ children }: { children: React.ReactNode 
     let removeListener: (() => void) | null = null
     let cancelled = false
 
-    async function boot () {
+    async function boot() {
       if (!MONETIZATION_ENABLED) {
         setState((prev) => ({ ...prev, initialized: true }))
         return
@@ -111,7 +116,12 @@ export function SubscriptionProvider ({ children }: { children: React.ReactNode 
 
       const identity = await ensureUser()
       if (!identity || cancelled) {
-        setState((prev) => ({ ...prev, initialized: true, loading: false, error: 'identity_unavailable' }))
+        setState((prev) => ({
+          ...prev,
+          initialized: true,
+          loading: false,
+          error: 'identity_unavailable',
+        }))
         return
       }
 
@@ -153,39 +163,52 @@ export function SubscriptionProvider ({ children }: { children: React.ReactNode 
 
   // ── Actions ────────────────────────────────────────────────
 
-  const purchase = useCallback(async (
-    plan: Extract<PlanId, 'pro_monthly' | 'pro_annual'>,
-    source?: string,
-  ): Promise<PurchaseOutcome> => {
-    if (!MONETIZATION_ENABLED) return { status: 'unavailable' }
-    // Double-tap protection.
-    if (purchasingRef.current) return { status: 'pending' }
+  const purchase = useCallback(
+    async (
+      plan: Extract<PlanId, 'pro_monthly' | 'pro_annual'>,
+      source?: string,
+    ): Promise<PurchaseOutcome> => {
+      if (!MONETIZATION_ENABLED) return { status: 'unavailable' }
+      // Double-tap protection.
+      if (purchasingRef.current) return { status: 'pending' }
 
-    const pkg = plan === 'pro_annual' ? packagesRef.current.annual : packagesRef.current.monthly
-    if (!pkg) return { status: 'unavailable' }
+      // ── Durable-account gate ──────────────────────────────
+      // A guest (anonymous Supabase user) may view the paywall but
+      // must create/link a recoverable account before starting an
+      // actual purchase. The upgrade preserves the same UUID, so
+      // RevenueCat remains the same custom App User ID and no quota
+      // reset occurs. The caller (PaywallScreen) shows the account
+      // gate modal and resumes the purchase after upgrade.
+      const durable = await isDurableUser()
+      if (!durable) return { status: 'account_required' }
 
-    const packageType = plan === 'pro_annual' ? 'annual' : 'monthly'
-    purchasingRef.current = true
-    setPurchasing(true)
-    subscriptionAnalytics.purchaseStarted(packageType, source)
+      const pkg = plan === 'pro_annual' ? packagesRef.current.annual : packagesRef.current.monthly
+      if (!pkg) return { status: 'unavailable' }
 
-    try {
-      const outcome = await rcPurchasePackage(pkg)
-      if (outcome.status === 'success') {
-        subscriptionAnalytics.purchaseSucceeded(packageType, source)
-        const info = await getCustomerInfo()
-        if (info) applyCustomerInfo(deriveState(info))
-      } else if (outcome.status === 'cancelled') {
-        subscriptionAnalytics.purchaseCancelled(packageType, source)
-      } else if (outcome.status === 'error') {
-        subscriptionAnalytics.purchaseFailed(packageType, outcome.message)
+      const packageType = plan === 'pro_annual' ? 'annual' : 'monthly'
+      purchasingRef.current = true
+      setPurchasing(true)
+      subscriptionAnalytics.purchaseStarted(packageType, source)
+
+      try {
+        const outcome = await rcPurchasePackage(pkg)
+        if (outcome.status === 'success') {
+          subscriptionAnalytics.purchaseSucceeded(packageType, source)
+          const info = await getCustomerInfo()
+          if (info) applyCustomerInfo(deriveState(info))
+        } else if (outcome.status === 'cancelled') {
+          subscriptionAnalytics.purchaseCancelled(packageType, source)
+        } else if (outcome.status === 'error') {
+          subscriptionAnalytics.purchaseFailed(packageType, outcome.message)
+        }
+        return outcome
+      } finally {
+        purchasingRef.current = false
+        setPurchasing(false)
       }
-      return outcome
-    } finally {
-      purchasingRef.current = false
-      setPurchasing(false)
-    }
-  }, [applyCustomerInfo])
+    },
+    [applyCustomerInfo],
+  )
 
   const restore = useCallback(async (): Promise<RestoreOutcome> => {
     if (!MONETIZATION_ENABLED) return { status: 'error', message: 'not_configured' }
@@ -219,27 +242,26 @@ export function SubscriptionProvider ({ children }: { children: React.ReactNode 
     }
   }, [state.managementUrl])
 
-  const value = useMemo<SubscriptionContextValue>(() => ({
-    state,
-    offering,
-    purchasing,
-    isPro: state.isProActive,
-    purchase,
-    restore,
-    refresh,
-    openManagement,
-  }), [state, offering, purchasing, purchase, restore, refresh, openManagement])
-
-  return (
-    <SubscriptionContext.Provider value={value}>
-      {children}
-    </SubscriptionContext.Provider>
+  const value = useMemo<SubscriptionContextValue>(
+    () => ({
+      state,
+      offering,
+      purchasing,
+      isPro: state.isProActive,
+      purchase,
+      restore,
+      refresh,
+      openManagement,
+    }),
+    [state, offering, purchasing, purchase, restore, refresh, openManagement],
   )
+
+  return <SubscriptionContext.Provider value={value}>{children}</SubscriptionContext.Provider>
 }
 
 // Rollback-safe hook: returns a stable Free state when the provider
 // is absent so existing screens never crash.
-export function useSubscription (): SubscriptionContextValue {
+export function useSubscription(): SubscriptionContextValue {
   const ctx = useContext(SubscriptionContext)
   if (!ctx) {
     return {

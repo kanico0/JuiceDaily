@@ -29,6 +29,7 @@ import {
 } from '../services/subscriptions/subscriptionConfig'
 import { formatSavingsBadge } from '../services/subscriptions/subscriptionSelectors'
 import { subscriptionAnalytics } from '../services/subscriptions/subscriptionAnalytics'
+import AccountGateModal from '../components/AccountGateModal'
 
 const FREE_FEATURES = [
   `${FREE_MONTHLY_SCAN_LIMIT} AI scans per quota month`,
@@ -56,6 +57,10 @@ export default function PaywallScreen({ navigation, route }) {
   const { refresh: refreshQuota } = useQuota()
   const [selectedPlan, setSelectedPlan] = useState('pro_annual')
   const [restoring, setRestoring] = useState(false)
+  const [accountGateVisible, setAccountGateVisible] = useState(false)
+  // The plan the user tried to purchase before the account gate.
+  // Resumed once after successful account upgrade.
+  const [pendingPurchasePlan, setPendingPurchasePlan] = useState(null)
 
   useEffect(() => {
     subscriptionAnalytics.paywallViewed(source)
@@ -99,6 +104,13 @@ export default function PaywallScreen({ navigation, route }) {
           'Try Restore Purchases to re-activate Pro on this device.',
         )
         break
+      case 'account_required':
+        // Guest must create/link a recoverable account before purchase.
+        // The upgrade preserves the same UUID — no quota reset.
+        // Resume the originally selected purchase after upgrade.
+        setPendingPurchasePlan(selectedPlan)
+        setAccountGateVisible(true)
+        break
       case 'unavailable':
         Alert.alert(
           'Store Unavailable',
@@ -111,6 +123,25 @@ export default function PaywallScreen({ navigation, route }) {
           'Something went wrong. You have not been charged. Please try again.',
         )
     }
+  }
+
+  // Resume the originally selected purchase once after account upgrade.
+  // The upgrade preserved the same UUID, so RevenueCat is still the
+  // same custom App User ID. Subject to normal cancellation/error handling.
+  const handleAccountAuthenticated = async () => {
+    const planToResume = pendingPurchasePlan
+    setPendingPurchasePlan(null)
+    if (!planToResume) return
+    // Resume the purchase exactly once.
+    const outcome = await purchase(planToResume, source)
+    if (outcome.status === 'success') {
+      await refreshQuota()
+      Alert.alert('Welcome to Pro!', 'Your Pro features are now active.', [
+        { text: 'Continue', onPress: () => navigation.goBack() },
+      ])
+    }
+    // Other outcomes (cancelled, error, unavailable) are handled
+    // silently here — the user can tap the plan again if needed.
   }
 
   const handleRestore = async () => {
@@ -284,6 +315,17 @@ export default function PaywallScreen({ navigation, route }) {
           ) : null}
         </View>
       </ScrollView>
+
+      {/* Account gate for guest purchase — UUID preserved on upgrade */}
+      <AccountGateModal
+        visible={accountGateVisible}
+        onClose={() => {
+          setAccountGateVisible(false)
+          setPendingPurchasePlan(null)
+        }}
+        onAuthenticated={handleAccountAuthenticated}
+        initialMode="protect"
+      />
     </View>
   )
 }

@@ -182,7 +182,8 @@ describe('SUBSCRIPTION_PAUSED behavior', () => {
   })
 
   it('27. expiration_reason = SUBSCRIPTION_PAUSED documented', () => {
-    expect(webhookSource).toMatch(/expiration_reason.*SUBSCRIPTION_PAUSED/i)
+    // The webhook comments document pause-expiration via EXPIRATION
+    expect(webhookSource).toMatch(/pause-expiration/i)
   })
 })
 
@@ -234,7 +235,7 @@ describe('Pending-event retry safety', () => {
     )
     expect(dupSection).toMatch(/pending.*failed.*resume/s)
     // Should NOT return early for pending/failed — should fall through
-    expect(dupSection).toMatch(/Fall through to resume/i)
+    expect(dupSection).toMatch(/resume processing/i)
   })
 
   it('34. crash recovery documented', () => {
@@ -253,9 +254,9 @@ describe('RevenueCat REST reconciliation', () => {
     expect(webhookSource).toMatch(/HUMAN CONFIGURATION REQUIRED/i)
   })
 
-  it('37. REST reconciliation NOT yet implemented (no server key)', () => {
-    // Should be documented as NOT YET IMPLEMENTED
-    expect(webhookSource).toMatch(/NOT YET IMPLEMENTED/i)
+  it('37. REST reconciliation falls back when key not configured', () => {
+    // When key is absent, falls back to event-type classification
+    expect(webhookSource).toMatch(/Fallback.*event type/i)
   })
 })
 
@@ -275,9 +276,10 @@ describe('Webhook idempotency and sanitization', () => {
     expect(insertPos).toBeLessThan(rpcPos)
   })
 
-  it('40. unmappable app_user_id is skipped gracefully', () => {
-    expect(webhookSource).toMatch(/unmappable_app_user_id/)
-    expect(webhookSource).toMatch(/uuidPattern/)
+  it('40. unmappable identity is skipped gracefully', () => {
+    // Now uses identity resolver — unmappable status from resolution
+    expect(webhookSource).toMatch(/unmappable/)
+    expect(webhookSource).toMatch(/resolution\.reason/)
   })
 
   it('41. sanitizeEventForDetail strips secrets', () => {
@@ -293,5 +295,111 @@ describe('Webhook idempotency and sanitization', () => {
 
   it('43. quota sync after subscription update', () => {
     expect(webhookSource).toMatch(/resolve_quota/)
+  })
+})
+
+describe('TEST event handling', () => {
+  it('44. TEST event type is handled explicitly', () => {
+    expect(webhookSource).toMatch(/TEST_TYPE/)
+    expect(webhookSource).toMatch(/'TEST'/)
+  })
+
+  it('45. TEST event returns success without mutation', () => {
+    const testSection = webhookSource.slice(webhookSource.indexOf('TEST event:'))
+    expect(testSection).toMatch(/no mutation/i)
+    expect(testSection).toMatch(/test: true/)
+  })
+
+  it('46. TEST event does NOT insert into webhook_events', () => {
+    const testSection = webhookSource.slice(
+      webhookSource.indexOf('TEST event:'),
+      webhookSource.indexOf('Idempotency'),
+    )
+    expect(testSection).not.toMatch(/insert/)
+  })
+})
+
+describe('Identity resolution in webhook', () => {
+  it('47. webhook imports resolveCanonicalUuid', () => {
+    expect(webhookSource).toMatch(/resolveCanonicalUuid/)
+  })
+
+  it('48. webhook imports from identityResolver.ts', () => {
+    expect(webhookSource).toMatch(/identityResolver\.ts/)
+  })
+
+  it('49. webhook handles unmappable identity', () => {
+    expect(webhookSource).toMatch(/resolution\.status === 'unmappable'/)
+  })
+
+  it('50. webhook handles identity conflict', () => {
+    expect(webhookSource).toMatch(/resolution\.status === 'conflict'/)
+  })
+
+  it('51. webhook uses canonicalUuid for subscription update', () => {
+    expect(webhookSource).toMatch(/canonicalUuid/)
+  })
+
+  it('52. webhook does NOT use appUserId directly for subscription update', () => {
+    // The RPC call should use canonicalUuid, not appUserId
+    const rpcSection = webhookSource.slice(webhookSource.indexOf('apply_revenuecat_event'))
+    expect(rpcSection).toMatch(/p_user_id: canonicalUuid/)
+    expect(rpcSection).not.toMatch(/p_user_id: appUserId/)
+  })
+})
+
+describe('REST reconciliation in webhook', () => {
+  it('53. webhook imports fetchProEntitlement', () => {
+    expect(webhookSource).toMatch(/fetchProEntitlement/)
+  })
+
+  it('54. webhook imports from revenueCatRest.ts', () => {
+    expect(webhookSource).toMatch(/revenueCatRest\.ts/)
+  })
+
+  it('55. webhook checks REVENUECAT_SERVER_API_KEY', () => {
+    expect(webhookSource).toMatch(/serverApiKey/)
+    expect(webhookSource).toMatch(/restConfigured/)
+  })
+
+  it('56. webhook uses REST when configured', () => {
+    expect(webhookSource).toMatch(/if \(restConfigured\)/)
+  })
+
+  it('57. webhook falls back to event-type when REST not configured', () => {
+    expect(webhookSource).toMatch(/Fallback.*event type/i)
+  })
+
+  it('58. webhook leaves event failed on REST failure', () => {
+    expect(webhookSource).toMatch(/REST reconciliation failed/)
+  })
+
+  it('59. webhook returns 500 on REST failure (for RC retry)', () => {
+    const restFailSection = webhookSource.slice(
+      webhookSource.indexOf('REST reconciliation failed'),
+    )
+    expect(restFailSection).toMatch(/500/)
+  })
+})
+
+describe('Atomic ordering with advisory lock', () => {
+  it('60. migration uses pg_advisory_xact_lock', () => {
+    expect(migration0014Source).toMatch(/pg_advisory_xact_lock/)
+  })
+
+  it('61. advisory lock keyed by hashtext of user UUID', () => {
+    expect(migration0014Source).toMatch(/hashtext\(p_user_id::text\)/)
+  })
+
+  it('62. advisory lock acquired before SELECT FOR UPDATE', () => {
+    const lockPos = migration0014Source.indexOf('pg_advisory_xact_lock')
+    const selectPos = migration0014Source.indexOf('for update')
+    expect(lockPos).toBeGreaterThan(-1)
+    expect(selectPos).toBeGreaterThan(-1)
+    expect(lockPos).toBeLessThan(selectPos)
+  })
+
+  it('63. first-event concurrency documented', () => {
+    expect(migration0014Source).toMatch(/brand-new subscriber/i)
   })
 })

@@ -254,9 +254,15 @@ describe('RevenueCat REST reconciliation', () => {
     expect(webhookSource).toMatch(/HUMAN CONFIGURATION REQUIRED/i)
   })
 
-  it('37. REST reconciliation falls back when key not configured', () => {
-    // When key is absent, falls back to event-type classification
-    expect(webhookSource).toMatch(/Fallback.*event type/i)
+  it('37. REST key missing blocks production mutation (no silent fallback)', () => {
+    // When key is absent, the webhook must NOT mutate subscriptions.
+    // It marks the event failed and returns 500 for RC retry.
+    expect(webhookSource).toMatch(/REVENUECAT_SERVER_API_KEY not configured/)
+    expect(webhookSource).toMatch(/refusing to mutate subscriptions/i)
+  })
+
+  it('37a. event-type fallback only with explicit opt-in flag', () => {
+    expect(webhookSource).toMatch(/REVENUECAT_ALLOW_EVENT_TYPE_FALLBACK/)
   })
 })
 
@@ -317,6 +323,42 @@ describe('TEST event handling', () => {
     )
     expect(testSection).not.toMatch(/insert/)
   })
+
+  it('46a. TEST event does NOT require a real event ID', () => {
+    // TEST events are handled BEFORE the eventId/eventType validation,
+    // so a TEST event with no event ID is still accepted.
+    const testPos = webhookSource.indexOf("eventType === TEST_TYPE")
+    const validationPos = webhookSource.indexOf("Missing event id/type")
+    expect(testPos).toBeGreaterThan(-1)
+    expect(validationPos).toBeGreaterThan(-1)
+    expect(testPos).toBeLessThan(validationPos)
+  })
+
+  it('46b. TEST event does NOT call apply_revenuecat_event', () => {
+    const testSection = webhookSource.slice(
+      webhookSource.indexOf('TEST event:'),
+      webhookSource.indexOf('Idempotency'),
+    )
+    expect(testSection).not.toMatch(/apply_revenuecat_event/)
+  })
+
+  it('46c. TEST event does NOT call resolve_quota', () => {
+    const testSection = webhookSource.slice(
+      webhookSource.indexOf('TEST event:'),
+      webhookSource.indexOf('Idempotency'),
+    )
+    expect(testSection).not.toMatch(/resolve_quota/)
+  })
+
+  it('46d. invalid auth TEST event is rejected normally', () => {
+    // Auth check happens BEFORE TEST handling, so an unauthenticated
+    // TEST event gets 401, not 200.
+    const authPos = webhookSource.indexOf("Bearer ${secret}")
+    const testPos = webhookSource.indexOf("eventType === TEST_TYPE")
+    expect(authPos).toBeGreaterThan(-1)
+    expect(testPos).toBeGreaterThan(-1)
+    expect(authPos).toBeLessThan(testPos)
+  })
 })
 
 describe('Identity resolution in webhook', () => {
@@ -366,8 +408,9 @@ describe('REST reconciliation in webhook', () => {
     expect(webhookSource).toMatch(/if \(restConfigured\)/)
   })
 
-  it('57. webhook falls back to event-type when REST not configured', () => {
-    expect(webhookSource).toMatch(/Fallback.*event type/i)
+  it('57. webhook blocks mutation when REST key missing', () => {
+    expect(webhookSource).toMatch(/refusing to mutate subscriptions/i)
+    expect(webhookSource).toMatch(/REVENUECAT_SERVER_API_KEY not configured/)
   })
 
   it('58. webhook leaves event failed on REST failure', () => {

@@ -15,6 +15,20 @@
 //     supabase secrets set REVENUECAT_SERVER_API_KEY=sk_xxxxx
 //   The key is a RevenueCat "Secret API Key" from:
 //     RevenueCat Dashboard → Project Settings → API Keys → Secret API Key
+//
+// HTTP status handling:
+//   200/201 — parse CustomerInfo normally
+//   401/403 — configuration/authentication failure
+//   404     — unexpected REST/configuration failure (NOT proof of Free)
+//   429     — retryable
+//   5xx     — retryable
+//   network/timeout — retryable
+//   malformed — failure
+//
+//   On ANY reconciliation failure, returns { ok: false } so the
+//   caller leaves the event pending/failed for RevenueCat retry.
+//   Only valid CustomerInfo with no active "pro" entitlement may
+//   set the account Free.
 // ─────────────────────────────────────────────────────────────
 
 export interface ProEntitlementState {
@@ -32,8 +46,11 @@ export interface RestReconciliationResult {
 }
 
 // Fetch current RevenueCat CustomerInfo and derive Pro entitlement.
-// Returns { ok: false, error } on failure — caller must handle
+// Returns { ok: false, error } on ANY failure — caller must handle
 // by leaving event pending/failed for retry.
+//
+// Only { ok: true } results may mutate subscription state.
+// A 404 is NOT proof of Free — it's an unexpected failure.
 export async function fetchProEntitlement(
   appUserId: string,
   serverApiKey: string,
@@ -53,28 +70,35 @@ export async function fetchProEntitlement(
       },
     })
 
-    if (!resp.ok) {
-      // 401/403: auth error — do not deactivate existing subscriber
-      // 404: subscriber not found — treat as no entitlement
-      // 5xx: temporary failure — leave pending for retry
-      if (resp.status === 404) {
-        return {
-          ok: true,
-          entitlement: {
-            isActive: false,
-            expirationDate: null,
-            productId: null,
-            willRenew: false,
-            store: null,
-          },
-        }
-      }
-      return { ok: false, error: `RevenueCat API returned ${resp.status}` }
+    // 200/201 — parse CustomerInfo normally
+    if (resp.status === 200 || resp.status === 201) {
+      const data = await resp.json()
+      return parseProEntitlement(data)
     }
 
-    const data = await resp.json()
-    return parseProEntitlement(data)
+    // 401/403 — configuration/authentication failure
+    if (resp.status === 401 || resp.status === 403) {
+      return { ok: false, error: `RevenueCat auth failed: ${resp.status}` }
+    }
+
+    // 404 — unexpected REST/configuration failure.
+    // RevenueCat API v1 GET /v1/subscribers/{app_user_id} is documented
+    // as "Get or Create Customer" and normally succeeds with 200 or 201.
+    // A 404 indicates a configuration or API issue, NOT that the user
+    // is Free. Do NOT revoke Pro from a 404.
+    if (resp.status === 404) {
+      return { ok: false, error: 'RevenueCat API returned 404 — unexpected configuration failure' }
+    }
+
+    // 429 — retryable
+    if (resp.status === 429) {
+      return { ok: false, error: 'RevenueCat API rate limited (429)' }
+    }
+
+    // 5xx and other — retryable
+    return { ok: false, error: `RevenueCat API returned ${resp.status}` }
   } catch (e) {
+    // network/timeout — retryable
     return { ok: false, error: (e as Error)?.message ?? 'fetch failed' }
   }
 }
@@ -90,22 +114,15 @@ function parseProEntitlement(data: Record<string, unknown>): RestReconciliationR
 
     const entitlements = subscriber.entitlements as Record<string, unknown> | undefined
     if (!entitlements) {
-      // No entitlements at all — Free
-      return {
-        ok: true,
-        entitlement: {
-          isActive: false,
-          expirationDate: null,
-          productId: null,
-          willRenew: false,
-          store: null,
-        },
-      }
+      // No entitlements object at all — malformed, treat as failure.
+      // Do NOT assume Free from a missing entitlements object.
+      return { ok: false, error: 'malformed_response: no entitlements object' }
     }
 
     const proEntitlement = entitlements.pro as Record<string, unknown> | undefined
     if (!proEntitlement) {
-      // No "pro" entitlement — Free
+      // Valid CustomerInfo with no "pro" entitlement — legitimately Free.
+      // This is the ONLY path that may set the account Free.
       return {
         ok: true,
         entitlement: {
@@ -122,7 +139,7 @@ function parseProEntitlement(data: Record<string, unknown>): RestReconciliationR
     const productId = (proEntitlement.product_identifier as string) ?? null
     const isActive = proEntitlement.expires_date === null || new Date(expirationDate!) > new Date()
 
-    // Determine store from non_subscriptions or subscriptions
+    // Determine store from subscriptions
     const subscriptions = subscriber.subscriptions as Record<string, unknown> | undefined
     let store: 'play_store' | 'app_store' | 'promotional' | null = null
     let willRenew = false

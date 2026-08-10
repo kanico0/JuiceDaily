@@ -25,12 +25,18 @@
 //   - An older event arriving after a newer one is acknowledged but
 //     does NOT overwrite subscription state.
 //
-// REST reconciliation (preferred when configured):
+// REST reconciliation (required for production mutation):
+//   RevenueCat current CustomerInfo is the production authority.
 //   When REVENUECAT_SERVER_API_KEY is set, the webhook fetches current
-//   RevenueCat CustomerInfo and uses the "pro" entitlement as the
-//   authoritative current state. Event types serve as triggers and
-//   diagnostics, not as the sole basis for entitlement state.
-//   When the key is absent, falls back to event-type classification.
+//   CustomerInfo and uses the "pro" entitlement as the authoritative
+//   current state. Event types serve as triggers and diagnostics,
+//   not as the sole basis for entitlement state.
+//   When the key is absent AND the event requires subscription mutation,
+//   the webhook does NOT mutate subscriptions, marks the event as
+//   failed (configuration failure), and returns non-2xx so RevenueCat
+//   can retry after configuration is corrected.
+//   Event-type classification fallback is for local/unit-test fixtures
+//   only — never silently used in production.
 //
 //   REVENUECAT_SERVER_API_KEY HUMAN CONFIGURATION REQUIRED
 //
@@ -90,11 +96,42 @@ const TRANSFER_TYPE = 'TRANSFER'
 // TEST: RevenueCat connectivity test — authenticate, acknowledge, no mutation.
 const TEST_TYPE = 'TEST'
 
+// Determine plan from a RevenueCat/Google Play product identifier.
+//
+// Google Play base-plan format (RevenueCat may pass either form):
+//   juicing_daily_pro:monthly   → pro_monthly
+//   juicing_daily_pro:annual    → pro_annual
+//   juicing_daily_pro           → must inspect base-plan suffix; if
+//                                 absent, returns null (do not guess).
+//
+// Never returns a false Pro-plan label for an unknown base plan.
+// The active "pro" entitlement itself remains the source for whether
+// Pro access is active — this function only labels the plan tier.
 function planFromProductId(productId: string | null): string | null {
   if (!productId) return null
   const id = productId.toLowerCase()
-  if (id.includes('annual') || id.includes('year')) return 'pro_annual'
-  return 'pro_monthly'
+
+  // Google Play base-plan form: "<subscription_id>:<base_plan>"
+  if (id.includes(':')) {
+    const basePlan = id.split(':')[1] ?? ''
+    if (basePlan === 'monthly') return 'pro_monthly'
+    if (basePlan === 'annual' || basePlan === 'yearly') return 'pro_annual'
+    // Unknown base plan — do NOT guess. Return null for safe
+    // diagnostic handling; never false Pro-plan metadata.
+    return null
+  }
+
+  // Legacy / non-base-plan form: inspect keywords.
+  if (id.includes('annual') || id.includes('year') || id.includes('yearly')) {
+    return 'pro_annual'
+  }
+  if (id.includes('monthly') || id.includes('month')) {
+    return 'pro_monthly'
+  }
+
+  // Bare subscription id with no base-plan suffix and no keyword —
+  // do NOT guess. Return null.
+  return null
 }
 
 // Sanitize the event for diagnostic storage — strip secrets/PII.
@@ -211,22 +248,29 @@ Deno.serve(async (req) => {
     String(event.environment ?? 'PRODUCTION').toLowerCase() === 'sandbox' ? 'sandbox' : 'production'
   const eventTimestampMs = Number(event.event_timestamp_ms ?? 0)
 
+  // ── TEST event: authenticate, acknowledge, no mutation ─────
+  // RevenueCat sends TEST events to verify webhook connectivity.
+  // We authenticate normally, validate the envelope (event object
+  // with type === 'TEST'), and return success without touching any
+  // subscription state.
+  //
+  // TEST events:
+  //   - DO NOT require a real RawLifeFlow customer UUID
+  //   - DO NOT call apply_revenuecat_event()
+  //   - DO NOT change subscriptions
+  //   - DO NOT call resolve_quota()
+  //   - DO NOT require an event ID (TEST events may omit it)
+  //   - return HTTP 200 with a clear test acknowledgement
+  if (eventType === TEST_TYPE) {
+    console.log('[revenuecat-webhook] TEST event received — acknowledged, no mutation')
+    return json(200, { ok: true, test: true })
+  }
+
   if (!eventId || !eventType) return json(400, { message: 'Missing event id/type' })
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!
   const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
   const admin = createClient(supabaseUrl, serviceKey)
-
-  // ── TEST event: authenticate, acknowledge, no mutation ─────
-  // RevenueCat sends TEST events to verify webhook connectivity.
-  // We authenticate normally and return success without touching
-  // any subscription state.
-  if (eventType === TEST_TYPE) {
-    // Log for diagnostics but do NOT insert into webhook_events
-    // (TEST events have no real event ID and should be stateless).
-    console.log('[revenuecat-webhook] TEST event received — acknowledged, no mutation')
-    return json(200, { ok: true, test: true })
-  }
 
   // ── Idempotency + retry safety ─────────────────────────────
   const { error: insertError } = await admin.from('revenuecat_webhook_events').insert({
@@ -313,12 +357,24 @@ Deno.serve(async (req) => {
 
   const canonicalUuid = resolution.uuid
 
-  // ── REST reconciliation (preferred when configured) ────────
+  // ── REST reconciliation (required for production mutation) ──
+  // RevenueCat current CustomerInfo is the production authority.
   // When REVENUECAT_SERVER_API_KEY is available, fetch current
   // CustomerInfo and use the "pro" entitlement as authoritative.
   // Event types serve as triggers/diagnostics, not guesswork.
+  //
+  // When the key is absent AND the event requires subscription
+  // mutation, do NOT mutate subscriptions. Mark the event as
+  // failed (configuration failure) and return non-2xx so RevenueCat
+  // can retry after configuration is corrected.
+  //
+  // Event-type classification fallback is permitted ONLY when
+  // REVENUECAT_ALLOW_EVENT_TYPE_FALLBACK is explicitly set to '1'
+  // (local/unit-test fixtures, controlled development). Never
+  // silently used in production.
   const serverApiKey = Deno.env.get('REVENUECAT_SERVER_API_KEY')
   const restConfigured = Boolean(serverApiKey)
+  const allowEventTypeFallback = Deno.env.get('REVENUECAT_ALLOW_EVENT_TYPE_FALLBACK') === '1'
 
   let isActive: boolean
   let willRenew: boolean
@@ -353,9 +409,10 @@ Deno.serve(async (req) => {
     productId = derived.productId
     expirationDate = derived.expirationDate
     purchaseDate = derived.purchaseDate
-  } else {
-    // Fallback: derive state from event type classification.
-    // This is less authoritative but safe for documented event types.
+  } else if (allowEventTypeFallback) {
+    // Controlled development / unit-test fixtures only.
+    // Explicitly opted in via REVENUECAT_ALLOW_EVENT_TYPE_FALLBACK=1.
+    // Never silently used in production.
     const expirationMs = Number(event.expiration_at_ms ?? 0)
     expirationDate = expirationMs > 0 ? new Date(expirationMs).toISOString() : null
     const purchaseMs = Number(event.purchased_at_ms ?? 0)
@@ -372,6 +429,27 @@ Deno.serve(async (req) => {
     isActive = derived.isActive
     willRenew = derived.willRenew
     plan = planFromProductId(productId)
+  } else {
+    // REVENUECAT_SERVER_API_KEY is missing and event-type fallback
+    // is not explicitly enabled. This is a production configuration
+    // failure. Do NOT mutate subscriptions. Mark the event failed
+    // and return non-2xx so RevenueCat retries after the key is set.
+    console.error(
+      '[revenuecat-webhook] REVENUECAT_SERVER_API_KEY not configured — refusing to mutate subscriptions for lifecycle event.',
+      'event_id:',
+      eventId,
+      'type:',
+      eventType,
+    )
+    await admin
+      .from('revenuecat_webhook_events')
+      .update({
+        status: 'failed',
+        processed_at: new Date().toISOString(),
+        detail: sanitizeEventForDetail(event),
+      })
+      .eq('event_id', eventId)
+    return json(500, { message: 'REVENUECAT_SERVER_API_KEY not configured' })
   }
 
   // ── Atomic subscription update ─────────────────────────────

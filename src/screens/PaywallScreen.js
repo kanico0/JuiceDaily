@@ -40,6 +40,7 @@ const FREE_FEATURES = [
 
 const PRO_FEATURES = [
   `${PRO_MONTHLY_SCAN_LIMIT} AI scans per quota month`,
+  'Advanced History Preview',
   'Advanced Glow Reports',
   'Ingredient and consistency trends',
   'Personalized challenges',

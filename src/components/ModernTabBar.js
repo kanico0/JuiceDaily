@@ -75,7 +75,7 @@ export default function ModernTabBar({ state, descriptors, navigation }) {
                   accessibilityRole="button"
                   accessibilityLabel="Scan produce"
                 >
-                  <SnapIcon size={26} color="#FFFFFF" />
+                  <SnapIcon size={40} color="#FFFFFF" />
                 </TouchableOpacity>
               </View>
             )}

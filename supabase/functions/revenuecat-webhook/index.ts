@@ -4,11 +4,30 @@
 //
 // Security: requires "Authorization: Bearer <REVENUECAT_WEBHOOK_SECRET>".
 //
-// Identity resolution:
-//   Collects candidate IDs from app_user_id, original_app_user_id,
-//   and aliases[]. Resolves to a canonical Supabase UUID.
-//   $RCAnonymousID and email addresses are never treated as UUIDs.
-//   Conflicting UUIDs trigger reconciliation, not silent mutation.
+// Identity ownership architecture:
+//   Event fields (app_user_id, original_app_user_id, aliases[]) are
+//   ONLY used as lookup keys for the RevenueCat REST API. They are
+//   NOT the canonical RawLifeFlow subscription owner.
+//
+//   The canonical UUID is established from:
+//     subscriber.original_app_user_id
+//   in the REST CustomerInfo response. This is the FIRST App User ID
+//   used by that customer and is the stable subscription ownership
+//   authority.
+//
+//   event.app_user_id is the LAST-SEEN App User ID and is NOT stable
+//   enough for subscription ownership. Account B must never receive
+//   Account A's Pro merely because B appears as event.app_user_id.
+//
+// Flow:
+//   1. Authenticate webhook
+//   2. Idempotency / retry safety
+//   3. Extract lookup key from event (any valid UUID)
+//   4. Fetch RevenueCat CustomerInfo via REST
+//   5. Extract canonical UUID from subscriber.original_app_user_id
+//   6. Validate canonical UUID (valid, not anonymous, not email,
+//      exists in auth.users)
+//   7. Use canonical UUID for apply_revenuecat_event + resolve_quota
 //
 // Idempotency + retry safety:
 //   - Event IDs are recorded in revenuecat_webhook_events.
@@ -26,11 +45,11 @@
 //     does NOT overwrite subscription state.
 //
 // REST reconciliation (required for production mutation):
-//   RevenueCat current CustomerInfo is the production authority.
+//   RevenueCat current CustomerInfo is the production authority for
+//   BOTH identity (original_app_user_id) and entitlement state.
 //   When REVENUECAT_SERVER_API_KEY is set, the webhook fetches current
-//   CustomerInfo and uses the "pro" entitlement as the authoritative
-//   current state. Event types serve as triggers and diagnostics,
-//   not as the sole basis for entitlement state.
+//   CustomerInfo and uses subscriber.original_app_user_id as the
+//   canonical UUID and the "pro" entitlement as authoritative state.
 //   When the key is absent AND the event requires subscription mutation,
 //   the webhook does NOT mutate subscriptions, marks the event as
 //   failed (configuration failure), and returns non-2xx so RevenueCat
@@ -43,7 +62,7 @@
 // TEST event handling:
 //   RevenueCat TEST webhooks are authenticated normally, acknowledged
 //   with success, and do NOT mutate any subscription. Used for
-//   dashboard connectivity verification.
+//   dashboard connectivity verification. No identity resolution occurs.
 //
 // Secrets (Supabase function secrets):
 //   REVENUECAT_WEBHOOK_SECRET
@@ -51,7 +70,7 @@
 // ─────────────────────────────────────────────────────────────
 
 import { createClient } from 'npm:@supabase/supabase-js@2'
-import { resolveCanonicalUuid, type IdentityResolution } from './identityResolver.ts'
+import { resolveLookupKey, type LookupKeyResolution } from './identityResolver.ts'
 import { fetchProEntitlement, type ProEntitlementState } from './revenueCatRest.ts'
 
 function json(status: number, body: Record<string, unknown>): Response {
@@ -161,7 +180,7 @@ function sanitizeEventForDetail(event: Record<string, unknown>): string {
 }
 
 // Derive entitlement state from event type (fallback when REST
-// reconciliation is not available).
+// reconciliation is not available — development/test only).
 function deriveStateFromEventType(
   eventType: string,
   expirationMs: number,
@@ -260,6 +279,7 @@ Deno.serve(async (req) => {
   //   - DO NOT change subscriptions
   //   - DO NOT call resolve_quota()
   //   - DO NOT require an event ID (TEST events may omit it)
+  //   - DO NOT perform identity resolution
   //   - return HTTP 200 with a clear test acknowledgement
   if (eventType === TEST_TYPE) {
     console.log('[revenuecat-webhook] TEST event received — acknowledged, no mutation')
@@ -328,40 +348,31 @@ Deno.serve(async (req) => {
     return json(200, { ok: true, skipped: 'transfer_not_supported' })
   }
 
-  // ── Identity resolution ────────────────────────────────────
-  // Collect candidate UUIDs from app_user_id, original_app_user_id,
-  // and aliases[]. Resolve to a single canonical Supabase UUID.
-  const resolution: IdentityResolution = resolveCanonicalUuid(event)
+  // ── Lookup key extraction ──────────────────────────────────
+  // Extract ANY valid UUID from the event to use as a RevenueCat
+  // REST lookup key. This is NOT the canonical RawLifeFlow UUID.
+  // The canonical UUID comes from the REST CustomerInfo response's
+  // subscriber.original_app_user_id field.
+  const lookupResolution: LookupKeyResolution = resolveLookupKey(event)
 
-  if (resolution.status === 'unmappable') {
+  if (lookupResolution.status === 'unmappable') {
     await admin
       .from('revenuecat_webhook_events')
       .update({ status: 'skipped', processed_at: new Date().toISOString() })
       .eq('event_id', eventId)
-    return json(200, { ok: true, skipped: resolution.reason })
+    return json(200, { ok: true, skipped: lookupResolution.reason })
   }
 
-  if (resolution.status === 'conflict') {
-    // More than one distinct valid UUID — do NOT silently choose.
-    // Log sanitized diagnostic state and skip normal mutation.
-    console.error(
-      '[revenuecat-webhook] Identity conflict — multiple UUIDs in event:',
-      JSON.stringify(resolution.uuids),
-    )
-    await admin
-      .from('revenuecat_webhook_events')
-      .update({ status: 'skipped', processed_at: new Date().toISOString() })
-      .eq('event_id', eventId)
-    return json(200, { ok: true, skipped: 'identity_conflict', uuids: resolution.uuids })
-  }
-
-  const canonicalUuid = resolution.uuid
+  const lookupKey = lookupResolution.lookupKey
 
   // ── REST reconciliation (required for production mutation) ──
-  // RevenueCat current CustomerInfo is the production authority.
-  // When REVENUECAT_SERVER_API_KEY is available, fetch current
-  // CustomerInfo and use the "pro" entitlement as authoritative.
-  // Event types serve as triggers/diagnostics, not guesswork.
+  // RevenueCat current CustomerInfo is the production authority for
+  // BOTH identity (subscriber.original_app_user_id) and entitlement
+  // state (subscriber.entitlements.pro).
+  //
+  // The canonical RawLifeFlow UUID is extracted from the REST
+  // response's subscriber.original_app_user_id — NOT from
+  // event.app_user_id (which is only the last-seen App User ID).
   //
   // When the key is absent AND the event requires subscription
   // mutation, do NOT mutate subscriptions. Mark the event as
@@ -376,6 +387,7 @@ Deno.serve(async (req) => {
   const restConfigured = Boolean(serverApiKey)
   const allowEventTypeFallback = Deno.env.get('REVENUECAT_ALLOW_EVENT_TYPE_FALLBACK') === '1'
 
+  let canonicalUuid: string
   let isActive: boolean
   let willRenew: boolean
   let store: string
@@ -385,7 +397,7 @@ Deno.serve(async (req) => {
   let purchaseDate: string | null
 
   if (restConfigured) {
-    const restResult = await fetchProEntitlement(canonicalUuid, serverApiKey!)
+    const restResult = await fetchProEntitlement(lookupKey, serverApiKey!)
 
     if (!restResult.ok) {
       // REST failure — do NOT incorrectly deactivate an existing
@@ -398,6 +410,33 @@ Deno.serve(async (req) => {
         .eq('event_id', eventId)
       // Return 500 so RevenueCat retries.
       return json(500, { message: 'REST reconciliation failed' })
+    }
+
+    // ── Canonical UUID from REST CustomerInfo ──────────────
+    // subscriber.original_app_user_id is the FIRST App User ID
+    // used by that customer. This is the stable subscription
+    // ownership authority.
+    canonicalUuid = restResult.canonicalUserId!
+
+    // ── Validate canonical UUID exists in auth.users ────────
+    // The REST-returned original_app_user_id must correspond to
+    // a real RawLifeFlow account. If it doesn't, do NOT mutate.
+    const { data: userExists } = await admin
+      .from('auth.users')
+      .select('id')
+      .eq('id', canonicalUuid)
+      .maybeSingle()
+
+    if (!userExists) {
+      console.error(
+        '[revenuecat-webhook] REST canonical UUID does not correspond to a RawLifeFlow account:',
+        canonicalUuid,
+      )
+      await admin
+        .from('revenuecat_webhook_events')
+        .update({ status: 'skipped', processed_at: new Date().toISOString() })
+        .eq('event_id', eventId)
+      return json(200, { ok: true, skipped: 'canonical_uuid_not_found_in_auth' })
     }
 
     const ent = restResult.entitlement!
@@ -413,6 +452,9 @@ Deno.serve(async (req) => {
     // Controlled development / unit-test fixtures only.
     // Explicitly opted in via REVENUECAT_ALLOW_EVENT_TYPE_FALLBACK=1.
     // Never silently used in production.
+    // In fallback mode, the lookup key is used as canonical (no REST
+    // authority available — development only).
+    canonicalUuid = lookupKey
     const expirationMs = Number(event.expiration_at_ms ?? 0)
     expirationDate = expirationMs > 0 ? new Date(expirationMs).toISOString() : null
     const purchaseMs = Number(event.purchased_at_ms ?? 0)
@@ -455,6 +497,7 @@ Deno.serve(async (req) => {
   // ── Atomic subscription update ─────────────────────────────
   // apply_revenuecat_event() uses pg_advisory_xact_lock(hashtext(uuid))
   // to serialize concurrent invocations, including first-event case.
+  // Uses the REST-derived canonical UUID, NOT event.app_user_id.
   const { data: applyResult, error: applyError } = await admin.rpc('apply_revenuecat_event', {
     p_user_id: canonicalUuid,
     p_event_id: eventId,
@@ -489,7 +532,7 @@ Deno.serve(async (req) => {
     return json(200, { ok: true, skipped: 'stale_event' })
   }
 
-  // Sync the quota plan.
+  // Sync the quota plan using the REST-derived canonical UUID.
   const { error: quotaError } = await admin.rpc('resolve_quota', { p_user_id: canonicalUuid })
   if (quotaError) console.error('[revenuecat-webhook] quota sync failed:', quotaError.message)
 

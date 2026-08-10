@@ -1,17 +1,17 @@
-// identityResolver.test.js — Tests for canonical webhook identity
-// resolution from app_user_id, original_app_user_id, and aliases[].
+// identityResolver.test.js — Tests for RevenueCat webhook identity
+// LOOKUP KEY extraction.
 //
-// Verifies:
-// 1. app_user_id is UUID → resolved
-// 2. original_app_user_id is UUID → resolved
-// 3. UUID appears only in aliases[] → resolved
-// 4. $RCAnonymousID + UUID alias → resolved (UUID)
-// 5. malformed/non-UUID IDs → unmappable
-// 6. two conflicting UUID aliases → conflict
-// 7. $RCAnonymousID only → unmappable (anonymous_id_only)
-// 8. email only → unmappable
-// 9. empty event → unmappable
-// 10. UUID in app_user_id + same UUID in aliases → resolved (deduped)
+// IMPORTANT: This module does NOT determine the canonical RawLifeFlow
+// subscription owner. It only extracts a lookup key (any valid UUID)
+// from the event for the RevenueCat REST API query. The canonical UUID
+// comes from subscriber.original_app_user_id in the REST response.
+//
+// Lookup key selection order:
+//   1. original_app_user_id (if valid Supabase UUID)
+//   2. app_user_id (if valid Supabase UUID)
+//   3. first valid Supabase UUID from aliases[]
+//
+// Multiple aliases are NOT an error — they are lookup/diagnostic evidence.
 
 const fs = require('fs')
 const path = require('path')
@@ -22,13 +22,7 @@ const resolverPath = path.resolve(
 )
 const resolverSource = fs.readFileSync(resolverPath, 'utf8')
 
-// The resolver is a Deno TypeScript module. We test it by extracting
-// the pure functions and evaluating them in a Node context.
-// Since the module uses `export`, we strip the type annotations and
-// evaluate the logic directly.
-
-// Extract the functions by evaluating the source with type stripping.
-// For testing, we recreate the logic from the source.
+// Recreate the resolver logic from source for testing.
 function makeResolver() {
   const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -63,36 +57,48 @@ function makeResolver() {
     return Array.from(candidates)
   }
 
-  function resolveCanonicalUuid(event) {
-    const candidates = collectCandidateUuids(event)
-    if (candidates.length === 0) {
-      const appUserId = String(event.app_user_id ?? '')
-      const originalAppUserId = String(event.original_app_user_id ?? '')
-      const aliases = event.aliases
-      const hasAnonymous =
-        isRCAnonymousId(appUserId) ||
-        isRCAnonymousId(originalAppUserId) ||
-        (Array.isArray(aliases) && aliases.some((a) => isRCAnonymousId(String(a ?? ''))))
-      if (hasAnonymous) return { status: 'unmappable', reason: 'anonymous_id_only' }
-      return { status: 'unmappable', reason: 'no_valid_uuid' }
+  function resolveLookupKey(event) {
+    const appUserId = String(event.app_user_id ?? '')
+    const originalAppUserId = String(event.original_app_user_id ?? '')
+
+    if (isValidSupabaseUuid(originalAppUserId)) {
+      return { status: 'resolved', lookupKey: originalAppUserId }
     }
-    if (candidates.length === 1) return { status: 'resolved', uuid: candidates[0] }
-    return { status: 'conflict', uuids: candidates, reason: 'multiple_conflicting_uuids' }
+    if (isValidSupabaseUuid(appUserId)) {
+      return { status: 'resolved', lookupKey: appUserId }
+    }
+    const aliases = event.aliases
+    if (Array.isArray(aliases)) {
+      for (const alias of aliases) {
+        const aliasStr = String(alias ?? '')
+        if (isValidSupabaseUuid(aliasStr)) {
+          return { status: 'resolved', lookupKey: aliasStr }
+        }
+      }
+    }
+    const hasAnonymous =
+      isRCAnonymousId(appUserId) ||
+      isRCAnonymousId(originalAppUserId) ||
+      (Array.isArray(aliases) && aliases.some((a) => isRCAnonymousId(String(a ?? ''))))
+    if (hasAnonymous) return { status: 'unmappable', reason: 'anonymous_id_only' }
+    return { status: 'unmappable', reason: 'no_valid_uuid' }
   }
 
-  return { resolveCanonicalUuid, collectCandidateUuids, isValidSupabaseUuid, UUID_PATTERN }
+  return { resolveLookupKey, collectCandidateUuids, isValidSupabaseUuid, UUID_PATTERN }
 }
 
-const { resolveCanonicalUuid, collectCandidateUuids } = makeResolver()
+const { resolveLookupKey, collectCandidateUuids } = makeResolver()
 
 const UUID_A = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee'
 const UUID_B = '11111111-2222-3333-4444-555555555555'
+const UUID_C = '33333333-4444-5555-6666-777777777777'
 const RC_ANON = '$RCAnonymousID:abc123'
 const EMAIL = 'user@example.com'
 
 describe('identityResolver source structure', () => {
-  it('11. source exports resolveCanonicalUuid', () => {
-    expect(resolverSource).toMatch(/export function resolveCanonicalUuid/)
+  it('11. source exports resolveLookupKey (NOT resolveCanonicalUuid)', () => {
+    expect(resolverSource).toMatch(/export function resolveLookupKey/)
+    expect(resolverSource).not.toMatch(/export function resolveCanonicalUuid/)
   })
 
   it('12. source exports collectCandidateUuids', () => {
@@ -124,134 +130,186 @@ describe('identityResolver source structure', () => {
     expect(resolverSource).toMatch(/isEmail/)
   })
 
-  it('19. source handles conflict (multiple UUIDs)', () => {
-    expect(resolverSource).toMatch(/conflict/)
-    expect(resolverSource).toMatch(/multiple_conflicting_uuids/)
+  it('19. source documents lookup key is NOT canonical', () => {
+    expect(resolverSource).toMatch(/NOT.*canonical/i)
+    expect(resolverSource).toMatch(/lookup key/i)
+  })
+
+  it('19a. source documents canonical comes from REST original_app_user_id', () => {
+    expect(resolverSource).toMatch(/subscriber\.original_app_user_id/)
+  })
+
+  it('19b. source documents app_user_id is last-seen (not stable)', () => {
+    expect(resolverSource).toMatch(/last-seen/i)
+    expect(resolverSource).toMatch(/NOT stable/i)
+  })
+
+  it('19c. source documents aliases are NOT an error', () => {
+    expect(resolverSource).toMatch(/Multiple aliases are NOT an error/i)
   })
 })
 
-describe('identityResolver: app_user_id is UUID', () => {
-  it('1. resolves when app_user_id is a valid UUID', () => {
-    const result = resolveCanonicalUuid({ app_user_id: UUID_A })
+describe('identityResolver: lookup key from original_app_user_id (precedence 1)', () => {
+  it('1. resolves lookup key from original_app_user_id', () => {
+    const result = resolveLookupKey({ original_app_user_id: UUID_A })
     expect(result.status).toBe('resolved')
-    expect(result.uuid).toBe(UUID_A)
+    expect(result.lookupKey).toBe(UUID_A)
   })
-})
 
-describe('identityResolver: original_app_user_id is UUID', () => {
-  it('2. resolves when only original_app_user_id is a valid UUID', () => {
-    const result = resolveCanonicalUuid({
-      app_user_id: RC_ANON,
+  it('1a. original_app_user_id preferred over app_user_id', () => {
+    const result = resolveLookupKey({
+      app_user_id: UUID_B,
       original_app_user_id: UUID_A,
     })
     expect(result.status).toBe('resolved')
-    expect(result.uuid).toBe(UUID_A)
+    expect(result.lookupKey).toBe(UUID_A)
   })
 })
 
-describe('identityResolver: UUID only in aliases[]', () => {
-  it('3. resolves when UUID appears only in aliases[]', () => {
-    const result = resolveCanonicalUuid({
+describe('identityResolver: lookup key from app_user_id (precedence 2)', () => {
+  it('2. resolves lookup key from app_user_id when original not valid', () => {
+    const result = resolveLookupKey({
+      app_user_id: UUID_A,
+      original_app_user_id: RC_ANON,
+    })
+    expect(result.status).toBe('resolved')
+    expect(result.lookupKey).toBe(UUID_A)
+  })
+
+  it('2a. resolves lookup key from app_user_id alone', () => {
+    const result = resolveLookupKey({ app_user_id: UUID_A })
+    expect(result.status).toBe('resolved')
+    expect(result.lookupKey).toBe(UUID_A)
+  })
+})
+
+describe('identityResolver: lookup key from aliases[] (precedence 3)', () => {
+  it('3. resolves lookup key from first valid UUID in aliases', () => {
+    const result = resolveLookupKey({
       app_user_id: RC_ANON,
       aliases: [UUID_A],
     })
     expect(result.status).toBe('resolved')
-    expect(result.uuid).toBe(UUID_A)
+    expect(result.lookupKey).toBe(UUID_A)
   })
-})
 
-describe('identityResolver: $RCAnonymousID + UUID alias', () => {
-  it('4. resolves UUID from aliases when app_user_id is $RCAnonymousID', () => {
-    const result = resolveCanonicalUuid({
+  it('3a. resolves lookup key from aliases with mixed content', () => {
+    const result = resolveLookupKey({
       app_user_id: RC_ANON,
-      aliases: [RC_ANON, UUID_A],
+      aliases: [RC_ANON, UUID_A, UUID_B],
     })
     expect(result.status).toBe('resolved')
-    expect(result.uuid).toBe(UUID_A)
+    expect(result.lookupKey).toBe(UUID_A)
   })
 })
 
-describe('identityResolver: malformed/non-UUID IDs', () => {
+describe('identityResolver: unmappable cases', () => {
   it('5a. malformed string → unmappable', () => {
-    const result = resolveCanonicalUuid({ app_user_id: 'not-a-uuid' })
+    const result = resolveLookupKey({ app_user_id: 'not-a-uuid' })
     expect(result.status).toBe('unmappable')
   })
 
   it('5b. empty string → unmappable', () => {
-    const result = resolveCanonicalUuid({ app_user_id: '' })
+    const result = resolveLookupKey({ app_user_id: '' })
     expect(result.status).toBe('unmappable')
   })
 
-  it('5c. random string → unmappable', () => {
-    const result = resolveCanonicalUuid({ app_user_id: 'abc123xyz' })
-    expect(result.status).toBe('unmappable')
-  })
-})
-
-describe('identityResolver: two conflicting UUID aliases', () => {
-  it('6. two distinct UUIDs → conflict', () => {
-    const result = resolveCanonicalUuid({
-      app_user_id: UUID_A,
-      aliases: [UUID_B],
-    })
-    expect(result.status).toBe('conflict')
-    expect(result.uuids).toContain(UUID_A)
-    expect(result.uuids).toContain(UUID_B)
-    expect(result.uuids.length).toBe(2)
-  })
-
-  it('6b. two UUIDs in app_user_id and original_app_user_id → conflict', () => {
-    const result = resolveCanonicalUuid({
-      app_user_id: UUID_A,
-      original_app_user_id: UUID_B,
-    })
-    expect(result.status).toBe('conflict')
-  })
-})
-
-describe('identityResolver: $RCAnonymousID only', () => {
-  it('7. only $RCAnonymousID → unmappable (anonymous_id_only)', () => {
-    const result = resolveCanonicalUuid({
+  it('5c. $RCAnonymousID only → unmappable (anonymous_id_only)', () => {
+    const result = resolveLookupKey({
       app_user_id: RC_ANON,
       aliases: [RC_ANON],
     })
     expect(result.status).toBe('unmappable')
     expect(result.reason).toBe('anonymous_id_only')
   })
-})
 
-describe('identityResolver: email only', () => {
-  it('8. email in app_user_id → unmappable', () => {
-    const result = resolveCanonicalUuid({ app_user_id: EMAIL })
+  it('5d. email only → unmappable', () => {
+    const result = resolveLookupKey({ app_user_id: EMAIL })
     expect(result.status).toBe('unmappable')
     expect(result.reason).toBe('no_valid_uuid')
   })
-})
 
-describe('identityResolver: empty event', () => {
-  it('9. empty event → unmappable', () => {
-    const result = resolveCanonicalUuid({})
+  it('5e. empty event → unmappable', () => {
+    const result = resolveLookupKey({})
     expect(result.status).toBe('unmappable')
   })
 })
 
-describe('identityResolver: deduplication', () => {
-  it('10. same UUID in app_user_id and aliases → resolved (deduped)', () => {
-    const result = resolveCanonicalUuid({
+describe('identityResolver: multiple aliases are NOT an error', () => {
+  it('6. multiple UUIDs in aliases → resolved (first valid used as lookup)', () => {
+    const result = resolveLookupKey({
       app_user_id: UUID_A,
-      aliases: [UUID_A, UUID_A],
+      aliases: [UUID_B, UUID_C],
     })
     expect(result.status).toBe('resolved')
-    expect(result.uuid).toBe(UUID_A)
+    // original_app_user_id absent, app_user_id is UUID_A → lookup is UUID_A
+    expect(result.lookupKey).toBe(UUID_A)
   })
 
-  it('10b. same UUID in all three fields → resolved', () => {
-    const result = resolveCanonicalUuid({
+  it('6a. no conflict status exists in resolver', () => {
+    // The resolver no longer has a 'conflict' status — multiple aliases
+    // are just lookup evidence, not a conflict.
+    expect(resolverSource).not.toMatch(/status: 'conflict'/)
+  })
+})
+
+describe('identityResolver: collectCandidateUuids for diagnostics', () => {
+  it('10. collects all valid UUIDs from all fields', () => {
+    const candidates = collectCandidateUuids({
       app_user_id: UUID_A,
       original_app_user_id: UUID_A,
-      aliases: [UUID_A],
+      aliases: [UUID_A, UUID_B],
+    })
+    expect(candidates).toContain(UUID_A)
+    expect(candidates).toContain(UUID_B)
+    expect(candidates.length).toBe(2)
+  })
+})
+
+// ─────────────────────────────────────────────────────────────
+// TEST payload shape tests
+//
+// The actual RevenueCat TEST event for RawLifeFlow Play Store
+// (app_id=app635f20aea6) contains:
+//   - app_user_id:           <primary UUID>
+//   - original_app_user_id:  <same primary UUID>
+//   - aliases[]:             [<primary UUID>, <secondary UUID>]
+//
+// This must resolve a lookup key (NOT conflict). The canonical UUID
+// is determined later from REST CustomerInfo.
+// ─────────────────────────────────────────────────────────────
+describe('identityResolver: TEST payload shape (app635f20aea6)', () => {
+  const PRIMARY_UUID = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee'
+  const SECONDARY_UUID = '11111111-2222-3333-4444-555555555555'
+
+  it('20. TEST shape: resolves lookup key (no conflict)', () => {
+    const result = resolveLookupKey({
+      app_user_id: PRIMARY_UUID,
+      original_app_user_id: PRIMARY_UUID,
+      aliases: [PRIMARY_UUID, SECONDARY_UUID],
     })
     expect(result.status).toBe('resolved')
-    expect(result.uuid).toBe(UUID_A)
+    // original_app_user_id is preferred → lookup is PRIMARY_UUID
+    expect(result.lookupKey).toBe(PRIMARY_UUID)
+  })
+
+  it('20a. TEST shape: lookup key is original_app_user_id (preferred)', () => {
+    const result = resolveLookupKey({
+      app_user_id: SECONDARY_UUID,
+      original_app_user_id: PRIMARY_UUID,
+      aliases: [PRIMARY_UUID, SECONDARY_UUID],
+    })
+    expect(result.lookupKey).toBe(PRIMARY_UUID)
+  })
+
+  it('20b. TEST shape: collectCandidateUuids returns both for diagnostics', () => {
+    const candidates = collectCandidateUuids({
+      app_user_id: PRIMARY_UUID,
+      original_app_user_id: PRIMARY_UUID,
+      aliases: [PRIMARY_UUID, SECONDARY_UUID],
+    })
+    expect(candidates).toContain(PRIMARY_UUID)
+    expect(candidates).toContain(SECONDARY_UUID)
+    expect(candidates.length).toBe(2)
   })
 })

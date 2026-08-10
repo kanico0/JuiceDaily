@@ -258,3 +258,33 @@ describe('Webhook REST integration', () => {
     expect(restSection).toMatch(/pending|failed/i)
   })
 })
+
+describe('revenueCatRest: canonicalUserId extraction', () => {
+  it('22. source extracts subscriber.original_app_user_id', () => {
+    expect(restSource).toMatch(/subscriber\.original_app_user_id/)
+  })
+
+  it('23. source returns canonicalUserId in result', () => {
+    expect(restSource).toMatch(/canonicalUserId/)
+  })
+
+  it('24. source validates original_app_user_id is valid UUID', () => {
+    expect(restSource).toMatch(/isValidSupabaseUuid\(originalAppUserId\)/)
+  })
+
+  it('25. source returns ok=false for invalid canonical UUID', () => {
+    expect(restSource).toMatch(/invalid_canonical_uuid/)
+  })
+
+  it('26. source imports isValidSupabaseUuid from identityResolver', () => {
+    expect(restSource).toMatch(/import.*isValidSupabaseUuid.*identityResolver/)
+  })
+
+  it('27. canonicalUserId returned even when Pro is inactive (Free)', () => {
+    // The Free path (no pro entitlement) still returns canonicalUserId
+    const freeSection = restSource.slice(
+      restSource.indexOf('legitimately Free'),
+    )
+    expect(freeSection).toMatch(/canonicalUserId/)
+  })
+})

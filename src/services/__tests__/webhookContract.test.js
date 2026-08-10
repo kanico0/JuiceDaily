@@ -283,9 +283,9 @@ describe('Webhook idempotency and sanitization', () => {
   })
 
   it('40. unmappable identity is skipped gracefully', () => {
-    // Now uses identity resolver — unmappable status from resolution
+    // Now uses lookup key resolver — unmappable status from lookupResolution
     expect(webhookSource).toMatch(/unmappable/)
-    expect(webhookSource).toMatch(/resolution\.reason/)
+    expect(webhookSource).toMatch(/lookupResolution\.reason/)
   })
 
   it('41. sanitizeEventForDetail strips secrets', () => {
@@ -362,24 +362,30 @@ describe('TEST event handling', () => {
 })
 
 describe('Identity resolution in webhook', () => {
-  it('47. webhook imports resolveCanonicalUuid', () => {
-    expect(webhookSource).toMatch(/resolveCanonicalUuid/)
+  it('47. webhook imports resolveLookupKey (NOT resolveCanonicalUuid)', () => {
+    expect(webhookSource).toMatch(/resolveLookupKey/)
+    expect(webhookSource).not.toMatch(/resolveCanonicalUuid/)
   })
 
   it('48. webhook imports from identityResolver.ts', () => {
     expect(webhookSource).toMatch(/identityResolver\.ts/)
   })
 
-  it('49. webhook handles unmappable identity', () => {
-    expect(webhookSource).toMatch(/resolution\.status === 'unmappable'/)
+  it('49. webhook handles unmappable lookup key', () => {
+    expect(webhookSource).toMatch(/lookupResolution\.status === 'unmappable'/)
   })
 
-  it('50. webhook handles identity conflict', () => {
-    expect(webhookSource).toMatch(/resolution\.status === 'conflict'/)
+  it('50. webhook does NOT have identity conflict handling (REST resolves)', () => {
+    // The old conflict status is gone — REST CustomerInfo resolves identity
+    expect(webhookSource).not.toMatch(/resolution\.status === 'conflict'/)
   })
 
   it('51. webhook uses canonicalUuid for subscription update', () => {
     expect(webhookSource).toMatch(/canonicalUuid/)
+  })
+
+  it('51a. canonicalUuid comes from REST canonicalUserId', () => {
+    expect(webhookSource).toMatch(/canonicalUuid = restResult\.canonicalUserId/)
   })
 
   it('52. webhook does NOT use appUserId directly for subscription update', () => {
@@ -387,6 +393,11 @@ describe('Identity resolution in webhook', () => {
     const rpcSection = webhookSource.slice(webhookSource.indexOf('apply_revenuecat_event'))
     expect(rpcSection).toMatch(/p_user_id: canonicalUuid/)
     expect(rpcSection).not.toMatch(/p_user_id: appUserId/)
+  })
+
+  it('52a. webhook validates canonical UUID in auth.users', () => {
+    expect(webhookSource).toMatch(/auth\.users/)
+    expect(webhookSource).toMatch(/canonical_uuid_not_found_in_auth/)
   })
 })
 

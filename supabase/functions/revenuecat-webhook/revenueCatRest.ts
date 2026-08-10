@@ -1,9 +1,16 @@
 // ─────────────────────────────────────────────────────────────
 // revenueCatRest.ts — Server-side RevenueCat CustomerInfo fetch.
 //
-// Calls GET https://api.revenuecat.com/v1/subscribers/{app_user_id}
-// with the canonical Supabase UUID to get authoritative current
-// entitlement state.
+// Calls GET https://api.revenuecat.com/v1/subscribers/{lookup_key}
+// with any valid UUID from the webhook event to get authoritative
+// CustomerInfo.
+//
+// The REST response provides TWO authoritative pieces of data:
+//   1. subscriber.original_app_user_id — the CANONICAL RawLifeFlow
+//      UUID (first App User ID used by that customer). This is the
+//      subscription ownership authority, NOT event.app_user_id.
+//   2. subscriber.entitlements.pro — the authoritative current Pro
+//      entitlement state.
 //
 // SECURITY:
 //   - Uses REVENUECAT_SERVER_API_KEY (server secret only)
@@ -31,6 +38,8 @@
 //   set the account Free.
 // ─────────────────────────────────────────────────────────────
 
+import { isValidSupabaseUuid } from './identityResolver.ts'
+
 export interface ProEntitlementState {
   isActive: boolean
   expirationDate: string | null
@@ -41,25 +50,32 @@ export interface ProEntitlementState {
 
 export interface RestReconciliationResult {
   ok: boolean
+  // The canonical RawLifeFlow UUID from RevenueCat CustomerInfo.
+  // This is subscriber.original_app_user_id — the FIRST App User ID
+  // used by that customer. NOT event.app_user_id.
+  canonicalUserId?: string
   entitlement?: ProEntitlementState
   error?: string
 }
 
-// Fetch current RevenueCat CustomerInfo and derive Pro entitlement.
+// Fetch current RevenueCat CustomerInfo using a lookup key (any valid
+// UUID from the webhook event). Returns the canonical RawLifeFlow UUID
+// (from subscriber.original_app_user_id) and the Pro entitlement state.
+//
 // Returns { ok: false, error } on ANY failure — caller must handle
 // by leaving event pending/failed for retry.
 //
 // Only { ok: true } results may mutate subscription state.
 // A 404 is NOT proof of Free — it's an unexpected failure.
 export async function fetchProEntitlement(
-  appUserId: string,
+  lookupKey: string,
   serverApiKey: string,
 ): Promise<RestReconciliationResult> {
   if (!serverApiKey) {
     return { ok: false, error: 'REVENUECAT_SERVER_API_KEY not configured' }
   }
 
-  const url = `https://api.revenuecat.com/v1/subscribers/${encodeURIComponent(appUserId)}`
+  const url = `https://api.revenuecat.com/v1/subscribers/${encodeURIComponent(lookupKey)}`
 
   try {
     const resp = await fetch(url, {
@@ -103,13 +119,33 @@ export async function fetchProEntitlement(
   }
 }
 
-// Parse RevenueCat subscriber response and extract Pro entitlement.
+// Parse RevenueCat subscriber response and extract:
+//   1. canonicalUserId from subscriber.original_app_user_id
+//   2. Pro entitlement state from subscriber.entitlements.pro
+//
 // Defensive against malformed responses.
 function parseProEntitlement(data: Record<string, unknown>): RestReconciliationResult {
   try {
     const subscriber = data.subscriber as Record<string, unknown> | undefined
     if (!subscriber) {
       return { ok: false, error: 'malformed_response: no subscriber object' }
+    }
+
+    // ── Extract canonical UUID from subscriber.original_app_user_id ──
+    // This is the FIRST App User ID used by that customer and is the
+    // subscription ownership authority. NOT event.app_user_id.
+    const originalAppUserId = String(subscriber.original_app_user_id ?? '')
+    if (!isValidSupabaseUuid(originalAppUserId)) {
+      // REST CustomerInfo does not contain a valid RawLifeFlow UUID
+      // as original_app_user_id. This could mean:
+      //   - The subscriber is anonymous-only ($RCAnonymousID)
+      //   - The original_app_user_id is an email or malformed
+      //   - The field is missing
+      // In any case, we cannot establish canonical ownership.
+      return {
+        ok: false,
+        error: `invalid_canonical_uuid: original_app_user_id is not a valid Supabase UUID`,
+      }
     }
 
     const entitlements = subscriber.entitlements as Record<string, unknown> | undefined
@@ -123,8 +159,11 @@ function parseProEntitlement(data: Record<string, unknown>): RestReconciliationR
     if (!proEntitlement) {
       // Valid CustomerInfo with no "pro" entitlement — legitimately Free.
       // This is the ONLY path that may set the account Free.
+      // canonicalUserId is still returned so the caller can record
+      // the Free state under the correct account.
       return {
         ok: true,
+        canonicalUserId: originalAppUserId,
         entitlement: {
           isActive: false,
           expirationDate: null,
@@ -156,6 +195,7 @@ function parseProEntitlement(data: Record<string, unknown>): RestReconciliationR
 
     return {
       ok: true,
+      canonicalUserId: originalAppUserId,
       entitlement: {
         isActive,
         expirationDate,

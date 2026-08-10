@@ -4,26 +4,11 @@
 // ─────────────────────────────────────────────────────────────
 
 import React, { useRef, useEffect } from 'react'
-import {
-  View,
-  Text,
-  StyleSheet,
-  Modal,
-  TouchableOpacity,
-  Animated,
-  Platform,
-} from 'react-native'
+import { View, Text, StyleSheet, Modal, TouchableOpacity, Animated, Platform } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { BlurView } from 'expo-blur'
 import * as Haptics from 'expo-haptics'
-import {
-  X,
-  Camera,
-  Crown,
-  Sparkles,
-  Zap,
-  ShoppingBag,
-} from 'lucide-react-native'
+import { X, Camera, Crown, Sparkles, Zap, ShoppingBag } from 'lucide-react-native'
 import { SUBSCRIPTION_PLANS, IAP_PACKS } from '../services/ProStore'
 
 export default function SnapGateModal({ visible, onDismiss, onUpgrade, onBuyPack }) {
@@ -34,7 +19,12 @@ export default function SnapGateModal({ visible, onDismiss, onUpgrade, onBuyPack
     if (visible) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning)
       Animated.parallel([
-        Animated.spring(scaleAnim, { toValue: 1, tension: 60, friction: 10, useNativeDriver: true }),
+        Animated.spring(scaleAnim, {
+          toValue: 1,
+          tension: 60,
+          friction: 10,
+          useNativeDriver: true,
+        }),
         Animated.timing(opacityAnim, { toValue: 1, duration: 300, useNativeDriver: true }),
       ]).start()
     } else {
@@ -48,10 +38,9 @@ export default function SnapGateModal({ visible, onDismiss, onUpgrade, onBuyPack
   return (
     <Modal visible={visible} transparent animationType="none" statusBarTranslucent>
       <BlurView intensity={40} tint="dark" style={styles.overlay}>
-        <Animated.View style={[
-          styles.card,
-          { opacity: opacityAnim, transform: [{ scale: scaleAnim }] },
-        ]}>
+        <Animated.View
+          style={[styles.card, { opacity: opacityAnim, transform: [{ scale: scaleAnim }] }]}
+        >
           {/* Close */}
           <TouchableOpacity style={styles.closeBtn} onPress={onDismiss}>
             <X size={20} color="#8B949E" />
@@ -70,8 +59,8 @@ export default function SnapGateModal({ visible, onDismiss, onUpgrade, onBuyPack
           {/* Headline */}
           <Text style={styles.headline}>Snaps Exhausted</Text>
           <Text style={styles.body}>
-            You've used your 3 Free Snaps for {monthName}.{' '}
-            <Text style={styles.proHighlight}>Wellness Architects</Text> get unlimited AI scanning,
+            You've used your 1 Free Snap for {monthName}.{' '}
+            <Text style={styles.proHighlight}>Wellness Architects</Text> get 12 AI Snaps each month,
             instant nutrient breakdown, and Fridge Forager integration.
           </Text>
 

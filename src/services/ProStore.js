@@ -28,16 +28,6 @@ export const SUBSCRIPTION_PLANS = {
     savings: 'Save 44%',
     badge: 'BEST VALUE',
   },
-  lifetime: {
-    id: 'pro_lifetime',
-    label: 'Lifetime',
-    price: '$89.99',
-    priceValue: 89.99,
-    period: 'once',
-    tagline: 'One and Done — yours forever',
-    savings: null,
-    badge: 'FOREVER',
-  },
 }
 
 // ── IAP Packs ───────────────────────────────────────────────
@@ -104,7 +94,7 @@ export const PRO_FEATURES = {
   unlimitedSnaps: { label: '12 AI Snaps per month', icon: 'Camera', tier: 'pro' },
   monthlyWrap: { label: 'Monthly Vitality Wrap', icon: 'Gift', tier: 'pro' },
   fridgeForager: { label: 'Fridge Forager', icon: 'Refrigerator', tier: 'pro' },
-  advancedHistoryPreview: { label: 'Advanced History Preview', icon: 'BarChart3', tier: 'pro' },
+  advancedHistoryPreview: { label: 'Full Advanced History', icon: 'BarChart3', tier: 'pro' },
 }
 
 // ── Constants ───────────────────────────────────────────────
@@ -118,7 +108,7 @@ function createInitialProState() {
   const now = new Date()
   return {
     tier: 'free', // 'free' | 'pro'
-    subscriptionPlan: null, // 'monthly' | 'annual' | 'lifetime' | null
+    subscriptionPlan: null, // 'monthly' | 'annual' | null
     subscriptionExpiry: null,
     monthlySnapCount: 0,
     snapPackBalance: 0,
@@ -138,9 +128,7 @@ function proReducer(state, action) {
   switch (action.type) {
     case 'SUBSCRIBE': {
       const { plan } = action.payload
-      const expiry = plan === 'lifetime'
-        ? null
-        : new Date(Date.now() + (plan === 'annual' ? 365 : 30) * 86400000).toISOString()
+      const expiry = new Date(Date.now() + (plan === 'annual' ? 365 : 30) * 86400000).toISOString()
       return {
         ...state,
         tier: 'pro',
@@ -339,17 +327,23 @@ export function ProProvider({ children }) {
 
   // ── Feature Access Check ────────────────────────────────────
 
-  const hasFeatureAccess = useCallback((featureKey) => {
-    if (isPro) return true
-    const feature = PRO_FEATURES[featureKey]
-    if (!feature) return true // unknown features are free
-    return feature.tier !== 'pro'
-  }, [isPro])
+  const hasFeatureAccess = useCallback(
+    (featureKey) => {
+      if (isPro) return true
+      const feature = PRO_FEATURES[featureKey]
+      if (!feature) return true // unknown features are free
+      return feature.tier !== 'pro'
+    },
+    [isPro],
+  )
 
-  const hasRecipePack = useCallback((packId) => {
-    if (isPro) return true
-    return state.purchasedPacks.includes(packId)
-  }, [isPro, state.purchasedPacks])
+  const hasRecipePack = useCallback(
+    (packId) => {
+      if (isPro) return true
+      return state.purchasedPacks.includes(packId)
+    },
+    [isPro, state.purchasedPacks],
+  )
 
   // ── Snap Display Info ───────────────────────────────────────
   // NON-AUTHORITATIVE: This is a legacy client-side display helper.
@@ -388,34 +382,44 @@ export function ProProvider({ children }) {
     }
   }, [isPro, state.monthlySnapCount, state.snapPackBalance, state.currentMonth])
 
-  const value = useMemo(() => ({
-    pro: state,
-    isPro,
-    subscribe,
-    cancelSubscription,
-    useSnap,
-    buySnapPack,
-    buyFreezerPack,
-    buyRecipePack,
-    earnGoldenPass,
-    setPaywallSeen,
-    checkSnapEligibility,
-    hasFeatureAccess,
-    hasRecipePack,
-    snapInfo,
-    toggleDevPro,
-  }), [
-    state, isPro, subscribe, cancelSubscription, useSnap, buySnapPack,
-    buyFreezerPack, buyRecipePack, earnGoldenPass, setPaywallSeen,
-    checkSnapEligibility, hasFeatureAccess, hasRecipePack, snapInfo,
-    toggleDevPro,
-  ])
-
-  return (
-    <ProContext.Provider value={value}>
-      {children}
-    </ProContext.Provider>
+  const value = useMemo(
+    () => ({
+      pro: state,
+      isPro,
+      subscribe,
+      cancelSubscription,
+      useSnap,
+      buySnapPack,
+      buyFreezerPack,
+      buyRecipePack,
+      earnGoldenPass,
+      setPaywallSeen,
+      checkSnapEligibility,
+      hasFeatureAccess,
+      hasRecipePack,
+      snapInfo,
+      toggleDevPro,
+    }),
+    [
+      state,
+      isPro,
+      subscribe,
+      cancelSubscription,
+      useSnap,
+      buySnapPack,
+      buyFreezerPack,
+      buyRecipePack,
+      earnGoldenPass,
+      setPaywallSeen,
+      checkSnapEligibility,
+      hasFeatureAccess,
+      hasRecipePack,
+      snapInfo,
+      toggleDevPro,
+    ],
   )
+
+  return <ProContext.Provider value={value}>{children}</ProContext.Provider>
 }
 
 export function usePro() {

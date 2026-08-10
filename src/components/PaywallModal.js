@@ -4,35 +4,18 @@
 // ─────────────────────────────────────────────────────────────
 
 import React, { useRef, useEffect } from 'react'
-import {
-  View,
-  Text,
-  StyleSheet,
-  Modal,
-  TouchableOpacity,
-  Animated,
-  Platform,
-} from 'react-native'
+import { View, Text, StyleSheet, Modal, TouchableOpacity, Animated, Platform } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { BlurView } from 'expo-blur'
 import * as Haptics from 'expo-haptics'
-import {
-  X,
-  Crown,
-  Zap,
-  Camera,
-  BarChart3,
-  ChefHat,
-  Infinity,
-  Check,
-} from 'lucide-react-native'
+import { X, Crown, Zap, Camera, BarChart3, ChefHat, Infinity, Check } from 'lucide-react-native'
 import { SUBSCRIPTION_PLANS, usePro } from '../services/ProStore'
 
-const PLAN_KEYS = ['monthly', 'annual', 'lifetime']
+const PLAN_KEYS = ['monthly', 'annual']
 
 const PRO_PERKS = [
   { icon: <Camera size={16} color="#64B5F6" />, text: '12 AI Snaps per month' },
-  { icon: <BarChart3 size={16} color="#81C784" />, text: 'Advanced History Preview' },
+  { icon: <BarChart3 size={16} color="#81C784" />, text: 'Full Advanced History' },
   { icon: <ChefHat size={16} color="#FFB74D" />, text: 'Pro Recipe Categories' },
   { icon: <Zap size={16} color="#FFD54F" />, text: 'Advanced Nutrient Data' },
   { icon: <Infinity size={16} color="#CE93D8" />, text: 'Monthly Vitality Wraps' },
@@ -48,7 +31,12 @@ export default function PaywallModal({ visible, onDismiss, trigger }) {
     if (visible) {
       setPaywallSeen(trigger)
       Animated.parallel([
-        Animated.spring(scaleAnim, { toValue: 1, tension: 60, friction: 10, useNativeDriver: true }),
+        Animated.spring(scaleAnim, {
+          toValue: 1,
+          tension: 60,
+          friction: 10,
+          useNativeDriver: true,
+        }),
         Animated.timing(opacityAnim, { toValue: 1, duration: 300, useNativeDriver: true }),
       ]).start()
     } else {
@@ -63,19 +51,19 @@ export default function PaywallModal({ visible, onDismiss, trigger }) {
     onDismiss()
   }
 
-  const triggerMessage = trigger === 'streak_3'
-    ? 'You\'re building an incredible foundation.'
-    : trigger === 'badge_unlock'
-      ? 'You just unlocked a new achievement!'
-      : 'You\'re making real progress.'
+  const triggerMessage =
+    trigger === 'streak_3'
+      ? "You're building an incredible foundation."
+      : trigger === 'badge_unlock'
+        ? 'You just unlocked a new achievement!'
+        : "You're making real progress."
 
   return (
     <Modal visible={visible} transparent animationType="none" statusBarTranslucent>
       <BlurView intensity={40} tint="dark" style={styles.overlay}>
-        <Animated.View style={[
-          styles.card,
-          { opacity: opacityAnim, transform: [{ scale: scaleAnim }] },
-        ]}>
+        <Animated.View
+          style={[styles.card, { opacity: opacityAnim, transform: [{ scale: scaleAnim }] }]}
+        >
           {/* Close */}
           <TouchableOpacity style={styles.closeBtn} onPress={onDismiss}>
             <X size={20} color="#8B949E" />
@@ -83,10 +71,7 @@ export default function PaywallModal({ visible, onDismiss, trigger }) {
 
           {/* Crown */}
           <View style={styles.crownWrap}>
-            <LinearGradient
-              colors={['#FFD54F', '#FF9800']}
-              style={styles.crownCircle}
-            >
+            <LinearGradient colors={['#FFD54F', '#FF9800']} style={styles.crownCircle}>
               <Crown size={28} color="#FFFFFF" />
             </LinearGradient>
           </View>
@@ -136,20 +121,14 @@ export default function PaywallModal({ visible, onDismiss, trigger }) {
                     {plan.price}
                   </Text>
                   <Text style={styles.planPeriod}>{plan.period}</Text>
-                  {plan.savings && (
-                    <Text style={styles.planSavings}>{plan.savings}</Text>
-                  )}
+                  {plan.savings && <Text style={styles.planSavings}>{plan.savings}</Text>}
                 </TouchableOpacity>
               )
             })}
           </View>
 
           {/* CTA */}
-          <TouchableOpacity
-            style={styles.ctaBtn}
-            onPress={handleSubscribe}
-            activeOpacity={0.8}
-          >
+          <TouchableOpacity style={styles.ctaBtn} onPress={handleSubscribe} activeOpacity={0.8}>
             <LinearGradient
               colors={['#4CAF50', '#2E7D32']}
               start={{ x: 0, y: 0 }}

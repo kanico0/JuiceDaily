@@ -10,7 +10,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, content-type',
 }
 
-function json (status: number, body: Record<string, unknown>): Response {
+function json(status: number, body: Record<string, unknown>): Response {
   return new Response(JSON.stringify(body), {
     status,
     headers: { 'Content-Type': 'application/json', ...corsHeaders },
@@ -40,9 +40,9 @@ Deno.serve(async (req) => {
     return json(200, {
       quota: {
         plan: 'free',
-        limit: 5,
+        limit: 1,
         used: 0,
-        remaining: 5,
+        remaining: 1,
         periodStart: '',
         periodEnd: '',
         dailyLimit: null,

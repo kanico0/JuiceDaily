@@ -40,7 +40,7 @@ const FREE_FEATURES = [
 
 const PRO_FEATURES = [
   `${PRO_MONTHLY_SCAN_LIMIT} AI scans per quota month`,
-  'Advanced History Preview',
+  'Full Advanced History — beyond your free preview',
   'Advanced Glow Reports',
   'Ingredient and consistency trends',
   'Personalized challenges',
@@ -63,7 +63,7 @@ export default function PaywallScreen({ navigation, route }) {
 
   const savingsBadge = useMemo(
     () => formatSavingsBadge(offering?.annualSavingsPercent ?? null),
-    [offering]
+    [offering],
   )
 
   const close = () => {
@@ -88,16 +88,28 @@ export default function PaywallScreen({ navigation, route }) {
       case 'cancelled':
         break
       case 'pending':
-        Alert.alert('Purchase Pending', 'Your purchase is being processed. Pro will activate automatically once it completes.')
+        Alert.alert(
+          'Purchase Pending',
+          'Your purchase is being processed. Pro will activate automatically once it completes.',
+        )
         break
       case 'already_owned':
-        Alert.alert('Already Subscribed', 'Try Restore Purchases to re-activate Pro on this device.')
+        Alert.alert(
+          'Already Subscribed',
+          'Try Restore Purchases to re-activate Pro on this device.',
+        )
         break
       case 'unavailable':
-        Alert.alert('Store Unavailable', 'Subscriptions are not available right now. Please try again later.')
+        Alert.alert(
+          'Store Unavailable',
+          'Subscriptions are not available right now. Please try again later.',
+        )
         break
       default:
-        Alert.alert('Purchase Failed', 'Something went wrong. You have not been charged. Please try again.')
+        Alert.alert(
+          'Purchase Failed',
+          'Something went wrong. You have not been charged. Please try again.',
+        )
     }
   }
 
@@ -109,7 +121,10 @@ export default function PaywallScreen({ navigation, route }) {
         await refreshQuota()
         Alert.alert('Purchases Restored', 'Your Pro subscription is active again.')
       } else if (outcome.status === 'no_purchases') {
-        Alert.alert('No Purchases Found', 'We could not find a previous subscription for this account.')
+        Alert.alert(
+          'No Purchases Found',
+          'We could not find a previous subscription for this account.',
+        )
       } else {
         Alert.alert('Restore Failed', 'Please try again later.')
       }
@@ -159,13 +174,17 @@ export default function PaywallScreen({ navigation, route }) {
           <View style={styles.compareCol}>
             <Text style={styles.compareTitle}>Free</Text>
             {FREE_FEATURES.map((f) => (
-              <Text key={f} style={styles.compareItem}>• {f}</Text>
+              <Text key={f} style={styles.compareItem}>
+                • {f}
+              </Text>
             ))}
           </View>
           <View style={[styles.compareCol, styles.compareColPro]}>
             <Text style={[styles.compareTitle, styles.compareTitlePro]}>Pro</Text>
             {PRO_FEATURES.map((f) => (
-              <Text key={f} style={[styles.compareItem, styles.compareItemPro]}>• {f}</Text>
+              <Text key={f} style={[styles.compareItem, styles.compareItemPro]}>
+                • {f}
+              </Text>
             ))}
           </View>
         </View>
@@ -186,7 +205,10 @@ export default function PaywallScreen({ navigation, route }) {
           <View style={styles.packages}>
             {annual && (
               <TouchableOpacity
-                style={[styles.packageCard, selectedPlan === 'pro_annual' && styles.packageSelected]}
+                style={[
+                  styles.packageCard,
+                  selectedPlan === 'pro_annual' && styles.packageSelected,
+                ]}
                 onPress={() => handleSelect('pro_annual')}
                 accessibilityRole="button"
                 accessibilityLabel={`Annual plan, ${annual.localizedPriceString} per year`}
@@ -202,7 +224,10 @@ export default function PaywallScreen({ navigation, route }) {
             )}
             {monthly && (
               <TouchableOpacity
-                style={[styles.packageCard, selectedPlan === 'pro_monthly' && styles.packageSelected]}
+                style={[
+                  styles.packageCard,
+                  selectedPlan === 'pro_monthly' && styles.packageSelected,
+                ]}
                 onPress={() => handleSelect('pro_monthly')}
                 accessibilityRole="button"
                 accessibilityLabel={`Monthly plan, ${monthly.localizedPriceString} per month`}
@@ -232,8 +257,8 @@ export default function PaywallScreen({ navigation, route }) {
         )}
 
         <Text style={styles.disclosure}>
-          {PRO_MONTHLY_SCAN_LIMIT} image-recognition scans per quota month. Unused scans do not
-          roll over. Manual logging remains unlimited.{'\n\n'}
+          {PRO_MONTHLY_SCAN_LIMIT} image-recognition scans per quota month. Unused scans do not roll
+          over. Manual logging remains unlimited.{'\n\n'}
           Subscriptions auto-renew until cancelled. Payment is charged to your Apple or Google
           account. Cancel anytime in your store subscription settings.
         </Text>

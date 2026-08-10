@@ -23,8 +23,11 @@
 // ─────────────────────────────────────────────────────────────
 
 import { getSupabase } from './supabaseClient'
-import { setAllowAnonFallback } from './identity'
-import { logIn as revenueCatLogIn } from '../subscriptions/revenueCatClient'
+import { setAllowAnonFallback, ensureUser } from './identity'
+import {
+  logIn as revenueCatLogIn,
+  logOut as revenueCatLogOut,
+} from '../subscriptions/revenueCatClient'
 
 // ── Types ────────────────────────────────────────────────────
 
@@ -270,18 +273,52 @@ export async function verifySignIn(rawEmail: string, token: string): Promise<Ver
 }
 
 // ── Sign out ─────────────────────────────────────────────────
-// Clears the local session only. Server-side data (quota usage,
-// subscription record, history) stays attached to the UUID and is
-// restored on the next sign-in.
+// Clears the local session and transitions RevenueCat away from
+// the departing user. Server-side data (quota usage, subscription
+// record, history) stays attached to the UUID and is restored on
+// the next sign-in.
+//
+// Identity transition on signout:
+//   1. RevenueCat.logOut() — clears cached CustomerInfo for the
+//      departing user so no stale Pro entitlement can leak to the
+//      next session.
+//   2. Supabase.auth.signOut() — clears the local Supabase session.
+//   3. Re-enable anon fallback so ensureUser() can create a new
+//      anonymous Supabase UUID.
+//   4. ensureUser() + notifyIdentityChanged() — associates
+//      RevenueCat with the new anonymous Supabase UUID so the
+//      next session starts with a clean Free identity.
 
 export async function signOutAccount(): Promise<boolean> {
   const supabase = getSupabase()
   if (!supabase) return false
   try {
+    // 1. Log out of RevenueCat FIRST — prevents cached Pro from
+    //    leaking to the next anonymous session.
+    await revenueCatLogOut()
+
+    // 2. Sign out of Supabase.
     const { error } = await supabase.auth.signOut()
-    // Re-enable anon fallback — the next user starts fresh.
+    if (error) {
+      // If Supabase signout fails, re-login RevenueCat to the
+      // current user to avoid leaving RC in a logged-out limbo.
+      const { data } = await supabase.auth.getSession()
+      if (data.session?.user?.id) await revenueCatLogIn(data.session.user.id)
+      return false
+    }
+
+    // 3. Re-enable anon fallback — the next user starts fresh.
     setAllowAnonFallback(true)
-    return !error
+
+    // 4. Create a new anonymous Supabase UUID and associate
+    //    RevenueCat with it. This ensures the next session has
+    //    a clean Free identity, not a stale Pro cache.
+    const newIdentity = await ensureUser()
+    if (newIdentity?.userId) {
+      await notifyIdentityChanged(newIdentity.userId)
+    }
+
+    return true
   } catch {
     return false
   }

@@ -30,21 +30,16 @@ import {
   Star,
   Lock,
 } from 'lucide-react-native'
-import {
-  SUBSCRIPTION_PLANS,
-  IAP_PACKS,
-  PRO_FEATURES,
-  usePro,
-} from '../services/ProStore'
+import { SUBSCRIPTION_PLANS, IAP_PACKS, PRO_FEATURES, usePro } from '../services/ProStore'
 import { useQuota } from '../services/quota/QuotaStore'
 import { selectFilmRollLabel } from '../services/subscriptions/subscriptionSelectors'
 import MeshGradientBg from '../components/MeshGradientBg'
 
-const PLAN_KEYS = ['monthly', 'annual', 'lifetime']
+const PLAN_KEYS = ['monthly', 'annual']
 
 const PRO_PERKS = [
   { icon: <Camera size={16} color="#64B5F6" />, text: '12 AI Snaps per month' },
-  { icon: <BarChart3 size={16} color="#81C784" />, text: 'Advanced History Preview' },
+  { icon: <BarChart3 size={16} color="#81C784" />, text: 'Full Advanced History' },
   { icon: <ChefHat size={16} color="#FFB74D" />, text: 'Pro Recipe Categories' },
   { icon: <Zap size={16} color="#FFD54F" />, text: 'Advanced Nutrient Data' },
   { icon: <Infinity size={16} color="#CE93D8" />, text: 'Monthly Vitality Wraps' },
@@ -100,10 +95,7 @@ function PackCard({ pack, onBuy, isPurchased }) {
 // ── Main Screen ──────────────────────────────────────────────
 
 export default function VaultScreen({ navigation }) {
-  const {
-    pro, isPro, subscribe, buySnapPack,
-    buyRecipePack, hasRecipePack,
-  } = usePro()
+  const { pro, isPro, subscribe, buySnapPack, buyRecipePack, hasRecipePack } = usePro()
   const { quota: serverQuota } = useQuota()
   const snapInfoLabel = selectFilmRollLabel(serverQuota)
   const [selectedPlan, setSelectedPlan] = useState('annual')
@@ -161,9 +153,7 @@ export default function VaultScreen({ navigation }) {
                   <View style={styles.proStatusInfo}>
                     <Text style={styles.proStatusTitle}>Architect Pro</Text>
                     <Text style={styles.proStatusDesc}>
-                      {pro.subscriptionPlan === 'lifetime'
-                        ? 'Lifetime access — yours forever'
-                        : `${pro.subscriptionPlan === 'annual' ? 'Annual' : 'Monthly'} plan active`}
+                      {`${pro.subscriptionPlan === 'annual' ? 'Annual' : 'Monthly'} plan active`}
                     </Text>
                   </View>
                   <Check size={20} color="#81C784" />
@@ -218,9 +208,7 @@ export default function VaultScreen({ navigation }) {
                           {plan.price}
                         </Text>
                         <Text style={styles.planPeriod}>{plan.period}</Text>
-                        {plan.savings && (
-                          <Text style={styles.planSavings}>{plan.savings}</Text>
-                        )}
+                        {plan.savings && <Text style={styles.planSavings}>{plan.savings}</Text>}
                       </TouchableOpacity>
                     )
                   })}
@@ -259,11 +247,7 @@ export default function VaultScreen({ navigation }) {
             />
 
             <View style={styles.packsGrid}>
-              <PackCard
-                pack={IAP_PACKS.snap_10}
-                onBuy={handleBuyPack}
-                isPurchased={false}
-              />
+              <PackCard pack={IAP_PACKS.snap_10} onBuy={handleBuyPack} isPurchased={false} />
             </View>
 
             {/* Snap balance indicator */}
@@ -320,10 +304,14 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   backBtn: {
-    width: 38, height: 38, borderRadius: 19,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     backgroundColor: 'rgba(255,255,255,0.06)',
-    justifyContent: 'center', alignItems: 'center',
-    borderWidth: 0.5, borderColor: 'rgba(255,255,255,0.08)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 0.5,
+    borderColor: 'rgba(255,255,255,0.08)',
   },
   headerTitle: { fontSize: 18, fontWeight: '800', color: '#FFFFFF' },
   scroll: { flex: 1 },

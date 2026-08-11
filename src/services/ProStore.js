@@ -94,7 +94,7 @@ export const PRO_FEATURES = {
   unlimitedSnaps: { label: '12 AI Snaps per month', icon: 'Camera', tier: 'pro' },
   monthlyWrap: { label: 'Monthly Vitality Wrap', icon: 'Gift', tier: 'pro' },
   fridgeForager: { label: 'Fridge Forager', icon: 'Refrigerator', tier: 'pro' },
-  advancedHistoryPreview: { label: 'Full Advanced History', icon: 'BarChart3', tier: 'pro' },
+  advancedHistoryPreview: { label: 'Full Detailed History', icon: 'BarChart3', tier: 'pro' },
 }
 
 // ── Constants ───────────────────────────────────────────────

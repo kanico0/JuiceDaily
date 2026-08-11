@@ -656,7 +656,7 @@ export default function TodayScreen({ navigation }) {
                         end={{ x: 1, y: 1 }}
                         style={styles.scanAgainGradient}
                       >
-                        <SnapIcon size={18} color={SEMANTIC_COLORS.textOnAccent} />
+                        <SnapIcon size={28} color={SEMANTIC_COLORS.textOnAccent} />
                         <Text style={styles.scanAgainText}>Log Another Juice</Text>
                       </LinearGradient>
                     </TouchableOpacity>
@@ -813,7 +813,7 @@ export default function TodayScreen({ navigation }) {
                       end={{ x: 1, y: 1 }}
                       style={styles.scanCtaGradient}
                     >
-                      <SnapIcon size={22} color={SEMANTIC_COLORS.textOnAccent} />
+                      <SnapIcon size={36} color={SEMANTIC_COLORS.textOnAccent} />
                       <Text style={styles.scanCtaText}>Scan My Produce</Text>
                     </LinearGradient>
                   </TouchableOpacity>

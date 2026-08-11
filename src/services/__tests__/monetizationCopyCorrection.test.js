@@ -37,23 +37,23 @@ const blendAllowancePath = path.resolve(__dirname, '../../services/quota/blendAl
 const blendAllowanceSource = fs.readFileSync(blendAllowancePath, 'utf8')
 
 describe('Pro history copy correction', () => {
-  it('1. PaywallScreen says "Full Advanced History" not "Advanced History Preview"', () => {
-    expect(paywallScreenSource).toMatch(/Full Advanced History/)
+  it('1. PaywallScreen says "Full Detailed History" not "Advanced History Preview"', () => {
+    expect(paywallScreenSource).toMatch(/Full Detailed History/)
     expect(paywallScreenSource).not.toMatch(/'Advanced History Preview'/)
   })
 
-  it('2. PaywallModal says "Full Advanced History" not "Advanced History Preview"', () => {
-    expect(paywallModalSource).toMatch(/Full Advanced History/)
+  it('2. PaywallModal says "Full Detailed History" not "Advanced History Preview"', () => {
+    expect(paywallModalSource).toMatch(/Full Detailed History/)
     expect(paywallModalSource).not.toMatch(/text: 'Advanced History Preview'/)
   })
 
-  it('3. VaultScreen says "Full Advanced History" not "Advanced History Preview"', () => {
-    expect(vaultScreenSource).toMatch(/Full Advanced History/)
+  it('3. VaultScreen says "Full Detailed History" not "Advanced History Preview"', () => {
+    expect(vaultScreenSource).toMatch(/Full Detailed History/)
     expect(vaultScreenSource).not.toMatch(/text: 'Advanced History Preview'/)
   })
 
-  it('4. ProStore PRO_FEATURES says "Full Advanced History"', () => {
-    expect(proStoreSource).toMatch(/Full Advanced History/)
+  it('4. ProStore PRO_FEATURES says "Full Detailed History"', () => {
+    expect(proStoreSource).toMatch(/Full Detailed History/)
     expect(proStoreSource).not.toMatch(/label: 'Advanced History Preview'/)
   })
 })

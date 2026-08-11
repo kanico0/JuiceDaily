@@ -1,5 +1,6 @@
 import React, { useRef, useEffect } from 'react'
 import { TouchableOpacity, Text, StyleSheet, View, Animated, Platform } from 'react-native'
+import { LinearGradient } from 'expo-linear-gradient'
 import SnapIcon from './SnapIcon'
 
 export default function SnapButton({ onPress }) {
@@ -29,12 +30,17 @@ export default function SnapButton({ onPress }) {
         onPress={onPress}
         activeOpacity={0.85}
       >
-        <View style={styles.gradient}>
+        <LinearGradient
+          colors={['#43A047', '#2E7D32', '#1B5E20']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0.8 }}
+          style={styles.gradient}
+        >
           <Animated.View style={[styles.iconWrapper, { opacity: glowAnim }]}>
             <SnapIcon size={48} color="#FFFFFF" />
           </Animated.View>
           <Text style={styles.label}>Snap Produce</Text>
-        </View>
+        </LinearGradient>
       </TouchableOpacity>
     </Animated.View>
   )
@@ -61,7 +67,6 @@ const styles = StyleSheet.create({
     paddingVertical: 20,
     paddingHorizontal: 32,
     borderRadius: 28,
-    backgroundColor: 'rgba(255,255,255,0.06)',
   },
   iconWrapper: {
     marginRight: 14,

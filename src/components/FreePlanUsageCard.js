@@ -96,7 +96,7 @@ export default function FreePlanUsageCard ({ onUpgrade, refreshTrigger }) {
       >
         <View style={styles.rowLeft}>
           <FlaskConical size={16} color="#B8C8BD" />
-          <Text style={styles.rowLabel}>Advanced Blend analyses</Text>
+          <Text style={styles.rowLabel}>Expanded Ingredient Analysis</Text>
         </View>
         <Text style={styles.rowValue}>
           {blendDisplay === null ? '—' : `${blendDisplay} lifetime analyses left`}

@@ -1,6 +1,6 @@
 // ─────────────────────────────────────────────────────────────
 // historyAdvancedPreview.test.js — Integration tests for
-// Advanced History Preview and Make This Juice Again.
+// Detailed History Preview and Make This Juice Again.
 //
 // Covers:
 //   1-10.  Source audit: imports, helpers, policy usage
@@ -25,7 +25,7 @@ const PREVIEW_SRC = readSrc('../../services/historyPreviewEntry.js')
 const MAKE_AGAIN_SRC = readSrc('../../services/makeAgainHelper.js')
 const ANALYTICS_SRC = readSrc('../../services/AnalyticsService.js')
 
-describe('Advanced History Preview — source audit: imports & helpers', () => {
+describe('Detailed History Preview — source audit: imports & helpers', () => {
   test('1. HistoryScreen imports useSubscription', () => {
     expect(HISTORY_SRC).toContain('useSubscription')
   })
@@ -67,7 +67,7 @@ describe('Advanced History Preview — source audit: imports & helpers', () => {
   })
 })
 
-describe('Advanced History Preview — source audit: UI components', () => {
+describe('Detailed History Preview — source audit: UI components', () => {
   test('11. HistoryScreen has AdvancedPreviewBanner component', () => {
     expect(HISTORY_SRC).toContain('AdvancedPreviewBanner')
   })
@@ -84,8 +84,8 @@ describe('Advanced History Preview — source audit: UI components', () => {
     expect(HISTORY_SRC).toContain('ADVANCED PREVIEW')
   })
 
-  test('15. Locked card has "Unlock Advanced History" CTA', () => {
-    expect(HISTORY_SRC).toContain('Unlock Advanced History')
+  test('15. Locked card has "Unlock Detailed History" CTA', () => {
+    expect(HISTORY_SRC).toContain('Unlock Detailed History')
   })
 
   test('16. Make Again button text is "Make This Juice Again"', () => {
@@ -109,7 +109,7 @@ describe('Advanced History Preview — source audit: UI components', () => {
   })
 })
 
-describe('Advanced History Preview — source audit: analytics', () => {
+describe('Detailed History Preview — source audit: analytics', () => {
   test('21. history_viewed event is in schema', () => {
     expect(ANALYTICS_SRC).toContain('history_viewed')
   })
@@ -157,9 +157,9 @@ describe('Advanced History Preview — source audit: analytics', () => {
   })
 })
 
-describe('Advanced History Preview — source audit: accessibility', () => {
+describe('Detailed History Preview — source audit: accessibility', () => {
   test('31. Preview badge has accessibility label', () => {
-    expect(HISTORY_SRC).toMatch(/accessibilityLabel[\s\S]*Advanced History Preview/i)
+    expect(HISTORY_SRC).toMatch(/accessibilityLabel[\s\S]*Detailed History Preview/i)
   })
 
   test('32. Make Again button has accessibility role', () => {
@@ -179,7 +179,7 @@ describe('Advanced History Preview — source audit: accessibility', () => {
   })
 })
 
-describe('Advanced History Preview — source audit: data integrity', () => {
+describe('Detailed History Preview — source audit: data integrity', () => {
   test('36. Basic history is always visible (canViewBasicHistory)', () => {
     expect(POLICY_SRC).toContain('canViewBasicHistory: true')
   })
@@ -205,7 +205,7 @@ describe('Advanced History Preview — source audit: data integrity', () => {
   })
 })
 
-describe('Advanced History Preview — source audit: paywall sources', () => {
+describe('Detailed History Preview — source audit: paywall sources', () => {
   test('41. history_preview_upgrade source is used', () => {
     expect(HISTORY_SRC).toContain('history_preview_upgrade')
   })
@@ -228,7 +228,7 @@ describe('Advanced History Preview — source audit: paywall sources', () => {
   })
 })
 
-describe('Advanced History Preview — source audit: Make Again flow', () => {
+describe('Detailed History Preview — source audit: Make Again flow', () => {
   test('46. Make Again navigates to ScanFlow with manualEntry', () => {
     expect(HISTORY_SRC).toContain("navigate('ScanFlow'")
     expect(HISTORY_SRC).toContain('manualEntry: true')
@@ -275,7 +275,7 @@ describe('Advanced History Preview — source audit: Make Again flow', () => {
   })
 })
 
-describe('Advanced History Preview — source audit: policy correctness', () => {
+describe('Detailed History Preview — source audit: policy correctness', () => {
   test('56. Pro users and loading state get null previewEntryId (no preview concept)', () => {
     expect(HISTORY_SRC).toContain('if (!entitlementInitialized || isPro) return null')
   })
@@ -308,7 +308,7 @@ describe('Advanced History Preview — source audit: policy correctness', () => 
 
 // ── Regression: Make Again rendering conditions ──────────────
 
-describe('Advanced History Preview — Make Again rendering regression', () => {
+describe('Detailed History Preview — Make Again rendering regression', () => {
   test('63. MakeAgainButton is gated only by policy.canMakeAgain', () => {
     expect(HISTORY_SRC).toMatch(/policy\.canMakeAgain\s*&&\s*[\s\S]*MakeAgainButton/)
   })

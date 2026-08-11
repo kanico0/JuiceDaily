@@ -32,16 +32,18 @@ import { subscriptionAnalytics } from '../services/subscriptions/subscriptionAna
 import AccountGateModal from '../components/AccountGateModal'
 
 const FREE_FEATURES = [
-  `${FREE_MONTHLY_SCAN_LIMIT} AI scans per quota month`,
-  'Unlimited manual logging',
+  `${FREE_MONTHLY_SCAN_LIMIT} complimentary AI Snap each month`,
+  'Expanded Ingredient Analysis — 3 complimentary lifetime analyses for blends with 5+ ingredients',
+  'Detailed History — free preview of your latest juice',
+  'Unlimited manual produce entry',
   'Basic Glow Streak',
   'Weekly Momentum',
-  'Basic progress history',
 ]
 
 const PRO_FEATURES = [
-  `${PRO_MONTHLY_SCAN_LIMIT} AI scans per quota month`,
-  'Full Advanced History — beyond your free preview',
+  `${PRO_MONTHLY_SCAN_LIMIT} AI Snaps each month`,
+  'Unlimited Expanded Ingredient Analysis',
+  'Full Detailed History',
   'Advanced Glow Reports',
   'Ingredient and consistency trends',
   'Personalized challenges',

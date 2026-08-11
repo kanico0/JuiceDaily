@@ -11,20 +11,6 @@
 // The QA-enabled scenario is the default for these tests.
 process.env.EXPO_PUBLIC_ENABLE_DEVELOPER_TOOLS = '1'
 
-const mockStorage = new Map()
-
-jest.mock('@react-native-async-storage/async-storage', () => ({
-  getItem: jest.fn((key) => Promise.resolve(mockStorage.get(key) || null)),
-  setItem: jest.fn((key, value) => {
-    mockStorage.set(key, value)
-    return Promise.resolve()
-  }),
-  removeItem: jest.fn((key) => {
-    mockStorage.delete(key)
-    return Promise.resolve()
-  }),
-}))
-
 jest.mock('react-native', () => ({
   Platform: { OS: 'android' },
 }))
@@ -59,13 +45,12 @@ async function flushPromises() {
   await new Promise((resolve) => setImmediate(resolve))
 }
 
-const { useDeveloperMode, DEV_MODE_KEY } = require('../../hooks/useDeveloperMode')
+const { useDeveloperMode } = require('../../hooks/useDeveloperMode')
 
 // ── QA-enabled scenario (EXPO_PUBLIC_ENABLE_DEVELOPER_TOOLS=1) ──
 
 describe('useDeveloperMode — QA/dev-tools-enabled', () => {
   beforeEach(() => {
-    mockStorage.clear()
     jest.clearAllMocks()
   })
 
@@ -149,7 +134,7 @@ describe('useDeveloperMode — QA/dev-tools-enabled', () => {
     unmount()
   })
 
-  test('7. Persisted unlock works on subsequent mount', async () => {
+  test('7. Relocks on every new mount (session-only unlock, no persistence)', async () => {
     const { stateRef: r1, unmount: u1 } = renderDevModeHook(useDeveloperMode)
     for (let i = 0; i < 7; i++) {
       act(() => r1.current.handleVersionTap())
@@ -160,13 +145,17 @@ describe('useDeveloperMode — QA/dev-tools-enabled', () => {
     expect(r1.current.unlocked).toBe(true)
     u1()
 
-    expect(mockStorage.get(DEV_MODE_KEY)).toBe('true')
+    // Nothing should be persisted — unlock is session-only
+    // (No AsyncStorage calls should have been made)
 
+    // A fresh mount (simulating app relaunch) must start locked
     const { stateRef: r2, unmount: u2 } = renderDevModeHook(useDeveloperMode)
     await act(async () => {
       await flushPromises()
     })
-    expect(r2.current.unlocked).toBe(true)
+    expect(r2.current.unlocked).toBe(false)
+    expect(r2.current.showPasscodePrompt).toBe(false)
+    expect(r2.current.tapCount).toBe(0)
     u2()
   })
 
@@ -184,7 +173,6 @@ describe('useDeveloperMode — QA/dev-tools-enabled', () => {
       await stateRef.current.disableDeveloperMode()
     })
     expect(stateRef.current.unlocked).toBe(false)
-    expect(mockStorage.has(DEV_MODE_KEY)).toBe(false)
     unmount()
   })
 
@@ -353,14 +341,16 @@ describe('useDeveloperMode — source-level checks', () => {
     jest.resetModules()
   })
 
-  test('DEV_MODE_KEY is a string', () => {
-    jest.resetModules()
-    process.env.EXPO_PUBLIC_ENABLE_DEVELOPER_TOOLS = '1'
-    const { DEV_MODE_KEY } = require('../../hooks/useDeveloperMode')
-    expect(typeof DEV_MODE_KEY).toBe('string')
-    expect(DEV_MODE_KEY.length).toBeGreaterThan(0)
-    delete process.env.EXPO_PUBLIC_ENABLE_DEVELOPER_TOOLS
-    jest.resetModules()
+  test('useDeveloperMode does NOT persist unlock state (no AsyncStorage import)', () => {
+    const fs = require('fs')
+    const path = require('path')
+    const src = fs.readFileSync(path.join(__dirname, '..', '..', 'hooks', 'useDeveloperMode.js'), 'utf8')
+    // Must NOT import AsyncStorage
+    expect(src).not.toMatch(/import.*AsyncStorage/)
+    expect(src).not.toMatch(/from.*async-storage/)
+    // Must NOT call setItem or getItem for unlock persistence
+    expect(src).not.toMatch(/\.setItem\(/)
+    expect(src).not.toMatch(/\.getItem\(/)
   })
 
   test('Developer mode does not grant Pro entitlement (source check)', () => {

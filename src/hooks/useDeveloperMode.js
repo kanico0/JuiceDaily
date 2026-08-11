@@ -12,9 +12,11 @@
 //   - Production Google Play builds: default disabled (unset or 0)
 //   When disabled, 7 taps + 7918 cannot expose Developer Flags.
 //
-// The unlock persists in AsyncStorage so the user does not need
-// to re-enter the sequence every time. A "Disable Developer Mode"
-// action is available inside the unlocked developer area.
+// SESSION-ONLY UNLOCK:
+//   The unlock is NOT persisted to AsyncStorage. Developer Options
+//   begin locked and hidden on every app launch. The user must
+//   tap 7 times + enter 7918 each session. Closing and relaunching
+//   the app relocks Developer Options.
 //
 // This gate does NOT protect secrets or privileged backend
 // operations. It only hides QA/developer UI from ordinary users.
@@ -22,9 +24,7 @@
 // ─────────────────────────────────────────────────────────────
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import AsyncStorage from '@react-native-async-storage/async-storage'
 
-const DEV_MODE_KEY = '@juicing_developer_mode_unlocked_v1'
 const REQUIRED_TAPS = 7
 const REQUIRED_PASSCODE = '7918'
 const TAP_RESET_TIMEOUT_MS = 3000 // Reset tap counter after 3s of inactivity
@@ -35,19 +35,13 @@ const TAP_RESET_TIMEOUT_MS = 3000 // Reset tap counter after 3s of inactivity
 export const DEVELOPER_TOOLS_ENABLED = process.env.EXPO_PUBLIC_ENABLE_DEVELOPER_TOOLS === '1'
 
 export function useDeveloperMode() {
+  // Always start locked — no persisted unlock state.
+  // Developer Options relock on every app launch.
   const [unlocked, setUnlocked] = useState(false)
   const [tapCount, setTapCount] = useState(0)
   const [showPasscodePrompt, setShowPasscodePrompt] = useState(false)
   const [passcodeError, setPasscodeError] = useState(false)
   const tapTimerRef = useRef(null)
-
-  // Load persisted unlock state on mount — only if developer tools are enabled
-  useEffect(() => {
-    if (!DEVELOPER_TOOLS_ENABLED) return
-    AsyncStorage.getItem(DEV_MODE_KEY).then((val) => {
-      if (val === 'true') setUnlocked(true)
-    }).catch(() => {})
-  }, [])
 
   // Reset tap counter after inactivity timeout
   useEffect(() => {
@@ -84,9 +78,8 @@ export function useDeveloperMode() {
       setUnlocked(true)
       setShowPasscodePrompt(false)
       setPasscodeError(false)
-      try {
-        await AsyncStorage.setItem(DEV_MODE_KEY, 'true')
-      } catch (e) { /* ignore */ }
+      // Session-only: do NOT persist to AsyncStorage.
+      // Unlock expires when the app is closed/relaunched.
       return true
     }
     setPasscodeError(true)
@@ -104,9 +97,6 @@ export function useDeveloperMode() {
     setShowPasscodePrompt(false)
     setPasscodeError(false)
     setTapCount(0)
-    try {
-      await AsyncStorage.removeItem(DEV_MODE_KEY)
-    } catch (e) { /* ignore */ }
   }, [])
 
   return {
@@ -122,4 +112,4 @@ export function useDeveloperMode() {
   }
 }
 
-export { DEV_MODE_KEY, REQUIRED_TAPS, REQUIRED_PASSCODE }
+export { REQUIRED_TAPS, REQUIRED_PASSCODE }

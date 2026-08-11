@@ -163,7 +163,7 @@ function AdvancedPreviewBanner({ onUpgrade }) {
     <View style={ms.previewBanner}>
       <View style={ms.previewBannerHeader}>
         <Sparkles size={16} color={SEMANTIC_COLORS.accentPrimary} />
-        <Text style={ms.previewBannerTitle}>Your Advanced History Preview</Text>
+        <Text style={ms.previewBannerTitle}>Your Detailed History Preview</Text>
       </View>
       <Text style={ms.previewBannerBody}>
         Your latest juice includes the complete history experience. Upgrade to RawLifeFlow Pro to
@@ -174,9 +174,9 @@ function AdvancedPreviewBanner({ onUpgrade }) {
         onPress={onUpgrade}
         hitSlop={8}
         accessibilityRole="button"
-        accessibilityLabel="Unlock Advanced History"
+        accessibilityLabel="Unlock Detailed History"
       >
-        <Text style={ms.previewCtaText}>Unlock Advanced History</Text>
+        <Text style={ms.previewCtaText}>Unlock Detailed History</Text>
         <ChevronRight size={16} color={SEMANTIC_COLORS.textOnAccent} />
       </Pressable>
     </View>
@@ -202,10 +202,10 @@ function LockedAdvancedCard({ onUpgrade, onMakeAgainLocked }) {
         onPress={onUpgrade}
         hitSlop={8}
         accessibilityRole="button"
-        accessibilityLabel="Unlock Advanced History"
+        accessibilityLabel="Unlock Detailed History"
         accessibilityHint="Opens RawLifeFlow Pro subscription options."
       >
-        <Text style={ms.lockedCtaText}>Unlock Advanced History</Text>
+        <Text style={ms.lockedCtaText}>Unlock Detailed History</Text>
       </Pressable>
       <Pressable
         style={({ pressed }) => [ms.makeAgainLockedBtn, pressed && { opacity: 0.7 }]}
@@ -534,7 +534,7 @@ function DaySection({ dateKey, entries, onEntryPress, devClockTick, previewEntry
             const isPreview = entitlementInitialized && !isPro && previewEntryId === entry.id
             const isOlderLocked = entitlementInitialized && !isPro && previewEntryId && previewEntryId !== entry.id
             const accessLabel = isPreview
-              ? `Advanced History Preview. ${entry.title}, logged ${formatDate(dateKey)}. Complete advanced details are available for this latest juice.`
+              ? `Detailed History Preview. ${entry.title}, logged ${formatDate(dateKey)}. Complete advanced details are available for this latest juice.`
               : isOlderLocked
                 ? `Opens basic juice details. Advanced historical insights require RawLifeFlow Pro.`
                 : undefined

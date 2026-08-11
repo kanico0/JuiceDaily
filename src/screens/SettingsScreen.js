@@ -423,7 +423,7 @@ function SubscriptionSection({ navigation }) {
             <Sparkles size={16} color="#7EE787" />
             <View style={styles.helpInfo}>
               <Text style={styles.helpLabel}>Upgrade to Pro</Text>
-              <Text style={styles.helpDesc}>60 AI scans per month, advanced reports & more</Text>
+              <Text style={styles.helpDesc}>12 AI Snaps per month, advanced reports & more</Text>
             </View>
             <Text style={styles.helpArrow}>→</Text>
           </TouchableOpacity>

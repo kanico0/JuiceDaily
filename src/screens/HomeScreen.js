@@ -594,7 +594,7 @@ function QuotaMeter({ navigation }) {
       </Text>
       {exhausted && isFree && (
         <Text style={{ color: '#7EE787', fontSize: 12, marginTop: 2 }}>
-          Upgrade to Pro for 60 scans / month — or keep logging manually free
+          Upgrade to Pro for 12 AI Snaps / month — or keep logging manually free
         </Text>
       )}
     </TouchableOpacity>

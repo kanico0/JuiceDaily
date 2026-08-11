@@ -138,3 +138,27 @@ describe('No stale quota values in active source', () => {
     expect(vaultScreenSource).not.toMatch(/Unlimited AI Snaps/)
   })
 })
+
+describe('No stale "60 scans" in Settings or Home', () => {
+  const settingsScreenPath = path.resolve(__dirname, '../../screens/SettingsScreen.js')
+  const settingsScreenSource = fs.readFileSync(settingsScreenPath, 'utf8')
+
+  const homeScreenPath = path.resolve(__dirname, '../../screens/HomeScreen.js')
+  const homeScreenSource = fs.readFileSync(homeScreenPath, 'utf8')
+
+  it('19. SettingsScreen does not say "60 AI scans"', () => {
+    expect(settingsScreenSource).not.toMatch(/60 AI scans/)
+  })
+
+  it('20. SettingsScreen says "12 AI Snaps per month" for Pro upgrade', () => {
+    expect(settingsScreenSource).toMatch(/12 AI Snaps per month/)
+  })
+
+  it('21. HomeScreen does not say "60 scans"', () => {
+    expect(homeScreenSource).not.toMatch(/60 scans/)
+  })
+
+  it('22. HomeScreen says "12 AI Snaps" for Pro upgrade', () => {
+    expect(homeScreenSource).toMatch(/12 AI Snaps/)
+  })
+})

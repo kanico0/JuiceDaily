@@ -27,7 +27,6 @@ const ACTIVE_COLOR = '#81C784'
 const INACTIVE_COLOR = '#90A4AE'
 const BAR_BG = '#0D1117'
 const FAB_SIZE = 56
-const FAB_COLOR = '#4CAF50'
 
 export default function ModernTabBar({ state, descriptors, navigation }) {
   const insets = useSafeAreaInsets()
@@ -75,7 +74,7 @@ export default function ModernTabBar({ state, descriptors, navigation }) {
                   accessibilityRole="button"
                   accessibilityLabel="Scan produce"
                 >
-                  <SnapIcon size={40} color="#FFFFFF" />
+                  <SnapIcon size={52} color="#FFFFFF" />
                 </TouchableOpacity>
               </View>
             )}
@@ -135,16 +134,15 @@ const styles = StyleSheet.create({
     width: FAB_SIZE,
     height: FAB_SIZE,
     borderRadius: FAB_SIZE / 2,
-    backgroundColor: FAB_COLOR,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: -28,
     ...Platform.select({
-      android: { elevation: 12 },
+      android: { elevation: 8 },
       ios: {
-        shadowColor: '#4CAF50',
+        shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.4,
+        shadowOpacity: 0.3,
         shadowRadius: 8,
       },
     }),

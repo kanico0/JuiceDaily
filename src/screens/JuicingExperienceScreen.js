@@ -88,7 +88,7 @@ export default function JuicingExperienceScreen({ navigation, onSelect }) {
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={s.cardTitle}>Experienced Juicer</Text>
-                  <Text style={s.cardDesc}>Explore advanced blends, broader produce variety, and more detailed nutrition guidance.</Text>
+                  <Text style={s.cardDesc}>Explore expanded ingredient blends, broader produce variety, and more detailed nutrition guidance.</Text>
                   <Text style={s.cardCta}>Show Me More</Text>
                 </View>
               </GlassSurface>

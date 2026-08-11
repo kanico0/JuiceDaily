@@ -17,25 +17,25 @@ export function getAdvancedBlendModalContent (stage, remaining, isPro = false) {
     case 'fifth_ingredient_notice':
       if (isPro) {
         return {
-          title: 'This is an Advanced Blend',
+          title: 'This is an Expanded Ingredient Analysis',
           subtitle: null,
           body:
-            'Blends with 5 or more ingredients use an Advanced Blend analysis. ' +
-            'With Pro, you have unlimited Advanced Blend analyses.',
+            'Blends with 5 or more ingredients use Expanded Ingredient Analysis. ' +
+            'With Pro, you have unlimited Expanded Ingredient Analyses.',
         }
       }
       return {
-        title: 'This is an Advanced Blend',
+        title: 'This is an Expanded Ingredient Analysis',
         subtitle: null,
         body:
-          'Blends with 5 or more ingredients use one of your 3 lifetime Advanced Blend analyses. ' +
+          'Blends with 5 or more ingredients use one of your 3 lifetime Expanded Ingredient Analyses. ' +
           'Your allowance is only used after the analysis completes successfully.',
       }
     case 'pre_analysis_confirmation': {
       const used = Math.max(0, 3 - (remaining ?? 3))
       const body = getAdvancedBlendRemainingText(used, isPro)
       return {
-        title: 'Use an Advanced Blend analysis?',
+        title: 'Use an Expanded Ingredient Analysis?',
         subtitle: null,
         body,
       }
@@ -44,26 +44,26 @@ export function getAdvancedBlendModalContent (stage, remaining, isPro = false) {
       const used = Math.max(0, 3 - (remaining ?? 3))
       const body = getAdvancedBlendRemainingText(used, isPro)
       return {
-        title: 'Advanced Blend analyzed',
+        title: 'Expanded Ingredient Analysis complete',
         subtitle: null,
         body,
       }
     }
     case 'allowance_exhausted':
       return {
-        title: 'Advanced Blend analyses used',
-        subtitle: 'Unlock unlimited Advanced Blend analyses',
+        title: 'Expanded Ingredient Analyses used',
+        subtitle: 'Unlock unlimited Expanded Ingredient Analysis',
         body:
-          'You\u2019ve used all 3 complimentary Advanced Blend analyses. ' +
-          'RawLifeFlow Pro gives you unlimited Advanced Blend nutrition insights. ' +
+          'You\u2019ve used all 3 complimentary Expanded Ingredient Analyses. ' +
+          'RawLifeFlow Pro gives you unlimited Expanded Ingredient Analysis. ' +
           'Simple Blends (up to 4 ingredients) and manual logging are always free.',
       }
     case 'network_retry':
       return {
         title: 'Connection Needed',
-        subtitle: 'We couldn\u2019t verify your Advanced Blend allowance',
+        subtitle: 'We couldn\u2019t verify your Expanded Ingredient Analysis allowance',
         body:
-          'To analyze Advanced Blends (5+ ingredients), we need to connect to our servers. ' +
+          'To analyze blends with 5+ ingredients, we need to connect to our servers. ' +
           'Please check your internet connection and try again. ' +
           'Your ingredients are saved \u2014 just tap retry when you\u2019re ready. ' +
           'No allowance has been used.',
@@ -109,7 +109,7 @@ export default function AdvancedBlendModal ({
           <Pressable
             style={styles.backdrop}
             onPress={allowBackdropDismiss ? onDismiss : undefined}
-            accessibilityLabel="Dismiss Advanced Blend message"
+            accessibilityLabel="Dismiss Expanded Ingredient Analysis message"
           />
           <View style={styles.card} accessibilityViewIsModal accessibilityRole="alert">
             <View style={styles.header}>
@@ -130,7 +130,7 @@ export default function AdvancedBlendModal ({
                   onPress={onDismiss}
                   hitSlop={8}
                   accessibilityRole="button"
-                  accessibilityLabel="Close Advanced Blend message"
+                  accessibilityLabel="Close Expanded Ingredient Analysis message"
                 >
                   <X size={20} color="#B8C8BD" />
                 </Pressable>
@@ -192,7 +192,7 @@ export default function AdvancedBlendModal ({
                     ]}
                     onPress={onRetry}
                     accessibilityRole="button"
-                    accessibilityLabel="Retry Advanced Blend analysis"
+                    accessibilityLabel="Retry Expanded Ingredient Analysis"
                   >
                     <Text style={styles.primaryText}>Try Again</Text>
                   </Pressable>
@@ -218,7 +218,7 @@ export default function AdvancedBlendModal ({
                     ]}
                     onPress={onUpgrade}
                     accessibilityRole="button"
-                    accessibilityLabel="Explore RawLifeFlow Pro for unlimited Advanced Blends"
+                    accessibilityLabel="Explore RawLifeFlow Pro for unlimited Expanded Ingredient Analysis"
                   >
                     <Text style={styles.primaryText}>Explore Pro</Text>
                   </Pressable>

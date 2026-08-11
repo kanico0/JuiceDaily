@@ -57,23 +57,23 @@ describe('Advanced Blend Display — QA Items 4 & 8 Regression', () => {
   // 2. Free user with two remaining
   test('2. getAdvancedBlendRemainingText(1, false) shows 2 remaining', () => {
     const s = section(BLEND_SERVICE_SRC, 'export function getAdvancedBlendRemainingText', 600)
-    expect(s).toMatch(/\$\{remaining\}.*analyses remaining/)
+    expect(s).toMatch(/\$\{remaining\}.*Analyses remaining/)
   })
 
   // 3. Free user with one remaining
   test('3. getAdvancedBlendRemainingText(2, false) shows 1 remaining', () => {
     const s = section(BLEND_SERVICE_SRC, 'export function getAdvancedBlendRemainingText', 600)
     expect(s).toContain("remaining === 1")
-    expect(s).toContain('1 complimentary Advanced Blend analysis remaining')
+    expect(s).toContain('1 complimentary Expanded Ingredient Analysis remaining')
   })
 
   // 4. Correct singular copy at one
-  test('4. Singular copy uses "analysis" not "analyses" at remaining=1', () => {
+  test('4. Singular copy uses "Analysis" not "Analyses" at remaining=1', () => {
     const s = section(BLEND_SERVICE_SRC, 'export function getAdvancedBlendRemainingText', 600)
     const singularLine = s.match(/remaining === 1.*?return.*?$/m)
     expect(singularLine).toBeTruthy()
-    expect(singularLine[0]).toContain('analysis remaining')
-    expect(singularLine[0]).not.toContain('analyses remaining')
+    expect(singularLine[0]).toContain('Analysis remaining')
+    expect(singularLine[0]).not.toContain('Analyses remaining')
   })
 
   // 5. Free user with zero remaining
@@ -91,7 +91,7 @@ describe('Advanced Blend Display — QA Items 4 & 8 Regression', () => {
 
   test('6b. getAdvancedBlendRemainingText(*, true) shows unlimited', () => {
     const s = section(BLEND_SERVICE_SRC, 'export function getAdvancedBlendRemainingText', 600)
-    expect(s).toContain("isPro) return 'Unlimited Advanced Blend analyses with Pro'")
+    expect(s).toContain("isPro) return 'Unlimited Expanded Ingredient Analysis with Pro'")
   })
 
   // 7. Loading state does not flash a false count of three

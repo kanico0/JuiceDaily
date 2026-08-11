@@ -430,10 +430,10 @@ function SubscriptionSection({ navigation }) {
             {refreshLabel ? <Text style={styles.helpDesc}>Scans refresh on {refreshLabel}</Text> : null}
             <Text style={styles.helpDesc}>
               {isPro
-                ? 'Unlimited Advanced Blend analyses with Pro'
+                ? 'Unlimited Expanded Ingredient Analysis with Pro'
                 : blendVerified
-                  ? `${getAdvancedBlendRemaining(blendUsedCount, false) ?? FREE_ADVANCED_BLEND_ALLOWANCE} of ${FREE_ADVANCED_BLEND_ALLOWANCE} complimentary lifetime Advanced Blend analyses remaining`
-                  : `${FREE_ADVANCED_BLEND_ALLOWANCE} complimentary lifetime Advanced Blend analyses (5+ ingredients)`}
+                  ? `${getAdvancedBlendRemaining(blendUsedCount, false) ?? FREE_ADVANCED_BLEND_ALLOWANCE} of ${FREE_ADVANCED_BLEND_ALLOWANCE} complimentary lifetime Expanded Ingredient Analyses remaining`
+                  : `${FREE_ADVANCED_BLEND_ALLOWANCE} complimentary lifetime Expanded Ingredient Analyses (5+ ingredients)`}
             </Text>
             {!isPro && (
               <Text style={styles.helpDesc}>Simple blends (1–4 ingredients): free & unlimited</Text>

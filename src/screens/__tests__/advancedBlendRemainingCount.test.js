@@ -47,14 +47,14 @@ describe('Advanced Blend Remaining Count Correction', () => {
   test('5. Singular grammar for one remaining analysis', () => {
     const idx = BLEND_SERVICE_SRC.indexOf('getAdvancedBlendRemainingText')
     const section = BLEND_SRC_SECTION(BLEND_SERVICE_SRC, idx, 600)
-    expect(section).toContain('1 complimentary Advanced Blend analysis remaining')
+    expect(section).toContain('1 complimentary Expanded Ingredient Analysis remaining')
   })
 
   // 6. Plural grammar for multiple remaining
   test('6. Plural grammar for multiple remaining analyses', () => {
     const idx = BLEND_SERVICE_SRC.indexOf('getAdvancedBlendRemainingText')
     const section = BLEND_SRC_SECTION(BLEND_SERVICE_SRC, idx, 600)
-    expect(section).toContain('analyses remaining')
+    expect(section).toContain('Analyses remaining')
   })
 
   // 7. Zero remaining shows exhausted text

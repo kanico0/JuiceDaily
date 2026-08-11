@@ -89,12 +89,12 @@ export function getAdvancedBlendRemaining(usedCount: number, isPro: boolean): nu
 // ── Display text for remaining count ─────────────────────────
 
 export function getAdvancedBlendRemainingText(usedCount: number, isPro: boolean): string {
-  if (isPro) return 'Unlimited Advanced Blend analyses with Pro'
+  if (isPro) return 'Unlimited Expanded Ingredient Analysis with Pro'
   const remaining = getAdvancedBlendRemaining(usedCount, isPro)
-  if (remaining === null) return 'Unlimited Advanced Blend analyses with Pro'
-  if (remaining === 0) return 'You have used all 3 complimentary Advanced Blend analyses.'
-  if (remaining === 1) return 'You have 1 complimentary Advanced Blend analysis remaining.'
-  return `You have ${remaining} complimentary Advanced Blend analyses remaining.`
+  if (remaining === null) return 'Unlimited Expanded Ingredient Analysis with Pro'
+  if (remaining === 0) return 'You have used all 3 complimentary Expanded Ingredient Analyses.'
+  if (remaining === 1) return 'You have 1 complimentary Expanded Ingredient Analysis remaining.'
+  return `You have ${remaining} complimentary Expanded Ingredient Analyses remaining.`
 }
 
 // ── Operation ID (UUID-based, one per analysis attempt) ──────

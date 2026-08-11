@@ -65,7 +65,7 @@ describe('Feature Group 3 — Lesson Content Tests', () => {
       const headlines = lesson.sections.map((s) => s.headline.toLowerCase())
 
       // Must cover the required feature-tour topics
-      expect(headlines.some((h) => h.includes('advanced blend'))).toBe(true)
+      expect(headlines.some((h) => h.includes('expanded ingredient'))).toBe(true)
       expect(headlines.some((h) => h.includes('primary-produce') || h.includes('recipe discovery'))).toBe(true)
       expect(headlines.some((h) => h.includes('pagination') || h.includes('browsing'))).toBe(true)
       expect(headlines.some((h) => h.includes('wellness focus'))).toBe(true)
@@ -108,7 +108,7 @@ describe('Feature Group 3 — Lesson Content Tests', () => {
       expect(headlines.some((h) => h.includes('focus nutrient'))).toBe(true)
       expect(headlines.some((h) => h.includes('wellness focus'))).toBe(true)
       expect(headlines.some((h) => h.includes('log') && h.includes('history'))).toBe(true)
-      expect(headlines.some((h) => h.includes('advanced'))).toBe(true)
+      expect(headlines.some((h) => h.includes('expanded ingredient'))).toBe(true)
     })
 
     it('7. No unsupported medical or performance claims in experienced lesson', () => {

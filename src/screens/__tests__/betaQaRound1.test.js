@@ -190,8 +190,8 @@ describe('Issue 5: Experience screen copy and CTAs', () => {
     expect(EXP_SRC).toContain('step-by-step')
   })
 
-  it('5.7 — Experienced juicer description mentions "advanced blends"', () => {
-    expect(EXP_SRC).toContain('advanced blends')
+  it('5.7 — Experienced juicer description mentions "expanded ingredient blends"', () => {
+    expect(EXP_SRC).toContain('expanded ingredient blends')
   })
 
   it('5.8 — cardCta style is defined', () => {

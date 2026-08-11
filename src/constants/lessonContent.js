@@ -102,8 +102,8 @@ const CASUAL_JUICER = {
     },
     {
       id: 'simple-to-advanced',
-      headline: 'Progressing to Advanced Blends',
-      body: 'Once you are comfortable with three or four ingredients, try adding a fifth. The app provides Advanced Blend analysis for juices with five or more distinct ingredients, giving you deeper nutritional insight.',
+      headline: 'Progressing to Expanded Ingredient Analysis',
+      body: 'Once you are comfortable with three or four ingredients, try adding a fifth. The app provides Expanded Ingredient Analysis for juices with five or more distinct ingredients, giving you deeper nutritional insight.',
     },
   ],
 }
@@ -117,8 +117,8 @@ const EXPERIENCED_JUICER = {
   sections: [
     {
       id: 'advanced-blend',
-      headline: 'Advanced Blend Analysis',
-      body: 'When your juice has five or more distinct ingredients, the app unlocks Advanced Blend analysis. This gives you a deeper nutritional breakdown, synergy indicators, and optimization suggestions.',
+      headline: 'Expanded Ingredient Analysis',
+      body: 'When your juice has five or more distinct ingredients, the app unlocks Expanded Ingredient Analysis. This gives you a deeper nutritional breakdown, synergy indicators, and optimization suggestions.',
     },
     {
       id: 'primary-produce-recipes',
@@ -168,7 +168,7 @@ const EXPERIENCED_JUICER = {
     {
       id: 'pro-capabilities',
       headline: 'Pro Capabilities',
-      body: 'Pro users get unlimited Advanced Blend analyses, expanded recipe access, and enhanced insights. Existing pricing and entitlement policies remain unchanged — upgrade only if it fits your needs.',
+      body: 'Pro users get unlimited Expanded Ingredient Analyses, expanded recipe access, and enhanced insights. Existing pricing and entitlement policies remain unchanged — upgrade only if it fits your needs.',
     },
   ],
 }

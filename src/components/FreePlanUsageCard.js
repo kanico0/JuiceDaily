@@ -56,7 +56,7 @@ export default function FreePlanUsageCard ({ onUpgrade, refreshTrigger }) {
           <Text style={styles.headerText}>RawLifeFlow Pro</Text>
         </View>
         <Text style={styles.proBody}>
-          Up to {PRO_MONTHLY_SCAN_LIMIT} AI scans per month and unlimited Advanced Blend analyses.
+          Up to {PRO_MONTHLY_SCAN_LIMIT} AI scans per month and unlimited Expanded Ingredient Analysis.
         </Text>
       </View>
     )
@@ -92,7 +92,7 @@ export default function FreePlanUsageCard ({ onUpgrade, refreshTrigger }) {
           trackEvent('today_usage_row_tapped', { row: 'advanced_blend', plan: 'free' })
         }}
         accessibilityRole="button"
-        accessibilityLabel={`Advanced Blend analyses, ${blendDisplay === null ? 'loading' : blendDisplay + ' lifetime analyses left'}`}
+        accessibilityLabel={`Expanded Ingredient Analysis, ${blendDisplay === null ? 'loading' : blendDisplay + ' lifetime analyses left'}`}
       >
         <View style={styles.rowLeft}>
           <FlaskConical size={16} color="#B8C8BD" />

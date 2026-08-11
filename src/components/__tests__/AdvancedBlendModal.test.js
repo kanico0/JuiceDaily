@@ -19,9 +19,9 @@ jest.mock('../../services/supabase/identity', () => ({
 
 describe('getAdvancedBlendModalContent', () => {
   describe('fifth_ingredient_notice stage', () => {
-    it('returns title "This is an Advanced Blend"', () => {
+    it('returns title "This is an Expanded Ingredient Analysis"', () => {
       const content = getAdvancedBlendModalContent('fifth_ingredient_notice', 3)
-      expect(content.title).toBe('This is an Advanced Blend')
+      expect(content.title).toBe('This is an Expanded Ingredient Analysis')
     })
 
     it('mentions 5 or more ingredients', () => {
@@ -31,7 +31,7 @@ describe('getAdvancedBlendModalContent', () => {
 
     it('mentions 3 lifetime analyses', () => {
       const content = getAdvancedBlendModalContent('fifth_ingredient_notice', 3)
-      expect(content.body).toContain('3 lifetime Advanced Blend analyses')
+      expect(content.body).toContain('3 lifetime Expanded Ingredient Analyses')
     })
 
     it('clarifies allowance only used after successful analysis', () => {
@@ -46,34 +46,34 @@ describe('getAdvancedBlendModalContent', () => {
   })
 
   describe('pre_analysis_confirmation stage', () => {
-    it('returns title "Use an Advanced Blend analysis?"', () => {
+    it('returns title "Use an Expanded Ingredient Analysis?"', () => {
       const content = getAdvancedBlendModalContent('pre_analysis_confirmation', 2)
-      expect(content.title).toBe('Use an Advanced Blend analysis?')
+      expect(content.title).toBe('Use an Expanded Ingredient Analysis?')
     })
 
     it('shows remaining count in body', () => {
       const content = getAdvancedBlendModalContent('pre_analysis_confirmation', 2)
       expect(content.body).toContain('2')
-      expect(content.body).toContain('analyses remaining')
+      expect(content.body).toContain('Analyses remaining')
     })
 
     it('shows remaining count of 1', () => {
       const content = getAdvancedBlendModalContent('pre_analysis_confirmation', 1)
       expect(content.body).toContain('1')
-      expect(content.body).toContain('analysis remaining')
+      expect(content.body).toContain('Analysis remaining')
     })
   })
 
   describe('completion_confirmation stage', () => {
-    it('returns title "Advanced Blend analyzed"', () => {
+    it('returns title "Expanded Ingredient Analysis complete"', () => {
       const content = getAdvancedBlendModalContent('completion_confirmation', 2)
-      expect(content.title).toBe('Advanced Blend analyzed')
+      expect(content.title).toBe('Expanded Ingredient Analysis complete')
     })
 
     it('shows remaining count in body', () => {
       const content = getAdvancedBlendModalContent('completion_confirmation', 2)
       expect(content.body).toContain('2')
-      expect(content.body).toContain('analyses remaining')
+      expect(content.body).toContain('Analyses remaining')
     })
 
     it('does not use alarming language', () => {
@@ -90,9 +90,9 @@ describe('getAdvancedBlendModalContent', () => {
       expect(content.body).toContain('3 complimentary')
     })
 
-    it('mentions unlimited Advanced Blends with Pro', () => {
+    it('mentions unlimited Expanded Ingredient Analysiss with Pro', () => {
       const content = getAdvancedBlendModalContent('allowance_exhausted', 0)
-      expect(content.body).toContain('unlimited Advanced Blend')
+      expect(content.body).toContain('unlimited Expanded Ingredient Analysis')
     })
 
     it('mentions Simple Blends are still free', () => {

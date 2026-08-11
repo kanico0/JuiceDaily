@@ -37,7 +37,7 @@ export default function SnapButton({ onPress }) {
           style={styles.gradient}
         >
           <Animated.View style={[styles.iconWrapper, { opacity: glowAnim }]}>
-            <SnapIcon size={48} color="#FFFFFF" />
+            <SnapIcon size={64} color="#FFFFFF" />
           </Animated.View>
           <Text style={styles.label}>Snap Produce</Text>
         </LinearGradient>

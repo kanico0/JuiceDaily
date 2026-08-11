@@ -675,6 +675,181 @@ describe('Migration / Self-Heal', () => {
     })
   })
 
+  // ── Legacy over-limit self-heal ──────────────────────────────
+  // Migration 0016 preserves historical used values even when they
+  // exceed the current limit (e.g. used=5, limit=1 from legacy
+  // quota rows). The self-heal must recognize these as exhausted
+  // and seed the install marker, so logout doesn't reset the
+  // effective quota.
+  describe('Legacy over-limit self-heal', () => {
+    it('used=5, limit=1 → self-heal seeds install marker', async () => {
+      const overLimitQuota = makeFreeQuota({
+        limit: 1,
+        used: 5,
+        remaining: 0, // Edge Function normalizes to 0
+      })
+      const healed = await selfHealInstallMarker(overLimitQuota)
+      expect(healed).toBe(true)
+      expect(mockStore.has(INSTALL_FREE_SNAP_KEY)).toBe(true)
+    })
+
+    it('used=2, limit=1 → self-heal seeds install marker', async () => {
+      const overLimitQuota = makeFreeQuota({
+        limit: 1,
+        used: 2,
+        remaining: 0, // Edge Function normalizes to 0
+      })
+      const healed = await selfHealInstallMarker(overLimitQuota)
+      expect(healed).toBe(true)
+      expect(mockStore.has(INSTALL_FREE_SNAP_KEY)).toBe(true)
+    })
+
+    it('used=1, limit=1 (normal exhausted) → self-heal seeds marker', async () => {
+      const exhaustedQuota = makeFreeQuota({
+        limit: 1,
+        used: 1,
+        remaining: 0,
+      })
+      const healed = await selfHealInstallMarker(exhaustedQuota)
+      expect(healed).toBe(true)
+      expect(mockStore.has(INSTALL_FREE_SNAP_KEY)).toBe(true)
+    })
+
+    it('used=0, limit=1 (unused) → self-heal does NOT seed marker', async () => {
+      const unusedQuota = makeFreeQuota({
+        limit: 1,
+        used: 0,
+        remaining: 1,
+      })
+      const healed = await selfHealInstallMarker(unusedQuota)
+      expect(healed).toBe(false)
+      expect(mockStore.has(INSTALL_FREE_SNAP_KEY)).toBe(false)
+    })
+
+    it('Pro quota with used=5, limit=12 → self-heal does NOT seed marker', async () => {
+      const proQuota = makeProQuota({
+        limit: 12,
+        used: 5,
+        remaining: 7,
+      })
+      const healed = await selfHealInstallMarker(proQuota)
+      expect(healed).toBe(false)
+      expect(mockStore.has(INSTALL_FREE_SNAP_KEY)).toBe(false)
+    })
+
+    it('null quota → self-heal does NOT seed marker', async () => {
+      const healed = await selfHealInstallMarker(null)
+      expect(healed).toBe(false)
+      expect(mockStore.has(INSTALL_FREE_SNAP_KEY)).toBe(false)
+    })
+
+    it('negative remaining (raw, unnormalized) → self-heal still seeds marker', async () => {
+      // If the client somehow receives a raw negative remaining
+      // (e.g. from a stale cache or a future server change), the
+      // self-heal should still recognize exhaustion via used >= limit.
+      const negativeQuota = makeFreeQuota({
+        limit: 1,
+        used: 5,
+        remaining: -4, // raw negative — should still self-heal
+      })
+      const healed = await selfHealInstallMarker(negativeQuota)
+      expect(healed).toBe(true)
+      expect(mockStore.has(INSTALL_FREE_SNAP_KEY)).toBe(true)
+    })
+  })
+
+  // ── Negative remaining normalization ─────────────────────────
+  describe('Negative remaining normalization', () => {
+    it('composeEffectiveQuota clamps negative server remaining to 0', () => {
+      const negativeQuota = makeFreeQuota({
+        limit: 1,
+        used: 5,
+        remaining: -4,
+      })
+      const effective = composeEffectiveQuota(negativeQuota, 1)
+      expect(effective).not.toBeNull()
+      expect(effective!.remaining).toBe(0) // NOT -4
+    })
+
+    it('composeEffectiveQuota with negative remaining + install consumed → 0', () => {
+      const negativeQuota = makeFreeQuota({
+        limit: 1,
+        used: 5,
+        remaining: -4,
+      })
+      const effective = composeEffectiveQuota(negativeQuota, 0)
+      expect(effective).not.toBeNull()
+      expect(effective!.remaining).toBe(0)
+    })
+
+    it('composeEffectiveQuota preserves used from server (not recomputed from negative remaining)', () => {
+      const negativeQuota = makeFreeQuota({
+        limit: 1,
+        used: 5,
+        remaining: -4,
+      })
+      const effective = composeEffectiveQuota(negativeQuota, 1)
+      // effective remaining = min(max(0, -4), 1) = min(0, 1) = 0
+      // effective used = max(0, 1 - 0) = 1
+      expect(effective!.remaining).toBe(0)
+      expect(effective!.used).toBe(1)
+    })
+  })
+
+  // ── Full legacy over-limit lifecycle ──────────────────────────
+  describe('Legacy over-limit lifecycle (migration → logout → new UUID)', () => {
+    it('legacy used=5/limit=1 → self-heal → logout → new UUID stays exhausted', async () => {
+      // 1. Legacy user: install marker absent, authoritative quota
+      //    shows used=5, limit=1 (over-limit from migration)
+      const legacyQuota = makeFreeQuota({
+        limit: 1,
+        used: 5,
+        remaining: 0,
+        periodStart: WINDOW_JAN,
+        anchorAt: WINDOW_JAN,
+      })
+      expect(mockStore.has(INSTALL_FREE_SNAP_KEY)).toBe(false)
+
+      // 2. Refresh: self-heal runs, install marker becomes consumed
+      await selfHealInstallMarker(legacyQuota)
+      expect(mockStore.has(INSTALL_FREE_SNAP_KEY)).toBe(true)
+
+      // 3. Effective quota is exhausted
+      const installRem = await getInstallFreeSnapRemaining(legacyQuota)
+      const effective = composeEffectiveQuota(legacyQuota, installRem)
+      expect(effective!.remaining).toBe(0)
+
+      // 4. Logout → new anonymous UUID reports fresh 0/1
+      const newGuestQuota = makeFreeQuota({
+        limit: 1,
+        used: 0,
+        remaining: 1,
+        periodStart: WINDOW_FEB,
+        anchorAt: WINDOW_FEB,
+      })
+
+      // 5. Install guard keeps effective remaining at 0
+      //    (install marker was seeded from the legacy anchor)
+      const newInstallRem = await getInstallFreeSnapRemaining(newGuestQuota)
+      const newEffective = composeEffectiveQuota(newGuestQuota, newInstallRem)
+      expect(newInstallRem).toBe(0) // Install guard exhausted
+      expect(newEffective!.remaining).toBe(0) // Effective is 0
+    })
+
+    it('legacy used=2/limit=1 → self-heal → effective exhausted', async () => {
+      const legacyQuota = makeFreeQuota({
+        limit: 1,
+        used: 2,
+        remaining: 0,
+      })
+
+      await selfHealInstallMarker(legacyQuota)
+      const installRem = await getInstallFreeSnapRemaining(legacyQuota)
+      const effective = composeEffectiveQuota(legacyQuota, installRem)
+      expect(effective!.remaining).toBe(0)
+    })
+  })
+
   // ── Monthly rollover ─────────────────────────────────────────
   describe('Monthly rollover with self-heal', () => {
     it('old window consumed + new monthly window → old marker does NOT exhaust new window', async () => {

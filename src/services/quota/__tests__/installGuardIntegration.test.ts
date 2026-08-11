@@ -184,10 +184,8 @@ describe('Install Free Snap Guard — Source Integration', () => {
     test('selfHealInstallMarker only seeds from exhausted Free quota', () => {
       // Must check plan === 'free'
       expect(INSTALL_GUARD_SRC).toContain("plan !== 'free'")
-      // Must check remaining === 0
-      expect(INSTALL_GUARD_SRC).toContain('remaining !== 0')
-      // Must check used >= 1
-      expect(INSTALL_GUARD_SRC).toContain('used < 1')
+      // Must check used >= limit (authoritative exhaustion)
+      expect(INSTALL_GUARD_SRC).toContain('used >= serverQuota.limit')
       // Must check that an anchor can be established (anchorAt or periodStart)
       expect(INSTALL_GUARD_SRC).toContain('getOrCreateInstallAnchor')
     })

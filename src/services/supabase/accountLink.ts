@@ -317,7 +317,7 @@ function parseQuotaMinimal(raw: unknown): ScanQuotaSnapshot | null {
     plan: q.plan === 'pro' ? 'pro' : 'free',
     limit: q.limit,
     used: q.used,
-    remaining: typeof q.remaining === 'number' ? q.remaining : Math.max(0, q.limit - q.used),
+    remaining: Math.max(0, typeof q.remaining === 'number' ? q.remaining : q.limit - q.used),
     periodStart: String(q.periodStart ?? q.period_start ?? ''),
     periodEnd: String(q.periodEnd ?? q.period_end ?? ''),
     anchorAt: q.anchorAt != null ? String(q.anchorAt ?? q.anchor_at ?? '') : null,

@@ -278,7 +278,10 @@ export async function markInstallFreeSnapConsumed (
 // Strict conditions — only an authoritative exhausted FREE quota
 // may bootstrap the marker:
 //   - serverQuota must be non-null and plan === 'free'
-//   - used >= 1, remaining === 0
+//   - valid positive limit
+//   - used >= limit (authoritative exhaustion — covers legacy
+//     over-limit migration rows like used=5, limit=1)
+//   - OR normalized remaining <= 0 (defense-in-depth)
 //
 // Do NOT seed from: null, Pro, malformed, or unused quota.
 export async function selfHealInstallMarker (
@@ -286,9 +289,15 @@ export async function selfHealInstallMarker (
 ): Promise<boolean> {
   if (!serverQuota) return false
   if (serverQuota.plan !== 'free') return false
-  // Only seed when the authoritative Free allowance is exhausted
-  if (serverQuota.remaining !== 0) return false
-  if (serverQuota.used < 1) return false
+  // Need a valid positive limit to evaluate exhaustion
+  if (!serverQuota.limit || serverQuota.limit <= 0) return false
+  // Exhausted: used >= limit (authoritative) OR remaining <= 0
+  // (normalized). The used >= limit check is primary because it
+  // handles legacy over-limit rows (e.g. used=5, limit=1) where
+  // remaining may have been negative before normalization.
+  const isExhausted = serverQuota.used >= serverQuota.limit ||
+    Math.max(0, serverQuota.remaining) <= 0 && serverQuota.used >= 1
+  if (!isExhausted) return false
   // Ensure the install anchor exists, then mark consumed for the
   // current install anniversary window.
   const anchorISO = await getOrCreateInstallAnchor(serverQuota)
@@ -343,7 +352,12 @@ export function composeEffectiveQuota (
   if (!serverQuota) return null
   if (serverQuota.plan === 'pro') return serverQuota
   if (installRemaining === null) return null
-  const effectiveRemaining = Math.min(serverQuota.remaining, installRemaining)
+  // Clamp server remaining to >= 0 — legacy migration may have
+  // used > limit (e.g. used=5, limit=1), which produces negative
+  // remaining. The Edge Function normalizes this, but defend
+  // in-depth on the client as well.
+  const serverRemaining = Math.max(0, serverQuota.remaining)
+  const effectiveRemaining = Math.min(serverRemaining, installRemaining)
   const effectiveUsed = Math.max(0, serverQuota.limit - effectiveRemaining)
   return {
     ...serverQuota,

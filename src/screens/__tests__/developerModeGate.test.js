@@ -246,6 +246,16 @@ describe('useDeveloperMode — QA/dev-tools-enabled', () => {
 // evaluated at module load time and cannot be reliably toggled
 // within a single Jest file. The useDeveloperMode.js source is
 // verified to reference EXPO_PUBLIC_ENABLE_DEVELOPER_TOOLS.
+//
+// Required behavior (verified by source-level checks):
+//   - enabled flag + not unlocked → hidden (test 1: unlocked=false by default)
+//   - fewer than 7 taps → hidden (test 2: 1-6 taps do not reveal prompt)
+//   - 7 taps → PIN gate (test 3: 7th tap opens passcode prompt)
+//   - wrong PIN → hidden (test 4: wrong passcode keeps options hidden)
+//   - correct 7918 → visible (test 5: 7918 unlocks developer options)
+//   - production flag unset → unlock unavailable (source check: useDeveloperMode
+//     checks EXPO_PUBLIC_ENABLE_DEVELOPER_TOOLS; handleVersionTap returns
+//     early if DEVELOPER_TOOLS_ENABLED is false)
 
 // ── Source-level checks ──
 
@@ -292,6 +302,37 @@ describe('useDeveloperMode — source-level checks', () => {
     const path = require('path')
     const src = fs.readFileSync(path.join(__dirname, '..', '..', 'hooks', 'useDeveloperMode.js'), 'utf8')
     expect(src).toMatch(/EXPO_PUBLIC_ENABLE_DEVELOPER_TOOLS/)
+  })
+
+  test('production flag unset → handleVersionTap returns early (source check)', () => {
+    const fs = require('fs')
+    const path = require('path')
+    const src = fs.readFileSync(path.join(__dirname, '..', '..', 'hooks', 'useDeveloperMode.js'), 'utf8')
+    // handleVersionTap must check DEVELOPER_TOOLS_ENABLED and return early
+    const tapIdx = src.indexOf('handleVersionTap')
+    expect(tapIdx).toBeGreaterThan(-1)
+    const tapBody = src.slice(tapIdx, tapIdx + 300)
+    expect(tapBody).toMatch(/DEVELOPER_TOOLS_ENABLED/)
+    expect(tapBody).toMatch(/return/)
+  })
+
+  test('production flag unset → submitPasscode fails (source check)', () => {
+    const fs = require('fs')
+    const path = require('path')
+    const src = fs.readFileSync(path.join(__dirname, '..', '..', 'hooks', 'useDeveloperMode.js'), 'utf8')
+    const submitIdx = src.indexOf('submitPasscode')
+    expect(submitIdx).toBeGreaterThan(-1)
+    const submitBody = src.slice(submitIdx, submitIdx + 300)
+    expect(submitBody).toMatch(/DEVELOPER_TOOLS_ENABLED/)
+    expect(submitBody).toMatch(/return false/)
+  })
+
+  test('DEVELOPER_TOOLS_ENABLED defaults to false when env var is unset', () => {
+    const fs = require('fs')
+    const path = require('path')
+    const src = fs.readFileSync(path.join(__dirname, '..', '..', 'hooks', 'useDeveloperMode.js'), 'utf8')
+    // The export must use === '1' so unset/undefined/0 all evaluate to false
+    expect(src).toMatch(/DEVELOPER_TOOLS_ENABLED\s*=\s*process\.env\.EXPO_PUBLIC_ENABLE_DEVELOPER_TOOLS\s*===\s*['"]1['"]/)
   })
 
   test('REQUIRED_TAPS is 7', () => {

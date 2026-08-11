@@ -1088,7 +1088,7 @@ function HeroStep({ onScan, onBrowse, onExample, onExplore, onNotReady, showSeco
             end={{ x: 1, y: 0.8 }}
             style={obStyles.primaryBtnGradient}
           >
-            <SnapIcon size={22} color="#FFFFFF" />
+            <SnapIcon size={32} color="#FFFFFF" />
             <Text style={obStyles.primaryBtnText}>
               {isAnticipating ? 'Analyzing\u2026' : 'Reveal My Nutrients'}
             </Text>
@@ -1324,7 +1324,7 @@ function ScanHome({ onScan, onBrowse, onExample, onExplore, totalLogs, showSecon
             end={{ x: 1, y: 0.8 }}
             style={obStyles.primaryBtnGradient}
           >
-            <SnapIcon size={22} color="#FFFFFF" />
+            <SnapIcon size={32} color="#FFFFFF" />
             <Text style={obStyles.primaryBtnText}>
               {isAnticipating ? 'Analyzing…' : 'Reveal My Nutrients'}
             </Text>
@@ -1866,7 +1866,7 @@ function BrowseHome({ onScan, onBrowse, onExample, onExplore, onViewToday, onWel
             end={{ x: 1, y: 0.8 }}
             style={obStyles.primaryBtnGradient}
           >
-            <SnapIcon size={22} color="#FFFFFF" />
+            <SnapIcon size={32} color="#FFFFFF" />
             <Text style={obStyles.primaryBtnText}>{isReturning ? 'Scan Produce' : 'Reveal My Nutrients'}</Text>
           </LinearGradient>
         </Pressable>

@@ -64,6 +64,7 @@ import {
   selectNextRefreshLabel,
 } from '../services/subscriptions/subscriptionSelectors'
 import { MONETIZATION_ENABLED, SUPABASE_CONFIGURED, TERMS_URL, PRIVACY_URL } from '../services/subscriptions/subscriptionConfig'
+import { fetchBlendAllowance, FREE_ADVANCED_BLEND_ALLOWANCE, getAdvancedBlendRemaining } from '../services/quota/blendAllowanceService'
 import { getAccountStatus, signOutAccount } from '../services/supabase/accountLink'
 import AccountGateModal from '../components/AccountGateModal'
 import { advanceDevDay, getDevDayOffset, resetDevClock, getDevNow } from '../utils/DevClock'
@@ -366,12 +367,30 @@ function SubscriptionSection({ navigation }) {
   const { state, isPro, restore, openManagement } = useSubscription()
   const { quota, refresh: refreshQuota } = useQuota()
   const [restoring, setRestoring] = useState(false)
+  const [blendUsedCount, setBlendUsedCount] = useState(0)
+  const [blendVerified, setBlendVerified] = useState(false)
 
   const planLabel = selectPlanLabel(state)
   const storeLabel = selectBillingStoreLabel(state)
   const renewalLabel = selectRenewalLabel(state)
   const quotaLabel = selectQuotaLabel(quota)
   const refreshLabel = selectNextRefreshLabel(quota)
+
+  // Fetch authoritative Advanced Blend allowance from server for display.
+  useEffect(() => {
+    if (!SUPABASE_CONFIGURED) return
+    let cancelled = false
+    const load = async () => {
+      const snapshot = await fetchBlendAllowance()
+      if (cancelled) return
+      if (snapshot) {
+        setBlendUsedCount(snapshot.used ?? 0)
+        setBlendVerified(true)
+      }
+    }
+    load()
+    return () => { cancelled = true }
+  }, [isPro])
 
   const handleRestore = async () => {
     setRestoring(true)
@@ -409,6 +428,16 @@ function SubscriptionSection({ navigation }) {
             {storeLabel ? <Text style={styles.helpDesc}>{storeLabel}</Text> : null}
             {quotaLabel ? <Text style={styles.helpDesc}>{quotaLabel}</Text> : null}
             {refreshLabel ? <Text style={styles.helpDesc}>Scans refresh on {refreshLabel}</Text> : null}
+            <Text style={styles.helpDesc}>
+              {isPro
+                ? 'Advanced Blend: unlimited analyses with Pro'
+                : blendVerified
+                  ? `${getAdvancedBlendRemaining(blendUsedCount, false) ?? FREE_ADVANCED_BLEND_ALLOWANCE} of ${FREE_ADVANCED_BLEND_ALLOWANCE} complimentary Advanced Blend analyses remaining`
+                  : `Advanced Blend: ${FREE_ADVANCED_BLEND_ALLOWANCE} complimentary analyses lifetime (5+ ingredients)`}
+            </Text>
+            {!isPro && (
+              <Text style={styles.helpDesc}>Simple blends (1–4 ingredients): free & unlimited</Text>
+            )}
           </View>
         </View>
 

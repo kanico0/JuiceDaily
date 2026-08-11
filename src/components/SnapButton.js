@@ -1,6 +1,5 @@
 import React, { useRef, useEffect } from 'react'
-import { TouchableOpacity, Text, StyleSheet, View, Animated } from 'react-native'
-import { LinearGradient } from 'expo-linear-gradient'
+import { TouchableOpacity, Text, StyleSheet, View, Animated, Platform } from 'react-native'
 import SnapIcon from './SnapIcon'
 
 export default function SnapButton({ onPress }) {
@@ -30,19 +29,12 @@ export default function SnapButton({ onPress }) {
         onPress={onPress}
         activeOpacity={0.85}
       >
-        <LinearGradient
-          colors={['rgba(45,106,79,0.9)', 'rgba(27,67,50,0.95)']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.gradient}
-        >
-          {/* Glass edge highlight */}
-          <View style={styles.edgeGlow} />
+        <View style={styles.gradient}>
           <Animated.View style={[styles.iconWrapper, { opacity: glowAnim }]}>
-            <SnapIcon size={26} color="#FFFFFF" />
+            <SnapIcon size={48} color="#FFFFFF" />
           </Animated.View>
           <Text style={styles.label}>Snap Produce</Text>
-        </LinearGradient>
+        </View>
       </TouchableOpacity>
     </Animated.View>
   )
@@ -52,10 +44,15 @@ const styles = StyleSheet.create({
   button: {
     borderRadius: 28,
     overflow: 'hidden',
-    shadowColor: '#2D6A4F',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.25,
-    shadowRadius: 16,
+    ...Platform.select({
+      android: { elevation: 8 },
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+      },
+    }),
   },
   gradient: {
     flexDirection: 'row',
@@ -64,24 +61,10 @@ const styles = StyleSheet.create({
     paddingVertical: 20,
     paddingHorizontal: 32,
     borderRadius: 28,
-    borderWidth: 0.5,
-    borderColor: 'rgba(255,255,255,0.12)',
-    position: 'relative',
-  },
-  edgeGlow: {
-    position: 'absolute',
-    top: 0,
-    left: 20,
-    right: 20,
-    height: 1,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    borderRadius: 1,
+    backgroundColor: 'rgba(255,255,255,0.06)',
   },
   iconWrapper: {
-    marginRight: 12,
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    padding: 10,
-    borderRadius: 24,
+    marginRight: 14,
   },
   label: {
     color: '#FFFFFF',

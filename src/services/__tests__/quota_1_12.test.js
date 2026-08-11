@@ -245,3 +245,52 @@ describe('Quota 1/12 — display strings', () => {
     expect(paywallSource).toMatch(/PRO_MONTHLY_SCAN_LIMIT/)
   })
 })
+
+// ── _quota_limit_for_plan fix (migration 0015) ──
+// Root cause: resolve_quota() calls _quota_limit_for_plan() (from
+// migration 0006), NOT quota_limits() (from migration 0013).
+// Migration 0013 updated quota_limits() but forgot to update
+// _quota_limit_for_plan(), so new quota rows still got 5/60.
+
+const fixMigrationPath = path.resolve(__dirname, '../../../supabase/migrations/0015_fix_quota_limit_for_plan.sql')
+const fixMigrationSource = fs.existsSync(fixMigrationPath)
+  ? fs.readFileSync(fixMigrationPath, 'utf8')
+  : ''
+
+const oldHelperPath = path.resolve(__dirname, '../../../supabase/migrations/0006_fix_quota_helper_functions.sql')
+const oldHelperSource = fs.readFileSync(oldHelperPath, 'utf8')
+
+describe('Quota 1/12 — _quota_limit_for_plan fix (migration 0015)', () => {
+  it('migration 0015 exists', () => {
+    expect(fs.existsSync(fixMigrationPath)).toBe(true)
+  })
+
+  it('0015 updates _quota_limit_for_plan to return 1 for free', () => {
+    expect(fixMigrationSource).toMatch(/_quota_limit_for_plan/)
+    expect(fixMigrationSource).toMatch(/p_plan\s*=\s*'pro'\s*then\s*12\s*else\s*1/)
+  })
+
+  it('0015 does NOT return 5 or 60', () => {
+    expect(fixMigrationSource).not.toMatch(/then\s*60\s*else\s*5/)
+  })
+
+  it('0015 updates existing rows with stale limits', () => {
+    expect(fixMigrationSource).toMatch(/update\s+public\.scan_quotas/i)
+    expect(fixMigrationSource).toMatch(/scan_limit\s*=\s*1/i)
+    expect(fixMigrationSource).toMatch(/scan_limit\s*=\s*12/i)
+  })
+
+  it('0006 originally defined 5/60 (the stale values)', () => {
+    expect(oldHelperSource).toMatch(/then\s*60\s*else\s*5/)
+  })
+
+  it('Free UI can never fall back to 5 — config is 1', () => {
+    expect(configSource).toMatch(/FREE_MONTHLY_SCAN_LIMIT\s*=\s*1/)
+    expect(configSource).not.toMatch(/FREE_MONTHLY_SCAN_LIMIT\s*=\s*5/)
+  })
+
+  it('Pro UI can never fall back to 60 — config is 12', () => {
+    expect(configSource).toMatch(/PRO_MONTHLY_SCAN_LIMIT\s*=\s*12/)
+    expect(configSource).not.toMatch(/PRO_MONTHLY_SCAN_LIMIT\s*=\s*60/)
+  })
+})

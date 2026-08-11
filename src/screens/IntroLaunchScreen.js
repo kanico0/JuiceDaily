@@ -101,7 +101,7 @@ export default function IntroLaunchScreen({ onReveal, onSeeHow, onExplore }) {
               end={{ x: 1, y: 0.8 }}
               style={styles.primaryGradient}
             >
-              <SnapIcon size={22} color="#FFFFFF" />
+              <SnapIcon size={32} color="#FFFFFF" />
               <Text style={styles.primaryText}>Reveal My Nutrients</Text>
             </LinearGradient>
           </Pressable>

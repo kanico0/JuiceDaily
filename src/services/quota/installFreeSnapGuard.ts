@@ -173,28 +173,36 @@ async function writeRecord (record: InstallFreeSnapRecord): Promise<void> {
 
 // ── Install anchor management ─────────────────────────────────
 
-// Get the existing install anchor, or seed it from the current
-// serverQuota.periodStart if no anchor exists yet.
+// Get the existing install anchor, or seed it from the server's
+// authoritative anchorAt (auth.users.created_at) if no anchor
+// exists yet.
 //
 // The anchor is established ONCE and never changed. Subsequent
 // calls always return the same anchor, regardless of which Supabase
 // UUID is active.
 //
+// Seeding priority:
+//   1. serverQuota.anchorAt (auth.users.created_at — the true
+//      immutable first-use timestamp)
+//   2. serverQuota.periodStart (fallback for older servers that
+//      don't yet return anchorAt)
+//
 // Returns null if no anchor exists and serverQuota is null or has
-// no periodStart (cannot seed).
+// neither anchorAt nor periodStart (cannot seed).
 export async function getOrCreateInstallAnchor (
   serverQuota: ScanQuotaSnapshot | null,
 ): Promise<string | null> {
   const existing = await readAnchorRecord()
   if (existing) return existing.anchorISO
-  // Can't seed without a server quota periodStart
-  if (!serverQuota || !serverQuota.periodStart) return null
-  // Seed from the first serverQuota.periodStart
+  if (!serverQuota) return null
+  // Prefer the authoritative anchorAt (auth.users.created_at)
+  const seedISO = serverQuota.anchorAt || serverQuota.periodStart
+  if (!seedISO) return null
   await writeAnchorRecord({
-    anchorISO: serverQuota.periodStart,
+    anchorISO: seedISO,
     establishedAt: new Date().toISOString(),
   })
-  return serverQuota.periodStart
+  return seedISO
 }
 
 // Read the install anchor without creating it.

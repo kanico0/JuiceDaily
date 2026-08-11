@@ -188,8 +188,8 @@ describe('Install Free Snap Guard — Source Integration', () => {
       expect(INSTALL_GUARD_SRC).toContain('remaining !== 0')
       // Must check used >= 1
       expect(INSTALL_GUARD_SRC).toContain('used < 1')
-      // Must check periodStart is non-empty
-      expect(INSTALL_GUARD_SRC).toContain('!serverQuota.periodStart')
+      // Must check that an anchor can be established (anchorAt or periodStart)
+      expect(INSTALL_GUARD_SRC).toContain('getOrCreateInstallAnchor')
     })
 
     test('selfHealInstallMarker does NOT seed from Pro', () => {

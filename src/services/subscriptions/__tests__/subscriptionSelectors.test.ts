@@ -24,6 +24,7 @@ function makeQuota (overrides: Partial<ScanQuotaSnapshot> = {}): ScanQuotaSnapsh
     remaining: FREE_LIMIT,
     periodStart: '2026-07-01T00:00:00Z',
     periodEnd: '2026-08-01T00:00:00Z',
+    anchorAt: '2026-07-01T00:00:00Z',
     dailyLimit: null,
     dailyUsed: null,
     ...overrides,

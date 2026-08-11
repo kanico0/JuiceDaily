@@ -174,6 +174,22 @@ update public.scan_quotas q
  where q.user_id = u.id
    and q.anchor_day is null;
 
+-- ── Add anchor_at column to scan_quotas ───────────────────────
+-- Stores auth.users.created_at so the client can seed the install
+-- anchor from the true first-use timestamp, not from periodStart
+-- (which is the current window start and may have drifted for
+-- end-of-month anchors).
+
+alter table public.scan_quotas
+  add column if not exists anchor_at timestamptz;
+
+-- Backfill anchor_at for existing rows from auth.users.created_at.
+update public.scan_quotas q
+   set anchor_at = u.created_at
+  from auth.users u
+ where q.user_id = u.id
+   and q.anchor_at is null;
+
 -- ── Replace resolve_quota to use anniversary windows ──────────
 -- Key changes from the calendar-month version (0003):
 --   1. Joins with auth.users to get the immutable created_at anchor
@@ -216,13 +232,14 @@ begin
   v_window_end := public.anniversary_window_end(v_anchor, v_window_start);
 
   -- First activation: create quota row with the anniversary window.
-  insert into public.scan_quotas (user_id, plan, scan_limit, period_start, period_end)
+  insert into public.scan_quotas (user_id, plan, scan_limit, period_start, period_end, anchor_at)
   values (
     p_user_id,
     v_plan,
     public._quota_limit_for_plan(v_plan),
     v_window_start,
-    v_window_end
+    v_window_end,
+    v_anchor
   )
   on conflict (user_id) do nothing;
 
@@ -269,6 +286,7 @@ begin
          reserved = q.reserved,
          daily_used = q.daily_used,
          daily_period_start = q.daily_period_start,
+         anchor_at = v_anchor,
          updated_at = now()
    where user_id = p_user_id
    returning * into q;

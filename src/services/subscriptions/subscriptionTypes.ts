@@ -82,6 +82,12 @@ export interface ScanQuotaSnapshot {
   remaining: number
   periodStart: string
   periodEnd: string
+  // The immutable account anchor (auth.users.created_at) from the
+  // server. Used by the install Free Snap guard to seed the
+  // install-level anchor from the true first-use timestamp, not
+  // from periodStart (which is the current window start and may
+  // have drifted for end-of-month anchors).
+  anchorAt: string | null
   dailyLimit: number | null
   dailyUsed: number | null
   effectiveRemaining?: number | null

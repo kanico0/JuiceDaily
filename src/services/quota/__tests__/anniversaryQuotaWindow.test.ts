@@ -618,4 +618,361 @@ describe('Anniversary Quota Migration (server-side source)', () => {
     expect(MIGRATION_SRC).not.toContain('create or replace function public.sync_revenuecat')
     expect(MIGRATION_SRC).not.toContain('alter table public.subscriptions')
   })
+
+  it('migration adds anchor_at column to scan_quotas', () => {
+    expect(MIGRATION_SRC).toContain('anchor_at timestamptz')
+    expect(MIGRATION_SRC).toContain('alter table public.scan_quotas')
+  })
+
+  it('migration backfills anchor_at from auth.users.created_at', () => {
+    expect(MIGRATION_SRC).toContain('anchor_at = u.created_at')
+  })
+
+  it('resolve_quota sets anchor_at on insert', () => {
+    const resolveSection = MIGRATION_SRC.slice(
+      MIGRATION_SRC.indexOf('create or replace function public.resolve_quota'),
+    )
+    expect(resolveSection).toContain('anchor_at')
+    expect(resolveSection).toContain('v_anchor')
+  })
+})
+
+// ─────────────────────────────────────────────────────────────
+// Install anchor seeding from authoritative anchorAt
+// ─────────────────────────────────────────────────────────────
+describe('Install Anchor Seeding from anchorAt', () => {
+  // These tests verify that the install anchor is seeded from the
+  // server's authoritative anchorAt (auth.users.created_at), NOT
+  // from periodStart (which is the current window start and may
+  // have drifted for end-of-month anchors).
+
+  // Re-import the install guard functions that use AsyncStorage
+  // (already mocked at the top of this file)
+  const {
+    getOrCreateInstallAnchor,
+    computeInstallWindowKey,
+    addMonthsFromAnchor,
+    anniversaryWindowStart,
+    INSTALL_ANCHOR_KEY,
+    INSTALL_FREE_SNAP_KEY,
+    clearInstallFreeSnapState,
+    clearInstallAnchor,
+    selfHealInstallMarker,
+    markInstallFreeSnapConsumed,
+    getInstallFreeSnapRemaining,
+  } = require('../installFreeSnapGuard')
+
+  // Helper to read the mock store
+  function readMockStore (key: string): any {
+    const raw = mockStore.get(key)
+    return raw ? JSON.parse(raw) : null
+  }
+
+  beforeEach(() => {
+    mockStore.clear()
+  })
+
+  // ── 1. Jan 31 anchor, first guard during Feb 28 window ──────
+  describe('1. Jan 31 true anchor, guard initialized during Feb 28 window', () => {
+    it('install anchor stores Jan 31, NOT Feb 28', async () => {
+      // True account anchor = Jan 31 (auth.users.created_at)
+      // Current periodStart = Feb 28 (the window start containing now)
+      // The guard should seed from anchorAt (Jan 31), not periodStart (Feb 28)
+      const quota = {
+        plan: 'free' as const,
+        limit: 1,
+        used: 0,
+        remaining: 1,
+        periodStart: '2026-02-28T10:00:00.000Z', // current window start
+        periodEnd: '2026-03-31T10:00:00.000Z',
+        anchorAt: '2026-01-31T10:00:00.000Z', // true first-use anchor
+        dailyLimit: null,
+        dailyUsed: null,
+      }
+
+      const anchor = await getOrCreateInstallAnchor(quota)
+      expect(anchor).toBe('2026-01-31T10:00:00.000Z')
+      expect(anchor).not.toBe('2026-02-28T10:00:00.000Z')
+
+      // Verify the persisted record
+      const record = readMockStore(INSTALL_ANCHOR_KEY)
+      expect(record.anchorISO).toBe('2026-01-31T10:00:00.000Z')
+    })
+
+    it('subsequent install windows recover to Mar 31', () => {
+      // Install anchor = Jan 31
+      // Feb 28 window: addMonthsFromAnchor(Jan 31, 1) = Feb 28 (clamped)
+      const feb = addMonthsFromAnchor(
+        new Date('2026-01-31T10:00:00.000Z'),
+        1,
+      )
+      expect(feb.getUTCMonth()).toBe(1) // February
+      expect(feb.getUTCDate()).toBe(28)
+
+      // Mar 31 window: addMonthsFromAnchor(Jan 31, 2) = Mar 31 (recovers!)
+      const mar = addMonthsFromAnchor(
+        new Date('2026-01-31T10:00:00.000Z'),
+        2,
+      )
+      expect(mar.getUTCMonth()).toBe(2) // March
+      expect(mar.getUTCDate()).toBe(31) // NOT 28!
+
+      // If the anchor had been seeded from Feb 28 (wrong):
+      const marFromWrongAnchor = addMonthsFromAnchor(
+        new Date('2026-02-28T10:00:00.000Z'),
+        1,
+      )
+      expect(marFromWrongAnchor.getUTCDate()).toBe(28) // Stuck on 28th!
+      // This proves why seeding from anchorAt (Jan 31) is critical
+      expect(mar.getUTCDate()).not.toBe(marFromWrongAnchor.getUTCDate())
+    })
+  })
+
+  // ── 2. Existing Aug 11 user seeds Aug 11 correctly ──────────
+  describe('2. Existing Aug 11 user seeds Aug 11 correctly', () => {
+    it('install anchor = anchorAt = Aug 11', async () => {
+      const quota = {
+        plan: 'free' as const,
+        limit: 1,
+        used: 0,
+        remaining: 1,
+        periodStart: '2026-08-11T14:30:00.000Z',
+        periodEnd: '2026-09-11T14:30:00.000Z',
+        anchorAt: '2026-08-11T14:30:00.000Z',
+        dailyLimit: null,
+        dailyUsed: null,
+      }
+
+      const anchor = await getOrCreateInstallAnchor(quota)
+      expect(anchor).toBe('2026-08-11T14:30:00.000Z')
+    })
+
+    it('install window key matches Aug 11 → Sep 11', () => {
+      const windowKey = computeInstallWindowKey(
+        '2026-08-11T14:30:00.000Z',
+        new Date('2026-08-25T12:00:00Z'),
+      )
+      expect(windowKey).toBe('2026-08-11T14:30:00.000Z')
+    })
+  })
+
+  // ── 3. Logout → new Aug 20 guest does not replace Aug 11 ────
+  describe('3. Logout → new guest does not replace install anchor', () => {
+    it('established Aug 11 anchor survives new Aug 20 guest', async () => {
+      // First user (Aug 11) establishes the install anchor
+      const quotaA = {
+        plan: 'free' as const,
+        limit: 1,
+        used: 0,
+        remaining: 1,
+        periodStart: '2026-08-11T14:30:00.000Z',
+        periodEnd: '2026-09-11T14:30:00.000Z',
+        anchorAt: '2026-08-11T14:30:00.000Z',
+        dailyLimit: null,
+        dailyUsed: null,
+      }
+      await getOrCreateInstallAnchor(quotaA)
+      expect(readMockStore(INSTALL_ANCHOR_KEY).anchorISO).toBe(
+        '2026-08-11T14:30:00.000Z',
+      )
+
+      // Logout → new anonymous B created Aug 20
+      const quotaB = {
+        plan: 'free' as const,
+        limit: 1,
+        used: 0,
+        remaining: 1,
+        periodStart: '2026-08-20T10:00:00.000Z',
+        periodEnd: '2026-09-20T10:00:00.000Z',
+        anchorAt: '2026-08-20T10:00:00.000Z',
+        dailyLimit: null,
+        dailyUsed: null,
+      }
+      const anchor = await getOrCreateInstallAnchor(quotaB)
+      // The anchor is STILL Aug 11 — it was not replaced
+      expect(anchor).toBe('2026-08-11T14:30:00.000Z')
+      expect(anchor).not.toBe('2026-08-20T10:00:00.000Z')
+    })
+  })
+
+  // ── 4. Account switching never changes established anchor ───
+  describe('4. Account switching never changes install anchor', () => {
+    it('switching to a different Free account preserves install anchor', async () => {
+      // Account A (Jan 15) establishes the anchor
+      const quotaA = {
+        plan: 'free' as const,
+        limit: 1,
+        used: 0,
+        remaining: 1,
+        periodStart: '2026-01-15T08:00:00.000Z',
+        periodEnd: '2026-02-15T08:00:00.000Z',
+        anchorAt: '2026-01-15T08:00:00.000Z',
+        dailyLimit: null,
+        dailyUsed: null,
+      }
+      await getOrCreateInstallAnchor(quotaA)
+
+      // Switch to Account B (Mar 22)
+      const quotaB = {
+        plan: 'free' as const,
+        limit: 1,
+        used: 0,
+        remaining: 1,
+        periodStart: '2026-03-22T12:00:00.000Z',
+        periodEnd: '2026-04-22T12:00:00.000Z',
+        anchorAt: '2026-03-22T12:00:00.000Z',
+        dailyLimit: null,
+        dailyUsed: null,
+      }
+      const anchor = await getOrCreateInstallAnchor(quotaB)
+      expect(anchor).toBe('2026-01-15T08:00:00.000Z') // Still A's anchor
+      expect(anchor).not.toBe('2026-03-22T12:00:00.000Z')
+    })
+
+    it('switching to a Pro account preserves install anchor', async () => {
+      const quotaFree = {
+        plan: 'free' as const,
+        limit: 1,
+        used: 0,
+        remaining: 1,
+        periodStart: '2026-01-15T08:00:00.000Z',
+        periodEnd: '2026-02-15T08:00:00.000Z',
+        anchorAt: '2026-01-15T08:00:00.000Z',
+        dailyLimit: null,
+        dailyUsed: null,
+      }
+      await getOrCreateInstallAnchor(quotaFree)
+
+      const quotaPro = {
+        plan: 'pro' as const,
+        limit: 12,
+        used: 0,
+        remaining: 12,
+        periodStart: '2026-03-22T12:00:00.000Z',
+        periodEnd: '2026-04-22T12:00:00.000Z',
+        anchorAt: '2026-03-22T12:00:00.000Z',
+        dailyLimit: 10,
+        dailyUsed: 0,
+      }
+      const anchor = await getOrCreateInstallAnchor(quotaPro)
+      expect(anchor).toBe('2026-01-15T08:00:00.000Z') // Still the original
+    })
+  })
+
+  // ── 5. Exhausted old-build user self-heals without another Snap ─
+  describe('5. Exhausted old-build user self-heals', () => {
+    it('self-heal seeds install marker from anchorAt without another Snap', async () => {
+      // Old-build user: no install anchor, no install marker.
+      // Server reports exhausted Free quota with anchorAt.
+      const exhaustedQuota = {
+        plan: 'free' as const,
+        limit: 1,
+        used: 1,
+        remaining: 0,
+        periodStart: '2026-08-11T14:30:00.000Z',
+        periodEnd: '2026-09-11T14:30:00.000Z',
+        anchorAt: '2026-08-11T14:30:00.000Z',
+        dailyLimit: null,
+        dailyUsed: null,
+      }
+
+      // No install anchor or marker exists yet
+      expect(mockStore.has(INSTALL_ANCHOR_KEY)).toBe(false)
+      expect(mockStore.has(INSTALL_FREE_SNAP_KEY)).toBe(false)
+
+      // Self-heal
+      const healed = await selfHealInstallMarker(exhaustedQuota)
+      expect(healed).toBe(true)
+
+      // Install anchor was seeded from anchorAt (not periodStart)
+      const anchorRecord = readMockStore(INSTALL_ANCHOR_KEY)
+      expect(anchorRecord.anchorISO).toBe('2026-08-11T14:30:00.000Z')
+
+      // Install marker was set for the current install window
+      const markerRecord = readMockStore(INSTALL_FREE_SNAP_KEY)
+      expect(markerRecord).not.toBeNull()
+      expect(typeof markerRecord.windowKey).toBe('string')
+      expect(typeof markerRecord.consumedAt).toBe('string')
+    })
+
+    it('after self-heal, effective quota is exhausted (no extra Snap)', async () => {
+      const exhaustedQuota = {
+        plan: 'free' as const,
+        limit: 1,
+        used: 1,
+        remaining: 0,
+        periodStart: '2026-08-11T14:30:00.000Z',
+        periodEnd: '2026-09-11T14:30:00.000Z',
+        anchorAt: '2026-08-11T14:30:00.000Z',
+        dailyLimit: null,
+        dailyUsed: null,
+      }
+
+      await selfHealInstallMarker(exhaustedQuota)
+
+      // Check install remaining — should be 0 (consumed)
+      const remaining = await getInstallFreeSnapRemaining(exhaustedQuota)
+      expect(remaining).toBe(0)
+    })
+  })
+
+  // ── 6. Fallback to periodStart when anchorAt is missing ─────
+  describe('6. Fallback to periodStart for older servers', () => {
+    it('seeds from periodStart when anchorAt is null', async () => {
+      const quota = {
+        plan: 'free' as const,
+        limit: 1,
+        used: 0,
+        remaining: 1,
+        periodStart: '2026-08-11T14:30:00.000Z',
+        periodEnd: '2026-09-11T14:30:00.000Z',
+        anchorAt: null, // Older server doesn't return anchorAt
+        dailyLimit: null,
+        dailyUsed: null,
+      }
+
+      const anchor = await getOrCreateInstallAnchor(quota)
+      expect(anchor).toBe('2026-08-11T14:30:00.000Z')
+    })
+  })
+
+  // ── 7. Edge Function returns anchorAt ───────────────────────
+  describe('7. Edge Function returns anchorAt', () => {
+    const EDGE_FN_PATH = path.resolve(
+      __dirname,
+      '../../../../supabase/functions/scan-quota/index.ts',
+    )
+    const EDGE_FN_SRC = fs.existsSync(EDGE_FN_PATH)
+      ? fs.readFileSync(EDGE_FN_PATH, 'utf-8')
+      : ''
+
+    it('Edge Function includes anchorAt in anonymous response', () => {
+      expect(EDGE_FN_SRC).toContain('anchorAt')
+      expect(EDGE_FN_SRC).toContain('aq.anchor_at')
+    })
+
+    it('Edge Function includes anchorAt in authenticated response', () => {
+      expect(EDGE_FN_SRC).toContain('anchorAt: q.anchor_at')
+    })
+  })
+
+  // ── 8. Client parser carries anchorAt ───────────────────────
+  describe('8. Client parser carries anchorAt', () => {
+    const PARSER_PATH = path.resolve(__dirname, '../quotaService.ts')
+    const PARSER_SRC = fs.readFileSync(PARSER_PATH, 'utf-8')
+
+    it('parseQuota extracts anchorAt', () => {
+      expect(PARSER_SRC).toContain('anchorAt')
+      expect(PARSER_SRC).toContain('q.anchor_at')
+    })
+
+    it('ScanQuotaSnapshot type includes anchorAt', () => {
+      const TYPES_PATH = path.resolve(
+        __dirname,
+        '../../subscriptions/subscriptionTypes.ts',
+      )
+      const TYPES_SRC = fs.readFileSync(TYPES_PATH, 'utf-8')
+      expect(TYPES_SRC).toContain('anchorAt')
+    })
+  })
 })

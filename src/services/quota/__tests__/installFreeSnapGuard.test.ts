@@ -86,6 +86,7 @@ function makeFreeQuota(overrides: Partial<ScanQuotaSnapshot> = {}): ScanQuotaSna
     remaining: 1,
     periodStart: WINDOW_JAN,
     periodEnd: WINDOW_FEB,
+    anchorAt: WINDOW_JAN,
     dailyLimit: null,
     dailyUsed: null,
     ...overrides,
@@ -100,6 +101,7 @@ function makeProQuota(overrides: Partial<ScanQuotaSnapshot> = {}): ScanQuotaSnap
     remaining: 12,
     periodStart: WINDOW_JAN,
     periodEnd: WINDOW_FEB,
+    anchorAt: WINDOW_JAN,
     dailyLimit: 10,
     dailyUsed: 0,
     ...overrides,
@@ -414,10 +416,19 @@ describe('installFreeSnapGuard', () => {
       expect(remaining).toBeNull()
     })
 
-    it('getInstallFreeSnapRemaining returns null for missing periodStart', async () => {
-      const quota = makeFreeQuota({ periodStart: '' })
+    it('getInstallFreeSnapRemaining returns null when both anchorAt and periodStart are missing', async () => {
+      const quota = makeFreeQuota({ periodStart: '', anchorAt: null })
       const remaining = await getInstallFreeSnapRemaining(quota)
       expect(remaining).toBeNull()
+    })
+
+    it('getInstallFreeSnapRemaining can seed from anchorAt even when periodStart is empty', async () => {
+      // anchorAt is the authoritative source; periodStart is a fallback.
+      // If anchorAt is present, the guard can establish the install anchor.
+      const quota = makeFreeQuota({ periodStart: '', anchorAt: WINDOW_JAN })
+      const remaining = await getInstallFreeSnapRemaining(quota)
+      // No consumed marker → available
+      expect(remaining).toBe(1)
     })
 
     it('composeEffectiveQuota returns null for null server quota', () => {
@@ -642,8 +653,8 @@ describe('Migration / Self-Heal', () => {
       expect(mockStore.has(INSTALL_FREE_SNAP_KEY)).toBe(false)
     })
 
-    it('marker absent + quota with empty periodStart → do NOT create consumed marker', async () => {
-      const malformedQuota = makeFreeQuota({ used: 1, remaining: 0, periodStart: '' })
+    it('marker absent + quota with empty periodStart AND null anchorAt → do NOT create consumed marker', async () => {
+      const malformedQuota = makeFreeQuota({ used: 1, remaining: 0, periodStart: '', anchorAt: null })
       const healed = await selfHealInstallMarker(malformedQuota)
       expect(healed).toBe(false)
       expect(mockStore.has(INSTALL_FREE_SNAP_KEY)).toBe(false)
@@ -776,21 +787,15 @@ describe('Migration / Self-Heal', () => {
       expect(effective!.used).toBe(1)
     })
 
-    it('windowKey is serverQuota.periodStart — not UUID, not account ID', () => {
-      // The selfHealInstallMarker function only reads:
-      //   serverQuota.plan === 'free'
-      //   serverQuota.periodStart (non-empty)
-      //   serverQuota.remaining === 0
-      //   serverQuota.used >= 1
-      // It does NOT read any user identifier. This is verified by
-      // the function signature: it takes only ScanQuotaSnapshot.
-      // The marker is keyed by windowKey = periodStart.
-      // Two different UUIDs with the same periodStart resolve to
-      // the same install guard state.
+    it('windowKey is computed from install anchor — not UUID, not account ID', () => {
+      // The install guard computes windowKey from the immutable install
+      // anchor (seeded from anchorAt/periodStart), not from any user
+      // identifier. Two different UUIDs with the same install anchor
+      // resolve to the same install guard state.
       const quotaA = makeFreeQuota({ periodStart: WINDOW_JAN, used: 1, remaining: 0 })
       const quotaB = makeFreeQuota({ periodStart: WINDOW_JAN, used: 0, remaining: 1 })
-      // Both have the same periodStart → same windowKey
-      expect(quotaA.periodStart).toBe(quotaB.periodStart)
+      // Both have the same anchorAt → same install anchor → same windowKey
+      expect(quotaA.anchorAt).toBe(quotaB.anchorAt)
     })
   })
 })

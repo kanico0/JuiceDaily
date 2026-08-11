@@ -320,6 +320,7 @@ function parseQuotaMinimal(raw: unknown): ScanQuotaSnapshot | null {
     remaining: typeof q.remaining === 'number' ? q.remaining : Math.max(0, q.limit - q.used),
     periodStart: String(q.periodStart ?? q.period_start ?? ''),
     periodEnd: String(q.periodEnd ?? q.period_end ?? ''),
+    anchorAt: q.anchorAt != null ? String(q.anchorAt ?? q.anchor_at ?? '') : null,
     dailyLimit: typeof q.dailyLimit === 'number' ? q.dailyLimit : null,
     dailyUsed: typeof q.dailyUsed === 'number' ? q.dailyUsed : null,
   }

@@ -388,11 +388,16 @@ export default function RecipeDetailScreen({ route, navigation }) {
       ...(ing.portionEntryMode ? { portionEntryMode: ing.portionEntryMode } : {}),
     }))
     pendingTasteRef.current = true
+    // Map recipe origin to a specific provenance source for History.
+    // browseIdeas → browse_ideas, wellnessFocus → wellness_focus.
+    // Default to 'browse_ideas' since RecipeDetail is most commonly
+    // reached from Browse Juice Ideas.
+    const recipeSource = origin === 'wellnessFocus' ? 'wellness_focus' : 'browse_ideas'
     navigation.navigate('ScanFlow', {
       screen: 'ScanHome',
-      params: { preloadIngredients: preload, source: 'recipe' },
+      params: { preloadIngredients: preload, source: recipeSource },
     })
-  }, [recipe, ingredients, navigation])
+  }, [recipe, ingredients, navigation, origin])
 
   const handleTasteSelect = useCallback((reaction) => {
     setTasteResponse(reaction)

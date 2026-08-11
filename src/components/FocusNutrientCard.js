@@ -7,14 +7,15 @@ import {
   Pressable,
 } from 'react-native'
 import * as Haptics from 'expo-haptics'
-import { Leaf, Sparkles, X } from 'lucide-react-native'
+import { Leaf, Sparkles, X, ChevronRight } from 'lucide-react-native'
 import SnapIcon from './SnapIcon'
 import { SEMANTIC_COLORS, SEMANTIC_SPACE, SEMANTIC_RADIUS, SEMANTIC_TYPOGRAPHY, FONT_WEIGHT } from '../constants/tokens'
 import { card, sectionHeading, primaryAction, primaryActionLabel } from '../constants/styleRecipes'
 import { trackEvent } from '../services/AnalyticsService'
 import { getFocusForToday, swapFocusToday } from '../services/focusNutrient'
+import { comboToProduceIds, isComboLaunchable } from '../utils/comboToProduceIds'
 
-export default function FocusNutrientCard({ onScan, isReduced }) {
+export default function FocusNutrientCard({ onScan, onUseCombo, isReduced }) {
   const [focusNutrient, setFocusNutrient] = useState(null)
   const [focusSwapped, setFocusSwapped] = useState(false)
   const [showFocusDetail, setShowFocusDetail] = useState(false)
@@ -112,12 +113,47 @@ export default function FocusNutrientCard({ onScan, isReduced }) {
             ))}
 
             <Text style={styles.modalSection}>Suggested Combos</Text>
-            {focusNutrient.combos.map((combo, i) => (
-              <View key={i} style={styles.comboItem}>
-                <Leaf size={14} color="#81C784" />
-                <Text style={styles.comboItemText}>{combo}</Text>
-              </View>
-            ))}
+            {focusNutrient.combos.map((combo, i) => {
+              const launchable = isComboLaunchable(combo)
+              const { produceIds } = comboToProduceIds(combo)
+              if (launchable && onUseCombo) {
+                return (
+                  <Pressable
+                    key={i}
+                    style={({ pressed }) => [styles.comboItem, styles.comboItemLaunchable, pressed && { opacity: 0.7 }]}
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+                      setShowFocusDetail(false)
+                      trackEvent('focus_nutrient_combo_used', {
+                        id: focusNutrient.id,
+                        combo_index: i,
+                        ingredient_count: produceIds.length,
+                      })
+                      onUseCombo(produceIds)
+                    }}
+                    hitSlop={4}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Use combo: ${combo}`}
+                    accessibilityHint="Opens the juice builder with these ingredients preselected."
+                  >
+                    <Leaf size={14} color="#81C784" />
+                    <Text style={styles.comboItemText}>{combo}</Text>
+                    <ChevronRight size={14} color="#81C784" />
+                  </Pressable>
+                )
+              }
+              return (
+                <View key={i} style={[styles.comboItem, styles.comboItemDisabled]}>
+                  <Leaf size={14} color={SEMANTIC_COLORS.textMuted} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.comboItemTextDisabled}>{combo}</Text>
+                    <Text style={styles.comboItemHint}>
+                      Some ingredients aren't available in the builder yet.
+                    </Text>
+                  </View>
+                </View>
+              )
+            })}
 
             <Pressable
               style={({ pressed }) => [styles.modalCta, pressed && { opacity: 0.8 }]}
@@ -296,11 +332,32 @@ const styles = StyleSheet.create({
     borderWidth: 0.5,
     borderColor: 'rgba(76,175,80,0.12)',
   },
+  comboItemLaunchable: {
+    backgroundColor: 'rgba(76,175,80,0.10)',
+    borderColor: 'rgba(76,175,80,0.25)',
+  },
+  comboItemDisabled: {
+    backgroundColor: 'rgba(144,164,174,0.06)',
+    borderColor: 'rgba(144,164,174,0.12)',
+    alignItems: 'flex-start',
+  },
   comboItemText: {
     flex: 1,
     fontSize: SEMANTIC_TYPOGRAPHY.body.fontSize,
     fontWeight: FONT_WEIGHT.medium,
     color: SEMANTIC_COLORS.success,
+  },
+  comboItemTextDisabled: {
+    fontSize: SEMANTIC_TYPOGRAPHY.body.fontSize,
+    fontWeight: FONT_WEIGHT.medium,
+    color: SEMANTIC_COLORS.textMuted,
+  },
+  comboItemHint: {
+    fontSize: SEMANTIC_TYPOGRAPHY.caption.fontSize,
+    fontWeight: FONT_WEIGHT.medium,
+    color: SEMANTIC_COLORS.textMuted,
+    marginTop: 2,
+    opacity: 0.7,
   },
   modalCta: {
     ...primaryAction,

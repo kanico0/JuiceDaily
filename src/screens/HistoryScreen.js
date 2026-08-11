@@ -22,6 +22,11 @@ import {
   Lock,
   RefreshCw,
   ChevronRight,
+  Droplets,
+  Heart,
+  BookOpen,
+  Target,
+  Compass,
 } from 'lucide-react-native'
 import MeshGradientBg from '../components/MeshGradientBg'
 import { useJuiceLog } from '../services/JuiceLogStore'
@@ -51,9 +56,62 @@ import {
 import { trackEvent } from '../services/AnalyticsService'
 import { TASTE_REACTIONS } from '../constants/recipeData'
 
-// ── Source icon helper ───────────────────────────────────────
-const SOURCE_ICON = { photo: Camera, manual: Keyboard, demo: Eye }
-const SOURCE_COLOR = { photo: '#64B5F6', manual: '#CE93D8', demo: '#FFB74D' }
+// ── Source provenance maps ───────────────────────────────────
+// Maps entry.source to icon, color, and user-facing label.
+// Legacy 'photo' entries are mapped to neutral 'unknown' at render
+// time — they are NOT falsely labeled Juice Snap.
+const SOURCE_ICON = {
+  juice_snap: Camera,
+  manual: Keyboard,
+  wellness_focus: Heart,
+  browse_ideas: BookOpen,
+  todays_focus: Target,
+  today_spotlight: Compass,
+  make_again: RefreshCw,
+  unknown: Droplets,
+  // Legacy values — rendered as neutral
+  photo: Droplets,
+  demo: Eye,
+}
+const SOURCE_COLOR = {
+  juice_snap: '#64B5F6',
+  manual: '#CE93D8',
+  wellness_focus: '#EF5DA8',
+  browse_ideas: '#FFB74D',
+  todays_focus: '#4DD0E1',
+  today_spotlight: '#81C784',
+  make_again: '#AED581',
+  unknown: '#90A4AE',
+  photo: '#90A4AE',
+  demo: '#FFB74D',
+}
+const SOURCE_LABEL = {
+  juice_snap: 'Juice Snap',
+  manual: 'Manual Entry',
+  wellness_focus: 'Wellness Focus',
+  browse_ideas: 'Browse Juice Ideas',
+  todays_focus: "Today's Focus",
+  today_spotlight: "Today's Juice Spotlight",
+  make_again: 'Made Again',
+  unknown: 'Juice Entry',
+  photo: 'Juice Entry',
+  demo: 'Demo',
+}
+
+// Neutral fallback for any unrecognized source — never Camera
+const NEUTRAL_ICON = Droplets
+const NEUTRAL_COLOR = '#90A4AE'
+const NEUTRAL_LABEL = 'Juice Entry'
+
+function getSourceIcon(source) {
+  return SOURCE_ICON[source] || NEUTRAL_ICON
+}
+function getSourceColor(source) {
+  return SOURCE_COLOR[source] || NEUTRAL_COLOR
+}
+function getSourceLabel(source) {
+  return SOURCE_LABEL[source] || NEUTRAL_LABEL
+}
 
 function formatDate(dateKey) {
   const [y, m, d] = dateKey.split('-')
@@ -389,9 +447,23 @@ function EntryDetailsModal({
             nestedScrollEnabled
           >
             <Text style={ms.entryTitle}>{entry.title}</Text>
-            <Text style={ms.entryMeta}>
-              {entry.source} · {formatTime(entry.createdAt)}
-            </Text>
+            <View style={ms.entrySourceRow}>
+              {(() => {
+                const SrcIcon = getSourceIcon(entry.source)
+                const srcColor = getSourceColor(entry.source)
+                return (
+                  <View style={[ms.entrySourceBadge, { backgroundColor: srcColor + '18' }]}>
+                    <SrcIcon size={11} color={srcColor} />
+                    <Text style={[ms.entrySourceLabel, { color: srcColor }]}>
+                      {getSourceLabel(entry.source)}
+                    </Text>
+                  </View>
+                )
+              })()}
+              <Text style={ms.entryMeta}>
+                · {formatTime(entry.createdAt)}
+              </Text>
+            </View>
 
             {/* Advanced Preview Banner for free newest item */}
             {policy.shouldShowPreviewExplanation && (
@@ -529,8 +601,8 @@ function DaySection({ dateKey, entries, onEntryPress, devClockTick, previewEntry
       {expanded && (
         <View style={s.dayEntries}>
           {entries.map((entry) => {
-            const SrcIcon = SOURCE_ICON[entry.source] || Camera
-            const srcColor = SOURCE_COLOR[entry.source] || '#64B5F6'
+            const SrcIcon = getSourceIcon(entry.source)
+            const srcColor = getSourceColor(entry.source)
             const isPreview = entitlementInitialized && !isPro && previewEntryId === entry.id
             const isOlderLocked = entitlementInitialized && !isPro && previewEntryId && previewEntryId !== entry.id
             const accessLabel = isPreview
@@ -896,11 +968,28 @@ const ms = StyleSheet.create({
     color: BRAND.text.primary,
     marginBottom: 4,
   },
+  entrySourceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: SPACE.lg,
+  },
+  entrySourceBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: RADIUS.sm,
+  },
+  entrySourceLabel: {
+    fontSize: FONT_SIZE.xs,
+    fontWeight: FONT_WEIGHT.semibold,
+  },
   entryMeta: {
     fontSize: FONT_SIZE.sm,
     fontWeight: FONT_WEIGHT.medium,
     color: BRAND.text.muted,
-    marginBottom: SPACE.lg,
   },
   sectionTitle: {
     fontSize: FONT_SIZE.xs,

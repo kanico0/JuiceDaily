@@ -2,7 +2,7 @@
 // JuiceLogStore.js — Persisted juice log entries for Today dashboard.
 //
 // Each log entry records:
-//   - id (uuid), createdAt (ISO), source (photo|manual|demo)
+//   - id (uuid), createdAt (ISO), source (juice_snap|manual|wellness_focus|browse_ideas|todays_focus|today_spotlight|make_again|unknown)
 //   - title (short label), ingredients (array of produceIds)
 //   - nutrientSummary (batch totals), scoreContribution
 //
@@ -149,7 +149,7 @@ export function JuiceLogProvider({ children }) {
       id: generateId(),
       createdAt: localISOString(),
       dateKey: localDateKey(),
-      source: source || 'photo',
+      source: source || 'unknown',
       title: buildTitle(ingredientIds),
       ingredients: ingredientIds || [],
       nutrientSummary: nutrientSummary || {},

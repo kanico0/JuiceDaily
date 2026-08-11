@@ -603,6 +603,29 @@ function QuotaMeter({ navigation }) {
 
 // ── Main Screen ──────────────────────────────────────────────
 
+// Resolve the authoritative log source from route params + camera usage.
+// Camera usage overrides recipe origin: if the user opened the camera,
+// the entry is juice_snap regardless of how they entered the screen.
+// Route source is the launch origin; manualEntry indicates the builder
+// was opened in manual mode (no camera). Legacy 'photo' is NOT used —
+// the canonical camera source is 'juice_snap'.
+const ROUTE_SOURCE_TO_LOG_SOURCE = {
+  camera: 'juice_snap',
+  recipe: 'browse_ideas',
+  spotlight: 'today_spotlight',
+  todays_focus: 'todays_focus',
+  history_make_again: 'make_again',
+  checkin: 'manual',
+}
+
+function resolveLogSource(routeSource, cameraUsed, manualEntry) {
+  if (cameraUsed) return 'juice_snap'
+  const mapped = ROUTE_SOURCE_TO_LOG_SOURCE[routeSource]
+  if (mapped) return mapped
+  if (manualEntry) return 'manual'
+  return 'unknown'
+}
+
 function seedPreloadIngredients(preload, organicMode) {
   return preload.map((item) => {
     if (typeof item === 'string') {
@@ -730,6 +753,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
   const analysisCompletedRef = useRef(false)
   const analysisResultRef = useRef(null)
   const analysisBatchUpdateRef = useRef(false)
+  const cameraUsedRef = useRef(false)
   const [showPaywall, setShowPaywall] = useState(false)
   const [isManualMode, setIsManualMode] = useState(route?.params?.manualEntry === true)
   const [manualSearch, setManualSearch] = useState('')
@@ -891,12 +915,14 @@ export default function JuiceSnapScreen({ navigation, route }) {
 
   // Reseed batch when navigated with new preloadIngredients (e.g. recipe hand-off)
   // Immediately replaces the current draft with the selected historical juice.
+  // Reset cameraUsedRef so a preloaded recipe doesn't inherit a prior camera session.
   useEffect(() => {
     const preload = route?.params?.preloadIngredients
     if (!preload || preload.length === 0) return
     const seeded = seedPreloadIngredients(preload, organicMode)
     setBatch(buildBatch(seeded, juiceMethod))
     setIsLogged(false)
+    cameraUsedRef.current = false
   }, [route?.params?.preloadIngredients]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Unified camera open attempt via eligibility coordinator.
@@ -1197,6 +1223,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
 
   const handleProduceIdentified = useCallback((visionResult) => {
     console.log('[SCAN] handleProduceIdentified —', visionResult.scannedIngredients.length, 'items')
+    cameraUsedRef.current = true
     const enriched = visionResult.scannedIngredients.map((ing) => {
       if (isProduceQuantitySupported(ing.produceId)) {
         const defaultUnit = getDefaultPortionUnit(ing.produceId)
@@ -1627,7 +1654,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
     const ingredients = batch?.scannedIngredients || []
     const distinctCount = countDistinctProduceIds(ingredients)
     const blendType = classifyBlend(distinctCount)
-    const logSource = effectiveManualMode ? 'manual' : 'photo'
+    const logSource = resolveLogSource(source, cameraUsedRef.current, effectiveManualMode)
 
     let totals = batch?.totals || {}
     let allowanceResult = null

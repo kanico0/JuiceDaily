@@ -170,7 +170,7 @@ export default function TodayScreen({ navigation }) {
       params: {
         manualEntry: true,
         preloadIngredients: spotlight.ingredients,
-        source: 'spotlight',
+        source: 'today_spotlight',
       },
     })
     trackEvent('juice_spotlight_used', { spotlight_id: spotlight.id, source: 'today_screen' })
@@ -552,6 +552,17 @@ export default function TodayScreen({ navigation }) {
     navigation.navigate('WellnessFocus')
   }, [navigation])
 
+  const handleUseFocusCombo = useCallback((produceIds) => {
+    navigation.navigate('ScanFlow', {
+      screen: 'ScanHome',
+      params: {
+        manualEntry: true,
+        preloadIngredients: produceIds,
+        source: 'todays_focus',
+      },
+    })
+  }, [navigation])
+
   const handleSimpleBlend = useCallback(() => {
     if (!simpleBlend) return
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
@@ -698,7 +709,7 @@ export default function TodayScreen({ navigation }) {
                 />
 
                 {/* Today's Focus Nutrient */}
-                <FocusNutrientCard onScan={handleScan} isReduced={isReduced} />
+                <FocusNutrientCard onScan={handleScan} onUseCombo={handleUseFocusCombo} isReduced={isReduced} />
 
                 {/* Weekly Summary Teaser (compact, real data only) */}
                 <WeeklySummaryTeaser
@@ -980,7 +991,7 @@ export default function TodayScreen({ navigation }) {
                 </TouchableOpacity>
 
                 {/* Today's Focus Nutrient (pre-log) */}
-                <FocusNutrientCard onScan={handleScan} isReduced={isReduced} />
+                <FocusNutrientCard onScan={handleScan} onUseCombo={handleUseFocusCombo} isReduced={isReduced} />
 
                 {/* Explore Juicing Lessons discovery card */}
                 <TouchableOpacity

@@ -48,9 +48,8 @@ describe('History Provenance — HomeScreen source resolution', () => {
 
   test('has ROUTE_SOURCE_TO_LOG_SOURCE mapping', () => {
     expect(HOME_SCREEN_SRC).toContain('ROUTE_SOURCE_TO_LOG_SOURCE')
-    expect(HOME_SCREEN_SRC).toContain("camera: 'juice_snap'")
     expect(HOME_SCREEN_SRC).toContain("recipe: 'manual'")
-    expect(HOME_SCREEN_SRC).toContain("spotlight: 'today_spotlight'")
+    expect(HOME_SCREEN_SRC).toContain("today_spotlight: 'today_spotlight'")
     expect(HOME_SCREEN_SRC).toContain("todays_focus: 'todays_focus'")
     expect(HOME_SCREEN_SRC).toContain("history_make_again: 'make_again'")
     expect(HOME_SCREEN_SRC).toContain("checkin: 'manual'")
@@ -62,6 +61,21 @@ describe('History Provenance — HomeScreen source resolution', () => {
     expect(HOME_SCREEN_SRC).toContain("produce_recipe: 'produce_recipe'")
     expect(HOME_SCREEN_SRC).toContain("glow_library: 'glow_library'")
     expect(HOME_SCREEN_SRC).toContain("beginner_glow: 'beginner_glow'")
+  })
+
+  test('camera route source is NOT mapped to juice_snap (Juice Snap requires actual camera use)', () => {
+    // The 'camera' key was removed from ROUTE_SOURCE_TO_LOG_SOURCE.
+    // Juice Snap must be proven by cameraUsedRef.current === true,
+    // not inferred from the route name or default source.
+    expect(HOME_SCREEN_SRC).not.toContain("camera: 'juice_snap'")
+  })
+
+  test('default route source is manual (not camera)', () => {
+    // The default source when no route param is specified must be
+    // 'manual', not 'camera'. This prevents fresh manual entries
+    // from being falsely labeled as Juice Snap.
+    expect(HOME_SCREEN_SRC).toContain("route?.params?.source || 'manual'")
+    expect(HOME_SCREEN_SRC).not.toContain("route?.params?.source || 'camera'")
   })
 
   test('camera usage overrides recipe origin', () => {
@@ -82,6 +96,14 @@ describe('History Provenance — HomeScreen source resolution', () => {
     const preloadEffect = HOME_SCREEN_SRC.match(/Reseed batch[\s\S]*?\}, \[route\?\.params\?\.preloadIngredients\]/)
     expect(preloadEffect).toBeTruthy()
     expect(preloadEffect[0]).toContain('cameraUsedRef.current = false')
+  })
+
+  test('cameraUsedRef reset when user switches to manual entry from camera', () => {
+    // The onManualEntry callback must reset cameraUsedRef so that
+    // a prior camera scan doesn't contaminate a subsequent manual entry.
+    const manualEntrySection = HOME_SCREEN_SRC.match(/onManualEntry=\{\(\) => \{[\s\S]*?\}\}/)
+    expect(manualEntrySection).toBeTruthy()
+    expect(manualEntrySection[0]).toContain('cameraUsedRef.current = false')
   })
 
   test('executeLogToChallenge uses resolveLogSource (not binary manual/photo)', () => {
@@ -156,6 +178,14 @@ describe('History Provenance — HistoryScreen display', () => {
     expect(HISTORY_SCREEN_SRC).toContain('getSourceLabel(entry.source)')
     // Old raw source display should NOT be present
     expect(HISTORY_SCREEN_SRC).not.toContain('{entry.source} · {formatTime(entry.createdAt)}')
+  })
+
+  test('supports openEntryId route param for external navigation', () => {
+    // HistoryScreen must accept an openEntryId route param to open
+    // a specific entry's details modal (used by Today's "View Today's Juice")
+    expect(HISTORY_SCREEN_SRC).toContain('useRoute')
+    expect(HISTORY_SCREEN_SRC).toContain('openEntryId')
+    expect(HISTORY_SCREEN_SRC).toContain('setSelectedEntry')
   })
 })
 
@@ -250,6 +280,28 @@ describe('History Provenance — TodayScreen spotlight', () => {
   test('spotlight uses today_spotlight source (not spotlight)', () => {
     expect(TODAY_SCREEN_SRC).toContain("source: 'today_spotlight'")
     expect(TODAY_SCREEN_SRC).not.toContain("source: 'spotlight'")
+  })
+
+  test('HomeScreen maps today_spotlight route source correctly', () => {
+    // The ROUTE_SOURCE_TO_LOG_SOURCE map must have 'today_spotlight'
+    // as a key (not 'spotlight') to match what TodayScreen passes.
+    expect(HOME_SCREEN_SRC).toContain("today_spotlight: 'today_spotlight'")
+    // The old 'spotlight' key must NOT be present
+    expect(HOME_SCREEN_SRC).not.toMatch(/['"]spotlight['"]\s*:\s*['"]today_spotlight['"]/)
+  })
+
+  test('View Today\'s Juice button is not a no-op', () => {
+    // The onViewToday handler must NOT be an empty arrow function
+    expect(TODAY_SCREEN_SRC).not.toContain('onViewToday={() => {}}')
+    // It should use a handler that navigates to History
+    expect(TODAY_SCREEN_SRC).toContain('handleViewTodayJuice')
+    expect(TODAY_SCREEN_SRC).toContain('HistoryTab')
+    expect(TODAY_SCREEN_SRC).toContain('openEntryId')
+  })
+
+  test('handleViewTodayJuice uses latest today entry id', () => {
+    expect(TODAY_SCREEN_SRC).toContain('todayEntries[0]')
+    expect(TODAY_SCREEN_SRC).toContain('latestEntry.id')
   })
 
   test('has handleUseFocusCombo for Today\'s Focus combos', () => {

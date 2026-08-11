@@ -604,15 +604,23 @@ function QuotaMeter({ navigation }) {
 // ── Main Screen ──────────────────────────────────────────────
 
 // Resolve the authoritative log source from route params + camera usage.
-// Camera usage overrides recipe origin: if the user opened the camera,
-// the entry is juice_snap regardless of how they entered the screen.
-// Route source is the launch origin; manualEntry indicates the builder
-// was opened in manual mode (no camera). Legacy 'photo' is NOT used —
-// the canonical camera source is 'juice_snap'.
+// Juice Snap is ONLY assigned when cameraUsedRef is true — meaning a
+// successful AI camera/image-recognition operation supplied the ingredients.
+// Juice Snap must NEVER be inferred from route name, default route source,
+// image presence, generic handleProduceIdentified, preloaded ingredients,
+// or nutrition results.
+//
+// Source-precedence contract:
+//   1. Actual successful Juice Snap recognition → juice_snap
+//   2. Explicit recognized origin → preserve it
+//   3. Genuine manual entry → manual
+//   4. Otherwise → unknown
+//
+// manualEntry:true controls builder behavior; it must NOT overwrite
+// known provenance.
 const ROUTE_SOURCE_TO_LOG_SOURCE = {
-  camera: 'juice_snap',
   recipe: 'manual',
-  spotlight: 'today_spotlight',
+  today_spotlight: 'today_spotlight',
   todays_focus: 'todays_focus',
   history_make_again: 'make_again',
   checkin: 'manual',
@@ -719,7 +727,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
   const { mode: organicMode } = useOrganicPref()
   const shouldAutoOpenCamera = route?.params?.openCamera === true
   const preloadIngredients = route?.params?.preloadIngredients || null
-  const source = route?.params?.source || 'camera'
+  const source = route?.params?.source || 'manual'
   const [batch, setBatch] = useState(() => {
     if (preloadIngredients && preloadIngredients.length > 0) {
       const seeded = seedPreloadIngredients(preloadIngredients, organicMode)
@@ -2185,6 +2193,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
           onManualEntry={() => {
             setIsCameraOpen(false)
             setIsManualMode(true)
+            cameraUsedRef.current = false
           }}
           onAccountRequired={() => setShowAccountGate(true)}
           guestFirstScan={guestFirstScan}

@@ -605,4 +605,46 @@ describe('Scan quota server-authoritative architecture', () => {
       expect(code).toMatch(/show_account_gate/)
     })
   })
+
+  // ── scan-quota Edge Function: anonymous user fix ─────────────
+
+  describe('scan-quota Edge Function — anonymous user quota', () => {
+    const fs = require('fs')
+    const path = require('path')
+    const quotaSrc = fs.readFileSync(
+      path.resolve(__dirname, '../../../supabase/functions/scan-quota/index.ts'),
+      'utf-8'
+    )
+
+    test('does NOT return hardcoded used:0 for anonymous users', () => {
+      // The old code had a static block that always returned used:0,
+      // remaining:1 for anonymous users. This caused stale quota
+      // display after a successful guest scan.
+      // The new code queries resolve_quota for anonymous users.
+      // The primary path (non-error) must NOT directly return used:0.
+      const anonSection = quotaSrc.match(/is_anonymous === true[\s\S]*?return json\(200[\s\S]*?return json\(200[\s\S]*?return json\(200[\s\S]*?\n\s*\}/)
+      expect(anonSection).toBeTruthy()
+      // The primary success path should use resolve_quota, not hardcoded values
+      expect(anonSection[0]).toContain('resolve_quota')
+      expect(anonSection[0]).toContain('aUsed')
+    })
+
+    test('queries resolve_quota for anonymous users', () => {
+      // The anonymous user path must call resolve_quota to get
+      // the actual usage from the database.
+      const anonSection = quotaSrc.match(/is_anonymous === true[\s\S]*?return json\(200/)
+      expect(anonSection).toBeTruthy()
+      expect(anonSection[0]).toContain('resolve_quota')
+    })
+
+    test('has fallback to static values on resolve_quota error for anonymous', () => {
+      // If resolve_quota fails for an anonymous user, fall back to
+      // the static free-plan values rather than crashing.
+      const anonSection = quotaSrc.match(/is_anonymous === true[\s\S]*?return json\(200[\s\S]*?return json\(200[\s\S]*?return json\(200/)
+      expect(anonSection).toBeTruthy()
+      // Should have a catch/error fallback
+      expect(anonSection[0]).toContain('used: 0')
+      expect(anonSection[0]).toContain('remaining: 1')
+    })
+  })
 })

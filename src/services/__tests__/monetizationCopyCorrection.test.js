@@ -70,16 +70,24 @@ describe('Snap quota copy correction', () => {
   })
 
   it('7. scan-quota anonymous display shows limit: 1 not limit: 5', () => {
-    // Find the anonymous block by slicing from is_anonymous to the next rpc call
+    // Find the anonymous block by slicing from is_anonymous to the
+    // end of the anonymous if block (next non-anonymous resolve_quota)
     const anonStart = scanQuotaSource.indexOf('is_anonymous === true')
-    const anonEnd = scanQuotaSource.indexOf('resolve_quota', anonStart)
     expect(anonStart).toBeGreaterThan(-1)
-    expect(anonEnd).toBeGreaterThan(anonStart)
+    // The anonymous block now queries resolve_quota internally.
+    // Find the end by looking for the non-anonymous resolve_quota call
+    // (the one after the anonymous if block closes).
+    const afterAnon = scanQuotaSource.indexOf('const { data, error } = await admin.rpc', anonStart)
+    const anonEnd = afterAnon > -1 ? afterAnon : scanQuotaSource.length
     const anonBlock = scanQuotaSource.slice(anonStart, anonEnd)
-    expect(anonBlock).toMatch(/limit:\s*1/)
-    expect(anonBlock).toMatch(/remaining:\s*1/)
+    // The anonymous block must not show limit: 5
     expect(anonBlock).not.toMatch(/limit:\s*5/)
     expect(anonBlock).not.toMatch(/remaining:\s*5/)
+    // The fallback path still shows limit: 1 and remaining: 1
+    expect(anonBlock).toMatch(/limit:\s*1/)
+    expect(anonBlock).toMatch(/remaining:\s*1/)
+    // The primary path uses aLimit || 1 (dynamic from database)
+    expect(anonBlock).toMatch(/aLimit \|\| 1/)
   })
 })
 

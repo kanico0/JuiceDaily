@@ -32,23 +32,65 @@ Deno.serve(async (req) => {
   const { data: userData, error: userError } = await admin.auth.getUser(jwt)
   if (userError || !userData.user) return json(401, { message: 'Invalid token' })
 
-  // ── Anonymous users: display-only snapshot ──────────────────
-  // resolve_quota creates/advances allowance rows, so anonymous
-  // callers must never reach it. They get the static free-plan
-  // display values with zero database writes and no allocation.
+  // ── Anonymous users: query actual quota from database ───────
+  // Previously returned hardcoded used:0/remaining:1 for all anonymous
+  // users, which caused stale quota display after a successful guest
+  // scan. Now we query resolve_quota (read-only for existing rows)
+  // to get the real usage. If the user has no quota rows yet (never
+  // scanned), resolve_quota creates them with the default free-plan
+  // allowance — which is the correct behavior.
   if (userData.user.is_anonymous === true) {
-    return json(200, {
-      quota: {
-        plan: 'free',
-        limit: 1,
-        used: 0,
-        remaining: 1,
-        periodStart: '',
-        periodEnd: '',
-        dailyLimit: null,
-        dailyUsed: null,
-      },
-    })
+    try {
+      const { data: anonData, error: anonError } = await admin.rpc('resolve_quota', {
+        p_user_id: userData.user.id,
+      })
+      if (anonError) {
+        console.error('[scan-quota] anonymous resolve failed:', anonError.message)
+        // Fall back to static free-plan values on error
+        return json(200, {
+          quota: {
+            plan: 'free',
+            limit: 1,
+            used: 0,
+            remaining: 1,
+            periodStart: '',
+            periodEnd: '',
+            dailyLimit: null,
+            dailyUsed: null,
+          },
+        })
+      }
+      const aq = anonData as Record<string, unknown>
+      const aLimit = Number(aq.scan_limit ?? 0)
+      const aUsed = Number(aq.used ?? 0)
+      const aReserved = Number(aq.reserved ?? 0)
+      return json(200, {
+        quota: {
+          plan: 'free',
+          limit: aLimit || 1,
+          used: aUsed,
+          remaining: Math.max(0, (aLimit || 1) - aUsed - aReserved),
+          periodStart: aq.period_start ?? '',
+          periodEnd: aq.period_end ?? '',
+          dailyLimit: null,
+          dailyUsed: null,
+        },
+      })
+    } catch (e) {
+      console.error('[scan-quota] anonymous exception:', (e as Error)?.message)
+      return json(200, {
+        quota: {
+          plan: 'free',
+          limit: 1,
+          used: 0,
+          remaining: 1,
+          periodStart: '',
+          periodEnd: '',
+          dailyLimit: null,
+          dailyUsed: null,
+        },
+      })
+    }
   }
 
   const { data, error } = await admin.rpc('resolve_quota', { p_user_id: userData.user.id })

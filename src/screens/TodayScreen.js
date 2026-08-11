@@ -494,6 +494,19 @@ export default function TodayScreen({ navigation }) {
   const topNutrients = useMemo(() => getTopNutrients(todayLog), [todayLog])
   const produceList = useMemo(() => getProduceList(todayLog), [todayLog])
 
+  // -- View Today's Juice: navigate to History entry details --
+  // Opens the History screen with the latest today entry pre-selected
+  // so the EntryDetailsModal shows the actual juice the user logged.
+  const handleViewTodayJuice = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    const latestEntry = todayEntries[0]
+    if (!latestEntry) return
+    navigation.navigate('HistoryTab', {
+      screen: 'HistoryHome',
+      params: { openEntryId: latestEntry.id },
+    })
+  }, [navigation, todayEntries])
+
   // -- Simple Blend selection (deterministic daily from RECIPES) --
   const simpleBlend = useMemo(() => {
     const dayKey = getGlowTodayKey()
@@ -698,7 +711,7 @@ export default function TodayScreen({ navigation }) {
                   state={spotlightState}
                   onViewBlend={handleOpenSpotlight}
                   onScan={handleScan}
-                  onViewToday={() => {}}
+                  onViewToday={handleViewTodayJuice}
                   onAddAnother={handleQuickLog}
                 />
                 <JuiceSpotlightDetailsModal
@@ -921,7 +934,7 @@ export default function TodayScreen({ navigation }) {
                       state={spotlightState}
                       onViewBlend={handleOpenSpotlight}
                       onScan={handleScan}
-                      onViewToday={() => {}}
+                      onViewToday={handleViewTodayJuice}
                       onAddAnother={handleQuickLog}
                     />
                     <JuiceSpotlightDetailsModal

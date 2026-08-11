@@ -60,6 +60,7 @@ import {
 } from '../services/makeAgainHelper'
 import { trackEvent } from '../services/AnalyticsService'
 import { TASTE_REACTIONS } from '../constants/recipeData'
+import { useRoute } from '@react-navigation/native'
 
 // ── Source provenance maps ───────────────────────────────────
 // Maps entry.source to icon, color, and user-facing label.
@@ -675,6 +676,7 @@ function DaySection({ dateKey, entries, onEntryPress, devClockTick, previewEntry
 // ── Main Screen ──────────────────────────────────────────────
 
 export default function HistoryScreen({ navigation }) {
+  const route = useRoute()
   const { entries, deleteEntry } = useJuiceLog()
   const { isPro: isProActive, state: subState } = useSubscription()
   const entitlementInitialized = subState.initialized
@@ -687,6 +689,20 @@ export default function HistoryScreen({ navigation }) {
   // Tracks resolved entitlement state for Free→Pro transition detection.
   // Starts as null (unknown) so initialization to Pro is NOT treated as a transition.
   const resolvedEntitlementRef = useRef(null)
+  const pendingOpenEntryIdRef = useRef(null)
+
+  // Open a specific entry when navigated with openEntryId param
+  // (e.g. from TodayScreen "View Today's Juice" button)
+  useEffect(() => {
+    const openEntryId = route?.params?.openEntryId
+    if (!openEntryId || pendingOpenEntryIdRef.current === openEntryId) return
+    if (entries.length === 0) return
+    const entry = entries.find((e) => e.id === openEntryId)
+    if (entry) {
+      pendingOpenEntryIdRef.current = openEntryId
+      setSelectedEntry(entry)
+    }
+  }, [route?.params?.openEntryId, entries])
 
   useEffect(() => {
     return onDevClockChange(() => setDevClockTick((t) => t + 1))

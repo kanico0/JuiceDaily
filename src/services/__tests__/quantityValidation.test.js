@@ -53,9 +53,10 @@ describe('Quantity validation fix', () => {
 
   // 6. Camera scan initializes quantity to 1
   test('handleProduceIdentified initializes quantity: 1', () => {
-    const scanIdx = homeSource.indexOf('handleProduceIdentified')
+    // Find the actual function definition, not the comment block
+    const scanIdx = homeSource.indexOf('const handleProduceIdentified = useCallback')
     expect(scanIdx).not.toBe(-1)
-    const scanBlock = homeSource.slice(scanIdx, scanIdx + 1000)
+    const scanBlock = homeSource.slice(scanIdx, scanIdx + 1500)
     expect(scanBlock).toContain('quantity: 1')
   })
 

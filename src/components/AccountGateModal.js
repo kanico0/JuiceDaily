@@ -6,14 +6,22 @@
 // anonymous user attach an email to their existing identity (UUID
 // preserved) or lets a returning user sign back into their original
 // account. Email OTP flow, resend cooldown, double-submit protection.
+//
+// Keyboard UX:
+//   On Android, KeyboardAvoidingView with behavior='height' shrinks
+//   the layout when the keyboard opens. A ScrollView allows the
+//   content to scroll when needed. The icon and top spacing shrink
+//   when the keyboard is visible to maximize input visibility.
 // ─────────────────────────────────────────────────────────────
 
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import {
   ActivityIndicator,
+  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -64,6 +72,7 @@ export default function AccountGateModal ({ visible, onClose, onAuthenticated, i
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
   const [cooldown, setCooldown] = useState(0)
+  const [keyboardVisible, setKeyboardVisible] = useState(false)
   const busyRef = useRef(false)
 
   // Reset state whenever the modal opens.
@@ -79,6 +88,17 @@ export default function AccountGateModal ({ visible, onClose, onAuthenticated, i
       setBusy(false)
     }
   }, [visible, initialMode])
+
+  // Track keyboard visibility to shrink icon/spacing when typing.
+  useEffect(() => {
+    if (!visible) return undefined
+    const showSub = Keyboard.addListener('keyboardDidShow', () => setKeyboardVisible(true))
+    const hideSub = Keyboard.addListener('keyboardDidHide', () => setKeyboardVisible(false))
+    return () => {
+      showSub.remove()
+      hideSub.remove()
+    }
+  }, [visible])
 
   // Resend cooldown ticker.
   useEffect(() => {
@@ -174,114 +194,133 @@ export default function AccountGateModal ({ visible, onClose, onAuthenticated, i
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={styles.backdrop}>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          <View style={styles.card}>
-            <TouchableOpacity
-              style={styles.closeBtn}
-              onPress={onClose}
-              accessibilityRole="button"
-              accessibilityLabel="Close"
-            >
-              <X size={20} color="#8B949E" />
-            </TouchableOpacity>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.avoiding}
+        >
+          <ScrollView
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={styles.card}>
+              <TouchableOpacity
+                style={styles.closeBtn}
+                onPress={onClose}
+                accessibilityRole="button"
+                accessibilityLabel="Close"
+              >
+                <X size={20} color="#8B949E" />
+              </TouchableOpacity>
 
-            <View style={styles.iconWrap}>
-              <ShieldCheck size={32} color="#81C784" strokeWidth={2} />
-            </View>
-
-            <Text style={styles.title}>{copy.title}</Text>
-            <Text style={styles.subtitle}>{copy.subtitle}</Text>
-            {mode === 'guest' && copy.supporting && (
-              <Text style={styles.supporting}>{copy.supporting}</Text>
-            )}
-
-            {step === 'email' ? (
-              <>
-                <View style={styles.inputRow}>
-                  <Mail size={16} color="#8B949E" />
-                  <TextInput
-                    style={styles.input}
-                    placeholder="you@example.com"
-                    placeholderTextColor="#90A4AE"
-                    value={email}
-                    onChangeText={setEmail}
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    keyboardType="email-address"
-                    autoComplete="email"
-                    editable={!busy}
-                    accessibilityLabel="Email address"
-                  />
-                </View>
-
-                <TouchableOpacity
-                  style={[styles.cta, busy && styles.ctaDisabled]}
-                  onPress={sendCode}
-                  disabled={busy}
-                  accessibilityRole="button"
-                  accessibilityLabel={copy.cta}
-                >
-                  {busy ? (
-                    <ActivityIndicator color="#0D1117" />
-                  ) : (
-                    <Text style={styles.ctaText}>{copy.cta}</Text>
-                  )}
-                </TouchableOpacity>
-              </>
-            ) : (
-              <>
-                <Text style={styles.codeHint}>
-                  We sent a 6-digit code to {email.trim()}
-                </Text>
-                <TextInput
-                  style={styles.codeInput}
-                  placeholder="123456"
-                  placeholderTextColor="#90A4AE"
-                  value={code}
-                  onChangeText={setCode}
-                  keyboardType="number-pad"
-                  maxLength={6}
-                  editable={!busy}
-                  accessibilityLabel="Verification code"
+              <View style={[
+                styles.iconWrap,
+                keyboardVisible && styles.iconWrapCompact,
+              ]}>
+                <ShieldCheck
+                  size={keyboardVisible ? 24 : 32}
+                  color="#81C784"
+                  strokeWidth={2}
                 />
+              </View>
 
-                <TouchableOpacity
-                  style={[styles.cta, busy && styles.ctaDisabled]}
-                  onPress={confirmCode}
-                  disabled={busy}
-                  accessibilityRole="button"
-                  accessibilityLabel="Verify code"
-                >
-                  {busy ? (
-                    <ActivityIndicator color="#0D1117" />
-                  ) : (
-                    <Text style={styles.ctaText}>Verify</Text>
-                  )}
-                </TouchableOpacity>
+              <Text style={styles.title}>{copy.title}</Text>
+              <Text style={[
+                styles.subtitle,
+                keyboardVisible && styles.subtitleCompact,
+              ]}>{copy.subtitle}</Text>
+              {mode === 'guest' && copy.supporting && (
+                <Text style={styles.supporting}>{copy.supporting}</Text>
+              )}
 
-                <TouchableOpacity
-                  onPress={sendCode}
-                  disabled={busy || cooldown > 0}
-                  accessibilityRole="button"
-                  accessibilityLabel="Resend code"
-                >
-                  <Text style={[styles.link, (busy || cooldown > 0) && styles.linkDisabled]}>
-                    {cooldown > 0 ? `Resend code in ${cooldown}s` : 'Resend code'}
+              {step === 'email' ? (
+                <>
+                  <View style={styles.inputRow}>
+                    <Mail size={16} color="#8B949E" />
+                    <TextInput
+                      style={styles.input}
+                      placeholder="you@example.com"
+                      placeholderTextColor="#90A4AE"
+                      value={email}
+                      onChangeText={setEmail}
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      keyboardType="email-address"
+                      autoComplete="email"
+                      editable={!busy}
+                      accessibilityLabel="Email address"
+                    />
+                  </View>
+
+                  <TouchableOpacity
+                    style={[styles.cta, busy && styles.ctaDisabled]}
+                    onPress={sendCode}
+                    disabled={busy}
+                    accessibilityRole="button"
+                    accessibilityLabel={copy.cta}
+                  >
+                    {busy ? (
+                      <ActivityIndicator color="#0D1117" />
+                    ) : (
+                      <Text style={styles.ctaText}>{copy.cta}</Text>
+                    )}
+                  </TouchableOpacity>
+                </>
+              ) : (
+                <>
+                  <Text style={styles.codeHint}>
+                    We sent a 6-digit code to {email.trim()}
                   </Text>
-                </TouchableOpacity>
-              </>
-            )}
+                  <TextInput
+                    style={styles.codeInput}
+                    placeholder="123456"
+                    placeholderTextColor="#90A4AE"
+                    value={code}
+                    onChangeText={setCode}
+                    keyboardType="number-pad"
+                    maxLength={6}
+                    editable={!busy}
+                    accessibilityLabel="Verification code"
+                  />
 
-            {error && <Text style={styles.error}>{error}</Text>}
+                  <TouchableOpacity
+                    style={[styles.cta, busy && styles.ctaDisabled]}
+                    onPress={confirmCode}
+                    disabled={busy}
+                    accessibilityRole="button"
+                    accessibilityLabel="Verify code"
+                  >
+                    {busy ? (
+                      <ActivityIndicator color="#0D1117" />
+                    ) : (
+                      <Text style={styles.ctaText}>Verify</Text>
+                    )}
+                  </TouchableOpacity>
 
-            <TouchableOpacity onPress={switchMode} disabled={busy} accessibilityRole="button">
-              <Text style={styles.link}>
-                {mode === 'protect' || mode === 'guest'
-                  ? 'Already have an account? Sign in'
-                  : 'New here? Create your free account'}
-              </Text>
-            </TouchableOpacity>
-          </View>
+                  <TouchableOpacity
+                    onPress={sendCode}
+                    disabled={busy || cooldown > 0}
+                    accessibilityRole="button"
+                    accessibilityLabel="Resend code"
+                  >
+                    <Text style={[styles.link, (busy || cooldown > 0) && styles.linkDisabled]}>
+                      {cooldown > 0 ? `Resend code in ${cooldown}s` : 'Resend code'}
+                    </Text>
+                  </TouchableOpacity>
+                </>
+              )}
+
+              {error && <Text style={styles.error}>{error}</Text>}
+
+              <TouchableOpacity onPress={switchMode} disabled={busy} accessibilityRole="button">
+                <Text style={styles.link}>
+                  {mode === 'protect' || mode === 'guest'
+                    ? 'Already have an account? Sign in'
+                    : 'New here? Create your free account'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
         </KeyboardAvoidingView>
       </View>
     </Modal>
@@ -294,6 +333,15 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.75)',
     justifyContent: 'center',
     paddingHorizontal: 24,
+  },
+  avoiding: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    paddingVertical: 40,
   },
   card: {
     backgroundColor: '#161B22',
@@ -319,6 +367,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 16,
   },
+  iconWrapCompact: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginBottom: 8,
+  },
   title: {
     color: '#E6EDF3',
     fontSize: 20,
@@ -332,6 +386,9 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     textAlign: 'center',
     marginBottom: 20,
+  },
+  subtitleCompact: {
+    marginBottom: 12,
   },
   supporting: {
     color: '#81C784',

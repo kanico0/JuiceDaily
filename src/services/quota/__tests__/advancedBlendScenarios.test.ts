@@ -18,6 +18,15 @@ jest.mock('../../subscriptions/subscriptionConfig', () => ({
   FREE_WARNING_THRESHOLDS: [2, 1],
   PRO_WARNING_THRESHOLDS: [10, 5],
 }))
+// Mock installExpandedIngredientGuard to prevent AsyncStorage native import
+jest.mock('../installExpandedIngredientGuard', () => ({
+  markInstallExpandedIngredientConsumed: jest.fn().mockResolvedValue(false),
+  getInstallExpandedIngredientUsed: jest.fn().mockResolvedValue(0),
+  getInstallExpandedIngredientRemaining: jest.fn().mockResolvedValue(3),
+  composeEffectiveExpandedIngredientRemaining: jest.fn().mockResolvedValue(null),
+  selfHealInstallExpandedIngredient: jest.fn().mockResolvedValue(false),
+  clearInstallExpandedIngredientState: jest.fn().mockResolvedValue(undefined),
+}))
 
 import {
   classifyBlend,

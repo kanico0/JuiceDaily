@@ -351,3 +351,33 @@ export async function fetchBlendAllowance(): Promise<BlendAllowanceResult | null
     return null
   }
 }
+
+// ── Fetch effective allowance (composed with install guard) ──
+// Returns the server snapshot with `remaining` adjusted to the
+// effective value: min(account remaining, install remaining).
+// For Pro users, the server snapshot is returned as-is.
+//
+// Also self-heals the install guard from the authoritative Free
+// account used count.
+
+export async function fetchEffectiveBlendAllowance(
+  isPro: boolean,
+): Promise<BlendAllowanceResult | null> {
+  const snapshot = await fetchBlendAllowance()
+  if (!snapshot) return null
+  // Pro bypasses the install guard entirely
+  if (isPro || snapshot.plan === 'pro') return snapshot
+  // Self-heal from authoritative Free account used count
+  const { selfHealInstallExpandedIngredient, getInstallExpandedIngredientRemaining } =
+    await import('./installExpandedIngredientGuard')
+  await selfHealInstallExpandedIngredient(snapshot.used, false)
+  const installRemaining = await getInstallExpandedIngredientRemaining()
+  const accountRemaining = typeof snapshot.remaining === 'number'
+    ? Math.max(0, snapshot.remaining)
+    : FREE_ADVANCED_BLEND_ALLOWANCE
+  const effectiveRemaining = Math.min(accountRemaining, installRemaining)
+  return {
+    ...snapshot,
+    remaining: effectiveRemaining,
+  }
+}

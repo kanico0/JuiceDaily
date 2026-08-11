@@ -96,9 +96,9 @@ describe('Advanced Blend Display — QA Items 4 & 8 Regression', () => {
 
   // 7. Loading state does not flash a false count of three
   test('7. HomeScreen fetches authoritative allowance before showing modal', () => {
-    const s = section(HOME_SRC, 'Fetch authoritative Advanced Blend allowance', 500)
-    expect(s).toContain('fetchBlendAllowance()')
-    expect(s).toContain('setBlendUsedCount(snapshot.used')
+    const s = section(HOME_SRC, 'Fetch authoritative Advanced Blend allowance', 800)
+    expect(s).toContain('fetchEffectiveBlendAllowance')
+    expect(s).toContain('setBlendUsedCount')
   })
 
   test('7b. blendUsedCount starts at 0, not FREE_ADVANCED_BLEND_ALLOWANCE', () => {
@@ -187,7 +187,7 @@ describe('Advanced Blend Enforcement — QA Items 4 & 8 Regression', () => {
 
   // 13. Back navigation and reopening cannot bypass exhaustion
   test('13. blendUsedCount is refreshed on focus, not persisted locally only', () => {
-    const s = section(HOME_SRC, 'Fetch authoritative Advanced Blend allowance', 700)
+    const s = section(HOME_SRC, 'Fetch authoritative Advanced Blend allowance', 1100)
     expect(s).toContain("addListener?.('focus'")
     expect(s).toContain('refreshBlendAllowance')
   })
@@ -248,8 +248,8 @@ describe('Advanced Blend Enforcement — QA Items 4 & 8 Regression', () => {
 
   // 19. App remount does not reset the lifetime allowance
   test('19. blendUsedCount is fetched from server on mount, not reset to 0 permanently', () => {
-    const s = section(HOME_SRC, 'const refreshBlendAllowance = useCallback', 300)
-    expect(s).toContain('fetchBlendAllowance()')
+    const s = section(HOME_SRC, 'const refreshBlendAllowance = useCallback', 400)
+    expect(s).toContain('fetchEffectiveBlendAllowance')
     // On mount, the server's authoritative count is used
   })
 

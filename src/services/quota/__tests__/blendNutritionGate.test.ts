@@ -14,6 +14,15 @@ jest.mock('../../subscriptions/subscriptionConfig', () => ({
   SUPABASE_CONFIGURED: false,
   MONETIZATION_ENABLED: false,
 }))
+// Mock installExpandedIngredientGuard to prevent AsyncStorage native import
+jest.mock('../installExpandedIngredientGuard', () => ({
+  markInstallExpandedIngredientConsumed: jest.fn().mockResolvedValue(false),
+  getInstallExpandedIngredientUsed: jest.fn().mockResolvedValue(0),
+  getInstallExpandedIngredientRemaining: jest.fn().mockResolvedValue(3),
+  composeEffectiveExpandedIngredientRemaining: jest.fn().mockResolvedValue(null),
+  selfHealInstallExpandedIngredient: jest.fn().mockResolvedValue(false),
+  clearInstallExpandedIngredientState: jest.fn().mockResolvedValue(undefined),
+}))
 jest.mock('../guestJourneyService', () => ({
   isDurableUser: jest.fn().mockResolvedValue(true),
   checkGuestJourney: jest.fn(),

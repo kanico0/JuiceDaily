@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { Camera, FlaskConical, Crown } from 'lucide-react-native'
 import { useQuota } from '../services/quota/QuotaStore'
 import { useSubscription } from '../services/subscriptions/SubscriptionStore'
-import { fetchBlendAllowance, FREE_ADVANCED_BLEND_ALLOWANCE } from '../services/quota/blendAllowanceService'
+import { fetchEffectiveBlendAllowance, FREE_ADVANCED_BLEND_ALLOWANCE } from '../services/quota/blendAllowanceService'
 import { FREE_MONTHLY_SCAN_LIMIT, PRO_MONTHLY_SCAN_LIMIT } from '../services/subscriptions/subscriptionConfig'
 import { trackEvent } from '../services/AnalyticsService'
 
@@ -17,7 +17,7 @@ export default function FreePlanUsageCard ({ onUpgrade, refreshTrigger }) {
   const refreshBlend = useCallback(async () => {
     setBlendLoading(true)
     try {
-      const result = await fetchBlendAllowance()
+      const result = await fetchEffectiveBlendAllowance(isPro)
       if (result) {
         setBlendRemaining(result.remaining)
       } else {
@@ -28,7 +28,7 @@ export default function FreePlanUsageCard ({ onUpgrade, refreshTrigger }) {
     } finally {
       setBlendLoading(false)
     }
-  }, [])
+  }, [isPro])
 
   useEffect(() => {
     if (isPro) return

@@ -63,7 +63,7 @@ import { usePro } from '../services/ProStore'
 import MeshGradientBg from '../components/MeshGradientBg'
 import { processJuiceBatch, PRODUCE_DATA } from '../services/JuiceEngine'
 import AdvancedBlendModal from '../components/AdvancedBlendModal'
-import { countDistinctProduceIds, classifyBlend, BlendAllowanceError, FREE_ADVANCED_BLEND_ALLOWANCE, createOperationId, getAdvancedBlendRemaining, fetchBlendAllowance } from '../services/quota/blendAllowanceService'
+import { countDistinctProduceIds, classifyBlend, BlendAllowanceError, FREE_ADVANCED_BLEND_ALLOWANCE, createOperationId, getAdvancedBlendRemaining, fetchEffectiveBlendAllowance } from '../services/quota/blendAllowanceService'
 import { authorizeAndProcessBatch } from '../services/quota/blendNutritionGate'
 import { authorizeGuestLog, isGuestLogAllowed } from '../services/quota/guestLogGate'
 import { checkCameraEligibility } from '../services/cameraEligibilityCoordinator'
@@ -863,14 +863,20 @@ export default function JuiceSnapScreen({ navigation, route }) {
   // on focus so the pre-analysis modal shows the correct remaining count
   // instead of defaulting to FREE_ADVANCED_BLEND_ALLOWANCE (3).
   const refreshBlendAllowance = useCallback(async () => {
-    const snapshot = await fetchBlendAllowance()
+    const snapshot = await fetchEffectiveBlendAllowance(isPro)
     if (snapshot) {
-      setBlendUsedCount(snapshot.used ?? 0)
+      // Compute effective used from effective remaining so the
+      // install guard is reflected in the displayed count.
+      const effectiveRemaining = typeof snapshot.remaining === 'number'
+        ? snapshot.remaining
+        : FREE_ADVANCED_BLEND_ALLOWANCE
+      const effectiveUsed = Math.max(0, FREE_ADVANCED_BLEND_ALLOWANCE - effectiveRemaining)
+      setBlendUsedCount(effectiveUsed)
       setBlendAllowanceVerified(true)
     } else {
       setBlendAllowanceVerified(false)
     }
-  }, [])
+  }, [isPro])
 
   useEffect(() => {
     refreshBlendAllowance()

@@ -64,7 +64,7 @@ import {
   selectNextRefreshLabel,
 } from '../services/subscriptions/subscriptionSelectors'
 import { MONETIZATION_ENABLED, SUPABASE_CONFIGURED, TERMS_URL, PRIVACY_URL } from '../services/subscriptions/subscriptionConfig'
-import { fetchBlendAllowance, FREE_ADVANCED_BLEND_ALLOWANCE, getAdvancedBlendRemaining } from '../services/quota/blendAllowanceService'
+import { fetchEffectiveBlendAllowance, FREE_ADVANCED_BLEND_ALLOWANCE, getAdvancedBlendRemaining } from '../services/quota/blendAllowanceService'
 import { getAccountStatus, signOutAccount } from '../services/supabase/accountLink'
 import AccountGateModal from '../components/AccountGateModal'
 import { advanceDevDay, getDevDayOffset, resetDevClock, getDevNow } from '../utils/DevClock'
@@ -381,10 +381,16 @@ function SubscriptionSection({ navigation }) {
     if (!SUPABASE_CONFIGURED) return
     let cancelled = false
     const load = async () => {
-      const snapshot = await fetchBlendAllowance()
+      const snapshot = await fetchEffectiveBlendAllowance(isPro)
       if (cancelled) return
       if (snapshot) {
-        setBlendUsedCount(snapshot.used ?? 0)
+        // Compute effective used from effective remaining so the
+        // install guard is reflected in the displayed count.
+        const effectiveRemaining = typeof snapshot.remaining === 'number'
+          ? snapshot.remaining
+          : FREE_ADVANCED_BLEND_ALLOWANCE
+        const effectiveUsed = Math.max(0, FREE_ADVANCED_BLEND_ALLOWANCE - effectiveRemaining)
+        setBlendUsedCount(effectiveUsed)
         setBlendVerified(true)
       }
     }

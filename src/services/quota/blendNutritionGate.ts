@@ -39,6 +39,7 @@ import { getAccessToken } from '../supabase/identity'
 import { isDevicePoolEnabled } from '../devicePool/devicePoolConfig'
 import { getDevicePromotionProvider } from '../devicePool/devicePromotionProviderFactory'
 import type { AttestationRequestContext } from '../devicePool/devicePromotionProvider'
+import { markInstallExpandedIngredientConsumed } from './installExpandedIngredientGuard'
 
 export interface AuthorizedJuiceResult extends JuiceResult {
   allowance: BlendAllowanceResult | null
@@ -139,6 +140,12 @@ export async function authorizeAndProcessBatch(
     // is valid for both operations (Google allows token reuse for
     // Device Recall writes for up to 14 days).
     await finalizeBlendAllowance(reservation.requestId, integrityToken, integrityTokenIsMock)
+    // Mark the install-level Expanded Ingredient guard as consumed.
+    // This is idempotent (same requestId won't double-consume) and
+    // is a no-op for Pro users (Pro usage does NOT consume the Free
+    // lifetime pool).
+    const isPro = reservation.plan === 'pro'
+    await markInstallExpandedIngredientConsumed(reservation.requestId, isPro)
     return { ...result, allowance: reservation }
   } catch (err) {
     await releaseBlendAllowance(reservation.requestId)

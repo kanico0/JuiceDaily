@@ -32,6 +32,7 @@ import {
   composeEffectiveQuota,
   getInstallFreeSnapRemaining,
   markInstallFreeSnapConsumed,
+  selfHealInstallMarker,
 } from './installFreeSnapGuard'
 import type { ScanQuotaSnapshot } from '../subscriptions/subscriptionTypes'
 
@@ -87,6 +88,16 @@ export function QuotaProvider ({ children }: { children: React.ReactNode }) {
       const snapshot = await fetchScanQuota()
       if (snapshot) {
         setServerQuota(snapshot)
+        // Self-heal: if the authoritative Free quota is already
+        // exhausted for the current window (e.g. the device consumed
+        // a Snap on an older APK before the install marker existed),
+        // persist the install marker now so the effective quota is
+        // correct BEFORE it is exposed to display/eligibility checks.
+        // Only an authoritative exhausted FREE quota may bootstrap
+        // the marker — never null, Pro, or malformed quota.
+        if (snapshot.plan === 'free') {
+          await selfHealInstallMarker(snapshot)
+        }
         // Compute install remaining synchronously so the returned
         // value is the effective quota, not just the raw server
         // snapshot. This prevents attemptCameraOpen from seeing
@@ -113,8 +124,13 @@ export function QuotaProvider ({ children }: { children: React.ReactNode }) {
     // scan the server quota shows 0 remaining, so the effective
     // quota is 0 regardless of the install guard state. The
     // install guard matters when a NEW identity is created later.
+    //
+    // Self-heal is also applied here: if the server-returned Free
+    // quota is exhausted (e.g. after a scan or a cross-device sync),
+    // persist the install marker so it survives a later logout.
     if (snapshot.plan === 'free') {
-      getInstallFreeSnapRemaining(snapshot)
+      selfHealInstallMarker(snapshot)
+        .then(() => getInstallFreeSnapRemaining(snapshot))
         .then(setInstallRemaining)
         .catch(() => setInstallRemaining(null))
     } else {

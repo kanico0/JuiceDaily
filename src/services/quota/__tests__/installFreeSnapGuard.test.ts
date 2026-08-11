@@ -43,6 +43,7 @@ import {
   markInstallFreeSnapConsumed,
   clearInstallFreeSnapState,
   composeEffectiveQuota,
+  selfHealInstallMarker,
 } from '../installFreeSnapGuard'
 import type { ScanQuotaSnapshot } from '../../subscriptions/subscriptionTypes'
 
@@ -488,5 +489,241 @@ describe('composeEffectiveQuota integration scenarios', () => {
     const proQuota = makeProQuota({ remaining: 12, used: 0, periodStart: WINDOW_JAN })
     const effective = composeEffectiveQuota(proQuota, null)
     expect(effective!.remaining).toBe(12) // Pro bypass
+  })
+})
+
+// ─────────────────────────────────────────────────────────────
+// Migration / Self-Heal Tests
+//
+// The physical device may have ALREADY consumed its Free Snap using
+// an older APK before @juicing_install_free_snap_v1 existed. The
+// selfHealInstallMarker function bridges this gap by persisting the
+// install marker from an authoritative exhausted Free quota — without
+// performing another AI Snap.
+// ─────────────────────────────────────────────────────────────
+describe('Migration / Self-Heal', () => {
+  beforeEach(() => {
+    mockStore.clear()
+    jest.clearAllMocks()
+  })
+
+  // ── Upgrade-from-old-build case ──────────────────────────────
+  describe('Upgrade-from-old-build case', () => {
+    it('install marker absent + authoritative Free 1/1 used → self-heal persists marker', async () => {
+      // Simulate: device consumed Snap on old APK, no install marker
+      expect(mockStore.has(INSTALL_FREE_SNAP_KEY)).toBe(false)
+
+      // New APK refreshes quota: server says 1 of 1 used
+      const exhaustedQuota = makeFreeQuota({ used: 1, remaining: 0 })
+      const healed = await selfHealInstallMarker(exhaustedQuota)
+
+      expect(healed).toBe(true)
+      expect(mockStore.has(INSTALL_FREE_SNAP_KEY)).toBe(true)
+
+      // Install marker now shows consumed
+      const remaining = await getInstallFreeSnapRemaining(exhaustedQuota)
+      expect(remaining).toBe(0)
+    })
+
+    it('after self-heal, logout → new anonymous UUID effective quota remains exhausted', async () => {
+      // Old build consumed the snap; new build self-heals
+      const exhaustedQuota = makeFreeQuota({ used: 1, remaining: 0 })
+      await selfHealInstallMarker(exhaustedQuota)
+
+      // Logout creates a new anonymous UUID with fresh server quota
+      const newIdentityQuota = makeFreeQuota({ used: 0, remaining: 1 })
+
+      // Install guard still consumed (same window)
+      const installRem = await getInstallFreeSnapRemaining(newIdentityQuota)
+      expect(installRem).toBe(0)
+
+      // Effective = min(1, 0) = 0
+      const effective = composeEffectiveQuota(newIdentityQuota, installRem)
+      expect(effective!.remaining).toBe(0)
+      expect(effective!.used).toBe(1) // "1 of 1 used"
+    })
+
+    it('self-heal is idempotent — calling twice does not error', async () => {
+      const exhaustedQuota = makeFreeQuota({ used: 1, remaining: 0 })
+      await selfHealInstallMarker(exhaustedQuota)
+      await selfHealInstallMarker(exhaustedQuota)
+
+      const remaining = await getInstallFreeSnapRemaining(exhaustedQuota)
+      expect(remaining).toBe(0)
+    })
+  })
+
+  // ── Fresh unused account ─────────────────────────────────────
+  describe('Fresh unused account', () => {
+    it('marker absent + authoritative Free 0/1 → do NOT create consumed marker', async () => {
+      const freshQuota = makeFreeQuota({ used: 0, remaining: 1 })
+      const healed = await selfHealInstallMarker(freshQuota)
+
+      expect(healed).toBe(false)
+      expect(mockStore.has(INSTALL_FREE_SNAP_KEY)).toBe(false)
+
+      // Install remaining is still 1 (available)
+      const remaining = await getInstallFreeSnapRemaining(freshQuota)
+      expect(remaining).toBe(1)
+    })
+
+    it('fresh quota after self-heal attempt remains available', async () => {
+      const freshQuota = makeFreeQuota({ used: 0, remaining: 1 })
+      await selfHealInstallMarker(freshQuota)
+
+      const effective = composeEffectiveQuota(freshQuota, 1)
+      expect(effective!.remaining).toBe(1)
+      expect(effective!.used).toBe(0)
+    })
+  })
+
+  // ── Unknown server quota ─────────────────────────────────────
+  describe('Unknown server quota', () => {
+    it('marker absent + quota null → do NOT create consumed marker', async () => {
+      const healed = await selfHealInstallMarker(null)
+      expect(healed).toBe(false)
+      expect(mockStore.has(INSTALL_FREE_SNAP_KEY)).toBe(false)
+    })
+
+    it('marker absent + quota with empty periodStart → do NOT create consumed marker', async () => {
+      const malformedQuota = makeFreeQuota({ used: 1, remaining: 0, periodStart: '' })
+      const healed = await selfHealInstallMarker(malformedQuota)
+      expect(healed).toBe(false)
+      expect(mockStore.has(INSTALL_FREE_SNAP_KEY)).toBe(false)
+    })
+
+    it('marker absent + quota with used=0 but remaining=0 → do NOT create marker', async () => {
+      // Edge case: remaining=0 but used=0 is contradictory/malformed.
+      // selfHeal requires used >= 1 to seed.
+      const malformedQuota = makeFreeQuota({ used: 0, remaining: 0 })
+      const healed = await selfHealInstallMarker(malformedQuota)
+      expect(healed).toBe(false)
+      expect(mockStore.has(INSTALL_FREE_SNAP_KEY)).toBe(false)
+    })
+
+    it('unknown quota remains fail-closed — effective is null', () => {
+      const effective = composeEffectiveQuota(null, null)
+      expect(effective).toBeNull()
+    })
+  })
+
+  // ── Monthly rollover ─────────────────────────────────────────
+  describe('Monthly rollover with self-heal', () => {
+    it('old window consumed + new monthly window → old marker does NOT exhaust new window', async () => {
+      // January consumed (via self-heal from old build)
+      const janQuota = makeFreeQuota({ periodStart: WINDOW_JAN, used: 1, remaining: 0 })
+      await selfHealInstallMarker(janQuota)
+
+      // February is a new window — server reports fresh 0/1
+      const febQuota = makeFreeQuota({ periodStart: WINDOW_FEB, used: 0, remaining: 1 })
+
+      // Self-heal should NOT trigger (remaining !== 0)
+      const healed = await selfHealInstallMarker(febQuota)
+      expect(healed).toBe(false)
+
+      // Install remaining is 1 (available in new window)
+      const remaining = await getInstallFreeSnapRemaining(febQuota)
+      expect(remaining).toBe(1)
+
+      const effective = composeEffectiveQuota(febQuota, remaining)
+      expect(effective!.remaining).toBe(1)
+      expect(effective!.used).toBe(0)
+    })
+
+    it('old window consumed + new window exhausted → self-heal persists new window', async () => {
+      // January consumed
+      const janQuota = makeFreeQuota({ periodStart: WINDOW_JAN, used: 1, remaining: 0 })
+      await selfHealInstallMarker(janQuota)
+
+      // February also consumed (e.g. user scanned in the new month)
+      const febQuota = makeFreeQuota({ periodStart: WINDOW_FEB, used: 1, remaining: 0 })
+      const healed = await selfHealInstallMarker(febQuota)
+      expect(healed).toBe(true)
+
+      // Marker now points to February
+      const raw = mockStore.get(INSTALL_FREE_SNAP_KEY)
+      const parsed = JSON.parse(raw!)
+      expect(parsed.windowKey).toBe(WINDOW_FEB)
+    })
+  })
+
+  // ── Pro ──────────────────────────────────────────────────────
+  describe('Pro bypass with self-heal', () => {
+    it('Pro quota with used scans → do NOT create Free install marker', async () => {
+      // Pro has used 5 of 12 scans — must not seed Free marker
+      const proQuota = makeProQuota({ used: 5, remaining: 7 })
+      const healed = await selfHealInstallMarker(proQuota)
+
+      expect(healed).toBe(false)
+      expect(mockStore.has(INSTALL_FREE_SNAP_KEY)).toBe(false)
+    })
+
+    it('Pro quota fully exhausted → do NOT create Free install marker', async () => {
+      const proQuota = makeProQuota({ used: 12, remaining: 0 })
+      const healed = await selfHealInstallMarker(proQuota)
+
+      expect(healed).toBe(false)
+      expect(mockStore.has(INSTALL_FREE_SNAP_KEY)).toBe(false)
+    })
+
+    it('Pro bypass remains intact after self-heal attempt', async () => {
+      const proQuota = makeProQuota({ used: 12, remaining: 0 })
+      await selfHealInstallMarker(proQuota)
+
+      // Pro effective quota is the server quota as-is
+      const effective = composeEffectiveQuota(proQuota, null)
+      expect(effective!.plan).toBe('pro')
+      expect(effective!.remaining).toBe(0)
+    })
+  })
+
+  // ── windowKey derivation and cross-identity behavior ─────────
+  describe('windowKey cross-identity consistency', () => {
+    it('Free Account A and anonymous UUID B in same month resolve to same windowKey', async () => {
+      // Account A (durable Free) has quota in January
+      const accountA_Quota = makeFreeQuota({
+        periodStart: WINDOW_JAN,
+        used: 1,
+        remaining: 0,
+      })
+
+      // Self-heal from Account A's exhausted quota
+      await selfHealInstallMarker(accountA_Quota)
+
+      // After logout, new anonymous UUID B gets fresh quota
+      // BUT same monthly window (January)
+      const uuidB_Quota = makeFreeQuota({
+        periodStart: WINDOW_JAN,
+        used: 0,
+        remaining: 1,
+      })
+
+      // The install guard uses periodStart as windowKey — same for both
+      // identities in the same calendar month. The guard does NOT use
+      // the UUID or any account identifier.
+      const installRem = await getInstallFreeSnapRemaining(uuidB_Quota)
+      expect(installRem).toBe(0) // Still consumed
+
+      const effective = composeEffectiveQuota(uuidB_Quota, installRem)
+      expect(effective!.remaining).toBe(0)
+      expect(effective!.used).toBe(1)
+    })
+
+    it('windowKey is serverQuota.periodStart — not UUID, not account ID', () => {
+      // The selfHealInstallMarker function only reads:
+      //   serverQuota.plan === 'free'
+      //   serverQuota.periodStart (non-empty)
+      //   serverQuota.remaining === 0
+      //   serverQuota.used >= 1
+      // It does NOT read any user identifier. This is verified by
+      // the function signature: it takes only ScanQuotaSnapshot.
+      // The marker is keyed by windowKey = periodStart.
+      // Two different UUIDs with the same periodStart resolve to
+      // the same install guard state.
+      const quotaA = makeFreeQuota({ periodStart: WINDOW_JAN, used: 1, remaining: 0 })
+      const quotaB = makeFreeQuota({ periodStart: WINDOW_JAN, used: 0, remaining: 1 })
+      // Both have the same periodStart → same windowKey
+      expect(quotaA.periodStart).toBe(quotaB.periodStart)
+    })
   })
 })

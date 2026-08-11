@@ -11,11 +11,13 @@ const HOME_SCREEN_PATH = path.resolve(__dirname, '../../../screens/HomeScreen.js
 const QUOTA_STORE_PATH = path.resolve(__dirname, '../QuotaStore.tsx')
 const INSTALL_GUARD_PATH = path.resolve(__dirname, '../installFreeSnapGuard.ts')
 const STORAGE_PATH = path.resolve(__dirname, '../../storage.ts')
+const ACCOUNT_LINK_PATH = path.resolve(__dirname, '../../supabase/accountLink.ts')
 
 const HOME_SCREEN_SRC = fs.readFileSync(HOME_SCREEN_PATH, 'utf-8')
 const QUOTA_STORE_SRC = fs.readFileSync(QUOTA_STORE_PATH, 'utf-8')
 const INSTALL_GUARD_SRC = fs.readFileSync(INSTALL_GUARD_PATH, 'utf-8')
 const STORAGE_SRC = fs.readFileSync(STORAGE_PATH, 'utf-8')
+const ACCOUNT_LINK_SRC = fs.readFileSync(ACCOUNT_LINK_PATH, 'utf-8')
 
 describe('Install Free Snap Guard — Source Integration', () => {
   // ── HomeScreen wiring ────────────────────────────────────────
@@ -83,7 +85,7 @@ describe('Install Free Snap Guard — Source Integration', () => {
 
     test('refresh returns the effective quota (composed with install guard)', () => {
       const refreshIdx = QUOTA_STORE_SRC.indexOf('const refresh = useCallback')
-      const refreshBody = QUOTA_STORE_SRC.slice(refreshIdx, refreshIdx + 1000)
+      const refreshBody = QUOTA_STORE_SRC.slice(refreshIdx, refreshIdx + 2000)
       // Must call getInstallFreeSnapRemaining and composeEffectiveQuota
       expect(refreshBody).toContain('getInstallFreeSnapRemaining')
       expect(refreshBody).toContain('composeEffectiveQuota')
@@ -91,7 +93,7 @@ describe('Install Free Snap Guard — Source Integration', () => {
 
     test('applySnapshot reads install guard for Free plan', () => {
       const applyIdx = QUOTA_STORE_SRC.indexOf('const applySnapshot = useCallback')
-      const applyBody = QUOTA_STORE_SRC.slice(applyIdx, applyIdx + 500)
+      const applyBody = QUOTA_STORE_SRC.slice(applyIdx, applyIdx + 800)
       expect(applyBody).toContain("plan === 'free'")
       expect(applyBody).toContain('getInstallFreeSnapRemaining')
     })
@@ -170,6 +172,93 @@ describe('Install Free Snap Guard — Source Integration', () => {
 
     test('QuotaStore does not import deviceRecallBits', () => {
       expect(QUOTA_STORE_SRC).not.toContain('deviceRecallBits')
+    })
+  })
+
+  // ── Self-heal wiring ─────────────────────────────────────────
+  describe('Self-heal wiring', () => {
+    test('installFreeSnapGuard exports selfHealInstallMarker', () => {
+      expect(INSTALL_GUARD_SRC).toContain('export async function selfHealInstallMarker')
+    })
+
+    test('selfHealInstallMarker only seeds from exhausted Free quota', () => {
+      // Must check plan === 'free'
+      expect(INSTALL_GUARD_SRC).toContain("plan !== 'free'")
+      // Must check remaining === 0
+      expect(INSTALL_GUARD_SRC).toContain('remaining !== 0')
+      // Must check used >= 1
+      expect(INSTALL_GUARD_SRC).toContain('used < 1')
+      // Must check periodStart is non-empty
+      expect(INSTALL_GUARD_SRC).toContain('!serverQuota.periodStart')
+    })
+
+    test('selfHealInstallMarker does NOT seed from Pro', () => {
+      // The plan check rejects Pro before any write
+      expect(INSTALL_GUARD_SRC).toContain("plan !== 'free'")
+    })
+
+    test('selfHealInstallMarker does NOT seed from null quota', () => {
+      expect(INSTALL_GUARD_SRC).toContain('if (!serverQuota) return false')
+    })
+
+    test('QuotaStore imports selfHealInstallMarker', () => {
+      expect(QUOTA_STORE_SRC).toContain('selfHealInstallMarker')
+    })
+
+    test('QuotaStore refresh calls selfHealInstallMarker for Free plan', () => {
+      const refreshIdx = QUOTA_STORE_SRC.indexOf('const refresh = useCallback')
+      const refreshBody = QUOTA_STORE_SRC.slice(refreshIdx, refreshIdx + 1500)
+      expect(refreshBody).toContain('selfHealInstallMarker')
+      // Must be gated on plan === 'free'
+      const healIdx = refreshBody.indexOf('selfHealInstallMarker')
+      const beforeHeal = refreshBody.slice(Math.max(0, healIdx - 200), healIdx)
+      expect(beforeHeal).toMatch(/plan.*===.*'free'/)
+    })
+
+    test('QuotaStore applySnapshot calls selfHealInstallMarker for Free plan', () => {
+      const applyIdx = QUOTA_STORE_SRC.indexOf('const applySnapshot = useCallback')
+      const applyBody = QUOTA_STORE_SRC.slice(applyIdx, applyIdx + 800)
+      expect(applyBody).toContain('selfHealInstallMarker')
+    })
+  })
+
+  // ── Logout safety wiring ─────────────────────────────────────
+  describe('Logout safety wiring', () => {
+    test('accountLink imports selfHealInstallMarker', () => {
+      expect(ACCOUNT_LINK_SRC).toContain('selfHealInstallMarker')
+    })
+
+    test('signOutAccount calls persistInstallMarkerBeforeSignOut before signOut', () => {
+      const fnIdx = ACCOUNT_LINK_SRC.indexOf('export async function signOutAccount')
+      expect(fnIdx).toBeGreaterThan(-1)
+      const fnBody = ACCOUNT_LINK_SRC.slice(fnIdx, fnIdx + 1000)
+
+      // persistInstallMarkerBeforeSignOut must be called before signOut
+      const healIdx = fnBody.indexOf('persistInstallMarkerBeforeSignOut')
+      const signOutIdx = fnBody.indexOf('supabase.auth.signOut')
+      expect(healIdx).toBeGreaterThan(-1)
+      expect(signOutIdx).toBeGreaterThan(-1)
+      expect(healIdx).toBeLessThan(signOutIdx)
+    })
+
+    test('persistInstallMarkerBeforeSignOut is best-effort (try/catch)', () => {
+      const fnIdx = ACCOUNT_LINK_SRC.indexOf('async function persistInstallMarkerBeforeSignOut')
+      const fnBody = ACCOUNT_LINK_SRC.slice(fnIdx, fnIdx + 600)
+      expect(fnBody).toContain('catch')
+      // Must not throw on failure
+      expect(fnBody).toMatch(/Best-effort|do not block/i)
+    })
+
+    test('persistInstallMarkerBeforeSignOut checks SUPABASE_CONFIGURED', () => {
+      const fnIdx = ACCOUNT_LINK_SRC.indexOf('async function persistInstallMarkerBeforeSignOut')
+      const fnBody = ACCOUNT_LINK_SRC.slice(fnIdx, fnIdx + 600)
+      expect(fnBody).toContain('SUPABASE_CONFIGURED')
+    })
+
+    test('accountLink uses inline parseQuotaMinimal (no circular import)', () => {
+      expect(ACCOUNT_LINK_SRC).toContain('parseQuotaMinimal')
+      // Must NOT import parseQuota from quotaService (circular)
+      expect(ACCOUNT_LINK_SRC).not.toMatch(/import.*parseQuota.*from.*quotaService/)
     })
   })
 })

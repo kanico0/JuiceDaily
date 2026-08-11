@@ -23,8 +23,12 @@
 // ─────────────────────────────────────────────────────────────
 
 import { getSupabase } from './supabaseClient'
-import { setAllowAnonFallback, ensureUser } from './identity'
+import { setAllowAnonFallback, ensureUser, getAccessToken } from './identity'
 import { logIn as revenueCatLogIn } from '../subscriptions/revenueCatClient'
+import { SUPABASE_URL, SUPABASE_CONFIGURED } from '../subscriptions/subscriptionConfig'
+import { buildAuthedHeaders } from '../quota/supabaseHeaders'
+import { selfHealInstallMarker } from '../quota/installFreeSnapGuard'
+import type { ScanQuotaSnapshot } from '../subscriptions/subscriptionTypes'
 
 // ── Types ────────────────────────────────────────────────────
 
@@ -280,6 +284,13 @@ export async function verifySignIn(rawEmail: string, token: string): Promise<Ver
 //   valid when switching between two custom App User IDs. This
 //   avoids creating an unnecessary transient $RCAnonymousID.
 //
+//   0. Self-heal the install Free Snap guard from the departing
+//      user's authoritative Free quota BEFORE the session is
+//      cleared. This bridges the upgrade/migration gap: a device
+//      that consumed a Free Snap on an older APK (before the install
+//      marker existed) must have the marker persisted before the
+//      consumed identity is discarded, otherwise a new anonymous
+//      UUID would receive a fresh 0/1 allowance on the same install.
 //   1. Supabase.auth.signOut() — clears the local Supabase session.
 //   2. Re-enable anon fallback so ensureUser() can create a new
 //      anonymous Supabase UUID.
@@ -295,10 +306,61 @@ export async function verifySignIn(rawEmail: string, token: string): Promise<Ver
 //   - CustomerInfo is fetched for the new UUID (no Pro)
 //   - The subscriptions table is keyed by UUID (server-authoritative)
 
+// Minimal inline quota parser — avoids a circular import with
+// quotaService.ts (which imports from this module). Only the fields
+// needed by selfHealInstallMarker are parsed.
+function parseQuotaMinimal(raw: unknown): ScanQuotaSnapshot | null {
+  if (!raw || typeof raw !== 'object') return null
+  const q = raw as Record<string, unknown>
+  if (typeof q.limit !== 'number' || typeof q.used !== 'number') return null
+  return {
+    plan: q.plan === 'pro' ? 'pro' : 'free',
+    limit: q.limit,
+    used: q.used,
+    remaining: typeof q.remaining === 'number' ? q.remaining : Math.max(0, q.limit - q.used),
+    periodStart: String(q.periodStart ?? q.period_start ?? ''),
+    periodEnd: String(q.periodEnd ?? q.period_end ?? ''),
+    dailyLimit: typeof q.dailyLimit === 'number' ? q.dailyLimit : null,
+    dailyUsed: typeof q.dailyUsed === 'number' ? q.dailyUsed : null,
+  }
+}
+
+// Fetch the departing user's authoritative Free quota and persist
+// the install marker if it shows the allowance already consumed.
+// Best-effort — failures do not block logout. The QuotaStore refresh
+// after identity change also self-heals, so this is a belt-and-suspenders
+// guard that runs before the session is cleared.
+async function persistInstallMarkerBeforeSignOut(): Promise<void> {
+  if (!SUPABASE_CONFIGURED || !SUPABASE_URL) return
+  try {
+    const token = await getAccessToken()
+    if (!token) return
+    const headers = buildAuthedHeaders(token)
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/scan-quota`, {
+      method: 'GET',
+      headers,
+    })
+    if (!res.ok) return
+    const body = await res.json()
+    const quota = parseQuotaMinimal(body.quota ?? body)
+    if (quota) {
+      await selfHealInstallMarker(quota)
+    }
+  } catch {
+    // Best-effort — do not block logout on network failure.
+  }
+}
+
 export async function signOutAccount(): Promise<boolean> {
   const supabase = getSupabase()
   if (!supabase) return false
   try {
+    // 0. Self-heal the install Free Snap guard from the departing
+    //    user's authoritative Free quota BEFORE the session is
+    //    cleared. This ensures the install marker is persisted even
+    //    if the device consumed a Snap on an older APK.
+    await persistInstallMarkerBeforeSignOut()
+
     // 1. Sign out of Supabase.
     const { error } = await supabase.auth.signOut()
     if (error) return false

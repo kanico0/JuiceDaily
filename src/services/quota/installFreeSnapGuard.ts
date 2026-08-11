@@ -105,6 +105,43 @@ export async function markInstallFreeSnapConsumed(
   })
 }
 
+// Self-heal: if an authoritative server Free quota snapshot shows
+// the allowance already consumed (used >= 1, remaining === 0) for a
+// valid current monthly window, persist the install marker idempotently.
+//
+// This bridges the upgrade/migration gap: a device that consumed its
+// Free Snap on an older APK (before @juicing_install_free_snap_v1
+// existed) will have no install marker. Without self-heal, logging
+// out and creating a new anonymous UUID would reset the effective
+// quota to available because the install guard is absent.
+//
+// Strict conditions — only an authoritative exhausted FREE quota may
+// bootstrap the marker:
+//   - serverQuota must be non-null and plan === 'free'
+//   - periodStart must be a non-empty string (valid windowKey)
+//   - used >= 1 (equivalently remaining === 0 for the 1/month policy)
+//   - remaining === 0
+//
+// Do NOT seed from:
+//   - quota unknown/null
+//   - RPC/network failure
+//   - malformed quota
+//   - Pro quota merely because Pro has used scans
+//
+// Returns true if the marker was persisted (or already matched).
+export async function selfHealInstallMarker(
+  serverQuota: ScanQuotaSnapshot | null,
+): Promise<boolean> {
+  if (!serverQuota) return false
+  if (serverQuota.plan !== 'free') return false
+  if (!serverQuota.periodStart) return false
+  // Only seed when the authoritative Free allowance is exhausted
+  if (serverQuota.remaining !== 0) return false
+  if (serverQuota.used < 1) return false
+  await markInstallFreeSnapConsumed(serverQuota.periodStart)
+  return true
+}
+
 // Clear the install marker. Used by nuclear reset.
 export async function clearInstallFreeSnapState(): Promise<void> {
   try {

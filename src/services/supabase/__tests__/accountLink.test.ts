@@ -30,9 +30,38 @@ const mockEnsureUser = jest.fn().mockResolvedValue({
   userId: 'new-anon-uuid',
   accessToken: 'new-anon-token',
 })
+const mockGetAccessToken = jest.fn().mockResolvedValue('test-token')
 jest.mock('../identity', () => ({
   setAllowAnonFallback: jest.fn(),
   ensureUser: (...args: unknown[]) => mockEnsureUser(...args),
+  getAccessToken: () => mockGetAccessToken(),
+}))
+
+// Mock installFreeSnapGuard (imported by accountLink for logout safety)
+const mockSelfHealInstallMarker = jest.fn().mockResolvedValue(false)
+jest.mock('../../quota/installFreeSnapGuard', () => ({
+  selfHealInstallMarker: () => mockSelfHealInstallMarker(),
+  INSTALL_FREE_SNAP_KEY: '@juicing_install_free_snap_v1',
+}))
+
+// Mock supabaseHeaders (imported by accountLink for logout safety)
+jest.mock('../../quota/supabaseHeaders', () => ({
+  buildAuthedHeaders: jest.fn(() => ({
+    'Content-Type': 'application/json',
+    apikey: 'test-key',
+    Authorization: 'Bearer test-token',
+  })),
+  SupabaseConfigError: class SupabaseConfigError extends Error {},
+}))
+
+// Mock subscriptionConfig (imported by accountLink for logout safety)
+jest.mock('../../subscriptions/subscriptionConfig', () => ({
+  SUPABASE_URL: 'https://test.supabase.co',
+  SUPABASE_ANON_KEY: 'test-key',
+  SUPABASE_CONFIGURED: true,
+  MONETIZATION_ENABLED: false,
+  FREE_WARNING_THRESHOLDS: [1, 0],
+  PRO_WARNING_THRESHOLDS: [3, 1],
 }))
 
 import {

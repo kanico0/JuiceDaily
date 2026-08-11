@@ -5,7 +5,7 @@
 // ─────────────────────────────────────────────────────────────
 
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react'
-import { View, Text, StyleSheet, ScrollView, Pressable, Modal, Alert } from 'react-native'
+import { View, Text, StyleSheet, ScrollView, Pressable, Modal, Alert, TextInput } from 'react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import * as Haptics from 'expo-haptics'
 import {
@@ -32,11 +32,19 @@ import {
   Beaker,
   Trophy,
   Sparkle,
+  Star,
+  Pencil,
+  Check,
 } from 'lucide-react-native'
 import MeshGradientBg from '../components/MeshGradientBg'
 import { useJuiceLog } from '../services/JuiceLogStore'
 import { PRODUCE_DATA } from '../services/JuiceEngine'
-import { USDA_RDA } from '../constants/nutrition'
+import {
+  formatIngredientPortion,
+  computeProduceBalance,
+  getTopNutrients,
+  getBasicNutritionStats,
+} from '../services/detailedHistoryHelpers'
 import {
   BRAND,
   FONT_SIZE,
@@ -273,6 +281,31 @@ function LockedAdvancedCard({ onUpgrade, onMakeAgainLocked }) {
       <Text style={ms.lockedCardBody}>
         Upgrade to RawLifeFlow Pro to reopen its detailed nutrition, insights, and comparisons.
       </Text>
+
+      {/* Locked feature previews */}
+      <View style={ms.lockedPreviewList}>
+        <View style={ms.lockedPreviewItem}>
+          <Lock size={12} color={SEMANTIC_COLORS.textMuted} />
+          <Text style={ms.lockedPreviewText}>Portions — Recreate this juice accurately.</Text>
+        </View>
+        <View style={ms.lockedPreviewItem}>
+          <Lock size={12} color={SEMANTIC_COLORS.textMuted} />
+          <Text style={ms.lockedPreviewText}>Nutrition Details — See more of what was in your juice.</Text>
+        </View>
+        <View style={ms.lockedPreviewItem}>
+          <Lock size={12} color={SEMANTIC_COLORS.textMuted} />
+          <Text style={ms.lockedPreviewText}>Produce Balance — See your fruit and vegetable mix.</Text>
+        </View>
+        <View style={ms.lockedPreviewItem}>
+          <Lock size={12} color={SEMANTIC_COLORS.textMuted} />
+          <Text style={ms.lockedPreviewText}>Rating & Personal Notes</Text>
+        </View>
+        <View style={ms.lockedPreviewItem}>
+          <Lock size={12} color={SEMANTIC_COLORS.textMuted} />
+          <Text style={ms.lockedPreviewText}>Make Again</Text>
+        </View>
+      </View>
+
       <Text style={ms.lockedCardSub}>
         Your complete basic Juice History will always remain available.
       </Text>
@@ -336,10 +369,15 @@ function EntryDetailsModal({
   onUpgrade,
   onMakeAgain,
   makeAgainInProgress,
+  onSetRating,
+  onSetNote,
+  onToggleFavorite,
 }) {
   const insets = useSafeAreaInsets()
   const previewViewedRef = useRef(false)
   const lockedViewedRef = useRef(false)
+  const [noteDraft, setNoteDraft] = useState('')
+  const [isEditingNote, setIsEditingNote] = useState(false)
 
   useEffect(() => {
     if (!visible || !entry) {
@@ -369,34 +407,29 @@ function EntryDetailsModal({
     }
   }, [visible, entry, isPro, isAdvancedPreview, entitlementInitialized])
 
+  // Sync note draft when entry changes or modal opens
+  useEffect(() => {
+    if (!visible || !entry) {
+      setNoteDraft('')
+      setIsEditingNote(false)
+      return
+    }
+    setNoteDraft(entry.note || '')
+    setIsEditingNote(false)
+  }, [visible, entry])
+
   if (!entry) return null
 
   const policy = getHistoryAccessPolicy(isPro, isAdvancedPreview, entitlementInitialized)
 
   const nutrients = entry.nutrientSummary || {}
-  const topNutrients = Object.entries(USDA_RDA)
-    .map(([key, rda]) => {
-      const val = nutrients[key] || 0
-      const pct = rda > 0 ? Math.round((val / rda) * 100) : 0
-      const label =
-        key === 'vitaminC'
-          ? 'Vitamin C'
-          : key === 'vitaminA'
-            ? 'Vitamin A'
-            : key === 'potassium'
-              ? 'Potassium'
-              : key === 'iron'
-                ? 'Iron'
-                : key === 'magnesium'
-                  ? 'Magnesium'
-                  : key === 'folate'
-                    ? 'Folate'
-                    : key
-      return { key, label, pct }
-    })
-    .filter((n) => n.pct > 0)
-    .sort((a, b) => b.pct - a.pct)
-    .slice(0, 5)
+  const topNutrients = getTopNutrients(nutrients)
+  const basicStats = getBasicNutritionStats(nutrients)
+  const produceBalance = computeProduceBalance(entry.ingredients, entry.ingredientDetails)
+  const ingredientDetails = Array.isArray(entry.ingredientDetails) ? entry.ingredientDetails : null
+  const hasPortionData = ingredientDetails && ingredientDetails.length > 0
+  const isFavorite = entry.favorite === true
+  const currentRating = typeof entry.rating === 'number' ? entry.rating : 0
 
   const handleMakeAgain = () => {
     if (policy.canMakeAgain && onMakeAgain) {
@@ -429,6 +462,27 @@ function EntryDetailsModal({
       paywall_source: 'history_advanced_locked',
     })
     onUpgrade('history_advanced_locked')
+  }
+
+  const handleRatingPress = (star) => {
+    if (!policy.canViewAdvancedDetails) return
+    if (!onSetRating) return
+    // Toggle off if same star is tapped
+    const newRating = currentRating === star ? null : star
+    onSetRating(entry.id, newRating)
+  }
+
+  const handleSaveNote = () => {
+    if (!policy.canViewAdvancedDetails) return
+    if (!onSetNote) return
+    onSetNote(entry.id, noteDraft)
+    setIsEditingNote(false)
+  }
+
+  const handleToggleFavorite = () => {
+    if (!policy.canViewAdvancedDetails) return
+    if (!onToggleFavorite) return
+    onToggleFavorite(entry.id)
   }
 
   return (
@@ -495,6 +549,10 @@ function EntryDetailsModal({
             <Text style={ms.sectionTitle}>Ingredients</Text>
             {(entry.ingredients || []).map((id, i) => {
               const prod = PRODUCE_DATA[id]
+              const detail = ingredientDetails?.find((d) => d && d.produceId === id)
+              const portionText = policy.canViewAdvancedDetails && detail
+                ? formatIngredientPortion(detail)
+                : null
               return (
                 <View key={`${id}-${i}`} style={ms.ingredientRow}>
                   <View
@@ -504,9 +562,17 @@ function EntryDetailsModal({
                     ]}
                   />
                   <Text style={ms.ingredientName}>{prod?.name || id}</Text>
+                  {portionText && (
+                    <Text style={ms.ingredientPortion}>{portionText}</Text>
+                  )}
                 </View>
               )
             })}
+
+            {/* Portion not recorded note for Pro entries without portion data */}
+            {policy.canViewAdvancedDetails && !hasPortionData && (entry.ingredients || []).length > 0 && (
+              <Text style={ms.portionHint}>Portion not recorded</Text>
+            )}
 
             {/* Neutral loading placeholder while entitlement unresolved */}
             {policy.isLoading && (
@@ -515,19 +581,185 @@ function EntryDetailsModal({
               </View>
             )}
 
-            {/* Advanced details — visible for Pro and free preview */}
-            {policy.canViewAdvancedDetails && topNutrients.length > 0 && (
+            {/* ── Pro Detailed History sections ── */}
+
+            {/* Useful Nutrition — visible for Pro and free preview */}
+            {policy.canViewAdvancedDetails && (topNutrients.length > 0 || basicStats.calories > 0) && (
               <>
-                <Text style={[ms.sectionTitle, { marginTop: SPACE.lg }]}>Top Nutrients (% DV)</Text>
-                {topNutrients.map((n) => (
-                  <View key={n.key} style={ms.statRow}>
-                    <Text style={ms.statLabel}>{n.label}</Text>
-                    <Text style={[ms.statValue, n.pct >= 20 && { color: SEMANTIC_COLORS.success }]}>
-                      {n.pct}%
-                    </Text>
+                <Text style={[ms.sectionTitle, { marginTop: SPACE.lg }]}>Estimated Nutrition</Text>
+                {(basicStats.calories > 0 || basicStats.sugar > 0) && (
+                  <View style={ms.basicStatsRow}>
+                    {basicStats.calories > 0 && (
+                      <View style={ms.basicStatItem}>
+                        <Text style={ms.basicStatValue}>{basicStats.calories}</Text>
+                        <Text style={ms.basicStatLabel}>cal</Text>
+                      </View>
+                    )}
+                    {basicStats.sugar > 0 && (
+                      <View style={ms.basicStatItem}>
+                        <Text style={ms.basicStatValue}>{basicStats.sugar}g</Text>
+                        <Text style={ms.basicStatLabel}>sugar</Text>
+                      </View>
+                    )}
                   </View>
-                ))}
+                )}
+                {topNutrients.length > 0 && (
+                  <>
+                    <Text style={ms.subSectionTitle}>Top Nutrients (% Daily Reference)</Text>
+                    {topNutrients.map((n) => (
+                      <View key={n.key} style={ms.statRow}>
+                        <Text style={ms.statLabel}>{n.label}</Text>
+                        <Text style={[ms.statValue, n.pct >= 20 && { color: SEMANTIC_COLORS.success }]}>
+                          {n.pct}%
+                        </Text>
+                      </View>
+                    ))}
+                    <Text style={ms.estimateNote}>
+                      Estimated from produce amounts and food-composition data. Actual values can vary by produce and juicer.
+                    </Text>
+                  </>
+                )}
               </>
+            )}
+
+            {/* Produce Balance — visible for Pro and free preview */}
+            {policy.canViewAdvancedDetails && (produceBalance.vegCount + produceBalance.fruitCount) > 0 && (
+              <>
+                <Text style={[ms.sectionTitle, { marginTop: SPACE.lg }]}>Produce Balance</Text>
+                {produceBalance.mode === 'weight' ? (
+                  <View style={ms.balanceContainer}>
+                    <View style={ms.balanceBar}>
+                      <View style={[ms.balanceVeg, { flex: produceBalance.vegPercent }]}>
+                        <Text style={ms.balanceVegText}>Veg {produceBalance.vegPercent}%</Text>
+                      </View>
+                      <View style={[ms.balanceFruit, { flex: produceBalance.fruitPercent }]}>
+                        <Text style={ms.balanceFruitText}>Fruit {produceBalance.fruitPercent}%</Text>
+                      </View>
+                    </View>
+                    <Text style={ms.balanceBasisLabel}>By ingredient weight</Text>
+                  </View>
+                ) : (
+                  <View>
+                    <Text style={ms.balanceCountText}>
+                      {produceBalance.vegCount} vegetable{produceBalance.vegCount !== 1 ? 's' : ''}
+                      {' · '}
+                      {produceBalance.fruitCount} fruit{produceBalance.fruitCount !== 1 ? 's' : ''}
+                    </Text>
+                    <Text style={ms.balanceBasisLabel}>By ingredient count</Text>
+                  </View>
+                )}
+              </>
+            )}
+
+            {/* Rating — visible for Pro and free preview */}
+            {policy.canViewAdvancedDetails && (
+              <View style={ms.ratingSection}>
+                <Text style={[ms.sectionTitle, { marginTop: SPACE.lg }]}>Rating</Text>
+                <View style={ms.starRow}>
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <Pressable
+                      key={star}
+                      onPress={() => handleRatingPress(star)}
+                      hitSlop={4}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${star} star${star !== 1 ? 's' : ''}`}
+                    >
+                      <Star
+                        size={24}
+                        color={star <= currentRating ? '#FFD54F' : BRAND.text.muted}
+                        fill={star <= currentRating ? '#FFD54F' : 'transparent'}
+                      />
+                    </Pressable>
+                  ))}
+                </View>
+              </View>
+            )}
+
+            {/* Personal Note — visible for Pro and free preview */}
+            {policy.canViewAdvancedDetails && (
+              <View style={ms.noteSection}>
+                <Text style={[ms.sectionTitle, { marginTop: SPACE.lg }]}>Personal Note</Text>
+                {isEditingNote ? (
+                  <View>
+                    <TextInput
+                      style={ms.noteInput}
+                      value={noteDraft}
+                      onChangeText={setNoteDraft}
+                      placeholder="Add a note about this juice…"
+                      placeholderTextColor={BRAND.text.muted}
+                      multiline
+                      maxLength={500}
+                      autoFocus
+                    />
+                    <View style={ms.noteActions}>
+                      <Pressable
+                        style={({ pressed }) => [ms.noteSaveBtn, pressed && { opacity: 0.7 }]}
+                        onPress={handleSaveNote}
+                        hitSlop={8}
+                        accessibilityRole="button"
+                        accessibilityLabel="Save note"
+                      >
+                        <Check size={16} color={SEMANTIC_COLORS.success} />
+                        <Text style={ms.noteSaveText}>Save</Text>
+                      </Pressable>
+                      <Pressable
+                        style={({ pressed }) => [ms.noteCancelBtn, pressed && { opacity: 0.7 }]}
+                        onPress={() => {
+                          setNoteDraft(entry.note || '')
+                          setIsEditingNote(false)
+                        }}
+                        hitSlop={8}
+                        accessibilityRole="button"
+                        accessibilityLabel="Cancel note edit"
+                      >
+                        <Text style={ms.noteCancelText}>Cancel</Text>
+                      </Pressable>
+                    </View>
+                  </View>
+                ) : entry.note ? (
+                  <Pressable
+                    style={({ pressed }) => [ms.noteDisplay, pressed && { opacity: 0.7 }]}
+                    onPress={() => setIsEditingNote(true)}
+                    hitSlop={4}
+                    accessibilityRole="button"
+                    accessibilityLabel="Edit note"
+                  >
+                    <Text style={ms.noteText}>{entry.note}</Text>
+                    <Pencil size={14} color={BRAND.text.muted} />
+                  </Pressable>
+                ) : (
+                  <Pressable
+                    style={({ pressed }) => [ms.noteAddBtn, pressed && { opacity: 0.7 }]}
+                    onPress={() => setIsEditingNote(true)}
+                    hitSlop={8}
+                    accessibilityRole="button"
+                    accessibilityLabel="Add a note"
+                  >
+                    <Pencil size={14} color={BRAND.text.muted} />
+                    <Text style={ms.noteAddText}>Add a note</Text>
+                  </Pressable>
+                )}
+              </View>
+            )}
+
+            {/* Favorite — visible for Pro and free preview */}
+            {policy.canViewAdvancedDetails && (
+              <Pressable
+                style={({ pressed }) => [ms.favoriteBtn, pressed && { opacity: 0.7 }]}
+                onPress={handleToggleFavorite}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+              >
+                <Heart
+                  size={18}
+                  color={isFavorite ? '#EF5DA8' : BRAND.text.muted}
+                  fill={isFavorite ? '#EF5DA8' : 'transparent'}
+                />
+                <Text style={[ms.favoriteText, isFavorite && { color: '#EF5DA8' }]}>
+                  {isFavorite ? 'Favorited' : 'Add to Favorites'}
+                </Text>
+              </Pressable>
             )}
 
             {/* Taste vote — visible for Pro and free preview */}
@@ -677,7 +909,7 @@ function DaySection({ dateKey, entries, onEntryPress, devClockTick, previewEntry
 
 export default function HistoryScreen({ navigation }) {
   const route = useRoute()
-  const { entries, deleteEntry } = useJuiceLog()
+  const { entries, deleteEntry, setRating, setNote, toggleFavorite } = useJuiceLog()
   const { isPro: isProActive, state: subState } = useSubscription()
   const entitlementInitialized = subState.initialized
   const isPro = entitlementInitialized ? isProActive : false
@@ -952,6 +1184,9 @@ export default function HistoryScreen({ navigation }) {
         onUpgrade={handleUpgrade}
         onMakeAgain={handleMakeAgain}
         makeAgainInProgress={makeAgainInProgress}
+        onSetRating={setRating}
+        onSetNote={setNote}
+        onToggleFavorite={toggleFavorite}
       />
     </View>
   )
@@ -1263,6 +1498,213 @@ const ms = StyleSheet.create({
     fontWeight: FONT_WEIGHT.regular,
     color: BRAND.text.secondary,
     lineHeight: LINE_HEIGHT.relaxed * FONT_SIZE.xs,
+  },
+  // ── Pro Detailed History styles ───────────────────────────
+  ingredientPortion: {
+    fontSize: FONT_SIZE.xs,
+    fontWeight: FONT_WEIGHT.medium,
+    color: BRAND.text.muted,
+    marginLeft: 'auto',
+  },
+  portionHint: {
+    fontSize: FONT_SIZE.xs,
+    fontWeight: FONT_WEIGHT.regular,
+    color: BRAND.text.muted,
+    fontStyle: 'italic',
+    marginTop: SPACE.xs,
+  },
+  subSectionTitle: {
+    fontSize: FONT_SIZE.xs,
+    fontWeight: FONT_WEIGHT.semibold,
+    color: BRAND.text.muted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: SPACE.xs,
+    marginTop: SPACE.sm,
+  },
+  estimateNote: {
+    fontSize: FONT_SIZE.xs - 1,
+    color: BRAND.text.muted,
+    fontStyle: 'italic',
+    paddingTop: SPACE.xs,
+  },
+  basicStatsRow: {
+    flexDirection: 'row',
+    gap: SPACE.lg,
+    marginBottom: SPACE.sm,
+  },
+  basicStatItem: {
+    alignItems: 'center',
+  },
+  basicStatValue: {
+    fontSize: FONT_SIZE.lg,
+    fontWeight: FONT_WEIGHT.bold,
+    color: BRAND.text.primary,
+  },
+  basicStatLabel: {
+    fontSize: FONT_SIZE.xs,
+    fontWeight: FONT_WEIGHT.medium,
+    color: BRAND.text.muted,
+  },
+  // ── Produce Balance ────────────────────────────────────────
+  balanceContainer: {
+    marginTop: SPACE.xs,
+  },
+  balanceBar: {
+    flexDirection: 'row',
+    height: 32,
+    borderRadius: RADIUS.sm,
+    overflow: 'hidden',
+  },
+  balanceVeg: {
+    backgroundColor: '#81C784',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 6,
+  },
+  balanceFruit: {
+    backgroundColor: '#FFB74D',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 6,
+  },
+  balanceVegText: {
+    fontSize: FONT_SIZE.xs,
+    fontWeight: FONT_WEIGHT.bold,
+    color: '#1B3A1B',
+  },
+  balanceFruitText: {
+    fontSize: FONT_SIZE.xs,
+    fontWeight: FONT_WEIGHT.bold,
+    color: '#4A2E00',
+  },
+  balanceCountText: {
+    fontSize: FONT_SIZE.sm,
+    fontWeight: FONT_WEIGHT.medium,
+    color: BRAND.text.secondary,
+    marginTop: SPACE.xs,
+  },
+  balanceBasisLabel: {
+    fontSize: FONT_SIZE.xs,
+    fontWeight: FONT_WEIGHT.regular,
+    color: BRAND.text.muted,
+    marginTop: SPACE.xs,
+    fontStyle: 'italic',
+  },
+  // ── Rating ─────────────────────────────────────────────────
+  ratingSection: {
+    marginTop: SPACE.xs,
+  },
+  starRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: SPACE.xs,
+  },
+  // ── Personal Note ──────────────────────────────────────────
+  noteSection: {
+    marginTop: SPACE.xs,
+  },
+  noteInput: {
+    fontSize: FONT_SIZE.sm,
+    fontWeight: FONT_WEIGHT.regular,
+    color: BRAND.text.primary,
+    borderWidth: 0.5,
+    borderColor: 'rgba(255,255,255,0.1)',
+    borderRadius: RADIUS.sm,
+    paddingHorizontal: SPACE.md,
+    paddingVertical: SPACE.sm,
+    marginTop: SPACE.xs,
+    minHeight: 60,
+    textAlignVertical: 'top',
+  },
+  noteActions: {
+    flexDirection: 'row',
+    gap: SPACE.md,
+    marginTop: SPACE.sm,
+    alignItems: 'center',
+  },
+  noteSaveBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 6,
+    paddingHorizontal: SPACE.md,
+    borderRadius: RADIUS.sm,
+    backgroundColor: 'rgba(129,199,132,0.08)',
+  },
+  noteSaveText: {
+    fontSize: FONT_SIZE.sm,
+    fontWeight: FONT_WEIGHT.semibold,
+    color: SEMANTIC_COLORS.success,
+  },
+  noteCancelBtn: {
+    paddingVertical: 6,
+    paddingHorizontal: SPACE.md,
+  },
+  noteCancelText: {
+    fontSize: FONT_SIZE.sm,
+    fontWeight: FONT_WEIGHT.medium,
+    color: BRAND.text.muted,
+  },
+  noteDisplay: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    paddingVertical: SPACE.sm,
+    paddingHorizontal: SPACE.md,
+    borderRadius: RADIUS.sm,
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    marginTop: SPACE.xs,
+  },
+  noteText: {
+    flex: 1,
+    fontSize: FONT_SIZE.sm,
+    fontWeight: FONT_WEIGHT.regular,
+    color: BRAND.text.secondary,
+    lineHeight: LINE_HEIGHT.relaxed * FONT_SIZE.sm,
+  },
+  noteAddBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: SPACE.sm,
+    marginTop: SPACE.xs,
+  },
+  noteAddText: {
+    fontSize: FONT_SIZE.sm,
+    fontWeight: FONT_WEIGHT.medium,
+    color: BRAND.text.muted,
+  },
+  // ── Favorite ───────────────────────────────────────────────
+  favoriteBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: SPACE.lg,
+    paddingVertical: 10,
+  },
+  favoriteText: {
+    fontSize: FONT_SIZE.sm,
+    fontWeight: FONT_WEIGHT.semibold,
+    color: BRAND.text.muted,
+  },
+  // ── Locked preview list ────────────────────────────────────
+  lockedPreviewList: {
+    alignItems: 'flex-start',
+    gap: SPACE.xs,
+    marginVertical: SPACE.md,
+    paddingHorizontal: SPACE.sm,
+  },
+  lockedPreviewItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  lockedPreviewText: {
+    fontSize: FONT_SIZE.xs,
+    fontWeight: FONT_WEIGHT.regular,
+    color: BRAND.text.muted,
+    textAlign: 'left',
   },
 })
 

@@ -128,16 +128,30 @@ export function createEditableDraftFromHistoryEntry(entry, catalog) {
 
   const rawIngredients = entry.ingredients || []
   const storedPrimary = entry.primaryProduceId || null
+  const ingredientDetails = Array.isArray(entry.ingredientDetails) ? entry.ingredientDetails : null
 
   // Handle both string-array and object-array formats
   const rawList = Array.isArray(rawIngredients) ? rawIngredients : []
 
-  for (const raw of rawList) {
-    let rawId, rawQuantity, rawMode, rawUnit, rawSize, rawOrganic
+  for (let idx = 0; idx < rawList.length; idx++) {
+    const raw = rawList[idx]
+    let rawId, rawQuantity, rawMode, rawUnit, rawSize, rawOrganic, rawWeightG
 
     if (typeof raw === 'string') {
       rawId = raw
       rawOrganic = entry.isOrganic
+      // Enrich from ingredientDetails if available (1.0.20+ entries)
+      if (ingredientDetails && ingredientDetails[idx]) {
+        const d = ingredientDetails[idx]
+        rawWeightG = typeof d.weightG === 'number' ? d.weightG : undefined
+        rawMode = d.portionEntryMode
+        // Extract portion info from portionMetadata
+        if (d.portionMetadata) {
+          rawQuantity = d.portionMetadata.enteredQuantity
+          rawUnit = d.portionMetadata.unitKey
+          rawSize = d.portionMetadata.sizeKey
+        }
+      }
     } else if (raw && typeof raw === 'object') {
       rawId = raw.produceId || raw.id
       rawQuantity = raw.quantity
@@ -206,11 +220,13 @@ export function createEditableDraftFromHistoryEntry(entry, catalog) {
     const portionUnit = normalizePortionUnit(rawUnit)
     const portionSize =
       rawSize === 'small' || rawSize === 'medium' || rawSize === 'large' ? rawSize : undefined
+    const weightG = typeof rawWeightG === 'number' && rawWeightG > 0 ? rawWeightG : 150
 
     ingredients.push({
       produceId: resolvedId,
       name: catalogEntry.name,
       quantity,
+      weightG,
       portionEntryMode,
       portionUnit: portionUnit || (portionEntryMode === 'volume' ? 'cups' : undefined),
       portionSize,
@@ -276,7 +292,7 @@ export function draftToPreloadIngredients(ingredients) {
   if (!Array.isArray(ingredients)) return []
   return ingredients.map((ing) => ({
     produceId: ing.produceId,
-    weightG: 150, // default; user can adjust in editor
+    weightG: typeof ing.weightG === 'number' && ing.weightG > 0 ? ing.weightG : 150,
     isOrganic: ing.isOrganic,
     portionEntryMode: ing.portionEntryMode || 'weight',
     portionMetadata: ing.portionUnit

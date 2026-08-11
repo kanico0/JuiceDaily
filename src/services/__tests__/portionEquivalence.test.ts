@@ -222,10 +222,11 @@ describe('Quantity vs Direct-Weight Equivalence', () => {
 
     // Raw weight must be the same
     expect(r1.totalRawWeightG).toBe(r2.totalRawWeightG)
-    // Juice weight may differ due to same yieldPercent (it doesn't actually
-    // change by method — yield is per-produce, not per-method)
-    // But nutrition retention differs
-    expect(r1.totals.vitaminC).not.toBe(r2.totals.vitaminC) // centrifugal loses vitC
+    // Juice weight is the same — yieldPercent is per-produce, not per-method
+    expect(r1.totalJuiceWeightG).toBe(r2.totalJuiceWeightG)
+    // Nutrition is identical — juicer method no longer applies unsupported
+    // deterministic nutrient penalties (see JuiceEngine.ts comment)
+    expect(r1.totals.vitaminC).toBe(r2.totals.vitaminC)
   })
 })
 

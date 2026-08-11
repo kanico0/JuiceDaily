@@ -1,17 +1,19 @@
 // ─────────────────────────────────────────────────────────────
-// JuiceEngine.ts — True Retention Formula for cold-pressed juice
+// JuiceEngine.ts — Yield-adjusted estimated juice nutrition model
 //
-// %TR = (Nc * Gc) / (Nr * Gr) * 100
+// Estimates juice nutrition by scaling USDA raw-produce nutrient
+// values (per 100 g) by ingredient weight and an estimated juice
+// yield percentage, then applying per-produce vitamin retention
+// factors. Organic status and juicer type are preserved as user
+// metadata but do not deterministically alter nutrient totals.
 //
-// Takes raw ingredients + weights from a camera scan, applies
-// juice yield percentages, subtracts 100% insoluble fiber,
-// applies vitamin retention factors, and returns the final
-// liquid nutritional profile.
+// NOTE: This is NOT a USDA True Retention calculation.
+// The True Retention formula (%TR = (Nc * Gc) / (Nr * Gr) * 100)
+// requires measured nutrient content and weights before and after
+// processing. This model instead uses assumed retention factors
+// applied to base nutrient data.
+//
 // Enforces the 80/20 Metabolic Guardrail (80% veg / 20% fruit).
-//
-// Supports:
-// - Organic vs conventional produce (nutrient multipliers)
-// - Cold-pressed vs centrifugal juicing (retention factors)
 // ─────────────────────────────────────────────────────────────
 
 // ── Types ────────────────────────────────────────────────────
@@ -48,7 +50,7 @@ export interface ScannedIngredient {
 export interface JuiceNutrition {
   calories: number
   sugar: number
-  fiber: number       // always 0 — 100% insoluble fiber removed
+  fiber: number       // set to 0 — most fiber is removed with the pulp during juicing
   vitaminC: number
   vitaminA: number
   potassium: number
@@ -78,24 +80,33 @@ export interface IngredientBreakdown {
 }
 
 // ── Organic Nutrient Multipliers ─────────────────────────────
-// Based on meta-analyses (British Journal of Nutrition 2014,
-// Newcastle University 2016): organic produce shows measurably
-// higher antioxidant, vitamin C, and mineral concentrations.
+// Organic status is preserved as user-selected metadata but does
+// NOT deterministically change calculated nutrient totals.
+// The Baranski et al. 2014 meta-analysis (BJN 112(5):794-811,
+// DOI:10.1017/S0007114514001366) found that differences between
+// organic and conventional crops are small, highly variable by
+// crop type/region/soil/season, and not significant for several
+// minerals. A fixed deterministic multiplier is not scientifically
+// defensible for an individual juice calculation.
 export const ORGANIC_MULTIPLIERS = {
-  vitaminC: 1.12,     // +12% avg (range 6–20%)
-  vitaminA: 1.15,     // +15% avg (carotenoids)
-  potassium: 1.07,    // +7% avg
-  iron: 1.10,         // +10% avg
-  magnesium: 1.08,    // +8% avg
-  folate: 1.10,       // +10% avg
+  vitaminC: 1.0,      // no deterministic boost — see comment above
+  vitaminA: 1.0,
+  potassium: 1.0,
+  iron: 1.0,
+  magnesium: 1.0,
+  folate: 1.0,
   // calories and sugar are NOT affected by organic status
 }
 
 // ── Juice Method Retention Factors ───────────────────────────
-// Cold-pressed (masticating/hydraulic) preserves more nutrients
-// due to minimal heat and oxidation. Centrifugal juicers
-// generate heat and introduce air, degrading heat-sensitive
-// vitamins and enzymes.
+// Juicer type (cold-pressed vs centrifugal) is preserved as a
+// user-selected preference and metadata, but does NOT deterministically
+// change calculated nutrient totals. The best direct comparison study
+// (Khaksar et al. 2019, Heliyon, DOI:10.1016/j.heliyon.2019.e01917,
+// PMID:31286079) found no significant differences in ascorbic acid,
+// total phenolic, or total carotenoid content between cold-pressed
+// and centrifugal juices. Generalized exact percentage penalties
+// for individual nutrients are not scientifically supported.
 export const JUICE_METHOD_RETENTION: Record<JuiceMethod, {
   vitC: number
   vitA: number
@@ -105,7 +116,7 @@ export const JUICE_METHOD_RETENTION: Record<JuiceMethod, {
   folate: number
 }> = {
   cold_pressed: {
-    vitC: 1.0,        // baseline — retention factors in PRODUCE_DATA are for cold-pressed
+    vitC: 1.0,
     vitA: 1.0,
     potassium: 1.0,
     iron: 1.0,
@@ -113,17 +124,17 @@ export const JUICE_METHOD_RETENTION: Record<JuiceMethod, {
     folate: 1.0,
   },
   centrifugal: {
-    vitC: 0.78,       // ~22% loss from heat + oxidation
-    vitA: 0.88,       // ~12% loss (fat-soluble, more stable)
-    potassium: 0.95,  // minerals fairly stable, slight loss
-    iron: 0.95,
-    magnesium: 0.95,
-    folate: 0.72,     // folate is very heat-sensitive
+    vitC: 1.0,        // no deterministic penalty — see comment above
+    vitA: 1.0,
+    potassium: 1.0,
+    iron: 1.0,
+    magnesium: 1.0,
+    folate: 1.0,
   },
 }
 
 // ── Produce Nutritional Database ─────────────────────────────
-// Source: USDA FoodData Central + JSON_nuttrionalData.md
+// Source: USDA FoodData Central + USDA SR Legacy (NDB 11233 for kale)
 // Nutrition values are per 100 g of raw produce.
 // Yield and retention factors are for cold-pressed extraction.
 
@@ -243,7 +254,7 @@ function round2(n: number): number {
   return Math.round(n * 100) / 100
 }
 
-// True Retention Formula with organic + juice method multipliers
+// Yield-adjusted nutrition estimate with retention factors
 function calcJuiceNutrition(
   entry: ProduceEntry,
   weightG: number,
@@ -372,8 +383,7 @@ export function processJuiceBatch(
 
   if (juiceMethod === 'centrifugal') {
     warnings.push(
-      'Centrifugal juicing reduces heat-sensitive nutrients (Vitamin C −22%, Folate −28%). ' +
-      'Consider cold-pressed for maximum nutrition.'
+      'Nutrition values are estimates and can vary by produce and juicer.'
     )
   }
 

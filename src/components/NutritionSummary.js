@@ -10,7 +10,7 @@ import {
   Pressable,
   Animated,
 } from 'react-native'
-import { Flame, CandyOff, Wheat, Citrus, Eye, ChevronDown, Minus, Plus, Zap, Droplets, Atom, Pill } from 'lucide-react-native'
+import { Flame, CandyOff, Citrus, Eye, ChevronDown, Minus, Plus, Zap, Droplets, Atom, Pill } from 'lucide-react-native'
 import colors from '../constants/colors'
 import { BRAND } from '../constants/tokens'
 import { VEGGIE_FRUIT_TARGET, USDA_RDA } from '../constants/nutrition'
@@ -172,7 +172,6 @@ function ProduceItemRow({ item, scannedItem, index, onUpdateItem }) {
 const NUTRIENT_ROWS = [
   { icon: Flame, label: 'Calories', key: 'calories', unit: 'kcal', accent: null },
   { icon: CandyOff, label: 'Sugar', key: 'sugar', unit: 'g', accent: null },
-  { icon: Wheat, label: 'Fiber', key: 'fiber', unit: 'g', accent: BRAND.accent.chlorophyll },
   { icon: Citrus, label: 'Vitamin C', key: 'vitaminC', unit: 'mg', accent: BRAND.accent.vitaminC },
   { icon: Eye, label: 'Vitamin A', key: 'vitaminA', unit: 'mcg', accent: BRAND.accent.vitaminA },
   { icon: Zap, label: 'Potassium', key: 'potassium', unit: 'mg', accent: BRAND.accent.potassium },
@@ -253,7 +252,7 @@ export default function NutritionSummary({ batch, scannedIngredients = [], onUpd
       },
     ]}>
       <View style={styles.header}>
-        <Text style={styles.title}>Current Batch</Text>
+        <Text style={styles.title}>Estimated Nutrition</Text>
         <View style={[
           styles.badge,
           isEmpty
@@ -326,6 +325,12 @@ export default function NutritionSummary({ batch, scannedIngredients = [], onUpd
             Veggie ratio: {Math.round(veggieRatio * 100)}%
           </Text>
         </View>
+      )}
+
+      {!isEmpty && (
+        <Text style={styles.estimateNote}>
+          Estimated from produce amounts and food-composition data. Actual values can vary by produce and juicer.
+        </Text>
       )}
     </Animated.View>
   )
@@ -620,5 +625,11 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#4CAF50',
     fontWeight: '600',
+  },
+  estimateNote: {
+    fontSize: 11,
+    color: '#6B7280',
+    paddingTop: 8,
+    fontStyle: 'italic',
   },
 })

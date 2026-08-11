@@ -10,7 +10,7 @@ describe('Advanced History Scrollable Details', () => {
   // 1. Advanced History details use a vertical scroll container
   test('1. EntryDetailsModal uses a ScrollView for detail content', () => {
     const modalIdx = HISTORY_SRC.indexOf('function EntryDetailsModal')
-    const modalSection = HISTORY_SRC.substring(modalIdx, modalIdx + 5000)
+    const modalSection = HISTORY_SRC.substring(modalIdx, modalIdx + 8000)
     expect(modalSection).toContain('ScrollView')
     expect(modalSection).toContain('ms.cardBody')
   })

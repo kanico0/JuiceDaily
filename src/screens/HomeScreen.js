@@ -1819,10 +1819,20 @@ export default function JuiceSnapScreen({ navigation, route }) {
       recordNutritionLog(ingredientIds, totals)
 
       // Create a JuiceLogEntry for the Today log
+      // Include ingredientDetails (portion data) for Pro Detailed History
+      const ingredientDetails = ingredients
+        .filter((i) => i && typeof i.produceId === 'string')
+        .map((i) => ({
+          produceId: i.produceId,
+          weightG: typeof i.weightG === 'number' ? i.weightG : 150,
+          portionEntryMode: i.portionEntryMode || 'weight',
+          portionMetadata: i.portionMetadata || undefined,
+        }))
       const logEntry = addLogEntry({
         source: logSource,
         ingredientIds: ingredientIds,
         nutrientSummary: totals,
+        ingredientDetails,
       })
       recordMeaningfulActivity().catch(() => {})
 

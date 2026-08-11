@@ -5,6 +5,10 @@
 //   - id (uuid), createdAt (ISO), source (juice_snap|manual|wellness_focus|browse_ideas|todays_focus|today_spotlight|make_again|simple_blend|seasonal_glow|produce_recipe|glow_library|beginner_glow|unknown)
 //   - title (short label), ingredients (array of produceIds)
 //   - nutrientSummary (batch totals), scoreContribution
+//   - ingredientDetails (optional array of { produceId, weightG, portionEntryMode, portionMetadata })
+//   - rating (optional 1–5 stars, null = unrated)
+//   - note (optional personal note string)
+//   - favorite (optional boolean)
 //
 // Entries are grouped by dateKey (YYYY-MM-DD local time).
 // Uses storage.ts for schema-versioned persistence.
@@ -89,6 +93,16 @@ function logReducer(state, action) {
       }
     }
 
+    case 'UPDATE_ENTRY': {
+      const { id, updates } = action.payload
+      return {
+        ...state,
+        entries: state.entries.map((e) =>
+          e.id === id ? { ...e, ...updates } : e
+        ),
+      }
+    }
+
     case 'RESET':
       return createEmptyState()
 
@@ -144,7 +158,7 @@ export function JuiceLogProvider({ children }) {
     saveState(STORAGE_KEY, SCHEMA_VERSION, state)
   }, [state])
 
-  const addEntry = useCallback(({ source, ingredientIds, nutrientSummary, scoreContribution }) => {
+  const addEntry = useCallback(({ source, ingredientIds, nutrientSummary, scoreContribution, ingredientDetails }) => {
     const entry = {
       id: generateId(),
       createdAt: localISOString(),
@@ -154,6 +168,13 @@ export function JuiceLogProvider({ children }) {
       ingredients: ingredientIds || [],
       nutrientSummary: nutrientSummary || {},
       scoreContribution: scoreContribution || null,
+      // Optional portion data for Detailed History (Pro)
+      // Array of { produceId, weightG, portionEntryMode, portionMetadata }
+      ingredientDetails: Array.isArray(ingredientDetails) ? ingredientDetails : undefined,
+      // Optional personal fields (Pro Detailed History)
+      rating: undefined,   // 1–5 or null/undefined = unrated
+      note: undefined,     // string or undefined
+      favorite: undefined, // boolean or undefined
     }
     dispatch({ type: 'ADD_ENTRY', payload: entry })
     return entry
@@ -166,6 +187,28 @@ export function JuiceLogProvider({ children }) {
   const setTasteReaction = useCallback((id, reaction) => {
     dispatch({ type: 'SET_TASTE_REACTION', payload: { id, reaction } })
   }, [])
+
+  const setRating = useCallback((id, rating) => {
+    // rating: 1–5 or null to clear
+    const validRating = (typeof rating === 'number' && rating >= 1 && rating <= 5)
+      ? Math.round(rating)
+      : null
+    dispatch({ type: 'UPDATE_ENTRY', payload: { id, updates: { rating: validRating } } })
+  }, [])
+
+  const setNote = useCallback((id, note) => {
+    // note: string or null/undefined to clear
+    const cleanNote = (typeof note === 'string' && note.trim().length > 0)
+      ? note.trim().slice(0, 500)
+      : null
+    dispatch({ type: 'UPDATE_ENTRY', payload: { id, updates: { note: cleanNote } } })
+  }, [])
+
+  const toggleFavorite = useCallback((id) => {
+    const entry = state.entries.find((e) => e.id === id)
+    const current = entry?.favorite === true
+    dispatch({ type: 'UPDATE_ENTRY', payload: { id, updates: { favorite: !current } } })
+  }, [state.entries])
 
   const resetLog = useCallback(() => {
     dispatch({ type: 'RESET' })
@@ -242,6 +285,9 @@ export function JuiceLogProvider({ children }) {
     addEntry,
     deleteEntry,
     setTasteReaction,
+    setRating,
+    setNote,
+    toggleFavorite,
     resetLog,
   }
 

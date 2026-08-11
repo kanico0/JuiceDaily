@@ -611,7 +611,7 @@ function QuotaMeter({ navigation }) {
 // the canonical camera source is 'juice_snap'.
 const ROUTE_SOURCE_TO_LOG_SOURCE = {
   camera: 'juice_snap',
-  recipe: 'browse_ideas',
+  recipe: 'manual',
   spotlight: 'today_spotlight',
   todays_focus: 'todays_focus',
   history_make_again: 'make_again',

@@ -49,7 +49,7 @@ describe('History Provenance — HomeScreen source resolution', () => {
   test('has ROUTE_SOURCE_TO_LOG_SOURCE mapping', () => {
     expect(HOME_SCREEN_SRC).toContain('ROUTE_SOURCE_TO_LOG_SOURCE')
     expect(HOME_SCREEN_SRC).toContain("camera: 'juice_snap'")
-    expect(HOME_SCREEN_SRC).toContain("recipe: 'browse_ideas'")
+    expect(HOME_SCREEN_SRC).toContain("recipe: 'manual'")
     expect(HOME_SCREEN_SRC).toContain("spotlight: 'today_spotlight'")
     expect(HOME_SCREEN_SRC).toContain("todays_focus: 'todays_focus'")
     expect(HOME_SCREEN_SRC).toContain("history_make_again: 'make_again'")
@@ -144,12 +144,59 @@ describe('History Provenance — HistoryScreen display', () => {
 // ── 4. RecipeDetailScreen source mapping ──────────────────────
 
 describe('History Provenance — RecipeDetailScreen', () => {
-  test('maps wellnessFocus origin to wellness_focus source', () => {
-    expect(RECIPE_DETAIL_SRC).toContain("origin === 'wellnessFocus' ? 'wellness_focus' : 'browse_ideas'")
+  test('maps browseIdeas origin to browse_ideas source', () => {
+    expect(RECIPE_DETAIL_SRC).toContain("origin === 'browseIdeas'")
+    expect(RECIPE_DETAIL_SRC).toContain("'browse_ideas'")
   })
 
-  test('does not pass generic source: recipe', () => {
-    expect(RECIPE_DETAIL_SRC).not.toContain("source: 'recipe'")
+  test('maps wellnessFocus origin to wellness_focus source', () => {
+    expect(RECIPE_DETAIL_SRC).toContain("origin === 'wellnessFocus'")
+    expect(RECIPE_DETAIL_SRC).toContain("'wellness_focus'")
+  })
+
+  test('non-browse/non-wellness origins use recipe source (NOT browse_ideas)', () => {
+    // The ternary should fall through to 'recipe' for unknown origins
+    expect(RECIPE_DETAIL_SRC).toContain("'recipe'")
+    // Should NOT default to browse_ideas for all non-wellness origins
+    expect(RECIPE_DETAIL_SRC).not.toContain("origin === 'wellnessFocus' ? 'wellness_focus' : 'browse_ideas'")
+  })
+
+  test('passes manualEntry: true (correct UX for recipe launches)', () => {
+    expect(RECIPE_DETAIL_SRC).toContain('manualEntry: true')
+  })
+
+  test('HomeScreen maps recipe source to manual (not browse_ideas)', () => {
+    expect(HOME_SCREEN_SRC).toContain("recipe: 'manual'")
+    expect(HOME_SCREEN_SRC).not.toContain("recipe: 'browse_ideas'")
+  })
+})
+
+// ── 4b. RecipeDetail non-browse origins audit ─────────────────
+
+describe('History Provenance — non-browse RecipeDetail origins', () => {
+  // These screens navigate to RecipeDetail WITHOUT passing origin:
+  // - TodayScreen (Simple Blend)
+  // - FridgeForagerScreen
+  // - SeasonalGlowPacksScreen
+  // - ProduceRecipeResultsScreen
+  // - GlowLibraryScreen
+  // - BeginnerGlowPathScreen
+  // They must NOT be falsely labeled browse_ideas.
+
+  test('RecipeDetailScreen only maps browseIdeas and wellnessFocus to specific sources', () => {
+    // The source mapping should be a three-way ternary, not a binary
+    // default to browse_ideas
+    const mappingMatch = RECIPE_DETAIL_SRC.match(
+      /const recipeSource = origin === 'browseIdeas'[\s\S]*?'recipe'/
+    )
+    expect(mappingMatch).toBeTruthy()
+  })
+
+  test('RecipeDetailScreen does NOT default non-wellness to browse_ideas', () => {
+    // Old code: origin === 'wellnessFocus' ? 'wellness_focus' : 'browse_ideas'
+    // This would falsely label Simple Blend, Fridge Forager, Glow Library,
+    // Seasonal Glow, Produce-First, and Beginner Glow Path as Browse Juice Ideas.
+    expect(RECIPE_DETAIL_SRC).not.toMatch(/'wellness_focus'\s*:\s*'browse_ideas'/)
   })
 })
 

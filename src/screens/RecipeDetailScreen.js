@@ -389,13 +389,21 @@ export default function RecipeDetailScreen({ route, navigation }) {
     }))
     pendingTasteRef.current = true
     // Map recipe origin to a specific provenance source for History.
-    // browseIdeas → browse_ideas, wellnessFocus → wellness_focus.
-    // Default to 'browse_ideas' since RecipeDetail is most commonly
-    // reached from Browse Juice Ideas.
-    const recipeSource = origin === 'wellnessFocus' ? 'wellness_focus' : 'browse_ideas'
+    // Only browseIdeas and wellnessFocus have specific source labels.
+    // All other origins (Simple Blend, Fridge Forager, Seasonal Glow,
+    // Produce-First, Glow Library, Beginner Glow Path, etc.) use
+    // 'recipe' which resolves to 'manual' in HomeScreen — the user
+    // manually selected a recipe, so Manual Entry is accurate.
+    // manualEntry: true is passed so the builder opens in manual mode
+    // (no camera prompt) since the user already has ingredients.
+    const recipeSource = origin === 'browseIdeas'
+      ? 'browse_ideas'
+      : origin === 'wellnessFocus'
+        ? 'wellness_focus'
+        : 'recipe'
     navigation.navigate('ScanFlow', {
       screen: 'ScanHome',
-      params: { preloadIngredients: preload, source: recipeSource },
+      params: { manualEntry: true, preloadIngredients: preload, source: recipeSource },
     })
   }, [recipe, ingredients, navigation, origin])
 

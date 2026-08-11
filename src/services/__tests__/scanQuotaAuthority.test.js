@@ -500,8 +500,8 @@ describe('Scan quota server-authoritative architecture', () => {
         'utf-8'
       )
 
-      // On identity change: setQuota(null) then refresh()
-      expect(code).toMatch(/setQuota\(null\)/)
+      // On identity change: setServerQuota(null) then refresh()
+      expect(code).toMatch(/setServerQuota\(null\)/)
       expect(code).toMatch(/addIdentityChangeListener/)
     })
   })

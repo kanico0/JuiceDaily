@@ -744,7 +744,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
   const { recordNutritionLog, momentum: preMomentum } = useNutritionScore()
   const { addEntry: addLogEntry, setTasteReaction: setLogTasteReaction } = useJuiceLog()
   const { isPro } = usePro()
-  const { quota: serverQuota, applySnapshot: applyQuotaSnapshot, refresh: refreshQuota } = useQuota()
+  const { quota: serverQuota, applySnapshot: applyQuotaSnapshot, refresh: refreshQuota, markInstallSnapConsumed } = useQuota()
   const filmRollLabel = selectFilmRollLabel(serverQuota)
   const filmRollRemaining = selectFilmRollRemaining(serverQuota)
   const filmRollIsPro = selectFilmRollIsPro(serverQuota)
@@ -1280,8 +1280,17 @@ export default function JuiceSnapScreen({ navigation, route }) {
     // quota snapshot is applied to QuotaStore for the authoritative
     // display. No client-side optimistic counter is needed — both the
     // film-roll counter and QuotaMeter derive from QuotaStore.
+    //
+    // Additionally, mark the install-level Free Snap guard as consumed.
+    // This persistent marker survives logout and new anonymous identity
+    // creation, preventing the loophole where a new anonymous UUID
+    // receives a fresh 0/1 allowance on the same installation. The
+    // marker is only consumed for Free users — Pro bypasses it.
     if (visionResult.quota) {
       applyQuotaSnapshot(visionResult.quota)
+      if (visionResult.quota.plan === 'free') {
+        markInstallSnapConsumed()
+      }
     } else {
       refreshQuota()
     }

@@ -176,10 +176,10 @@ describe('Unified scan-quota display architecture', () => {
   // ── 12. Cross-device refreshed snapshot updates both displays ──
   test('QuotaStore refresh fetches from server and updates quota state', () => {
     expect(quotaStoreSource).toContain('fetchScanQuota')
-    expect(quotaStoreSource).toContain('setQuota(snapshot)')
+    expect(quotaStoreSource).toContain('setServerQuota(snapshot)')
     expect(quotaStoreSource).toContain('addIdentityChangeListener')
     // On identity change: reset and re-fetch
-    expect(quotaStoreSource).toContain('setQuota(null)')
+    expect(quotaStoreSource).toContain('setServerQuota(null)')
   })
 
   // ── 13. Manual entry consumes zero and changes neither display ──

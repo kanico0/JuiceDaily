@@ -252,9 +252,9 @@ describe('Snap Produce: QuotaStore refresh behavior', () => {
     expect(quotaStoreSource).toContain('Promise<ScanQuotaSnapshot | null>')
   })
 
-  test('34. refreshQuota calls fetchScanQuota and setQuota', () => {
+  test('34. refreshQuota calls fetchScanQuota and setServerQuota', () => {
     expect(quotaStoreSource).toContain('fetchScanQuota')
-    expect(quotaStoreSource).toContain('setQuota(snapshot)')
+    expect(quotaStoreSource).toContain('setServerQuota(snapshot)')
   })
 
   test('35. refreshQuota keeps last known snapshot on failure', () => {
@@ -267,8 +267,11 @@ describe('Snap Produce: QuotaStore refresh behavior', () => {
     expect(quotaStoreSource).toContain('return null')
   })
 
-  test('36a. refreshQuota returns the fetched snapshot on success', () => {
-    expect(quotaStoreSource).toContain('return snapshot || null')
+  test('36a. refreshQuota returns the effective quota on success', () => {
+    // refresh now returns the composed effective quota (server quota
+    // composed with the install-level Free Snap guard), not just the
+    // raw server snapshot.
+    expect(quotaStoreSource).toContain('composeEffectiveQuota(snapshot')
   })
 
   test('36b. refreshQuota returns null on catch failure', () => {

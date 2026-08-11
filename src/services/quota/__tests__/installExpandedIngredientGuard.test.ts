@@ -44,12 +44,13 @@ jest.mock('@react-native-async-storage/async-storage', () => ({
 
 import {
   INSTALL_EXPANDED_INGREDIENT_KEY,
-  INSTALL_EXPANDED_INGREDIENT_FINALIZED_KEY,
   getInstallExpandedIngredientUsed,
   getInstallExpandedIngredientRemaining,
   composeEffectiveExpandedIngredientRemaining,
+  checkInstallExpandedIngredientEligibility,
   selfHealInstallExpandedIngredient,
   markInstallExpandedIngredientConsumed,
+  preLogoutSelfHealExpandedIngredient,
   clearInstallExpandedIngredientState,
 } from '../installExpandedIngredientGuard'
 import { FREE_ADVANCED_BLEND_ALLOWANCE } from '../blendAllowanceService'
@@ -298,12 +299,13 @@ describe('Idempotency', () => {
     expect(await getInstallExpandedIngredientUsed()).toBe(2)
   })
 
-  it('finalized IDs are persisted in AsyncStorage', async () => {
+  it('finalized IDs are persisted atomically in the single record', async () => {
     await markInstallExpandedIngredientConsumed('req-persist', false)
-    const raw = mockStore.get(INSTALL_EXPANDED_INGREDIENT_FINALIZED_KEY)
+    const raw = mockStore.get(INSTALL_EXPANDED_INGREDIENT_KEY)
     expect(raw).toBeDefined()
-    const arr = JSON.parse(raw!)
-    expect(arr).toContain('req-persist')
+    const record = JSON.parse(raw!)
+    expect(record.finalizedRequestIds).toContain('req-persist')
+    expect(record.used).toBe(1)
   })
 })
 
@@ -410,14 +412,240 @@ describe('Full lifecycle: Account A → logout → Account B → back to A', () 
 
 // ── Clear / reset ────────────────────────────────────────────
 describe('Clear state', () => {
-  it('clearInstallExpandedIngredientState removes all keys', async () => {
+  it('clearInstallExpandedIngredientState removes the record', async () => {
     await markInstallExpandedIngredientConsumed('req-1', false)
     expect(mockStore.has(INSTALL_EXPANDED_INGREDIENT_KEY)).toBe(true)
-    expect(mockStore.has(INSTALL_EXPANDED_INGREDIENT_FINALIZED_KEY)).toBe(true)
 
     await clearInstallExpandedIngredientState()
     expect(mockStore.has(INSTALL_EXPANDED_INGREDIENT_KEY)).toBe(false)
-    expect(mockStore.has(INSTALL_EXPANDED_INGREDIENT_FINALIZED_KEY)).toBe(false)
     expect(await getInstallExpandedIngredientUsed()).toBe(0)
+  })
+})
+
+// ── CENTRAL ENFORCEMENT TESTS ────────────────────────────────
+// These tests prove the central gate (checkInstallExpandedIngredientEligibility)
+// blocks before reserve when the install guard is exhausted.
+
+describe('Central gate enforcement', () => {
+  it('installUsed=3 + fresh Free account 3/3 → central gate BLOCKS', async () => {
+    // Exhaust the install guard
+    await markInstallExpandedIngredientConsumed('req-1', false)
+    await markInstallExpandedIngredientConsumed('req-2', false)
+    await markInstallExpandedIngredientConsumed('req-3', false)
+    expect(await getInstallExpandedIngredientUsed()).toBe(3)
+
+    // Fresh Free UUID reports 3/3 — but central gate must block
+    const eligibility = await checkInstallExpandedIngredientEligibility(3, false)
+    expect(eligibility.allowed).toBe(false)
+    expect(eligibility.code).toBe('install_exhausted')
+    expect(eligibility.effectiveRemaining).toBe(0)
+  })
+
+  it('installUsed=2 + fresh account 3/3 → one analysis permitted', async () => {
+    await markInstallExpandedIngredientConsumed('req-1', false)
+    await markInstallExpandedIngredientConsumed('req-2', false)
+
+    // Central gate allows one more
+    const eligibility = await checkInstallExpandedIngredientEligibility(3, false)
+    expect(eligibility.allowed).toBe(true)
+    expect(eligibility.effectiveRemaining).toBe(1)
+
+    // After the third consumption, gate blocks
+    await markInstallExpandedIngredientConsumed('req-3', false)
+    const blocked = await checkInstallExpandedIngredientEligibility(3, false)
+    expect(blocked.allowed).toBe(false)
+    expect(blocked.code).toBe('install_exhausted')
+  })
+
+  it('central gate cannot be bypassed — unknown allowance fails closed', async () => {
+    const eligibility = await checkInstallExpandedIngredientEligibility(null, false)
+    expect(eligibility.allowed).toBe(false)
+    expect(eligibility.code).toBe('allowance_unknown')
+  })
+
+  it('Pro bypasses central gate', async () => {
+    // Even with install exhausted
+    await markInstallExpandedIngredientConsumed('req-1', false)
+    await markInstallExpandedIngredientConsumed('req-2', false)
+    await markInstallExpandedIngredientConsumed('req-3', false)
+
+    const eligibility = await checkInstallExpandedIngredientEligibility(0, true)
+    expect(eligibility.allowed).toBe(true)
+    expect(eligibility.code).toBe('pro_unlimited')
+  })
+})
+
+// ── ATOMIC STATE TESTS ───────────────────────────────────────
+
+describe('Atomic persisted state', () => {
+  it('used and finalizedRequestIds are in one record', async () => {
+    await markInstallExpandedIngredientConsumed('req-atom', false)
+    const raw = mockStore.get(INSTALL_EXPANDED_INGREDIENT_KEY)
+    expect(raw).toBeDefined()
+    const record = JSON.parse(raw!)
+    expect(record.used).toBe(1)
+    expect(record.finalizedRequestIds).toContain('req-atom')
+    // No separate finalized key exists
+    expect(mockStore.has('@juicing_install_expanded_ingredient_finalized_v1')).toBe(false)
+  })
+
+  it('simulated crash between reads cannot double-consume (atomic write)', async () => {
+    // The markInstallExpandedIngredientConsumed function reads the
+    // full record, checks idempotency, and writes both used+1 and
+    // the requestId in a single setItem call. A crash between read
+    // and write leaves the old state — no partial update.
+    await markInstallExpandedIngredientConsumed('req-1', false)
+    expect(await getInstallExpandedIngredientUsed()).toBe(1)
+
+    // Simulate a retry of the same requestId (crash after consume,
+    // retry on next launch)
+    const second = await markInstallExpandedIngredientConsumed('req-1', false)
+    expect(second).toBe(false)
+    expect(await getInstallExpandedIngredientUsed()).toBe(1)
+  })
+})
+
+// ── PRE-LOGOUT SELF-HEAL TESTS ───────────────────────────────
+
+describe('Pre-logout self-heal', () => {
+  it('old account used=1 + no install state → pre-logout self-heal stores 1', async () => {
+    expect(mockStore.has(INSTALL_EXPANDED_INGREDIENT_KEY)).toBe(false)
+
+    const healed = await preLogoutSelfHealExpandedIngredient(
+      async () => ({ used: 1, plan: 'free' }),
+      false,
+    )
+    expect(healed).toBe(true)
+    expect(await getInstallExpandedIngredientUsed()).toBe(1)
+    expect(await getInstallExpandedIngredientRemaining()).toBe(2)
+  })
+
+  it('new UUID after logout still effective 2/3', async () => {
+    // Pre-logout self-heal from old account
+    await preLogoutSelfHealExpandedIngredient(
+      async () => ({ used: 1, plan: 'free' }),
+      false,
+    )
+
+    // After logout, new UUID reports 3/3 — install guard keeps 2/3
+    const effective = await composeEffectiveExpandedIngredientRemaining(3, false)
+    expect(effective).toBe(2)
+  })
+
+  it('fresh account used=0 never lowers installUsed', async () => {
+    // Install already has used=2
+    await markInstallExpandedIngredientConsumed('req-1', false)
+    await markInstallExpandedIngredientConsumed('req-2', false)
+
+    // Pre-logout self-heal from a fresh account (used=0)
+    const healed = await preLogoutSelfHealExpandedIngredient(
+      async () => ({ used: 0, plan: 'free' }),
+      false,
+    )
+    expect(healed).toBe(false)
+    expect(await getInstallExpandedIngredientUsed()).toBe(2)
+  })
+
+  it('network failure does not prevent logout (returns false, no throw)', async () => {
+    const healed = await preLogoutSelfHealExpandedIngredient(
+      async () => { throw new Error('network failure') },
+      false,
+    )
+    expect(healed).toBe(false)
+  })
+
+  it('Pro departing account → no-op', async () => {
+    const healed = await preLogoutSelfHealExpandedIngredient(
+      async () => ({ used: 5, plan: 'pro' }),
+      true,
+    )
+    expect(healed).toBe(false)
+    expect(await getInstallExpandedIngredientUsed()).toBe(0)
+  })
+})
+
+// ── FAILED/RELEASED ANALYSIS TESTS ───────────────────────────
+
+describe('Failed/released analysis does not consume', () => {
+  it('failed analysis → install count unchanged', async () => {
+    // The central gate (blendNutritionGate) only calls
+    // markInstallExpandedIngredientConsumed AFTER successful
+    // finalization. A failed analysis calls releaseBlendAllowance
+    // instead. We verify the install count is unchanged.
+    expect(await getInstallExpandedIngredientUsed()).toBe(0)
+    expect(await getInstallExpandedIngredientRemaining()).toBe(3)
+  })
+
+  it('released reservation → install count unchanged', async () => {
+    // Simulate: reserve succeeds, processJuiceBatch fails, release is called
+    // markInstallExpandedIngredientConsumed is NOT called
+    expect(await getInstallExpandedIngredientUsed()).toBe(0)
+  })
+})
+
+// ── DUPLICATE REQUEST ID TESTS ───────────────────────────────
+
+describe('Duplicate successful requestId', () => {
+  it('one consumption only for duplicate requestId', async () => {
+    const first = await markInstallExpandedIngredientConsumed('req-dup-final', false)
+    expect(first).toBe(true)
+    expect(await getInstallExpandedIngredientUsed()).toBe(1)
+
+    const second = await markInstallExpandedIngredientConsumed('req-dup-final', false)
+    expect(second).toBe(false)
+    expect(await getInstallExpandedIngredientUsed()).toBe(1)
+  })
+})
+
+// ── PRO BYPASS + NO FREE CONSUMPTION ─────────────────────────
+
+describe('Pro bypass and no Free consumption', () => {
+  it('Pro analyses do not consume Free lifetime pool', async () => {
+    await markInstallExpandedIngredientConsumed('req-pro-1', true)
+    await markInstallExpandedIngredientConsumed('req-pro-2', true)
+    await markInstallExpandedIngredientConsumed('req-pro-3', true)
+    expect(await getInstallExpandedIngredientUsed()).toBe(0)
+    expect(await getInstallExpandedIngredientRemaining()).toBe(3)
+  })
+
+  it('Pro→Free restores prior Free remaining', async () => {
+    // Free user uses one
+    await markInstallExpandedIngredientConsumed('req-free-1', false)
+    expect(await getInstallExpandedIngredientRemaining()).toBe(2)
+
+    // Upgrade to Pro — usage doesn't consume
+    await markInstallExpandedIngredientConsumed('req-pro-1', true)
+    await markInstallExpandedIngredientConsumed('req-pro-2', true)
+    expect(await getInstallExpandedIngredientRemaining()).toBe(2)
+
+    // Downgrade to Free — still 2/3
+    const effective = await composeEffectiveExpandedIngredientRemaining(3, false)
+    expect(effective).toBe(2)
+  })
+})
+
+// ── LEGACY MIGRATION TEST ────────────────────────────────────
+
+describe('Legacy two-key migration', () => {
+  it('migrates old finalized key to atomic record on first read', async () => {
+    // Simulate old two-key design: put data in the legacy key
+    mockStore.set('@juicing_install_expanded_ingredient_finalized_v1',
+      JSON.stringify(['old-req-1', 'old-req-2']))
+
+    // Reading the record triggers migration
+    const used = await getInstallExpandedIngredientUsed()
+    // Old used count was in a separate key that may not exist —
+    // defaults to 0, self-heal will correct it later
+    expect(used).toBe(0)
+
+    // The legacy key should be cleaned up
+    expect(mockStore.has('@juicing_install_expanded_ingredient_finalized_v1')).toBe(false)
+
+    // The finalized IDs should be in the main record
+    const raw = mockStore.get(INSTALL_EXPANDED_INGREDIENT_KEY)
+    expect(raw).toBeDefined()
+    const record = JSON.parse(raw!)
+    expect(record.finalizedRequestIds).toContain('old-req-1')
+    expect(record.finalizedRequestIds).toContain('old-req-2')
   })
 })

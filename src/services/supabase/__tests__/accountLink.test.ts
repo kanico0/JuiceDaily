@@ -44,6 +44,13 @@ jest.mock('../../quota/installFreeSnapGuard', () => ({
   INSTALL_FREE_SNAP_KEY: '@juicing_install_free_snap_v1',
 }))
 
+// Mock installExpandedIngredientGuard (imported by accountLink for logout safety)
+const mockPreLogoutSelfHealExpandedIngredient = jest.fn().mockResolvedValue(false)
+jest.mock('../../quota/installExpandedIngredientGuard', () => ({
+  preLogoutSelfHealExpandedIngredient: () => mockPreLogoutSelfHealExpandedIngredient(),
+  INSTALL_EXPANDED_INGREDIENT_KEY: '@juicing_install_expanded_ingredient_v1',
+}))
+
 // Mock supabaseHeaders (imported by accountLink for logout safety)
 jest.mock('../../quota/supabaseHeaders', () => ({
   buildAuthedHeaders: jest.fn(() => ({

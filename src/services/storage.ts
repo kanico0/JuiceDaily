@@ -239,7 +239,6 @@ export const ALL_STORAGE_KEYS = [
   '@juicing_install_free_snap_v1',
   '@juicing_install_anchor_v1',
   '@juicing_install_expanded_ingredient_v1',
-  '@juicing_install_expanded_ingredient_finalized_v1',
   '@juicing_feature_flags_v1',
   '@settings_visited',
   '@juicing_calculator_cache_v1',

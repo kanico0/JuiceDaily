@@ -28,6 +28,7 @@ import { logIn as revenueCatLogIn } from '../subscriptions/revenueCatClient'
 import { SUPABASE_URL, SUPABASE_CONFIGURED } from '../subscriptions/subscriptionConfig'
 import { buildAuthedHeaders } from '../quota/supabaseHeaders'
 import { selfHealInstallMarker } from '../quota/installFreeSnapGuard'
+import { preLogoutSelfHealExpandedIngredient } from '../quota/installExpandedIngredientGuard'
 import type { ScanQuotaSnapshot } from '../subscriptions/subscriptionTypes'
 
 // ── Types ────────────────────────────────────────────────────
@@ -352,15 +353,44 @@ async function persistInstallMarkerBeforeSignOut(): Promise<void> {
   }
 }
 
+// Fetch the departing user's authoritative Expanded Ingredient
+// allowance and self-heal the install guard before the session is
+// cleared. Best-effort — failures do not block logout.
+async function persistExpandedIngredientBeforeSignOut(): Promise<void> {
+  if (!SUPABASE_CONFIGURED || !SUPABASE_URL) return
+  try {
+    const token = await getAccessToken()
+    if (!token) return
+    const headers = buildAuthedHeaders(token)
+    // Fetch the blend allowance snapshot from the analyze-blend function
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/analyze-blend`, {
+      method: 'GET',
+      headers,
+    })
+    if (!res.ok) return
+    const body = await res.json()
+    const used = typeof body.used === 'number' ? body.used : 0
+    const plan = body.plan === 'pro' ? 'pro' : 'free'
+    const isPro = plan === 'pro'
+    await preLogoutSelfHealExpandedIngredient(
+      async () => ({ used, plan }),
+      isPro,
+    )
+  } catch {
+    // Best-effort — do not block logout on network failure.
+  }
+}
+
 export async function signOutAccount(): Promise<boolean> {
   const supabase = getSupabase()
   if (!supabase) return false
   try {
-    // 0. Self-heal the install Free Snap guard from the departing
-    //    user's authoritative Free quota BEFORE the session is
-    //    cleared. This ensures the install marker is persisted even
-    //    if the device consumed a Snap on an older APK.
+    // 0. Self-heal the install guards from the departing user's
+    //    authoritative quotas BEFORE the session is cleared. This
+    //    ensures the install markers are persisted even if the
+    //    device consumed allowances on an older APK.
     await persistInstallMarkerBeforeSignOut()
+    await persistExpandedIngredientBeforeSignOut()
 
     // 1. Sign out of Supabase.
     const { error } = await supabase.auth.signOut()

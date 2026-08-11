@@ -24,7 +24,11 @@ jest.mock('../installExpandedIngredientGuard', () => ({
   getInstallExpandedIngredientUsed: jest.fn().mockResolvedValue(0),
   getInstallExpandedIngredientRemaining: jest.fn().mockResolvedValue(3),
   composeEffectiveExpandedIngredientRemaining: jest.fn().mockResolvedValue(null),
+  checkInstallExpandedIngredientEligibility: jest.fn().mockResolvedValue({
+    allowed: true, code: 'ok', effectiveRemaining: 3,
+  }),
   selfHealInstallExpandedIngredient: jest.fn().mockResolvedValue(false),
+  preLogoutSelfHealExpandedIngredient: jest.fn().mockResolvedValue(false),
   clearInstallExpandedIngredientState: jest.fn().mockResolvedValue(undefined),
 }))
 

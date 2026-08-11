@@ -33,13 +33,19 @@ import {
   classifyBlend,
   countDistinctProduceIds,
   BlendAllowanceError,
+  isDevBypass,
   type BlendAllowanceResult,
 } from './blendAllowanceService'
 import { getAccessToken } from '../supabase/identity'
 import { isDevicePoolEnabled } from '../devicePool/devicePoolConfig'
 import { getDevicePromotionProvider } from '../devicePool/devicePromotionProviderFactory'
 import type { AttestationRequestContext } from '../devicePool/devicePromotionProvider'
-import { markInstallExpandedIngredientConsumed } from './installExpandedIngredientGuard'
+import {
+  markInstallExpandedIngredientConsumed,
+  checkInstallExpandedIngredientEligibility,
+  selfHealInstallExpandedIngredient,
+} from './installExpandedIngredientGuard'
+import { fetchBlendAllowance } from './blendAllowanceService'
 
 export interface AuthorizedJuiceResult extends JuiceResult {
   allowance: BlendAllowanceResult | null
@@ -107,6 +113,41 @@ export async function authorizeAndProcessBatch(
   // Supabase UUID which is preserved across email upgrade.
   const requestId =
     operationId ?? `advanced-blend-fallback-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+
+  // ── Central install-guard enforcement (before reserve) ──────
+  // Fetch the authoritative account allowance and check the
+  // install guard BEFORE making any server call or doing expensive
+  // nutrition work. This prevents a fresh Free UUID from bypassing
+  // the same-install lifetime guard by calling the central gate
+  // directly.
+  //
+  // Pro users bypass this check entirely (unlimited).
+  // Unknown account allowance → fail-closed (blocked).
+  // Dev bypass (no Supabase configured) skips this check.
+  if (!isDevBypass()) {
+    const accountSnapshot = await fetchBlendAllowance()
+    const isProFromSnapshot = accountSnapshot?.plan === 'pro'
+    const accountRemaining = accountSnapshot?.remaining ?? null
+    // Self-heal from the authoritative account used count before
+    // checking eligibility. This ensures the install guard is
+    // up-to-date even if no UI surface has performed the self-heal.
+    if (accountSnapshot && !isProFromSnapshot) {
+      await selfHealInstallExpandedIngredient(accountSnapshot.used, false)
+    }
+    const eligibility = await checkInstallExpandedIngredientEligibility(
+      accountRemaining,
+      isProFromSnapshot,
+    )
+    if (!eligibility.allowed) {
+      throw new BlendAllowanceError(
+        eligibility.code,
+        eligibility.code === 'allowance_unknown'
+          ? 'Unable to verify Expanded Ingredient Analysis allowance. Please try again.'
+          : 'You have used all 3 complimentary Expanded Ingredient Analyses on this device.',
+        null,
+      )
+    }
+  }
 
   // ── Request Play Integrity token for device pool verification ──
   let integrityToken: string | undefined

@@ -622,29 +622,67 @@ describe('Scan quota server-authoritative architecture', () => {
       // display after a successful guest scan.
       // The new code queries resolve_quota for anonymous users.
       // The primary path (non-error) must NOT directly return used:0.
-      const anonSection = quotaSrc.match(/is_anonymous === true[\s\S]*?return json\(200[\s\S]*?return json\(200[\s\S]*?return json\(200[\s\S]*?\n\s*\}/)
-      expect(anonSection).toBeTruthy()
+      // Capture the full anonymous if-block (from is_anonymous to the
+      // non-anonymous resolve_quota call).
+      const anonStart = quotaSrc.indexOf('is_anonymous === true')
+      expect(anonStart).toBeGreaterThan(-1)
+      const afterAnon = quotaSrc.indexOf('const { data, error } = await admin.rpc', anonStart)
+      const anonBlock = afterAnon > -1 ? quotaSrc.slice(anonStart, afterAnon) : quotaSrc.slice(anonStart)
       // The primary success path should use resolve_quota, not hardcoded values
-      expect(anonSection[0]).toContain('resolve_quota')
-      expect(anonSection[0]).toContain('aUsed')
+      expect(anonBlock).toContain('resolve_quota')
+      expect(anonBlock).toContain('aUsed')
     })
 
     test('queries resolve_quota for anonymous users', () => {
       // The anonymous user path must call resolve_quota to get
       // the actual usage from the database.
-      const anonSection = quotaSrc.match(/is_anonymous === true[\s\S]*?return json\(200/)
-      expect(anonSection).toBeTruthy()
-      expect(anonSection[0]).toContain('resolve_quota')
+      const anonStart = quotaSrc.indexOf('is_anonymous === true')
+      expect(anonStart).toBeGreaterThan(-1)
+      const afterAnon = quotaSrc.indexOf('const { data, error } = await admin.rpc', anonStart)
+      const anonBlock = afterAnon > -1 ? quotaSrc.slice(anonStart, afterAnon) : quotaSrc.slice(anonStart)
+      expect(anonBlock).toContain('resolve_quota')
     })
 
-    test('has fallback to static values on resolve_quota error for anonymous', () => {
-      // If resolve_quota fails for an anonymous user, fall back to
-      // the static free-plan values rather than crashing.
-      const anonSection = quotaSrc.match(/is_anonymous === true[\s\S]*?return json\(200[\s\S]*?return json\(200[\s\S]*?return json\(200/)
-      expect(anonSection).toBeTruthy()
-      // Should have a catch/error fallback
-      expect(anonSection[0]).toContain('used: 0')
-      expect(anonSection[0]).toContain('remaining: 1')
+    test('RPC error returns quota:null (unknown), NOT used:0/remaining:1', () => {
+      // On resolve_quota RPC failure for anonymous users, the function
+      // must return quota:null so the client treats it as "unable to
+      // verify access" and blocks the camera. It must NEVER fall back
+      // to used:0/remaining:1 which would falsely imply an unused
+      // complimentary Snap is available.
+      const anonStart = quotaSrc.indexOf('is_anonymous === true')
+      expect(anonStart).toBeGreaterThan(-1)
+      const afterAnon = quotaSrc.indexOf('const { data, error } = await admin.rpc', anonStart)
+      const anonBlock = afterAnon > -1 ? quotaSrc.slice(anonStart, afterAnon) : quotaSrc.slice(anonStart)
+      // Both error paths (RPC error and catch) must return quota: null
+      const errorReturns = anonBlock.match(/quota: null/g)
+      expect(errorReturns).toBeTruthy()
+      expect(errorReturns.length).toBeGreaterThanOrEqual(2)
+      // Must NOT contain hardcoded used:0 in fallback paths
+      expect(anonBlock).not.toMatch(/used:\s*0/)
+      expect(anonBlock).not.toMatch(/remaining:\s*1/)
+    })
+
+    test('client parseQuota handles quota:null from server', () => {
+      // Verify the client's parseQuota function returns null when
+      // the server sends quota:null
+      const quotaServiceSrc = fs.readFileSync(
+        path.resolve(__dirname, '../quota/quotaService.ts'),
+        'utf-8'
+      )
+      // parseQuota must return null for falsy/non-object input
+      expect(quotaServiceSrc).toMatch(/if \(!raw \|\| typeof raw !== 'object'\) return null/)
+    })
+
+    test('client blocks camera when quota is null (unable to verify)', () => {
+      // The client's attemptCameraOpen must show "Unable to Check Access"
+      // and NOT proceed to the camera when quota is null after refresh
+      // and Supabase is configured.
+      const homeSrc = fs.readFileSync(
+        path.resolve(__dirname, '../../screens/HomeScreen.js'),
+        'utf-8'
+      )
+      expect(homeSrc).toContain('Unable to Check Access')
+      expect(homeSrc).toMatch(/currentQuota === null && SUPABASE_CONFIGURED/)
     })
   })
 })

@@ -83,11 +83,12 @@ describe('Snap quota copy correction', () => {
     // The anonymous block must not show limit: 5
     expect(anonBlock).not.toMatch(/limit:\s*5/)
     expect(anonBlock).not.toMatch(/remaining:\s*5/)
-    // The fallback path still shows limit: 1 and remaining: 1
-    expect(anonBlock).toMatch(/limit:\s*1/)
-    expect(anonBlock).toMatch(/remaining:\s*1/)
-    // The primary path uses aLimit || 1 (dynamic from database)
+    // The primary success path uses aLimit || 1 (dynamic from database)
     expect(anonBlock).toMatch(/aLimit \|\| 1/)
+    // The error fallback returns quota:null (unknown), NOT used:0/remaining:1
+    expect(anonBlock).toMatch(/quota: null/)
+    // Must NOT have hardcoded used:0 in fallback paths
+    expect(anonBlock).not.toMatch(/used:\s*0/)
   })
 })
 

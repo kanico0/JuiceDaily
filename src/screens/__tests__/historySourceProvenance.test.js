@@ -299,9 +299,15 @@ describe('History Provenance — TodayScreen spotlight', () => {
     expect(TODAY_SCREEN_SRC).toContain('openEntryId')
   })
 
-  test('handleViewTodayJuice uses latest today entry id', () => {
-    expect(TODAY_SCREEN_SRC).toContain('todayEntries[0]')
-    expect(TODAY_SCREEN_SRC).toContain('latestEntry.id')
+  test('handleViewTodayJuice uses spotlightState.latestEntry.id (not todayEntries[0])', () => {
+    // The handler must use the exact entry the card displays
+    // (spotlightState.latestEntry), not independently infer from
+    // todayEntries[0]. This guarantees the button opens the same
+    // juice the card shows, even if another juice is logged later.
+    expect(TODAY_SCREEN_SRC).toContain('spotlightState.latestEntry')
+    expect(TODAY_SCREEN_SRC).toContain('entryId')
+    // Must NOT independently reference todayEntries[0] in the handler
+    expect(TODAY_SCREEN_SRC).not.toMatch(/handleViewTodayJuice[\s\S]*?todayEntries\[0\]/)
   })
 
   test('has handleUseFocusCombo for Today\'s Focus combos', () => {

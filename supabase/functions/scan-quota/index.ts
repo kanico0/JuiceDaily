@@ -39,6 +39,12 @@ Deno.serve(async (req) => {
   // to get the real usage. If the user has no quota rows yet (never
   // scanned), resolve_quota creates them with the default free-plan
   // allowance — which is the correct behavior.
+  //
+  // On RPC/network/server failure, we return quota:null (unknown)
+  // rather than fabricating used:0/remaining:1. The client treats
+  // null quota as "unable to verify access" and blocks the camera
+  // until authoritative state is established — it never interprets
+  // unknown as "unused" or grants a complimentary Snap.
   if (userData.user.is_anonymous === true) {
     try {
       const { data: anonData, error: anonError } = await admin.rpc('resolve_quota', {
@@ -46,19 +52,8 @@ Deno.serve(async (req) => {
       })
       if (anonError) {
         console.error('[scan-quota] anonymous resolve failed:', anonError.message)
-        // Fall back to static free-plan values on error
-        return json(200, {
-          quota: {
-            plan: 'free',
-            limit: 1,
-            used: 0,
-            remaining: 1,
-            periodStart: '',
-            periodEnd: '',
-            dailyLimit: null,
-            dailyUsed: null,
-          },
-        })
+        // Return unknown state — client must NOT interpret as 0/1
+        return json(200, { quota: null })
       }
       const aq = anonData as Record<string, unknown>
       const aLimit = Number(aq.scan_limit ?? 0)
@@ -78,18 +73,8 @@ Deno.serve(async (req) => {
       })
     } catch (e) {
       console.error('[scan-quota] anonymous exception:', (e as Error)?.message)
-      return json(200, {
-        quota: {
-          plan: 'free',
-          limit: 1,
-          used: 0,
-          remaining: 1,
-          periodStart: '',
-          periodEnd: '',
-          dailyLimit: null,
-          dailyUsed: null,
-        },
-      })
+      // Return unknown state — client must NOT interpret as 0/1
+      return json(200, { quota: null })
     }
   }
 

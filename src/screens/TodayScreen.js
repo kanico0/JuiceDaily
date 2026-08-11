@@ -495,17 +495,20 @@ export default function TodayScreen({ navigation }) {
   const produceList = useMemo(() => getProduceList(todayLog), [todayLog])
 
   // -- View Today's Juice: navigate to History entry details --
-  // Opens the History screen with the latest today entry pre-selected
-  // so the EntryDetailsModal shows the actual juice the user logged.
+  // Uses spotlightState.latestEntry.id — the exact entry the card is
+  // displaying — rather than independently inferring from
+  // todayEntries[0]. This guarantees the button always opens the same
+  // juice the card shows, even if another juice is logged later that
+  // day (the card and handler update together via spotlightState).
   const handleViewTodayJuice = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-    const latestEntry = todayEntries[0]
-    if (!latestEntry) return
+    const entryId = spotlightState.latestEntry?.id
+    if (!entryId) return
     navigation.navigate('HistoryTab', {
       screen: 'HistoryHome',
-      params: { openEntryId: latestEntry.id },
+      params: { openEntryId: entryId },
     })
-  }, [navigation, todayEntries])
+  }, [navigation, spotlightState.latestEntry])
 
   // -- Simple Blend selection (deterministic daily from RECIPES) --
   const simpleBlend = useMemo(() => {

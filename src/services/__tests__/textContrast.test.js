@@ -204,7 +204,7 @@ describe('Fine print contrast on dark surfaces', () => {
       'DashboardScreen.js', 'RecipeDetailScreen.js', 'WeeklyReportScreen.js',
       'VitalityHistoryScreen.js', 'VaultScreen.js', 'HallOfVitalityScreen.js',
       'NoviceJourneyScreen.js', 'MonthlyWrapScreen.js',
-      'BeginnerGlowPathScreen.js', 'FridgeForagerScreen.js',
+      'BeginnerGlowPathScreen.js',
       'GlowLibraryScreen.js', 'JuiceCalculatorScreen.js',
       'ProduceRecipeResultsScreen.js', 'SeasonalGlowPacksScreen.js',
     ]

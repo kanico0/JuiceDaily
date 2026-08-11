@@ -18,8 +18,6 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import * as Haptics from 'expo-haptics'
 import {
   Calculator,
-  ShoppingCart,
-  BookTemplate,
   Trophy,
   Clock,
   Award,
@@ -42,24 +40,6 @@ const TOOLS = [
     color: '#CE93D8',
     route: 'JuiceCalculator',
     flag: 'ff_juice_calculator',
-  },
-  {
-    id: 'pantry',
-    label: 'Smart Pantry',
-    desc: 'Track what you have, use it before it expires',
-    icon: ShoppingCart,
-    color: '#81C784',
-    route: 'FridgeForager',
-    flag: 'ff_smart_pantry',
-  },
-  {
-    id: 'templates',
-    label: 'Juice Templates',
-    desc: 'Save and reuse your favorite recipes',
-    icon: BookTemplate,
-    color: '#64B5F6',
-    route: 'FridgeForager',
-    flag: 'ff_templates',
   },
   {
     id: 'challenges',

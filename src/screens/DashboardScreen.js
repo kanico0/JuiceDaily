@@ -414,7 +414,7 @@ export default function DashboardScreen({ navigation, route }) {
               vitalityScore={vitalityScore}
               streak={challenge.streak}
               onLogJuice={(target) => {
-                if (target === 'recipes') navigation.navigate('FridgeForager')
+                if (target === 'recipes') navigation.navigate('ExploreTab')
                 else handleQuickLog()
               }}
             />
@@ -437,13 +437,9 @@ export default function DashboardScreen({ navigation, route }) {
                     weeklyStats,
                     weeklyDiversity,
                   })
-                  navigation.navigate('FridgeForager', {
-                    suggestFor: item.produceId,
-                    aiSuggestions,
-                    prioritizeExpiring: true,
-                  })
+                  navigation.navigate('ExploreTab')
                 } else {
-                  navigation.navigate('FridgeForager', { suggestFor: item.produceId })
+                  navigation.navigate('ExploreTab')
                 }
               }}
             />
@@ -467,7 +463,7 @@ export default function DashboardScreen({ navigation, route }) {
           {starterTip && (
             <TouchableOpacity
               style={styles.tipBubble}
-              onPress={() => navigation.navigate('FridgeForager')}
+              onPress={() => navigation.navigate('ExploreTab')}
               activeOpacity={0.8}
             >
               <LinearGradient
@@ -647,7 +643,7 @@ export default function DashboardScreen({ navigation, route }) {
               style={styles.dockBtnSecondary}
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-                navigation.navigate('FridgeForager')
+                navigation.navigate('ExploreTab')
               }}
               activeOpacity={0.7}
             >

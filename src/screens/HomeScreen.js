@@ -616,6 +616,13 @@ const ROUTE_SOURCE_TO_LOG_SOURCE = {
   todays_focus: 'todays_focus',
   history_make_again: 'make_again',
   checkin: 'manual',
+  browse_ideas: 'browse_ideas',
+  wellness_focus: 'wellness_focus',
+  simple_blend: 'simple_blend',
+  seasonal_glow: 'seasonal_glow',
+  produce_recipe: 'produce_recipe',
+  glow_library: 'glow_library',
+  beginner_glow: 'beginner_glow',
 }
 
 function resolveLogSource(routeSource, cameraUsed, manualEntry) {

@@ -92,7 +92,7 @@ export default function BeginnerGlowPathScreen({ navigation }) {
               recipe={r}
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-                navigation.navigate('RecipeDetail', { recipeId: r.id })
+                navigation.navigate('RecipeDetail', { recipeId: r.id, origin: 'beginnerGlow' })
               }}
             />
           ))}

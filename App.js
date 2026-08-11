@@ -26,7 +26,6 @@ import { OrganicPrefProvider } from './src/utils/organicPreference'
 import { ActivationProvider, useActivation } from './src/services/ActivationStore'
 import DashboardScreen from './src/screens/DashboardScreen'
 import JuiceSnapScreen from './src/screens/HomeScreen'
-import FridgeForagerScreen from './src/screens/FridgeForagerScreen'
 import RecipeDetailScreen from './src/screens/RecipeDetailScreen'
 import WeeklyReportScreen from './src/screens/WeeklyReportScreen'
 import HallOfVitalityScreen from './src/screens/HallOfVitalityScreen'
@@ -79,7 +78,6 @@ function addSharedScreens(StackNav) {
   return (
     <>
       <StackNav.Screen name="JuiceSnap" component={JuiceSnapScreen} />
-      <StackNav.Screen name="FridgeForager" component={FridgeForagerScreen} />
       <StackNav.Screen name="RecipeDetail" component={RecipeDetailScreen} />
       <StackNav.Screen name="GlowLibrary" component={GlowLibraryScreen} />
       <StackNav.Screen name="SeasonalGlowPacks" component={SeasonalGlowPacksScreen} />

@@ -61,7 +61,7 @@ export default function SnapGateModal({ visible, onDismiss, onUpgrade, onBuyPack
           <Text style={styles.body}>
             You've used your 1 Free Snap for {monthName}.{' '}
             <Text style={styles.proHighlight}>Wellness Architects</Text> get 12 AI Snaps each month,
-            instant nutrient breakdown, and Fridge Forager integration.
+            instant nutrient breakdown, and expanded ingredient analysis.
           </Text>
 
           {/* What you're missing preview */}
@@ -77,7 +77,7 @@ export default function SnapGateModal({ visible, onDismiss, onUpgrade, onBuyPack
             </View>
             <View style={styles.previewRow}>
               <ShoppingBag size={14} color="#CE93D8" />
-              <Text style={styles.previewText}>Fridge Forager recipe matching</Text>
+              <Text style={styles.previewText}>Browse Juice Ideas recipe matching</Text>
             </View>
           </View>
 

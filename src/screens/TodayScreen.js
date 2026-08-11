@@ -567,7 +567,7 @@ export default function TodayScreen({ navigation }) {
     if (!simpleBlend) return
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
     trackEvent('simple_blend_tapped', { source: 'today_screen' })
-    navigation.navigate('RecipeDetail', { recipeId: simpleBlend.id })
+    navigation.navigate('RecipeDetail', { recipeId: simpleBlend.id, origin: 'simpleBlend' })
   }, [navigation, simpleBlend])
 
   // Progressive unlock checks (log-count based + feature flag)
@@ -749,7 +749,7 @@ export default function TodayScreen({ navigation }) {
                     style={styles.exploreBtn}
                     onPress={() => {
                       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-                      navigation.navigate('FridgeForager')
+                      navigation.navigate('ExploreTab')
                     }}
                     activeOpacity={0.7}
                     accessibilityRole="button"

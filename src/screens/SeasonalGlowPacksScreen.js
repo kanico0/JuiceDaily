@@ -79,7 +79,7 @@ export default function SeasonalGlowPacksScreen({ navigation }) {
 
   const handleOpenRecipe = useCallback((recipeId) => {
     if (isPaywallDisabled) {
-      navigation.navigate('RecipeDetail', { recipeId })
+      navigation.navigate('RecipeDetail', { recipeId, origin: 'seasonalGlow' })
       return
     }
 
@@ -88,7 +88,7 @@ export default function SeasonalGlowPacksScreen({ navigation }) {
       return
     }
 
-    navigation.navigate('RecipeDetail', { recipeId })
+    navigation.navigate('RecipeDetail', { recipeId, origin: 'seasonalGlow' })
   }, [navigation, isPaywallDisabled, isPaywallForced])
 
   return (

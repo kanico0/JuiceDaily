@@ -54,6 +54,14 @@ describe('History Provenance — HomeScreen source resolution', () => {
     expect(HOME_SCREEN_SRC).toContain("todays_focus: 'todays_focus'")
     expect(HOME_SCREEN_SRC).toContain("history_make_again: 'make_again'")
     expect(HOME_SCREEN_SRC).toContain("checkin: 'manual'")
+    // New recipe-source provenance types
+    expect(HOME_SCREEN_SRC).toContain("browse_ideas: 'browse_ideas'")
+    expect(HOME_SCREEN_SRC).toContain("wellness_focus: 'wellness_focus'")
+    expect(HOME_SCREEN_SRC).toContain("simple_blend: 'simple_blend'")
+    expect(HOME_SCREEN_SRC).toContain("seasonal_glow: 'seasonal_glow'")
+    expect(HOME_SCREEN_SRC).toContain("produce_recipe: 'produce_recipe'")
+    expect(HOME_SCREEN_SRC).toContain("glow_library: 'glow_library'")
+    expect(HOME_SCREEN_SRC).toContain("beginner_glow: 'beginner_glow'")
   })
 
   test('camera usage overrides recipe origin', () => {
@@ -102,6 +110,11 @@ describe('History Provenance — HistoryScreen display', () => {
     expect(HISTORY_SCREEN_SRC).toContain('todays_focus: Target')
     expect(HISTORY_SCREEN_SRC).toContain('today_spotlight: Compass')
     expect(HISTORY_SCREEN_SRC).toContain('make_again: RefreshCw')
+    expect(HISTORY_SCREEN_SRC).toContain('simple_blend: Sparkle')
+    expect(HISTORY_SCREEN_SRC).toContain('seasonal_glow: Sun')
+    expect(HISTORY_SCREEN_SRC).toContain('produce_recipe: Leaf')
+    expect(HISTORY_SCREEN_SRC).toContain('glow_library: Trophy')
+    expect(HISTORY_SCREEN_SRC).toContain('beginner_glow: Beaker')
     expect(HISTORY_SCREEN_SRC).toContain('unknown: Droplets')
   })
 
@@ -113,6 +126,11 @@ describe('History Provenance — HistoryScreen display', () => {
     expect(HISTORY_SCREEN_SRC).toContain("todays_focus: \"Today's Focus\"")
     expect(HISTORY_SCREEN_SRC).toContain("today_spotlight: \"Today's Juice Spotlight\"")
     expect(HISTORY_SCREEN_SRC).toContain("make_again: 'Made Again'")
+    expect(HISTORY_SCREEN_SRC).toContain("simple_blend: 'Simple Blend'")
+    expect(HISTORY_SCREEN_SRC).toContain("seasonal_glow: 'Seasonal Glow Pack'")
+    expect(HISTORY_SCREEN_SRC).toContain("produce_recipe: 'Produce Recipe'")
+    expect(HISTORY_SCREEN_SRC).toContain("glow_library: 'Glow Library'")
+    expect(HISTORY_SCREEN_SRC).toContain("beginner_glow: 'Beginner Glow Path'")
     expect(HISTORY_SCREEN_SRC).toContain("unknown: 'Juice Entry'")
   })
 
@@ -144,58 +162,76 @@ describe('History Provenance — HistoryScreen display', () => {
 // ── 4. RecipeDetailScreen source mapping ──────────────────────
 
 describe('History Provenance — RecipeDetailScreen', () => {
+  test('has RECIPE_ORIGIN_TO_SOURCE mapping object', () => {
+    expect(RECIPE_DETAIL_SRC).toContain('RECIPE_ORIGIN_TO_SOURCE')
+  })
+
   test('maps browseIdeas origin to browse_ideas source', () => {
-    expect(RECIPE_DETAIL_SRC).toContain("origin === 'browseIdeas'")
-    expect(RECIPE_DETAIL_SRC).toContain("'browse_ideas'")
+    expect(RECIPE_DETAIL_SRC).toContain("browseIdeas: 'browse_ideas'")
   })
 
   test('maps wellnessFocus origin to wellness_focus source', () => {
-    expect(RECIPE_DETAIL_SRC).toContain("origin === 'wellnessFocus'")
-    expect(RECIPE_DETAIL_SRC).toContain("'wellness_focus'")
+    expect(RECIPE_DETAIL_SRC).toContain("wellnessFocus: 'wellness_focus'")
   })
 
-  test('non-browse/non-wellness origins use recipe source (NOT browse_ideas)', () => {
-    // The ternary should fall through to 'recipe' for unknown origins
-    expect(RECIPE_DETAIL_SRC).toContain("'recipe'")
-    // Should NOT default to browse_ideas for all non-wellness origins
-    expect(RECIPE_DETAIL_SRC).not.toContain("origin === 'wellnessFocus' ? 'wellness_focus' : 'browse_ideas'")
+  test('maps simpleBlend origin to simple_blend source', () => {
+    expect(RECIPE_DETAIL_SRC).toContain("simpleBlend: 'simple_blend'")
+  })
+
+  test('maps seasonalGlow origin to seasonal_glow source', () => {
+    expect(RECIPE_DETAIL_SRC).toContain("seasonalGlow: 'seasonal_glow'")
+  })
+
+  test('maps produceRecipe origin to produce_recipe source', () => {
+    expect(RECIPE_DETAIL_SRC).toContain("produceRecipe: 'produce_recipe'")
+  })
+
+  test('maps glowLibrary origin to glow_library source', () => {
+    expect(RECIPE_DETAIL_SRC).toContain("glowLibrary: 'glow_library'")
+  })
+
+  test('maps beginnerGlow origin to beginner_glow source', () => {
+    expect(RECIPE_DETAIL_SRC).toContain("beginnerGlow: 'beginner_glow'")
+  })
+
+  test('unknown origin falls back to recipe source', () => {
+    expect(RECIPE_DETAIL_SRC).toContain("RECIPE_ORIGIN_TO_SOURCE[origin] || 'recipe'")
   })
 
   test('passes manualEntry: true (correct UX for recipe launches)', () => {
     expect(RECIPE_DETAIL_SRC).toContain('manualEntry: true')
   })
 
-  test('HomeScreen maps recipe source to manual (not browse_ideas)', () => {
+  test('HomeScreen maps recipe source to manual (fallback for unknown origins)', () => {
     expect(HOME_SCREEN_SRC).toContain("recipe: 'manual'")
-    expect(HOME_SCREEN_SRC).not.toContain("recipe: 'browse_ideas'")
   })
 })
 
 // ── 4b. RecipeDetail non-browse origins audit ─────────────────
 
 describe('History Provenance — non-browse RecipeDetail origins', () => {
-  // These screens navigate to RecipeDetail WITHOUT passing origin:
-  // - TodayScreen (Simple Blend)
-  // - FridgeForagerScreen
-  // - SeasonalGlowPacksScreen
-  // - ProduceRecipeResultsScreen
-  // - GlowLibraryScreen
-  // - BeginnerGlowPathScreen
-  // They must NOT be falsely labeled browse_ideas.
+  // These screens now pass specific origins to RecipeDetail:
+  // - TodayScreen (Simple Blend) → origin: 'simpleBlend'
+  // - SeasonalGlowPacksScreen → origin: 'seasonalGlow'
+  // - ProduceRecipeResultsScreen → origin: 'produceRecipe'
+  // - GlowLibraryScreen → origin: 'glowLibrary'
+  // - BeginnerGlowPathScreen → origin: 'beginnerGlow'
+  // Each gets its own provenance source — NOT falsely labeled browse_ideas.
 
-  test('RecipeDetailScreen only maps browseIdeas and wellnessFocus to specific sources', () => {
-    // The source mapping should be a three-way ternary, not a binary
-    // default to browse_ideas
-    const mappingMatch = RECIPE_DETAIL_SRC.match(
-      /const recipeSource = origin === 'browseIdeas'[\s\S]*?'recipe'/
-    )
-    expect(mappingMatch).toBeTruthy()
+  test('RecipeDetailScreen maps all 7 origins to specific sources', () => {
+    // The mapping should use a lookup object, not a binary default
+    expect(RECIPE_DETAIL_SRC).toContain('RECIPE_ORIGIN_TO_SOURCE')
+    // All 7 origins should be in the mapping
+    expect(RECIPE_DETAIL_SRC).toContain('browseIdeas')
+    expect(RECIPE_DETAIL_SRC).toContain('wellnessFocus')
+    expect(RECIPE_DETAIL_SRC).toContain('simpleBlend')
+    expect(RECIPE_DETAIL_SRC).toContain('seasonalGlow')
+    expect(RECIPE_DETAIL_SRC).toContain('produceRecipe')
+    expect(RECIPE_DETAIL_SRC).toContain('glowLibrary')
+    expect(RECIPE_DETAIL_SRC).toContain('beginnerGlow')
   })
 
   test('RecipeDetailScreen does NOT default non-wellness to browse_ideas', () => {
-    // Old code: origin === 'wellnessFocus' ? 'wellness_focus' : 'browse_ideas'
-    // This would falsely label Simple Blend, Fridge Forager, Glow Library,
-    // Seasonal Glow, Produce-First, and Beginner Glow Path as Browse Juice Ideas.
     expect(RECIPE_DETAIL_SRC).not.toMatch(/'wellness_focus'\s*:\s*'browse_ideas'/)
   })
 })
@@ -281,5 +317,69 @@ describe('History Provenance — source contract invariants', () => {
 
   test('make_again source preserved from history_make_again route', () => {
     expect(HOME_SCREEN_SRC).toContain("history_make_again: 'make_again'")
+  })
+})
+
+// ── 9. Fridge Forager removal verification ───────────────────
+
+describe('Fridge Forager removal', () => {
+  const APP_SRC = readSrc('../../../App.js')
+
+  test('App.js does not import FridgeForagerScreen', () => {
+    expect(APP_SRC).not.toContain('FridgeForagerScreen')
+  })
+
+  test('App.js does not register FridgeForager route', () => {
+    expect(APP_SRC).not.toContain('"FridgeForager"')
+    expect(APP_SRC).not.toContain("'FridgeForager'")
+  })
+
+  test('FridgeForagerScreen.js file no longer exists', () => {
+    const screenPath = path.join(__dirname, '../FridgeForagerScreen.js')
+    expect(fs.existsSync(screenPath)).toBe(false)
+  })
+
+  test('fridgeForagerVirtualization test file no longer exists', () => {
+    const testPath = path.join(__dirname, 'fridgeForagerVirtualization.test.js')
+    expect(fs.existsSync(testPath)).toBe(false)
+  })
+
+  test('TodayScreen does not navigate to FridgeForager', () => {
+    expect(TODAY_SCREEN_SRC).not.toContain("navigate('FridgeForager')")
+  })
+
+  test('DashboardScreen does not navigate to FridgeForager', () => {
+    const dashSrc = readSrc('../../screens/DashboardScreen.js')
+    expect(dashSrc).not.toContain("navigate('FridgeForager'")
+  })
+
+  test('WeeklyReportScreen does not navigate to FridgeForager', () => {
+    const weeklySrc = readSrc('../../screens/WeeklyReportScreen.js')
+    expect(weeklySrc).not.toContain("navigate('FridgeForager'")
+  })
+
+  test('ProStore does not list fridgeForager feature', () => {
+    const proSrc = readSrc('../../services/ProStore.js')
+    expect(proSrc).not.toContain('fridgeForager')
+  })
+
+  test('SnapGateModal does not mention Fridge Forager', () => {
+    const snapSrc = readSrc('../../components/SnapGateModal.js')
+    expect(snapSrc).not.toContain('Fridge Forager')
+  })
+
+  test('NotificationLibrary does not reference open_fridge_forager', () => {
+    const notifSrc = readSrc('../../constants/NotificationLibrary.js')
+    expect(notifSrc).not.toContain('open_fridge_forager')
+  })
+
+  test('OptimizeScreen does not route to FridgeForager', () => {
+    const optSrc = readSrc('../../screens/OptimizeScreen.js')
+    expect(optSrc).not.toContain("route: 'FridgeForager'")
+  })
+
+  test('HistoryScreen does not have a fridge_forager source type', () => {
+    expect(HISTORY_SCREEN_SRC).not.toContain('fridge_forager')
+    expect(HISTORY_SCREEN_SRC).not.toContain('Fridge Forager')
   })
 })

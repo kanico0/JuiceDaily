@@ -186,7 +186,7 @@ export const ONBOARDING_SEQUENCE = [
     dayOffset: 1,
     title: '🔥 Don\'t Break the Seal!',
     body: 'Your first streak is one juice away. Let\'s find a recipe with what you have.',
-    data: { type: 'onboarding', step: 3, action: 'open_fridge_forager' },
+    data: { type: 'onboarding', step: 3, action: 'open_explore' },
     condition: 'rings_at_zero',
   },
 ]

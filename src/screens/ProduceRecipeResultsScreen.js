@@ -199,7 +199,7 @@ export default function ProduceRecipeResultsScreen({ route, navigation }) {
 
   const handleOpenRecipe = useCallback((recipeId) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-    navigation.navigate('RecipeDetail', { recipeId })
+    navigation.navigate('RecipeDetail', { recipeId, origin: 'produceRecipe' })
   }, [navigation])
 
   const renderCard = useCallback(({ item }) => (

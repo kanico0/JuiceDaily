@@ -73,7 +73,7 @@ export default function GlowLibraryScreen({ navigation }) {
 
   const handleOpenRecipe = useCallback((recipeId) => {
     if (isPaywallDisabled) {
-      navigation.navigate('RecipeDetail', { recipeId })
+      navigation.navigate('RecipeDetail', { recipeId, origin: 'glowLibrary' })
       return
     }
 
@@ -82,7 +82,7 @@ export default function GlowLibraryScreen({ navigation }) {
       return
     }
 
-    navigation.navigate('RecipeDetail', { recipeId })
+    navigation.navigate('RecipeDetail', { recipeId, origin: 'glowLibrary' })
   }, [navigation, isPaywallDisabled, isPaywallForced])
 
   return (

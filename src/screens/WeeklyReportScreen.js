@@ -144,7 +144,7 @@ export default function WeeklyReportScreen({ navigation }) {
 
   const handleRecipePress = (colorKey) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-    navigation.navigate('FridgeForager', { filterColor: colorKey })
+    navigation.navigate('ExploreTab')
   }
 
   // Find first missing color for the hint
@@ -278,7 +278,7 @@ export default function WeeklyReportScreen({ navigation }) {
             style={styles.ctaBtn}
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
-              navigation.navigate('FridgeForager')
+              navigation.navigate('ExploreTab')
             }}
             activeOpacity={0.7}
           >

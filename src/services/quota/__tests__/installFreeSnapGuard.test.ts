@@ -39,16 +39,44 @@ jest.mock('@react-native-async-storage/async-storage', () => ({
 
 import {
   INSTALL_FREE_SNAP_KEY,
+  INSTALL_ANCHOR_KEY,
   getInstallFreeSnapRemaining,
   markInstallFreeSnapConsumed,
   clearInstallFreeSnapState,
+  clearInstallAnchor,
   composeEffectiveQuota,
   selfHealInstallMarker,
+  getOrCreateInstallAnchor,
+  computeInstallWindowKey,
+  addMonthsFromAnchor,
+  anniversaryWindowStart,
 } from '../installFreeSnapGuard'
 import type { ScanQuotaSnapshot } from '../../subscriptions/subscriptionTypes'
 
-const WINDOW_JAN = '2025-01-01T00:00:00Z'
-const WINDOW_FEB = '2025-02-01T00:00:00Z'
+// Generate test window dates relative to the current time so tests
+// work regardless of when they run.
+const NOW = new Date()
+const CURRENT_WINDOW_START = new Date(Date.UTC(
+  NOW.getUTCFullYear(),
+  NOW.getUTCMonth(),
+  NOW.getUTCDate(),
+  0, 0, 0,
+)).toISOString()
+const NEXT_WINDOW_START = new Date(Date.UTC(
+  NOW.getUTCFullYear(),
+  NOW.getUTCMonth() + 1,
+  NOW.getUTCDate(),
+  0, 0, 0,
+)).toISOString()
+const PREV_WINDOW_START = new Date(Date.UTC(
+  NOW.getUTCFullYear(),
+  NOW.getUTCMonth() - 1,
+  NOW.getUTCDate(),
+  0, 0, 0,
+)).toISOString()
+
+const WINDOW_JAN = CURRENT_WINDOW_START
+const WINDOW_FEB = NEXT_WINDOW_START
 
 function makeFreeQuota(overrides: Partial<ScanQuotaSnapshot> = {}): ScanQuotaSnapshot {
   return {
@@ -57,7 +85,7 @@ function makeFreeQuota(overrides: Partial<ScanQuotaSnapshot> = {}): ScanQuotaSna
     used: 0,
     remaining: 1,
     periodStart: WINDOW_JAN,
-    periodEnd: '2025-02-01T00:00:00Z',
+    periodEnd: WINDOW_FEB,
     dailyLimit: null,
     dailyUsed: null,
     ...overrides,
@@ -71,7 +99,7 @@ function makeProQuota(overrides: Partial<ScanQuotaSnapshot> = {}): ScanQuotaSnap
     used: 0,
     remaining: 12,
     periodStart: WINDOW_JAN,
-    periodEnd: '2025-02-01T00:00:00Z',
+    periodEnd: WINDOW_FEB,
     dailyLimit: 10,
     dailyUsed: 0,
     ...overrides,
@@ -105,7 +133,7 @@ describe('installFreeSnapGuard', () => {
   describe('2. Successful guest Snap leaves zero effective remaining', () => {
     it('markInstallFreeSnapConsumed sets the marker for the current window', async () => {
       const quota = makeFreeQuota()
-      await markInstallFreeSnapConsumed(quota.periodStart)
+      await markInstallFreeSnapConsumed(quota)
 
       const remaining = await getInstallFreeSnapRemaining(quota)
       expect(remaining).toBe(0)
@@ -113,7 +141,7 @@ describe('installFreeSnapGuard', () => {
 
     it('composeEffectiveQuota returns 0 remaining after consumption', async () => {
       const quota = makeFreeQuota({ remaining: 0, used: 1 })
-      await markInstallFreeSnapConsumed(quota.periodStart)
+      await markInstallFreeSnapConsumed(quota)
       const installRem = await getInstallFreeSnapRemaining(quota)
 
       const effective = composeEffectiveQuota(quota, installRem)
@@ -124,7 +152,7 @@ describe('installFreeSnapGuard', () => {
 
     it('effective remaining is min(server, install) — server 0, install 0 → 0', async () => {
       const quota = makeFreeQuota({ remaining: 0, used: 1 })
-      await markInstallFreeSnapConsumed(quota.periodStart)
+      await markInstallFreeSnapConsumed(quota)
       const installRem = await getInstallFreeSnapRemaining(quota)
       const effective = composeEffectiveQuota(quota, installRem)
       expect(effective!.remaining).toBe(0)
@@ -136,7 +164,7 @@ describe('installFreeSnapGuard', () => {
     it('install marker persists across identity changes (same window)', async () => {
       // Guest A consumes the snap
       const quotaA = makeFreeQuota({ remaining: 1, used: 0 })
-      await markInstallFreeSnapConsumed(quotaA.periodStart)
+      await markInstallFreeSnapConsumed(quotaA)
 
       // After logout, a new anonymous UUID B gets a fresh server quota
       // (same monthly window, different UUID, server reports 0/1)
@@ -155,7 +183,7 @@ describe('installFreeSnapGuard', () => {
 
     it('the marker is keyed by window, not by UUID', async () => {
       // Simulate: UUID A consumes, then UUID B checks
-      await markInstallFreeSnapConsumed(WINDOW_JAN)
+      await markInstallFreeSnapConsumed(makeFreeQuota())
 
       // UUID B's quota has the same periodStart (same calendar month)
       const quotaB = makeFreeQuota({ periodStart: WINDOW_JAN })
@@ -168,7 +196,7 @@ describe('installFreeSnapGuard', () => {
   describe('4. App restart preserves the exhausted install marker', () => {
     it('marker survives a simulated restart (re-read from AsyncStorage)', async () => {
       const quota = makeFreeQuota()
-      await markInstallFreeSnapConsumed(quota.periodStart)
+      await markInstallFreeSnapConsumed(quota)
 
       // Simulate restart: the in-memory state is gone, but AsyncStorage
       // (mockStore) retains the record. A fresh read should find it.
@@ -177,13 +205,23 @@ describe('installFreeSnapGuard', () => {
       expect(remaining).toBe(0)
     })
 
-    it('the persisted record has the correct windowKey', async () => {
+    it('the persisted record has the correct windowKey (from install anchor)', async () => {
       const quota = makeFreeQuota()
-      await markInstallFreeSnapConsumed(quota.periodStart)
+      await markInstallFreeSnapConsumed(quota)
 
+      // The install anchor is seeded from the first periodStart
+      const anchorRaw = mockStore.get(INSTALL_ANCHOR_KEY)
+      expect(anchorRaw).toBeDefined()
+      const anchorParsed = JSON.parse(anchorRaw!)
+      expect(anchorParsed.anchorISO).toBe(WINDOW_JAN)
+
+      // The consumed marker's windowKey is computed from the anchor
       const raw = mockStore.get(INSTALL_FREE_SNAP_KEY)
       expect(raw).toBeDefined()
       const parsed = JSON.parse(raw!)
+      // The windowKey is the anniversary window start computed from
+      // the install anchor (which was seeded from WINDOW_JAN).
+      // Since the anchor IS WINDOW_JAN, the window start is WINDOW_JAN.
       expect(parsed.windowKey).toBe(WINDOW_JAN)
       expect(typeof parsed.consumedAt).toBe('string')
     })
@@ -193,7 +231,7 @@ describe('installFreeSnapGuard', () => {
   describe('5. Login to a different Free account remains exhausted', () => {
     it('different Free account in the same window is still exhausted', async () => {
       // Original guest consumed the snap
-      await markInstallFreeSnapConsumed(WINDOW_JAN)
+      await markInstallFreeSnapConsumed(makeFreeQuota())
 
       // A different Free account logs in (same monthly window)
       const differentAccountQuota = makeFreeQuota({
@@ -213,7 +251,7 @@ describe('installFreeSnapGuard', () => {
   describe('6. Login back to the original Free account remains exhausted', () => {
     it('returning to the original account in the same window is still exhausted', async () => {
       // Original account consumed the snap
-      await markInstallFreeSnapConsumed(WINDOW_JAN)
+      await markInstallFreeSnapConsumed(makeFreeQuota())
 
       // User logs out, then logs back into the original account
       const originalAccountQuota = makeFreeQuota({
@@ -233,7 +271,7 @@ describe('installFreeSnapGuard', () => {
   describe('7. Pro account on the same installation follows Pro quota normally', () => {
     it('Pro quota bypasses the install guard entirely', async () => {
       // Even if the install marker is consumed for Free
-      await markInstallFreeSnapConsumed(WINDOW_JAN)
+      await markInstallFreeSnapConsumed(makeFreeQuota())
 
       const proQuota = makeProQuota({ remaining: 12, used: 0 })
       // composeEffectiveQuota for Pro returns the server quota as-is
@@ -278,7 +316,7 @@ describe('installFreeSnapGuard', () => {
     })
 
     it('clearInstallFreeSnapState restores the allowance', async () => {
-      await markInstallFreeSnapConsumed(WINDOW_JAN)
+      await markInstallFreeSnapConsumed(makeFreeQuota())
       await clearInstallFreeSnapState()
 
       const quota = makeFreeQuota()
@@ -293,9 +331,9 @@ describe('installFreeSnapGuard', () => {
       const quota = makeFreeQuota()
 
       // Call mark multiple times
-      await markInstallFreeSnapConsumed(quota.periodStart)
-      await markInstallFreeSnapConsumed(quota.periodStart)
-      await markInstallFreeSnapConsumed(quota.periodStart)
+      await markInstallFreeSnapConsumed(quota)
+      await markInstallFreeSnapConsumed(quota)
+      await markInstallFreeSnapConsumed(quota)
 
       // Only one record should exist
       const raw = mockStore.get(INSTALL_FREE_SNAP_KEY)
@@ -319,39 +357,53 @@ describe('installFreeSnapGuard', () => {
   // ── 10. A new legitimate monthly window resets the install allowance ─
   describe('10. A new legitimate monthly window resets the install allowance', () => {
     it('different periodStart (new month) resets the allowance to 1', async () => {
-      // Consume in January
+      // Consume in the current window
       const janQuota = makeFreeQuota({ periodStart: WINDOW_JAN })
-      await markInstallFreeSnapConsumed(janQuota.periodStart)
+      await markInstallFreeSnapConsumed(janQuota)
       expect(await getInstallFreeSnapRemaining(janQuota)).toBe(0)
 
-      // February is a new window
+      // Simulate time passing to the next install anniversary window
+      jest.useFakeTimers().setSystemTime(new Date(WINDOW_FEB))
+
+      // Next window is a new install anniversary window
       const febQuota = makeFreeQuota({ periodStart: WINDOW_FEB })
       const remaining = await getInstallFreeSnapRemaining(febQuota)
       expect(remaining).toBe(1)
+
+      jest.useRealTimers()
     })
 
     it('composeEffectiveQuota reflects the reset in the new window', async () => {
-      await markInstallFreeSnapConsumed(WINDOW_JAN)
+      await markInstallFreeSnapConsumed(makeFreeQuota())
+
+      jest.useFakeTimers().setSystemTime(new Date(WINDOW_FEB))
 
       const febQuota = makeFreeQuota({ periodStart: WINDOW_FEB, remaining: 1, used: 0 })
       const installRem = await getInstallFreeSnapRemaining(febQuota)
       const effective = composeEffectiveQuota(febQuota, installRem)
       expect(effective!.remaining).toBe(1)
       expect(effective!.used).toBe(0)
+
+      jest.useRealTimers()
     })
 
     it('marking consumption in the new window does not affect the old window', async () => {
-      await markInstallFreeSnapConsumed(WINDOW_JAN)
-      await markInstallFreeSnapConsumed(WINDOW_FEB)
+      await markInstallFreeSnapConsumed(makeFreeQuota())
 
-      // The record now points to February
+      jest.useFakeTimers().setSystemTime(new Date(WINDOW_FEB))
+
+      await markInstallFreeSnapConsumed(makeFreeQuota({ periodStart: WINDOW_FEB }))
+
+      // The record now points to the next window (computed from install anchor)
       const raw = mockStore.get(INSTALL_FREE_SNAP_KEY)
       const parsed = JSON.parse(raw!)
       expect(parsed.windowKey).toBe(WINDOW_FEB)
 
-      // February is consumed
+      // Next window is consumed
       const febQuota = makeFreeQuota({ periodStart: WINDOW_FEB })
       expect(await getInstallFreeSnapRemaining(febQuota)).toBe(0)
+
+      jest.useRealTimers()
     })
   })
 
@@ -430,7 +482,7 @@ describe('installFreeSnapGuard', () => {
     })
 
     it('clearInstallFreeSnapState removes the record', async () => {
-      await markInstallFreeSnapConsumed(WINDOW_JAN)
+      await markInstallFreeSnapConsumed(makeFreeQuota())
       expect(mockStore.has(INSTALL_FREE_SNAP_KEY)).toBe(true)
 
       await clearInstallFreeSnapState()
@@ -453,7 +505,7 @@ describe('composeEffectiveQuota integration scenarios', () => {
     expect(effective!.remaining).toBe(1) // Available
 
     // 2. Successful scan: server commits, install guard consumed
-    await markInstallFreeSnapConsumed(freshQuota.periodStart)
+    await markInstallFreeSnapConsumed(freshQuota)
     const postScanQuota = makeFreeQuota({ remaining: 0, used: 1 })
     installRem = await getInstallFreeSnapRemaining(postScanQuota)
     effective = composeEffectiveQuota(postScanQuota, installRem)
@@ -469,21 +521,26 @@ describe('composeEffectiveQuota integration scenarios', () => {
   })
 
   it('full lifecycle: fresh → consume → new month → reset', async () => {
-    // Consume in January
+    // Consume in the current window
     const janQuota = makeFreeQuota({ periodStart: WINDOW_JAN })
-    await markInstallFreeSnapConsumed(janQuota.periodStart)
+    await markInstallFreeSnapConsumed(janQuota)
 
-    // New month: February
+    // Simulate time passing to the next install anniversary window
+    jest.useFakeTimers().setSystemTime(new Date(WINDOW_FEB))
+
+    // New month: next window
     const febQuota = makeFreeQuota({ periodStart: WINDOW_FEB, remaining: 1, used: 0 })
     const installRem = await getInstallFreeSnapRemaining(febQuota)
     const effective = composeEffectiveQuota(febQuota, installRem)
     expect(effective!.remaining).toBe(1) // Reset
     expect(effective!.used).toBe(0)
+
+    jest.useRealTimers()
   })
 
   it('Pro user lifecycle: install guard consumed but Pro unaffected', async () => {
     // Free user consumes the install guard
-    await markInstallFreeSnapConsumed(WINDOW_JAN)
+    await markInstallFreeSnapConsumed(makeFreeQuota())
 
     // Same installation, user upgrades to Pro
     const proQuota = makeProQuota({ remaining: 12, used: 0, periodStart: WINDOW_JAN })
@@ -610,11 +667,14 @@ describe('Migration / Self-Heal', () => {
   // ── Monthly rollover ─────────────────────────────────────────
   describe('Monthly rollover with self-heal', () => {
     it('old window consumed + new monthly window → old marker does NOT exhaust new window', async () => {
-      // January consumed (via self-heal from old build)
+      // Current window consumed (via self-heal from old build)
       const janQuota = makeFreeQuota({ periodStart: WINDOW_JAN, used: 1, remaining: 0 })
       await selfHealInstallMarker(janQuota)
 
-      // February is a new window — server reports fresh 0/1
+      // Simulate time passing to the next install anniversary window
+      jest.useFakeTimers().setSystemTime(new Date(WINDOW_FEB))
+
+      // Next window — server reports fresh 0/1
       const febQuota = makeFreeQuota({ periodStart: WINDOW_FEB, used: 0, remaining: 1 })
 
       // Self-heal should NOT trigger (remaining !== 0)
@@ -628,22 +688,29 @@ describe('Migration / Self-Heal', () => {
       const effective = composeEffectiveQuota(febQuota, remaining)
       expect(effective!.remaining).toBe(1)
       expect(effective!.used).toBe(0)
+
+      jest.useRealTimers()
     })
 
     it('old window consumed + new window exhausted → self-heal persists new window', async () => {
-      // January consumed
+      // Current window consumed
       const janQuota = makeFreeQuota({ periodStart: WINDOW_JAN, used: 1, remaining: 0 })
       await selfHealInstallMarker(janQuota)
 
-      // February also consumed (e.g. user scanned in the new month)
+      // Simulate time passing to the next install anniversary window
+      jest.useFakeTimers().setSystemTime(new Date(WINDOW_FEB))
+
+      // Next window also consumed (e.g. user scanned in the new month)
       const febQuota = makeFreeQuota({ periodStart: WINDOW_FEB, used: 1, remaining: 0 })
       const healed = await selfHealInstallMarker(febQuota)
       expect(healed).toBe(true)
 
-      // Marker now points to February
+      // Marker now points to the next window (computed from install anchor)
       const raw = mockStore.get(INSTALL_FREE_SNAP_KEY)
       const parsed = JSON.parse(raw!)
       expect(parsed.windowKey).toBe(WINDOW_FEB)
+
+      jest.useRealTimers()
     })
   })
 

@@ -237,6 +237,7 @@ export const ALL_STORAGE_KEYS = [
   '@juicing_first_launch_orchestrator_done',
   '@juicing_install_id',
   '@juicing_install_free_snap_v1',
+  '@juicing_install_anchor_v1',
   '@juicing_feature_flags_v1',
   '@settings_visited',
   '@juicing_calculator_cache_v1',

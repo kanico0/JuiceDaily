@@ -139,12 +139,13 @@ export function QuotaProvider ({ children }: { children: React.ReactNode }) {
   }, [])
 
   // Mark the install-level Free Snap as consumed for the current
-  // server quota window. Called after a successful Free AI Snap.
-  // Persists the marker to AsyncStorage and updates installRemaining
-  // synchronously so the effective quota reflects exhaustion.
+  // install anniversary window. Called after a successful Free AI
+  // Snap. The window key is computed from the IMMUTABLE install
+  // anchor (not the server's periodStart), so it survives logout
+  // and cross-identity transitions.
   const markInstallSnapConsumed = useCallback(async () => {
     if (!serverQuota || serverQuota.plan !== 'free') return
-    await markInstallFreeSnapConsumed(serverQuota.periodStart)
+    await markInstallFreeSnapConsumed(serverQuota)
     setInstallRemaining(0)
   }, [serverQuota])
 

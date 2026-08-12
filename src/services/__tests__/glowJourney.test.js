@@ -1228,6 +1228,41 @@ describe('GlowJourneyDropArtwork component', () => {
       expect(heroMatch[0]).not.toMatch(/<Text/)
     }
   })
+
+  // ── Regression: SVG <G> must not be used as root wrapper outside <Svg> ──
+  // Physical-device rendering failure: <G> outside <Svg> renders as zero-size
+  // on Android, making the nested <Svg> children invisible.
+  test('artwork root wrapper uses View not G (Android rendering fix)', () => {
+    const fs = require('fs')
+    const path = require('path')
+    const source = fs.readFileSync(
+      path.join(__dirname, '..', '..', 'components', 'GlowJourneyDropArtwork.js'),
+      'utf8'
+    )
+    // Must import View from react-native
+    expect(source).toMatch(/import.*View.*from.*react-native/)
+    // The main artwork component must return a View as root, not a G
+    // Find the return statement of GlowJourneyDropArtwork
+    const mainMatch = source.match(/function GlowJourneyDropArtwork[\s\S]*?return\s*\(/)
+    expect(mainMatch).toBeTruthy()
+    // The return block should contain <View not <G as the outermost wrapper
+    const returnBlock = source.slice(mainMatch.index)
+    // First JSX element after return should be View, not G
+    expect(returnBlock).toMatch(/return\s*\(\s*<View/)
+  })
+
+  test('SVG IDs are stable per instance (useRef not useMemo)', () => {
+    const fs = require('fs')
+    const path = require('path')
+    const source = fs.readFileSync(
+      path.join(__dirname, '..', '..', 'components', 'GlowJourneyDropArtwork.js'),
+      'utf8'
+    )
+    // IDs must be stable for the lifetime of the component instance
+    // useRef ensures IDs are generated once and never regenerated
+    expect(source).toMatch(/useRef/)
+    expect(source).toMatch(/idsRef/)
+  })
 })
 
 // ── 33. Celebration coordinator hook ──

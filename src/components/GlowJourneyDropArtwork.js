@@ -1,4 +1,5 @@
-import React, { useMemo } from 'react'
+import React, { useRef } from 'react'
+import { View } from 'react-native'
 import Svg, {
   Defs, ClipPath, Path, G, Rect, Circle, Ellipse, Line,
   LinearGradient, RadialGradient, Stop, Text as SvgText,
@@ -43,9 +44,10 @@ function GlowHero({ heroState, surfaceTranslateY, isReduced }) {
     beyondGoal,
   } = heroState
 
-  const ids = useMemo(() => {
+  const idsRef = useRef(null)
+  if (!idsRef.current) {
     const s = Math.random().toString(36).slice(2, 8)
-    return {
+    idsRef.current = {
       clip: `glow_clip_${s}`,
       juice: `glow_juice_${s}`,
       strat: `glow_strat_${s}`,
@@ -57,7 +59,8 @@ function GlowHero({ heroState, surfaceTranslateY, isReduced }) {
       depth: `glow_depth_${s}`,
       leafGlow: `glow_leafglow_${s}`,
     }
-  }, [])
+  }
+  const ids = idsRef.current
 
   // Meniscus curve at the current surface level
   const meniscusY = 0 // local y=0 inside the translated liquid group
@@ -198,13 +201,15 @@ function GlowHero({ heroState, surfaceTranslateY, isReduced }) {
 
 // ── Week Vine SVG ────────────────────────────────────────────
 function GlowWeekVine({ leafStates, isReduced }) {
-  const ids = useMemo(() => {
+  const idsRef = useRef(null)
+  if (!idsRef.current) {
     const s = Math.random().toString(36).slice(2, 8)
-    return {
+    idsRef.current = {
       leafGrad: `vine_leafgrad_${s}`,
       leafGlow: `vine_leafglow_${s}`,
     }
-  }, [])
+  }
+  const ids = idsRef.current
 
   return (
     <G id="glowweekvine_container">
@@ -307,9 +312,9 @@ function GlowJourneyDropArtwork({
   const vineHeight = vineWidth * (80 / 360)
 
   return (
-    <G id="glowjourney_artwork">
+    <View id="glowjourney_artwork" style={{ alignItems: 'center' }}>
       {/* GlowHero — viewBox 0 0 200 260 */}
-      <G id="glowhero_wrap">
+      <View testID="glowhero_wrap" style={{ alignItems: 'center' }}>
         <Svg width={heroWidth} height={heroHeight} viewBox="0 0 200 260"
              accessibilityLabel="Glow Journey hero"
              accessibilityRole="progressbar"
@@ -320,16 +325,16 @@ function GlowJourneyDropArtwork({
             isReduced={isReduced}
           />
         </Svg>
-      </G>
+      </View>
 
       {/* GlowWeekVine — viewBox 0 0 360 80 */}
-      <G id="glowweekvine_wrap" transform={`translate(0, ${heroHeight + 6})`}>
+      <View testID="glowweekvine_wrap" style={{ marginTop: 6, alignItems: 'center' }}>
         <Svg width={vineWidth} height={vineHeight} viewBox={`0 0 ${VINE_VIEWBOX_W} ${VINE_VIEWBOX_H}`}
              accessibilityLabel="Weekly vine tracker">
           <GlowWeekVine leafStates={leafStates} isReduced={isReduced} />
         </Svg>
-      </G>
-    </G>
+      </View>
+    </View>
   )
 }
 

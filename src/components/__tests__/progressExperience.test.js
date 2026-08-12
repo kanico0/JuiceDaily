@@ -17,8 +17,13 @@ jest.mock('@react-native-async-storage/async-storage', () => ({
 }))
 
 import {
+  GLOW_PALETTE,
   GLOW_JOURNEY_PALETTE,
   getLeafVisualState,
+  getVineLeafVisualState,
+  getHeroVisualState,
+  getFillRatio,
+  surfaceY,
 } from '../GlowJourneyVisualState'
 import {
   getRevealTier,
@@ -53,28 +58,28 @@ function makeEntries(ingredientGroups) {
 
 // ── Glow Journey delta tests ─────────────────────────────────
 
-describe('Glow Journey — FINAL handoff delta', () => {
+describe('Glow Journey — Living Juice Glow reconstruction', () => {
   test('WEEKLY_GLOW_GOAL remains exactly 3', () => {
     expect(WEEKLY_GLOW_GOAL).toBe(3)
   })
 
-  test('juice-colored liquid palette is defined', () => {
-    expect(GLOW_JOURNEY_PALETTE.juiceLiquidBase).toBeDefined()
-    expect(GLOW_JOURNEY_PALETTE.juiceLiquidTopBand).toBeDefined()
-    // Warm orange base (hex color string)
-    expect(typeof GLOW_JOURNEY_PALETTE.juiceLiquidBase).toBe('string')
-    expect(GLOW_JOURNEY_PALETTE.juiceLiquidBase.startsWith('#')).toBe(true)
-    // Mint/green secondary band (hex color string)
-    expect(typeof GLOW_JOURNEY_PALETTE.juiceLiquidTopBand).toBe('string')
-    expect(GLOW_JOURNEY_PALETTE.juiceLiquidTopBand.startsWith('#')).toBe(true)
+  test('Living Juice Glow palette tokens are defined', () => {
+    // Spec §2 design tokens
+    expect(GLOW_PALETTE.bg).toBe('#080F0C')
+    expect(GLOW_PALETTE.surfaceTop).toBe('#12201A')
+    expect(GLOW_PALETTE.ink).toBe('#EAF4EE')
+    expect(GLOW_PALETTE.juiceGold).toBe('#FFB23F')
+    expect(GLOW_PALETTE.juiceMint).toBe('#7BE3B0')
+    expect(GLOW_PALETTE.glowLine).toBe('#F4FFFA')
+    expect(GLOW_PALETTE.weekLeafOffFill).toBe('#16241D')
   })
 
-  test('GlowJourneyDropArtwork uses two-tone juice gradient', () => {
+  test('GlowJourneyDropArtwork uses Living Juice Glow design tokens', () => {
     const src = readSrc('GlowJourneyDropArtwork.js')
-    expect(src).toContain('juiceLiquidBase')
-    expect(src).toContain('juiceLiquidTopBand')
-    // Should NOT use stageProps.liquidColor for the liquid gradient
-    expect(src).not.toContain('stopColor={stageProps.liquidColor}')
+    expect(src).toContain('GLOW_PALETTE')
+    expect(src).toContain('juiceGold')
+    expect(src).toContain('juiceMint')
+    expect(src).toContain('glowLine')
   })
 
   test('custom vector stage icon replaces emoji in production UI', () => {
@@ -97,24 +102,47 @@ describe('Glow Journey — FINAL handoff delta', () => {
     expect(src).not.toMatch(/[🌱🌿🌳🌸✨🌅👑]/)
   })
 
-  test('halo leaf fill uses bright green/mint color', () => {
-    // Correction addendum §1.2: filled leaves use solid bright green/mint
-    const leaf = { hasLog: true, isToday: false, isFuture: false }
-    const stageProps = { liquidColor: '#DCE7D3' }
-    const visual = getLeafVisualState(leaf, stageProps)
-    expect(visual.fillColor).toBe(GLOW_JOURNEY_PALETTE.haloFilledColor)
-    expect(visual.showGoldDot).toBe(true)
+  // ── Living Juice Glow: surfaceY and fill model ──
+  test('surfaceY(0) === 238 (resting pool)', () => {
+    expect(surfaceY(0)).toBe(238)
   })
 
-  test('halo unfilled leaf has dim outline only, no fill', () => {
-    // Correction addendum §1.2: unfilled leaves are thin outline only
-    const leaf = { hasLog: false, isToday: false, isFuture: false }
-    const stageProps = { liquidColor: '#DCE7D3' }
-    const visual = getLeafVisualState(leaf, stageProps)
-    expect(visual.filled).toBe(false)
-    expect(visual.fillColor).toBe('none')
-    expect(visual.strokeColor).toBe(GLOW_JOURNEY_PALETTE.haloUnfilledStroke)
-    expect(visual.showGoldDot).toBe(false)
+  test('surfaceY(1) === 42 (full fill)', () => {
+    expect(surfaceY(1)).toBe(42)
+  })
+
+  test('getFillRatio caps at 3-day goal for q=5 and q=7', () => {
+    expect(getFillRatio(0)).toBe(0)
+    expect(getFillRatio(1)).toBeCloseTo(1 / 3, 5)
+    expect(getFillRatio(2)).toBeCloseTo(2 / 3, 5)
+    expect(getFillRatio(3)).toBe(1)
+    expect(getFillRatio(5)).toBe(1) // no 5/7 fill math
+    expect(getFillRatio(7)).toBe(1) // no 7-day goal
+  })
+
+  test('getHeroVisualState: q=5 does not increase fill beyond q=3', () => {
+    const h3 = getHeroVisualState(3)
+    const h5 = getHeroVisualState(5)
+    expect(h5.surfaceY).toBe(h3.surfaceY) // 42 === 42
+    expect(h5.pulpCount).toBeGreaterThan(h3.pulpCount) // radiance only
+  })
+
+  // ── Vine leaf states ──
+  test('vine logged leaf has gold gradient treatment', () => {
+    const vs = getVineLeafVisualState({ hasLog: true, isToday: false, isFuture: false })
+    expect(vs.logged).toBe(true)
+    expect(vs.fillType).toBe('gradient')
+    expect(vs.fillColor).toBe(GLOW_PALETTE.juiceGold)
+    expect(vs.midribOpacity).toBe(0.55)
+    expect(vs.glowOpacity).toBe(0.5)
+  })
+
+  test('vine unlogged leaf has dark fill and visible stroke', () => {
+    const vs = getVineLeafVisualState({ hasLog: false, isToday: false, isFuture: false })
+    expect(vs.logged).toBe(false)
+    expect(vs.fillType).toBe('flat')
+    expect(vs.fillColor).toBe(GLOW_PALETTE.weekLeafOffFill)
+    expect(vs.glowOpacity).toBe(0)
   })
 
   test('Journey stages and thresholds unchanged', () => {
@@ -125,15 +153,37 @@ describe('Glow Journey — FINAL handoff delta', () => {
     expect(GLOW_JOURNEY_STAGES[6].min).toBe(200)
   })
 
-  test('time-horizon clarity: This Week / Lifetime chip grouping', () => {
+  test('GlowJourneyDrop has new card composition (eyebrow/hero/streak/divider/journey)', () => {
     const src = readSrc('GlowJourneyDrop.js')
-    expect(src).toContain('This Week')
-    expect(src).toContain('Lifetime')
+    expect(src).toContain('eyebrow')
+    expect(src).toContain('heroWrap')
+    expect(src).toContain('streakRow')
+    expect(src).toContain('divider')
+    expect(src).toContain('journeyRow')
+  })
+
+  test('GlowJourneyDrop does not have old streak overlay or chip groups', () => {
+    const src = readSrc('GlowJourneyDrop.js')
+    expect(src).not.toContain('streakOverlay')
+    expect(src).not.toContain('chipsRow')
+    expect(src).not.toContain('motivationalCopy')
   })
 
   test('reduced-motion path preserved in GlowJourneyDrop', () => {
     const src = readSrc('GlowJourneyDrop.js')
     expect(src).toContain('isReduced')
+  })
+
+  test('GlowJourneyDropArtwork is filter-free (no feGaussianBlur)', () => {
+    const src = readSrc('GlowJourneyDropArtwork.js')
+    expect(src).not.toContain('feGaussianBlur')
+  })
+
+  test('GlowJourneyDrop uses serif font for streak numeral (no Fraunces)', () => {
+    const src = readSrc('GlowJourneyDrop.js')
+    expect(src).toMatch(/Georgia.*serif|serif.*Georgia/)
+    expect(src).not.toContain('Fraunces')
+    expect(src).not.toContain('expo-font')
   })
 })
 

@@ -1,43 +1,33 @@
 // ─────────────────────────────────────────────────────────────
-// GlowJourneyDrop.js — Redesigned progress indicator for Today.
+// GlowJourneyDrop.js — Living Juice Glow card
 //
-// Canonical SVG drop with rising weekly liquid fill,
-// seven-leaf weekly halo, permanent journey stage motif,
-// five storyboards, reduced-motion replacements, and
-// celebration coordination support.
-// Uses GlowJourneyDropArtwork for the live SVG rendering.
+// Reconstructed per GLOW_RECONSTRUCTION_FINAL spec.
+// New hierarchy: eyebrow → hero → week vine → streak → divider → journey row.
+// No text overlaps the hero. Streak is outside the hero.
+// Existing animation triggers, press behavior, accessibility,
+// and reduced-motion handling are preserved.
 // ─────────────────────────────────────────────────────────────
 
 import React, { useMemo, useEffect, useRef, useCallback, useState } from 'react'
-import { View, Text, StyleSheet, Animated, useWindowDimensions, Pressable } from 'react-native'
+import { View, Text, StyleSheet, Animated, useWindowDimensions, Pressable, Platform } from 'react-native'
 import * as Haptics from 'expo-haptics'
 import { SEMANTIC_COLORS, SEMANTIC_SPACE, SEMANTIC_RADIUS } from '../constants/tokens'
 import { WEEKLY_GLOW_GOAL, getJourneyStage, getNextStage, getDaysToNextStage } from '../constants/glowJourneyStages'
 import { useReducedMotion, EASING } from '../utils/motion'
-import { trackEvent } from '../services/AnalyticsService'
-import { buildGlowJourneyVisualState, clampProgress } from './GlowJourneyVisualState'
+import { buildGlowJourneyVisualState, clampProgress, surfaceY, getFillRatio, GLOW_PALETTE } from './GlowJourneyVisualState'
 import GlowJourneyDropArtwork from './GlowJourneyDropArtwork'
 import GlowJourneyStageIcon from './GlowJourneyStageIcon'
 
-const MAX_DROP_SIZE = 220
-const MIN_DROP_SIZE = 140
+// Hero sizing (spec §4): 0.64 × content width, range 0.56–0.68
+const HERO_WIDTH_FACTOR = 0.64
+const HERO_WIDTH_MIN = 150
+const HERO_WIDTH_MAX = 220
 
-function numberToWord(n) {
-  if (n === 0) return 'Zero'
-  if (n === 1) return 'One'
-  if (n === 2) return 'Two'
-  if (n === 3) return 'Three'
-  if (n === 4) return 'Four'
-  if (n === 5) return 'Five'
-  if (n === 6) return 'Six'
-  if (n === 7) return 'Seven'
-  if (n === 8) return 'Eight'
-  if (n === 9) return 'Nine'
-  if (n === 10) return 'Ten'
-  if (n === 11) return 'Eleven'
-  if (n === 12) return 'Twelve'
-  return String(n)
-}
+// Card padding (spec §4)
+const CARD_PADDING_TOP = 20
+const CARD_PADDING_SIDES = 18
+const CARD_PADDING_BOTTOM = 18
+const CARD_RADIUS = 26
 
 function GlowJourneyDrop({
   streakCount = 0,
@@ -51,7 +41,14 @@ function GlowJourneyDrop({
   const reducedMotion = useReducedMotion()
   const isReduced = isReducedProp !== undefined ? isReducedProp : reducedMotion
   const { width: screenWidth } = useWindowDimensions()
-  const dropSize = useMemo(() => Math.max(MIN_DROP_SIZE, Math.min(screenWidth * 0.52, MAX_DROP_SIZE)), [screenWidth])
+
+  // Content width = screen width - 2*16dp screen margins - 2*18dp card padding
+  const contentWidth = useMemo(() => Math.max(260, screenWidth - 32 - CARD_PADDING_SIDES * 2), [screenWidth])
+  const heroWidth = useMemo(() => {
+    const w = contentWidth * HERO_WIDTH_FACTOR
+    return Math.max(HERO_WIDTH_MIN, Math.min(w, HERO_WIDTH_MAX))
+  }, [contentWidth])
+  const vineWidth = contentWidth
 
   const visualState = useMemo(() => buildGlowJourneyVisualState({
     lifetimeDays,
@@ -64,138 +61,104 @@ function GlowJourneyDrop({
   const nextStage = useMemo(() => getNextStage(lifetimeDays), [lifetimeDays])
   const daysToNext = useMemo(() => getDaysToNextStage(lifetimeDays), [lifetimeDays])
 
-  const fillRatio = clampProgress(weeklyQualifyingDays / WEEKLY_GLOW_GOAL)
+  const fillRatio = getFillRatio(weeklyQualifyingDays)
+  const restingSurfaceY = surfaceY(0)
+  const targetSurfaceY = surfaceY(fillRatio)
 
-  // Animation refs
+  // ── Animation refs (preserved shell) ───────────────────────
   const entranceAnim = useRef(new Animated.Value(isReduced ? 1 : 0)).current
   const pressScaleAnim = useRef(new Animated.Value(1)).current
-  const pressGlowAnim = useRef(new Animated.Value(0)).current
-  const fillAnim = useRef(new Animated.Value(fillRatio)).current
-  const glowRingAnim = useRef(new Animated.Value(0)).current
-  const dropletAnim = useRef(new Animated.Value(0)).current
-  const rippleAnim = useRef(new Animated.Value(0)).current
-  const leafPulseAnim = useRef(new Animated.Value(1)).current
+  const liquidTranslateAnim = useRef(new Animated.Value(isReduced ? targetSurfaceY : restingSurfaceY)).current
+  const bloomAnim = useRef(new Animated.Value(0)).current
 
   const prevWeeklyDays = useRef(weeklyQualifyingDays)
   const hasEnteredRef = useRef(false)
-  const pressGlowBaseRef = useRef(visualState.stageProps.glowRingOpacity)
+  const bloomFiredRef = useRef(false)
 
-  // Animated state for artwork
-  const [animatedFillRatio, setAnimatedFillRatio] = useState(fillRatio)
-  const [animatedGlowRing, setAnimatedGlowRing] = useState(visualState.stageProps.glowRingOpacity)
-  const [dropletOpacity, setDropletOpacity] = useState(0)
-  const [rippleOpacity, setRippleOpacity] = useState(0)
-  const [leafScaleOverrides, setLeafScaleOverrides] = useState(Array(7).fill(1))
+  // Animated surface translateY for the artwork
+  const [animatedSurfaceY, setAnimatedSurfaceY] = useState(isReduced ? targetSurfaceY : restingSurfaceY)
+  const [bloomOpacity, setBloomOpacity] = useState(0)
 
-  // Storyboard 1: Entrance — only on first mount
+  // ── Storyboard 1: Entrance ─────────────────────────────────
   useEffect(() => {
     if (hasEnteredRef.current) return
     hasEnteredRef.current = true
     if (isReduced) {
       entranceAnim.setValue(1)
-      setAnimatedFillRatio(fillRatio)
-      setAnimatedGlowRing(visualState.stageProps.glowRingOpacity)
+      setAnimatedSurfaceY(targetSurfaceY)
+      if (fillRatio >= 1) setBloomOpacity(visualState.heroState.completionBloomOpacity)
     } else {
       Animated.timing(entranceAnim, {
         toValue: 1,
-        duration: 500,
+        duration: 320,
         easing: EASING.decelerate,
         useNativeDriver: true,
       }).start()
-      setAnimatedFillRatio(fillRatio)
-      setAnimatedGlowRing(visualState.stageProps.glowRingOpacity)
+      // Liquid rises from resting to current level
+      Animated.timing(liquidTranslateAnim, {
+        toValue: targetSurfaceY,
+        duration: 900,
+        easing: EASING.decelerate,
+        useNativeDriver: false,
+      }).start()
+      const lId = liquidTranslateAnim.addListener(({ value }) => setAnimatedSurfaceY(value))
+      setTimeout(() => liquidTranslateAnim.removeListener(lId), 1000)
     }
   }, [])
 
-  // Storyboard 3: Progress update — only when progress advances
+  // ── Storyboard 3: Progress update (qualifying day logged) ──
   useEffect(() => {
     if (!hasEnteredRef.current) return
     const prevDays = prevWeeklyDays.current
     const progressAdvanced = weeklyQualifyingDays > prevDays
 
     if (isReduced) {
-      setAnimatedFillRatio(fillRatio)
-      setDropletOpacity(0)
-      setRippleOpacity(0)
+      setAnimatedSurfaceY(targetSurfaceY)
+      if (fillRatio >= 1 && !bloomFiredRef.current) {
+        setBloomOpacity(visualState.heroState.completionBloomOpacity)
+        bloomFiredRef.current = true
+      }
       prevWeeklyDays.current = weeklyQualifyingDays
       return
     }
 
     if (progressAdvanced) {
-      // Falling droplet
-      setDropletOpacity(0)
-      Animated.sequence([
-        Animated.timing(dropletAnim, { toValue: 1, duration: 200, easing: EASING.accelerate, useNativeDriver: false }),
-        Animated.timing(dropletAnim, { toValue: 0, duration: 300, easing: EASING.decelerate, useNativeDriver: false }),
-      ]).start(() => setDropletOpacity(0))
-      const dId = dropletAnim.addListener(({ value }) => setDropletOpacity(value))
-
-      // Liquid rise
-      Animated.timing(fillAnim, {
-        toValue: fillRatio,
-        duration: 500,
-        easing: EASING.decelerate,
+      // Liquid rise with spring overshoot
+      Animated.spring(liquidTranslateAnim, {
+        toValue: targetSurfaceY,
+        damping: 18,
+        stiffness: 90,
         useNativeDriver: false,
       }).start()
-      const fId = fillAnim.addListener(({ value }) => setAnimatedFillRatio(value))
-
-      // Ripple after liquid settles
-      setTimeout(() => {
-        Animated.sequence([
-          Animated.timing(rippleAnim, { toValue: 0.55, duration: 175, easing: EASING.decelerate, useNativeDriver: false }),
-          Animated.timing(rippleAnim, { toValue: 0, duration: 175, easing: EASING.linear, useNativeDriver: false }),
-        ]).start()
-        const rId = rippleAnim.addListener(({ value }) => setRippleOpacity(value))
-        setTimeout(() => rippleAnim.removeListener(rId), 400)
-      }, 450)
-
-      // Leaf pulse for today's leaf
-      const todayIndex = weeklyLeafStates.findIndex((l) => l.isToday)
-      if (todayIndex >= 0) {
-        setLeafScaleOverrides((prev) => {
-          const next = [...prev]
-          next[todayIndex] = 1.06
-          return next
-        })
-        setTimeout(() => {
-          setLeafScaleOverrides((prev) => {
-            const next = [...prev]
-            next[todayIndex] = 1
-            return next
-          })
-        }, 350)
-      }
-
-      // Glow ring brief pass
-      const baseGlow = visualState.stageProps.glowRingOpacity
-      Animated.sequence([
-        Animated.timing(glowRingAnim, { toValue: baseGlow + 0.08, duration: 150, easing: EASING.decelerate, useNativeDriver: false }),
-        Animated.timing(glowRingAnim, { toValue: baseGlow, duration: 150, easing: EASING.linear, useNativeDriver: false }),
-      ]).start()
-      const gId = glowRingAnim.addListener(({ value }) => setAnimatedGlowRing(value))
+      const lId = liquidTranslateAnim.addListener(({ value }) => setAnimatedSurfaceY(value))
+      setTimeout(() => liquidTranslateAnim.removeListener(lId), 1100)
 
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {})
-
-      // Cleanup listeners after animation
-      setTimeout(() => {
-        dropletAnim.removeListener(dId)
-        fillAnim.removeListener(fId)
-        glowRingAnim.removeListener(gId)
-      }, 1100)
     } else {
-      setAnimatedFillRatio(fillRatio)
+      setAnimatedSurfaceY(targetSurfaceY)
+    }
+
+    // Storyboard 8: Weekly completion bloom (fires once per week)
+    if (fillRatio >= 1 && progressAdvanced && !bloomFiredRef.current) {
+      bloomFiredRef.current = true
+      if (isReduced) {
+        setBloomOpacity(visualState.heroState.completionBloomOpacity)
+      } else {
+        Animated.sequence([
+          Animated.timing(bloomAnim, { toValue: 1, duration: 520, easing: EASING.decelerate, useNativeDriver: false }),
+          Animated.timing(bloomAnim, { toValue: 0.7, duration: 380, easing: EASING.linear, useNativeDriver: false }),
+        ]).start()
+        const bId = bloomAnim.addListener(({ value }) => {
+          setBloomOpacity(value * visualState.heroState.completionBloomOpacity)
+        })
+        setTimeout(() => bloomAnim.removeListener(bId), 1000)
+      }
     }
 
     prevWeeklyDays.current = weeklyQualifyingDays
-  }, [fillRatio, weeklyQualifyingDays, isReduced, weeklyLeafStates, visualState.stageProps.glowRingOpacity])
+  }, [fillRatio, weeklyQualifyingDays, isReduced, targetSurfaceY, visualState.heroState.completionBloomOpacity])
 
-  // Update glow ring base when stage changes
-  useEffect(() => {
-    pressGlowBaseRef.current = visualState.stageProps.glowRingOpacity
-    setAnimatedGlowRing(visualState.stageProps.glowRingOpacity)
-  }, [visualState.stageProps.glowRingOpacity])
-
-  // Storyboard 2: Press interaction
+  // ── Storyboard 2: Press interaction ────────────────────────
   const handlePressIn = useCallback(() => {
     if (isReduced) return
     Animated.timing(pressScaleAnim, {
@@ -204,15 +167,6 @@ function GlowJourneyDrop({
       easing: EASING.decelerate,
       useNativeDriver: true,
     }).start()
-    const baseGlow = pressGlowBaseRef.current
-    Animated.timing(pressGlowAnim, {
-      toValue: baseGlow + 0.05,
-      duration: 90,
-      easing: EASING.decelerate,
-      useNativeDriver: false,
-    }).start()
-    const pId = pressGlowAnim.addListener(({ value }) => setAnimatedGlowRing(value))
-    setTimeout(() => pressGlowAnim.removeListener(pId), 300)
   }, [isReduced])
 
   const handlePressOut = useCallback(() => {
@@ -223,61 +177,60 @@ function GlowJourneyDrop({
       easing: EASING.decelerate,
       useNativeDriver: true,
     }).start()
-    const baseGlow = pressGlowBaseRef.current
-    Animated.timing(pressGlowAnim, {
-      toValue: baseGlow,
-      duration: 140,
-      easing: EASING.linear,
-      useNativeDriver: false,
-    }).start()
-    const pId = pressGlowAnim.addListener(({ value }) => setAnimatedGlowRing(value))
-    setTimeout(() => pressGlowAnim.removeListener(pId), 200)
   }, [isReduced])
 
   const handlePress = useCallback(() => {
     if (onPress) onPress()
   }, [onPress])
 
+  // ── Accessibility label ────────────────────────────────────
   const accessibilityLabel = useMemo(() => {
-    const streakWordFull = numberToWord(streakCount).toLowerCase()
-    const parts = ['Glow Journey.']
+    const parts = ['Living Juice Glow.']
+    parts.push(`${weeklyQualifyingDays} of ${WEEKLY_GLOW_GOAL} weekly Glow days.`)
     if (streakCount > 0) {
-      parts.push(`${streakWordFull}-day streak.`)
+      parts.push(`${streakCount} day Glow streak.`)
     } else {
       parts.push('No active streak.')
     }
-    parts.push(`${weeklyQualifyingDays} of ${WEEKLY_GLOW_GOAL} weekly juicing days complete.`)
     if (stage) {
-      parts.push(`${stage.label} stage.`)
+      parts.push(`${stage.label}, lifetime journey.`)
     } else {
       parts.push('No journey stage yet.')
     }
-    if (nextStage && daysToNext > 0) {
-      parts.push(`${daysToNext} more days to ${nextStage.label}.`)
-    } else if (stage && !nextStage) {
-      parts.push('Highest journey stage reached.')
-    }
     return parts.join(' ')
-  }, [streakCount, weeklyQualifyingDays, stage, nextStage, daysToNext])
+  }, [streakCount, weeklyQualifyingDays, stage])
 
-  // Build artwork visual state with animated values
+  // ── Eyebrow text (spec §7) ─────────────────────────────────
+  const eyebrow = useMemo(() => {
+    if (weeklyQualifyingDays >= WEEKLY_GLOW_GOAL) {
+      return `Glow complete · ${weeklyQualifyingDays} days logged`
+    }
+    return `${weeklyQualifyingDays} of ${WEEKLY_GLOW_GOAL} Glow days`
+  }, [weeklyQualifyingDays])
+
+  const eyebrowColor = weeklyQualifyingDays >= WEEKLY_GLOW_GOAL
+    ? GLOW_PALETTE.juiceMint
+    : GLOW_PALETTE.inkMuted
+
+  // ── Build artwork visual state with animated surface ───────
   const artworkVisualState = useMemo(() => ({
     ...visualState,
-    fillRatio: animatedFillRatio,
-    liquidGeometry: {
-      x: 100,
-      width: 200,
-      y: 378 - (378 - 65) * clampProgress(animatedFillRatio),
-      height: (378 - 65) * clampProgress(animatedFillRatio),
+    heroState: {
+      ...visualState.heroState,
+      surfaceY: animatedSurfaceY,
+      completionBloomOpacity: Math.max(bloomOpacity, visualState.heroState.isComplete ? visualState.heroState.completionBloomOpacity : 0),
     },
-  }), [visualState, animatedFillRatio])
+  }), [visualState, animatedSurfaceY, bloomOpacity])
 
-  // Entrance style
+  // ── Entrance style ─────────────────────────────────────────
   const entranceOpacity = isReduced ? 1 : entranceAnim
-  const entranceScale = isReduced ? 1 : entranceAnim.interpolate({
+  const entranceTranslateY = isReduced ? 0 : entranceAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [0.96, 1],
+    outputRange: [8, 0],
   })
+
+  // Serif font for streak numeral (codebase pattern)
+  const serifFontFamily = Platform.OS === 'ios' ? 'Georgia' : 'serif'
 
   return (
     <Pressable
@@ -292,254 +245,150 @@ function GlowJourneyDrop({
       <Animated.View
         style={{
           opacity: entranceOpacity,
-          transform: [{ scale: Animated.multiply(entranceScale, pressScaleAnim) }],
-          alignItems: 'center',
+          transform: [
+            { translateY: entranceTranslateY },
+            { scale: pressScaleAnim },
+          ],
         }}
       >
-        <View style={styles.graphicWrap}>
-          <GlowJourneyDropArtwork
-            visualState={artworkVisualState}
-            size={dropSize}
-            showFallingDroplet={dropletOpacity > 0}
-            showRipple={rippleOpacity > 0}
-            showParticles={false}
-            fallingDropletOpacity={dropletOpacity}
-            rippleOpacity={rippleOpacity}
-            glowRingOpacityOverride={animatedGlowRing}
-            leafScaleOverrides={leafScaleOverrides}
-            isReduced={isReduced}
-          />
+        {/* GlowCard — rounded 26, gradient surface */}
+        <View style={styles.card}>
+          {/* 1. Eyebrow */}
+          <Text style={[styles.eyebrow, { color: eyebrowColor }]}>
+            {eyebrow.toUpperCase()}
+          </Text>
 
-          {/* Streak text overlay */}
-          <View style={[styles.streakOverlay, { width: dropSize, height: dropSize }]}>
-            <Text style={[styles.streakNumber, { fontSize: Math.min(dropSize * 0.22, 40), lineHeight: Math.min(dropSize * 0.22, 40) * 1.1 }]}>{streakCount}</Text>
-            <Text style={styles.streakLabel}>
-              {streakCount === 1 ? '1 Day Glow Streak' : `${streakCount} Day Glow Streak`}
-            </Text>
+          {/* 2. Hero (Living Juice Glow) */}
+          <View style={styles.heroWrap}>
+            <GlowJourneyDropArtwork
+              visualState={artworkVisualState}
+              heroWidth={heroWidth}
+              vineWidth={vineWidth}
+              surfaceTranslateY={animatedSurfaceY}
+              isReduced={isReduced}
+            />
           </View>
-        </View>
 
-        {/* Journey stage + milestone */}
-        <View style={styles.infoSection}>
+          {/* 3. Streak (outside hero, centred pair) */}
+          <View style={styles.streakRow}>
+            <Text style={styles.streakNumeral} fontFamily={serifFontFamily}>
+              {streakCount}
+            </Text>
+            <View style={styles.streakLabelWrap}>
+              <Text style={styles.streakLabel}>DAY GLOW</Text>
+              <Text style={styles.streakLabel}>STREAK</Text>
+            </View>
+          </View>
+
+          {/* 4. Divider */}
+          <View style={styles.divider} />
+
+          {/* 5. Lifetime Journey row */}
           {stage ? (
-            <View style={styles.stageRow}>
-              <GlowJourneyStageIcon stageKey={stage.key} size={18} color={SEMANTIC_COLORS.textPrimary} />
-              <Text style={styles.stageLabel}>{stage.label}</Text>
-              <Text style={styles.stageDays}>· {lifetimeDays} days</Text>
+            <View style={styles.journeyRow}>
+              <GlowJourneyStageIcon
+                stageKey={stage.key}
+                size={22}
+                color={GLOW_PALETTE.juiceMint}
+              />
+              <Text style={styles.journeyText}>
+                <Text style={styles.journeyStageName}>{stage.label}</Text>
+                <Text style={styles.journeyDot}> · </Text>
+                <Text>Lifetime Journey</Text>
+              </Text>
             </View>
           ) : (
-            <Text style={styles.emptyStage}>Your journey starts with your first juice</Text>
+            <View style={styles.journeyRow}>
+              <GlowJourneyStageIcon stageKey="seed" size={22} color={GLOW_PALETTE.inkMuted} />
+              <Text style={styles.journeyText}>
+                Your journey starts with your first juice
+              </Text>
+            </View>
           )}
-
-          <MilestoneMessage
-            lifetimeDays={lifetimeDays}
-            weeklyQualifyingDays={weeklyQualifyingDays}
-            nextStage={nextStage}
-            daysToNext={daysToNext}
-          />
         </View>
-
-        {/* Supporting chips — grouped by time horizon for clarity */}
-        <View style={styles.chipsRow}>
-          <View style={styles.chipGroup}>
-            <Text style={styles.chipGroupLabel}>This Week</Text>
-            <View style={styles.chipPair}>
-              <Chip label="Weekly" value={`${weeklyQualifyingDays}/${WEEKLY_GLOW_GOAL}`} />
-              <Chip label="Momentum" value={streakCount > 0 ? `${streakCount}d` : '—'} />
-            </View>
-          </View>
-          <View style={styles.chipGroup}>
-            <Text style={styles.chipGroupLabel}>Lifetime</Text>
-            <View style={styles.chipPair}>
-              <Chip label="Days" value={lifetimeDays > 0 ? `${lifetimeDays}d` : '—'} />
-            </View>
-          </View>
-        </View>
-
-        {/* Motivational copy */}
-        <Text style={styles.motivationalCopy}>
-          {lifetimeDays === 0
-            ? 'Every great journey begins with a single sip. Scan your first juice to start glowing!'
-            : weeklyQualifyingDays >= WEEKLY_GLOW_GOAL
-              ? 'You\u2019ve hit your weekly goal. Your body is glowing from the inside out.'
-              : streakCount > 0
-                ? `${streakCount} day${streakCount === 1 ? '' : 's'} of consistent glow. Keep the momentum alive!`
-                : 'Your glow is waiting. Log a juice today to reignite your streak.'}
-        </Text>
       </Animated.View>
     </Pressable>
-  )
-}
-
-function MilestoneMessage({ lifetimeDays, weeklyQualifyingDays, nextStage, daysToNext }) {
-  const goal = WEEKLY_GLOW_GOAL
-  const daysRemaining = goal - weeklyQualifyingDays
-
-  let primary = ''
-  let secondary = ''
-
-  if (!lifetimeDays || lifetimeDays < 1) {
-    return <Text style={styles.milestoneText}>Your journey starts with your first juice</Text>
-  }
-
-  if (daysRemaining > 0) {
-    primary = daysRemaining === 1
-      ? 'One more juice completes your Weekly Glow'
-      : `${daysRemaining} more juicing days to complete your Weekly Glow`
-  } else {
-    primary = 'Your Weekly Glow is complete'
-  }
-
-  if (nextStage && daysToNext > 0) {
-    secondary = daysToNext === 1
-      ? `1 more day to reach ${nextStage.label}`
-      : `${daysToNext} more days to reach ${nextStage.label}`
-  }
-
-  if (secondary) {
-    return (
-      <View>
-        <Text style={styles.milestoneText}>{primary}</Text>
-        <Text style={styles.milestoneSecondary}>{secondary}</Text>
-      </View>
-    )
-  }
-
-  if (!nextStage) {
-    return (
-      <View>
-        <Text style={styles.milestoneText}>{primary}</Text>
-        <Text style={styles.milestoneSecondary}>You've reached the highest journey stage</Text>
-      </View>
-    )
-  }
-
-  return <Text style={styles.milestoneText}>{primary}</Text>
-}
-
-function Chip({ label, value }) {
-  return (
-    <View style={styles.chip}>
-      <Text style={styles.chipLabel}>{label}</Text>
-      <Text style={styles.chipValue}>{value}</Text>
-    </View>
   )
 }
 
 const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
-    paddingVertical: SEMANTIC_SPACE.md,
+    paddingVertical: SEMANTIC_SPACE.sm,
     minHeight: 44,
   },
-  graphicWrap: {
+  card: {
+    width: '100%',
+    borderRadius: CARD_RADIUS,
+    borderWidth: 1,
+    borderColor: GLOW_PALETTE.hairline,
+    paddingTop: CARD_PADDING_TOP,
+    paddingHorizontal: CARD_PADDING_SIDES,
+    paddingBottom: CARD_PADDING_BOTTOM,
+    alignItems: 'center',
+    // Card surface gradient approximation (dark mode)
+    backgroundColor: GLOW_PALETTE.surfaceTop,
+  },
+  eyebrow: {
+    fontSize: 11,
+    fontWeight: '600',
+    letterSpacing: 1.8,
+    textTransform: 'uppercase',
+    marginBottom: 2,
+  },
+  heroWrap: {
+    alignItems: 'center',
+    overflow: 'visible',
+    marginTop: 2,
+  },
+  streakRow: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    position: 'relative',
+    marginTop: 12,
+    gap: 9,
   },
-  streakOverlay: {
-    position: 'absolute',
-    alignItems: 'center',
-    justifyContent: 'center',
+  streakNumeral: {
+    fontSize: 34,
+    fontWeight: '600',
+    color: GLOW_PALETTE.juiceGold,
+    lineHeight: 34,
   },
-  streakNumber: {
-    fontWeight: '800',
-    color: SEMANTIC_COLORS.textPrimary,
+  streakLabelWrap: {
+    flexDirection: 'column',
   },
   streakLabel: {
-    fontSize: 12,
+    fontSize: 10.5,
     fontWeight: '600',
-    color: SEMANTIC_COLORS.textSecondary,
-    marginTop: 2,
-  },
-  infoSection: {
-    alignItems: 'center',
-    marginTop: SEMANTIC_SPACE.sm,
-    paddingHorizontal: SEMANTIC_SPACE.lg,
-  },
-  stageRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  stageLabel: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: SEMANTIC_COLORS.textPrimary,
-  },
-  stageDays: {
-    fontSize: 13,
-    color: SEMANTIC_COLORS.textMuted,
-  },
-  emptyStage: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: SEMANTIC_COLORS.textSecondary,
-    textAlign: 'center',
-  },
-  milestoneText: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: SEMANTIC_COLORS.textSecondary,
-    textAlign: 'center',
-    marginTop: 4,
-  },
-  milestoneSecondary: {
-    fontSize: 12,
-    color: SEMANTIC_COLORS.textMuted,
-    textAlign: 'center',
-    marginTop: 2,
-  },
-  chipsRow: {
-    flexDirection: 'row',
-    gap: 12,
-    marginTop: SEMANTIC_SPACE.sm,
-    justifyContent: 'center',
-  },
-  chipGroup: {
-    alignItems: 'center',
-  },
-  chipGroupLabel: {
-    fontSize: 9,
-    fontWeight: '600',
-    color: SEMANTIC_COLORS.textMuted,
+    color: GLOW_PALETTE.inkMuted,
+    letterSpacing: 1.6,
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 3,
+    lineHeight: 13,
   },
-  chipPair: {
-    flexDirection: 'row',
-    gap: 6,
+  divider: {
+    width: '100%',
+    height: 1,
+    backgroundColor: GLOW_PALETTE.hairline,
+    marginTop: 16,
+    marginBottom: 12,
   },
-  chip: {
+  journeyRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    backgroundColor: SEMANTIC_COLORS.surface,
-    borderRadius: SEMANTIC_RADIUS.pill,
-    paddingVertical: 4,
-    paddingHorizontal: 10,
-    borderWidth: 0.5,
-    borderColor: SEMANTIC_COLORS.borderSubtle,
+    alignSelf: 'flex-start',
+    gap: 9,
   },
-  chipLabel: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: SEMANTIC_COLORS.textMuted,
+  journeyText: {
+    fontSize: 13,
+    fontWeight: '400',
+    color: GLOW_PALETTE.inkMuted,
+    letterSpacing: 0.13,
   },
-  chipValue: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: SEMANTIC_COLORS.textPrimary,
+  journeyStageName: {
+    color: GLOW_PALETTE.ink,
   },
-  motivationalCopy: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: SEMANTIC_COLORS.textSecondary,
-    textAlign: 'center',
-    marginTop: SEMANTIC_SPACE.sm,
-    paddingHorizontal: SEMANTIC_SPACE.lg,
-    lineHeight: 17,
+  journeyDot: {
+    opacity: 0.45,
   },
 })
 

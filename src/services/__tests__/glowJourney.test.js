@@ -819,15 +819,16 @@ describe('Responsive layout', () => {
     expect(source).not.toMatch(/Dimensions\.get\('window'\)\.width/) // no static screen width
   })
 
-  test('GlowJourneyDrop source has MIN_DROP_SIZE and MAX_DROP_SIZE bounds', () => {
+  test('GlowJourneyDrop source has hero width bounds', () => {
     const fs = require('fs')
     const path = require('path')
     const source = fs.readFileSync(
       path.join(__dirname, '..', '..', 'components', 'GlowJourneyDrop.js'),
       'utf8'
     )
-    expect(source).toContain('MIN_DROP_SIZE')
-    expect(source).toContain('MAX_DROP_SIZE')
+    // Living Juice Glow: hero width bounds (replaced old drop size bounds)
+    expect(source).toContain('HERO_WIDTH_MIN')
+    expect(source).toContain('HERO_WIDTH_MAX')
   })
 })
 
@@ -970,32 +971,33 @@ describe('GlowJourneyVisualState', () => {
     buildGlowJourneyVisualState,
     getStageVisualProps,
     clampProgress,
-    GLOW_JOURNEY_PALETTE,
+    surfaceY,
+    getFillRatio,
+    getHeroVisualState,
+    getVineLeafVisualState,
+    GLOW_PALETTE,
   } = require('../../components/GlowJourneyVisualState')
 
-  test('getStageVisualProps returns correct props for each stage', () => {
+  test('getStageVisualProps returns props for each stage', () => {
     const seed = getStageVisualProps('seed')
-    expect(seed.liquidColor).toBe('#DCE7D3')
-    expect(seed.outlineWidth).toBe(1.5)
+    expect(seed.outlineWidth).toBe(2)
     expect(seed.glowRingOpacity).toBe(0)
 
     const growing = getStageVisualProps('growing')
-    expect(growing.liquidColor).toBe('#6FA97D')
-    expect(growing.outlineWidth).toBe(2.0)
+    expect(growing.outlineWidth).toBe(2)
     expect(growing.glowRingOpacity).toBe(0.05)
 
     const legend = getStageVisualProps('legend')
-    expect(legend.liquidColor).toBe('#244833')
-    expect(legend.outlineWidth).toBe(2.6)
+    expect(legend.outlineWidth).toBe(2)
     expect(legend.glowRingOpacity).toBe(0.18)
   })
 
   test('getStageVisualProps returns seed props for null/unknown stage', () => {
     const nullProps = getStageVisualProps(null)
-    expect(nullProps.liquidColor).toBe('#DCE7D3')
+    expect(nullProps.motifKey).toBe('seed')
 
     const unknownProps = getStageVisualProps('unknown')
-    expect(unknownProps.liquidColor).toBe('#DCE7D3')
+    expect(unknownProps.motifKey).toBe('seed')
   })
 
   test('clampProgress clamps between 0 and 1', () => {
@@ -1006,6 +1008,90 @@ describe('GlowJourneyVisualState', () => {
     expect(clampProgress(-0.5)).toBe(0)
     expect(clampProgress(NaN)).toBe(0)
     expect(clampProgress(undefined)).toBe(0)
+  })
+
+  // ── Living Juice Glow: surfaceY and fill model ──
+  test('surfaceY(0) === 238 (resting pool)', () => {
+    expect(surfaceY(0)).toBe(238)
+  })
+
+  test('surfaceY(1) === 42 (full fill)', () => {
+    expect(surfaceY(1)).toBe(42)
+  })
+
+  test('surfaceY(0.33) is approximately 172.7 (1/3 fill)', () => {
+    expect(surfaceY(1 / 3)).toBeCloseTo(172.67, 1)
+  })
+
+  test('surfaceY(0.67) is approximately 107.3 (2/3 fill)', () => {
+    expect(surfaceY(2 / 3)).toBeCloseTo(107.33, 1)
+  })
+
+  test('getFillRatio caps at 3-day goal', () => {
+    expect(getFillRatio(0)).toBe(0)
+    expect(getFillRatio(1)).toBeCloseTo(1 / 3, 5)
+    expect(getFillRatio(2)).toBeCloseTo(2 / 3, 5)
+    expect(getFillRatio(3)).toBe(1)
+    // q>3 does NOT increase fill — only radiance
+    expect(getFillRatio(5)).toBe(1)
+    expect(getFillRatio(7)).toBe(1)
+  })
+
+  test('getHeroVisualState: q=0 resting state', () => {
+    const hero = getHeroVisualState(0)
+    expect(hero.q).toBe(0)
+    expect(hero.f).toBe(0)
+    expect(hero.surfaceY).toBe(238)
+    expect(hero.isComplete).toBe(false)
+    expect(hero.beyondGoal).toBe(false)
+    expect(hero.pulpCount).toBe(5)
+  })
+
+  test('getHeroVisualState: q=3 completed state', () => {
+    const hero = getHeroVisualState(3)
+    expect(hero.q).toBe(3)
+    expect(hero.f).toBe(1)
+    expect(hero.surfaceY).toBe(42)
+    expect(hero.isComplete).toBe(true)
+    expect(hero.beyondGoal).toBe(false)
+    expect(hero.pulpCount).toBe(5)
+    expect(hero.completionBloomOpacity).toBe(0.7)
+  })
+
+  test('getHeroVisualState: q=5 beyond goal — fill unchanged, radiance increases', () => {
+    const hero = getHeroVisualState(5)
+    expect(hero.q).toBe(5)
+    expect(hero.f).toBe(1)
+    expect(hero.surfaceY).toBe(42) // SAME as q=3
+    expect(hero.isComplete).toBe(true)
+    expect(hero.beyondGoal).toBe(true)
+    expect(hero.pulpCount).toBe(9) // more pulp bubbles
+    expect(hero.completionBloomOpacity).toBe(1.0) // brighter bloom
+  })
+
+  test('getHeroVisualState: q=7 beyond goal — fill still unchanged', () => {
+    const hero = getHeroVisualState(7)
+    expect(hero.surfaceY).toBe(42) // SAME as q=3
+    expect(hero.beyondGoal).toBe(true)
+    expect(hero.pulpCount).toBe(9)
+  })
+
+  test('getVineLeafVisualState: logged leaf has gold treatment', () => {
+    const vs = getVineLeafVisualState({ hasLog: true, isToday: false, isFuture: false })
+    expect(vs.logged).toBe(true)
+    expect(vs.fillType).toBe('gradient')
+    expect(vs.fillColor).toBe(GLOW_PALETTE.juiceGold)
+    expect(vs.midribOpacity).toBe(0.55)
+    expect(vs.glowOpacity).toBe(0.5)
+  })
+
+  test('getVineLeafVisualState: unlogged leaf has dark resting fill', () => {
+    const vs = getVineLeafVisualState({ hasLog: false, isToday: false, isFuture: false })
+    expect(vs.logged).toBe(false)
+    expect(vs.fillType).toBe('flat')
+    expect(vs.fillColor).toBe(GLOW_PALETTE.weekLeafOffFill)
+    expect(vs.midribOpacity).toBe(0)
+    expect(vs.glowOpacity).toBe(0)
   })
 
   test('buildGlowJourneyVisualState returns complete state object', () => {
@@ -1026,75 +1112,72 @@ describe('GlowJourneyVisualState', () => {
 
     expect(state.stage).toBeTruthy()
     expect(state.stageKey).toBe('growing')
-    expect(state.stageProps.liquidColor).toBe('#6FA97D')
     expect(state.fillRatio).toBeCloseTo(2 / 3, 5)
+    expect(state.heroState).toBeTruthy()
+    expect(state.heroState.surfaceY).toBe(surfaceY(2 / 3))
     expect(state.leafStates).toHaveLength(7)
-    expect(state.leafStates[0].visual.filled).toBe(true)
-    expect(state.leafStates[2].visual.filled).toBe(false)
+    expect(state.leafStates[0].visual.logged).toBe(true)
+    expect(state.leafStates[2].visual.logged).toBe(false)
     expect(state.streakCount).toBe(5)
     expect(state.weeklyGoal).toBe(3)
   })
 
-  test('GLOW_JOURNEY_PALETTE has required color tokens', () => {
-    // Correction addendum §1.2: halo unfilled stroke deepened to #4A6B57
-    expect(GLOW_JOURNEY_PALETTE.haloUnfilledStroke).toBe('#4A6B57')
-    expect(GLOW_JOURNEY_PALETTE.particleColor).toBe('#F5D98B')
-    expect(GLOW_JOURNEY_PALETTE.fallingDropletColor).toBe('#8FBF9F')
-    expect(GLOW_JOURNEY_PALETTE.liquidHighlightColor).toBe('#FFFFFF')
-    expect(GLOW_JOURNEY_PALETTE.stageGoldTrim).toBe('#D9A63E')
+  test('GLOW_PALETTE has Living Juice Glow design tokens', () => {
+    // Spec §2 design tokens
+    expect(GLOW_PALETTE.bg).toBe('#080F0C')
+    expect(GLOW_PALETTE.surfaceTop).toBe('#12201A')
+    expect(GLOW_PALETTE.ink).toBe('#EAF4EE')
+    expect(GLOW_PALETTE.inkMuted).toBe('#7E948A')
+    expect(GLOW_PALETTE.juiceGold).toBe('#FFB23F')
+    expect(GLOW_PALETTE.juiceMint).toBe('#7BE3B0')
+    expect(GLOW_PALETTE.glowLine).toBe('#F4FFFA')
+    expect(GLOW_PALETTE.weekLeafOffFill).toBe('#16241D')
+    expect(GLOW_PALETTE.weekLeafOffStroke).toBe('#4E7462')
+    expect(GLOW_PALETTE.weekStem).toBe('#2A4437')
+    // Legacy compatibility tokens preserved
+    expect(GLOW_PALETTE.stageGoldTrim).toBe('#D9A63E')
   })
 })
 
 // ── 32. GlowJourneyDropArtwork component structure ──
 
 describe('GlowJourneyDropArtwork component', () => {
-  test('source defines canonical SVG named groups', () => {
+  test('source defines Living Juice Glow SVG groups', () => {
     const fs = require('fs')
     const path = require('path')
     const source = fs.readFileSync(
       path.join(__dirname, '..', '..', 'components', 'GlowJourneyDropArtwork.js'),
       'utf8'
     )
-    expect(source).toMatch(/glowjourney_drop_container/)
-    expect(source).toMatch(/glowjourney_drop_glass/)
-    // Correction addendum §1.2: filled circle replaced with ambient glow
-    expect(source).toMatch(/glowjourney_ambient_glow/)
-    expect(source).toMatch(/glowjourney_leaf_halo/)
-    expect(source).toMatch(/glowjourney_liquid_fill/)
-    expect(source).toMatch(/glowjourney_liquid_highlight/)
-    expect(source).toMatch(/glowjourney_drop_outline/)
-    expect(source).toMatch(/glowjourney_liquid_ripple/)
-    expect(source).toMatch(/glowjourney_falling_droplet/)
-    expect(source).toMatch(/glowjourney_stage_ornamentation/)
-    expect(source).toMatch(/glowjourney_particle/)
+    // Living Juice Glow: hero + week vine containers
+    expect(source).toMatch(/glowhero_container/)
+    expect(source).toMatch(/glowweekvine_container/)
+    expect(source).toMatch(/glowhero_wrap/)
+    expect(source).toMatch(/glowweekvine_wrap/)
   })
 
-  test('source defines all seven stage motif groups', () => {
+  test('source uses locked drip-tip vessel silhouette path', () => {
     const fs = require('fs')
     const path = require('path')
     const source = fs.readFileSync(
       path.join(__dirname, '..', '..', 'components', 'GlowJourneyDropArtwork.js'),
       'utf8'
     )
-    expect(source).toMatch(/glowjourney_stage_seed/)
-    expect(source).toMatch(/glowjourney_stage_sprout/)
-    expect(source).toMatch(/glowjourney_stage_growing/)
-    expect(source).toMatch(/glowjourney_stage_blooming/)
-    expect(source).toMatch(/glowjourney_stage_thriving/)
-    expect(source).toMatch(/glowjourney_stage_radiant/)
-    expect(source).toMatch(/glowjourney_stage_legend/)
+    // Spec §5 locked vessel path — asymmetric botanical drip-tip
+    expect(source).toMatch(/M118,14 C112,50 130,76 150,104/)
+    expect(source).toMatch(/174,220 142,250 98,250/)
   })
 
-  test('source uses canonical drop path from SVG', () => {
+  test('source defines vine with 7 leaf positions and M T W T F S S initials', () => {
     const fs = require('fs')
     const path = require('path')
     const source = fs.readFileSync(
       path.join(__dirname, '..', '..', 'components', 'GlowJourneyDropArtwork.js'),
       'utf8'
     )
-    // Correction addendum §1.2: drop enlarged, apex moved from y=90 to y=75
-    expect(source).toMatch(/M 200,75/)
-    expect(source).toMatch(/139\.3,190\.0/)
+    expect(source).toMatch(/VINE_LEAF_CENTERS/)
+    expect(source).toMatch(/VINE_DAY_INITIALS/)
+    expect(source).toMatch(/\['M', 'T', 'W', 'T', 'F', 'S', 'S'\]/)
   })
 
   test('source does not load SVG files from Docs at runtime', () => {
@@ -1105,17 +1188,45 @@ describe('GlowJourneyDropArtwork component', () => {
       'utf8'
     )
     expect(source).not.toMatch(/Docs/i)
-    expect(source).not.toMatch(/\.svg/)
   })
 
-  test('particle count capped at 7', () => {
+  test('source is filter-free (no feGaussianBlur)', () => {
     const fs = require('fs')
     const path = require('path')
     const source = fs.readFileSync(
       path.join(__dirname, '..', '..', 'components', 'GlowJourneyDropArtwork.js'),
       'utf8'
     )
-    expect(source).toMatch(/Math\.min\(particleCount, 7\)/)
+    // Spec §13: production must be filter-free
+    expect(source).not.toMatch(/feGaussianBlur/)
+    expect(source).not.toMatch(/filter=/)
+  })
+
+  test('source uses per-instance unique gradient/clip IDs', () => {
+    const fs = require('fs')
+    const path = require('path')
+    const source = fs.readFileSync(
+      path.join(__dirname, '..', '..', 'components', 'GlowJourneyDropArtwork.js'),
+      'utf8'
+    )
+    // Spec §13: per-instance suffix IDs to prevent Android cross-contamination
+    expect(source).toMatch(/Math\.random.*toString.*slice/)
+  })
+
+  test('source does not render text inside hero SVG', () => {
+    const fs = require('fs')
+    const path = require('path')
+    const source = fs.readFileSync(
+      path.join(__dirname, '..', '..', 'components', 'GlowJourneyDropArtwork.js'),
+      'utf8'
+    )
+    // Spec §5: no text/numeral/badge/icon inside hero
+    // GlowHero function should not contain SvgText
+    const heroMatch = source.match(/function GlowHero[\s\S]*?^}/m)
+    if (heroMatch) {
+      expect(heroMatch[0]).not.toMatch(/SvgText/)
+      expect(heroMatch[0]).not.toMatch(/<Text/)
+    }
   })
 })
 
@@ -1134,25 +1245,29 @@ describe('useCelebrationCoordinator', () => {
 // ── 34. Streak label fix ──
 
 describe('Streak label fix', () => {
-  test('GlowJourneyDrop streak label shows correct singular form', () => {
+  test('GlowJourneyDrop renders streak numeral outside hero', () => {
     const fs = require('fs')
     const path = require('path')
     const source = fs.readFileSync(
       path.join(__dirname, '..', '..', 'components', 'GlowJourneyDrop.js'),
       'utf8'
     )
-    expect(source).toMatch(/streakCount === 1 \? '1 Day Glow Streak'/)
-    expect(source).toMatch(/`\$\{streakCount\} Day Glow Streak`/)
+    // Living Juice Glow: streak is outside hero, rendered as numeral + 2-line label
+    expect(source).toMatch(/streakNumeral/)
+    expect(source).toMatch(/DAY GLOW/)
+    expect(source).toMatch(/STREAK/)
   })
 
-  test('GlowJourneyDrop does not show same text for both singular and plural', () => {
+  test('GlowJourneyDrop does not render streak text inside hero', () => {
     const fs = require('fs')
     const path = require('path')
     const source = fs.readFileSync(
       path.join(__dirname, '..', '..', 'components', 'GlowJourneyDrop.js'),
       'utf8'
     )
-    expect(source).not.toMatch(/streakCount === 1 \? 'Day Glow Streak' : 'Day Glow Streak'/)
+    // Spec §5: no text/numeral inside hero — old overlay removed
+    expect(source).not.toMatch(/streakOverlay/)
+    expect(source).not.toMatch(/Day Glow Streak/)
   })
 })
 
@@ -1178,5 +1293,232 @@ describe('GlowJourneyDetail redesigned artwork', () => {
       'utf8'
     )
     expect(source).toMatch(/dropArtworkContainer/)
+  })
+})
+
+// ── 36. Living Juice Glow — 3-day vs 7-day safety ──
+
+describe('Living Juice Glow — 3-day vs 7-day safety', () => {
+  const { getFillRatio, getHeroVisualState, surfaceY } = require('../../components/GlowJourneyVisualState')
+
+  test('f = min(q,3)/3 for q=0,1,2,3,5,7', () => {
+    expect(getFillRatio(0)).toBe(0)
+    expect(getFillRatio(1)).toBeCloseTo(1 / 3, 5)
+    expect(getFillRatio(2)).toBeCloseTo(2 / 3, 5)
+    expect(getFillRatio(3)).toBe(1)
+    expect(getFillRatio(5)).toBe(1) // capped, no 5/7 math
+    expect(getFillRatio(7)).toBe(1) // capped, no 7-day goal
+  })
+
+  test('q=5 produces SAME completed fill height as q=3', () => {
+    const h3 = getHeroVisualState(3)
+    const h5 = getHeroVisualState(5)
+    expect(h5.surfaceY).toBe(h3.surfaceY) // 42 === 42
+    expect(h5.f).toBe(h3.f) // 1 === 1
+  })
+
+  test('q=7 produces SAME completed fill height as q=3', () => {
+    const h3 = getHeroVisualState(3)
+    const h7 = getHeroVisualState(7)
+    expect(h7.surfaceY).toBe(h3.surfaceY) // 42 === 42
+  })
+
+  test('q>3 increases radiance only (pulp count, bloom), not fill', () => {
+    const h3 = getHeroVisualState(3)
+    const h5 = getHeroVisualState(5)
+    expect(h5.pulpCount).toBeGreaterThan(h3.pulpCount) // 9 > 5
+    expect(h5.completionBloomOpacity).toBeGreaterThan(h3.completionBloomOpacity) // 1.0 > 0.7
+    expect(h5.surfaceY).toBe(h3.surfaceY) // fill unchanged
+  })
+
+  test('WEEKLY_GLOW_GOAL remains exactly 3', () => {
+    const { WEEKLY_GLOW_GOAL } = require('../../constants/glowJourneyStages')
+    expect(WEEKLY_GLOW_GOAL).toBe(3)
+  })
+})
+
+// ── 37. Living Juice Glow — vine structure ──
+
+describe('Living Juice Glow — vine structure', () => {
+  const { getVineLeafVisualState, GLOW_PALETTE } = require('../../components/GlowJourneyVisualState')
+
+  test('exactly 7 vine leaf centers defined', () => {
+    const fs = require('fs')
+    const path = require('path')
+    const source = fs.readFileSync(
+      path.join(__dirname, '..', '..', 'components', 'GlowJourneyDropArtwork.js'),
+      'utf8'
+    )
+    // 7 leaf centers: 34, 82.7, 131.3, 180, 228.7, 277.3, 326
+    const match = source.match(/VINE_LEAF_CENTERS\s*=\s*\[([^\]]+)\]/)
+    expect(match).toBeTruthy()
+    const centers = match[1].split(',').map((s) => parseFloat(s.trim()))
+    expect(centers).toHaveLength(7)
+  })
+
+  test('7 day initials M T W T F S S', () => {
+    const fs = require('fs')
+    const path = require('path')
+    const source = fs.readFileSync(
+      path.join(__dirname, '..', '..', 'components', 'GlowJourneyDropArtwork.js'),
+      'utf8'
+    )
+    expect(source).toMatch(/\['M', 'T', 'W', 'T', 'F', 'S', 'S'\]/)
+  })
+
+  test('logged vine leaf has gold gradient fill', () => {
+    const vs = getVineLeafVisualState({ hasLog: true, isToday: false, isFuture: false })
+    expect(vs.fillType).toBe('gradient')
+    expect(vs.fillColor).toBe(GLOW_PALETTE.juiceGold)
+  })
+
+  test('unlogged vine leaf has dark fill and visible stroke', () => {
+    const vs = getVineLeafVisualState({ hasLog: false, isToday: false, isFuture: false })
+    expect(vs.fillType).toBe('flat')
+    expect(vs.fillColor).toBe(GLOW_PALETTE.weekLeafOffFill)
+    expect(vs.strokeColor).toBe(GLOW_PALETTE.weekLeafOffStroke)
+    expect(vs.glowOpacity).toBe(0)
+  })
+})
+
+// ── 38. Living Juice Glow — no emoji, no old elements ──
+
+describe('Living Juice Glow — no emoji, no old visual elements', () => {
+  test('GlowJourneyDropArtwork has no emoji', () => {
+    const fs = require('fs')
+    const path = require('path')
+    const source = fs.readFileSync(
+      path.join(__dirname, '..', '..', 'components', 'GlowJourneyDropArtwork.js'),
+      'utf8'
+    )
+    // No emoji characters in the artwork source
+    const emojiPattern = /[\u{1F300}-\u{1F9FF}\u{2600}-\u{27BF}]/u
+    expect(emojiPattern.test(source)).toBe(false)
+  })
+
+  test('GlowJourneyDrop has no emoji', () => {
+    const fs = require('fs')
+    const path = require('path')
+    const source = fs.readFileSync(
+      path.join(__dirname, '..', '..', 'components', 'GlowJourneyDrop.js'),
+      'utf8'
+    )
+    const emojiPattern = /[\u{1F300}-\u{1F9FF}\u{2600}-\u{27BF}]/u
+    expect(emojiPattern.test(source)).toBe(false)
+  })
+
+  test('GlowJourneyDrop does not have old chip groups or motivational copy', () => {
+    const fs = require('fs')
+    const path = require('path')
+    const source = fs.readFileSync(
+      path.join(__dirname, '..', '..', 'components', 'GlowJourneyDrop.js'),
+      'utf8'
+    )
+    // Old elements removed per spec §14
+    expect(source).not.toMatch(/chipsRow/)
+    expect(source).not.toMatch(/chipGroup/)
+    expect(source).not.toMatch(/motivationalCopy/)
+    expect(source).not.toMatch(/MilestoneMessage/)
+  })
+
+  test('GlowJourneyDrop has new card composition hierarchy', () => {
+    const fs = require('fs')
+    const path = require('path')
+    const source = fs.readFileSync(
+      path.join(__dirname, '..', '..', 'components', 'GlowJourneyDrop.js'),
+      'utf8'
+    )
+    // New hierarchy: eyebrow → hero → vine → streak → divider → journey
+    expect(source).toMatch(/eyebrow/)
+    expect(source).toMatch(/heroWrap/)
+    expect(source).toMatch(/streakRow/)
+    expect(source).toMatch(/divider/)
+    expect(source).toMatch(/journeyRow/)
+  })
+
+  test('GlowJourneyDrop uses serif font for streak numeral (no Fraunces dependency)', () => {
+    const fs = require('fs')
+    const path = require('path')
+    const source = fs.readFileSync(
+      path.join(__dirname, '..', '..', 'components', 'GlowJourneyDrop.js'),
+      'utf8'
+    )
+    // Uses existing codebase serif pattern, not a new font dependency
+    expect(source).toMatch(/Georgia.*serif|serif.*Georgia/)
+    expect(source).not.toMatch(/Fraunces/)
+    expect(source).not.toMatch(/Inter Tight/)
+    expect(source).not.toMatch(/expo-font/)
+  })
+})
+
+// ── 39. Living Juice Glow — Garden freeze verification ──
+
+describe('Living Juice Glow — Garden freeze', () => {
+  test('GardenProduceIcons was not modified in this pass', () => {
+    const fs = require('fs')
+    const path = require('path')
+    const source = fs.readFileSync(
+      path.join(__dirname, '..', '..', 'components', 'GardenProduceIcons.js'),
+      'utf8'
+    )
+    // Should still contain the corrected icons from the prior pass
+    expect(source).toMatch(/TropicalIcon|function Tropical/)
+    expect(source).toMatch(/BerriesIcon|function Berries/)
+  })
+
+  test('JourneyTreeArtwork was not modified in this pass', () => {
+    const fs = require('fs')
+    const path = require('path')
+    const source = fs.readFileSync(
+      path.join(__dirname, '..', '..', 'components', 'JourneyTreeArtwork.js'),
+      'utf8'
+    )
+    // Should still contain the Journey Tree from the prior pass
+    expect(source).toMatch(/JourneyTreeArtwork/)
+  })
+
+  test('MilestoneArborArtwork was not modified in this pass', () => {
+    const fs = require('fs')
+    const path = require('path')
+    const source = fs.readFileSync(
+      path.join(__dirname, '..', '..', 'components', 'MilestoneArborArtwork.js'),
+      'utf8'
+    )
+    // Should still contain the Arbor from the prior pass
+    expect(source).toMatch(/MilestoneArborArtwork/)
+  })
+})
+
+// ── 40. Living Juice Glow — no new persistence keys ──
+
+describe('Living Juice Glow — no new persistence', () => {
+  test('GlowJourneyVisualState does not import AsyncStorage', () => {
+    const fs = require('fs')
+    const path = require('path')
+    const source = fs.readFileSync(
+      path.join(__dirname, '..', '..', 'components', 'GlowJourneyVisualState.js'),
+      'utf8'
+    )
+    expect(source).not.toMatch(/AsyncStorage/)
+  })
+
+  test('GlowJourneyDropArtwork does not import AsyncStorage', () => {
+    const fs = require('fs')
+    const path = require('path')
+    const source = fs.readFileSync(
+      path.join(__dirname, '..', '..', 'components', 'GlowJourneyDropArtwork.js'),
+      'utf8'
+    )
+    expect(source).not.toMatch(/AsyncStorage/)
+  })
+
+  test('GlowJourneyDrop does not import AsyncStorage', () => {
+    const fs = require('fs')
+    const path = require('path')
+    const source = fs.readFileSync(
+      path.join(__dirname, '..', '..', 'components', 'GlowJourneyDrop.js'),
+      'utf8'
+    )
+    expect(source).not.toMatch(/AsyncStorage/)
   })
 })

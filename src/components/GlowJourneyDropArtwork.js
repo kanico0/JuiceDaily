@@ -1,342 +1,336 @@
 import React, { useMemo } from 'react'
-import { View, Text, StyleSheet } from 'react-native'
-import Svg, { Defs, ClipPath, Path, G, Rect, Circle, Ellipse, Line, LinearGradient, RadialGradient, Stop } from 'react-native-svg'
-import { SEMANTIC_COLORS } from '../constants/tokens'
-import { GLOW_JOURNEY_PALETTE, getLiquidFillGeometry, clampProgress } from './GlowJourneyVisualState'
-import GlowJourneyStageIcon from './GlowJourneyStageIcon'
+import Svg, {
+  Defs, ClipPath, Path, G, Rect, Circle, Ellipse, Line,
+  LinearGradient, RadialGradient, Stop, Text as SvgText,
+} from 'react-native-svg'
+import { GLOW_PALETTE } from './GlowJourneyVisualState'
 
-// ── Enlarged drop (correction addendum §1.2) ────────────────
-// Drop scaled ~10% larger to occupy ~55-65% of card height.
-// Apex at y=75, bulb center at y=284, bulb radius 94.
-const DROP_PATH = 'M 200,75 C 139.3,190.0 106.5,284.0 106.5,284.0 A 94,94 0 1 0 293.5,284.0 C 293.5,284.0 260.7,190.0 200,75 Z'
-const LIQUID_HIGHLIGHT_PATH = 'M 155,135 C 140,210 145,275 160,305 C 150,255 147,185 165,130 Z'
-const FALLING_DROPLET_PATH = 'M 200,20 C 191,35 191,47 200,47 C 209,47 209,35 200,20 Z'
-const RIPPLE_PATH = 'M 120,190 Q 160,183 200,190 Q 240,197 280,190'
+// ─────────────────────────────────────────────────────────────
+// Living Juice Glow — Hero + Week Vine artwork
+// (GLOW_RECONSTRUCTION_FINAL spec §5, §6, §13)
+//
+// Filter-free production implementation. All blur effects from
+// the reference SVGs are replaced with layered gradients, opacity,
+// and stacked strokes per spec §13.
+// ─────────────────────────────────────────────────────────────
 
-// ── Halo leaves: larger, thicker, tighter radius ─────────────
-// Positions scaled to 0.8 radius (closer to drop), leaf shapes
-// scaled 1.2x (larger). Stroke width increased ~40%.
-const LEAF_PATHS = [
-  'M 80.2,272.1 Q 59.4,290.1 26.8,286.4 Q 53.1,266.9 80.2,272.1 Z',
-  'M 83.4,197.6 Q 56.0,200.4 31.6,178.8 Q 64.2,177.8 83.4,197.6 Z',
-  'M 128.9,138.4 Q 104.8,125.0 97.2,93.3 Q 124.5,111.2 128.9,138.4 Z',
-  'M 200.0,116.0 Q 188.0,91.2 200.0,60.8 Q 212.0,91.2 200.0,116.0 Z',
-  'M 271.1,138.4 Q 295.2,125.0 302.8,93.3 Q 275.5,111.2 271.1,138.4 Z',
-  'M 316.6,197.6 Q 344.0,200.4 368.4,178.8 Q 335.8,177.8 316.6,197.6 Z',
-  'M 319.8,272.1 Q 340.7,290.1 373.2,286.4 Q 346.9,266.9 319.8,272.1 Z',
-]
+// ── Locked vessel silhouette (spec §5 — do not redraw) ───────
+const VESSEL_PATH = 'M118,14 C112,50 130,76 150,104 C170,132 180,152 178,176 C174,220 142,250 98,250 C56,250 22,216 22,172 C22,146 34,124 52,100 C74,70 100,44 118,14 Z'
 
-const LEAF_VEIN_PATHS = [
-  'M 80.2,272.1 L 26.8,286.4',
-  'M 83.4,197.6 L 31.6,178.8',
-  'M 128.9,138.4 L 97.2,93.3',
-  'M 200.0,116.0 L 200.0,60.8',
-  'M 271.1,138.4 L 302.8,93.3',
-  'M 316.6,197.6 L 368.4,178.8',
-  'M 319.8,272.1 L 373.2,286.4',
-]
+// ── Vine constants (spec §6) ─────────────────────────────────
+const VINE_VIEWBOX_W = 360
+const VINE_VIEWBOX_H = 80
+const VINE_STEM_PATH = 'M20,26 Q180,34 340,26'
+const VINE_LEAF_CENTERS = [34, 82.7, 131.3, 180, 228.7, 277.3, 326]
+const VINE_DAY_INITIALS = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
 
-// Gold center dot positions for filled leaves (midpoint of each leaf)
-const LEAF_DOT_POSITIONS = [
-  { cx: 53.5, cy: 279.3 },
-  { cx: 57.5, cy: 188.2 },
-  { cx: 113.1, cy: 115.9 },
-  { cx: 200.0, cy: 88.4 },
-  { cx: 287.0, cy: 115.9 },
-  { cx: 342.5, cy: 188.2 },
-  { cx: 346.5, cy: 279.3 },
-]
+function vineLeafPath(cx) {
+  return `M ${cx - 17},24 Q ${cx},7 ${cx + 17},24 Q ${cx},41 ${cx - 17},24 Z`
+}
 
-const PARTICLE_POSITIONS = [
-  { cx: 335.3, cy: 72.9 },
-  { cx: 155.3, cy: 29.7 },
-  { cx: 8.4, cy: 142.4 },
-  { cx: 3.6, cy: 327.4 },
-  { cx: 144.4, cy: 447.7 },
-  { cx: 326.4, cy: 413.9 },
-  { cx: 414.7, cy: 251.3 },
-]
-
-function GlowJourneyDropArtwork({
-  visualState,
-  size = 180,
-  showFallingDroplet = false,
-  showRipple = false,
-  showParticles = false,
-  particleCount = 0,
-  glowRingOpacityOverride = null,
-  fallingDropletOpacity = 0,
-  rippleOpacity = 0,
-  particleOpacities = [],
-  leafScaleOverrides = [],
-  isReduced = false,
-}) {
+// ── Hero SVG ─────────────────────────────────────────────────
+function GlowHero({ heroState, surfaceTranslateY, isReduced }) {
   const {
-    stageProps,
-    liquidGeometry,
-    leafStates,
-    fillRatio,
-  } = visualState
+    surfaceY,
+    ambientOpacity,
+    rimMintOpacity,
+    rimGoldOpacity,
+    rimLightLowerRight,
+    surfaceBloomOpacity,
+    completionBloomOpacity,
+    pulpCount,
+    isComplete,
+    beyondGoal,
+  } = heroState
 
-  const glowRingOpacity = glowRingOpacityOverride !== null
-    ? glowRingOpacityOverride
-    : stageProps.glowRingOpacity
+  const ids = useMemo(() => {
+    const s = Math.random().toString(36).slice(2, 8)
+    return {
+      clip: `glow_clip_${s}`,
+      juice: `glow_juice_${s}`,
+      strat: `glow_strat_${s}`,
+      glass: `glow_glass_${s}`,
+      rim: `glow_rim_${s}`,
+      amb: `glow_amb_${s}`,
+      bloom: `glow_bloom_${s}`,
+      caustic: `glow_caustic_${s}`,
+      depth: `glow_depth_${s}`,
+      leafGlow: `glow_leafglow_${s}`,
+    }
+  }, [])
 
-  const liquidGradId = useMemo(() => `glowjourney_liquid_grad_${Math.random().toString(36).slice(2, 8)}`, [])
-  const outlineGradId = useMemo(() => `glowjourney_outline_grad_${Math.random().toString(36).slice(2, 8)}`, [])
-  const clipId = useMemo(() => `glowjourney_liquid_clip_${Math.random().toString(36).slice(2, 8)}`, [])
-  const goldGlowId = useMemo(() => `glowjourney_gold_glow_${Math.random().toString(36).slice(2, 8)}`, [])
-  const mintGlowId = useMemo(() => `glowjourney_mint_glow_${Math.random().toString(36).slice(2, 8)}`, [])
+  // Meniscus curve at the current surface level
+  const meniscusY = 0 // local y=0 inside the translated liquid group
+  const meniscusPath = `M-12,${meniscusY + 3} Q100,${meniscusY - 8} 212,${meniscusY + 3}`
 
-  const activeParticleCount = Math.min(particleCount, 7)
-  const activeLeafScales = leafStates.map((_, i) =>
-    leafScaleOverrides[i] !== undefined ? leafScaleOverrides[i] : 1
-  )
+  // Pulp bubble positions (5 default, 9 when beyond goal)
+  const pulpPositions = [
+    { cx: 78, cy: 147 }, { cx: 126, cy: 173 }, { cx: 94, cy: 203 },
+    { cx: 140, cy: 229 }, { cx: 60, cy: 190 },
+    { cx: 110, cy: 155 }, { cx: 150, cy: 200 }, { cx: 88, cy: 220 }, { cx: 130, cy: 240 },
+  ]
 
   return (
-    <Svg width={size} height={size * 1.15} viewBox="0 0 400 460" accessibilityLabel="Glow Journey progress indicator">
+    <G id="glowhero_container">
       <Defs>
-        <ClipPath id={clipId}>
-          <Path d={DROP_PATH} />
+        <ClipPath id={ids.clip}>
+          <Path d={VESSEL_PATH} />
         </ClipPath>
-        {/* Ambient glow: warm gold + cool mint, edgeless, low opacity */}
-        <RadialGradient id={goldGlowId} cx="50%" cy="52%" r="55%">
-          <Stop offset="0%" stopColor={GLOW_JOURNEY_PALETTE.ambientGlowGold} stopOpacity="0.07" />
-          <Stop offset="60%" stopColor={GLOW_JOURNEY_PALETTE.ambientGlowGold} stopOpacity="0.03" />
-          <Stop offset="100%" stopColor={GLOW_JOURNEY_PALETTE.ambientGlowGold} stopOpacity="0" />
-        </RadialGradient>
-        <RadialGradient id={mintGlowId} cx="50%" cy="52%" r="40%">
-          <Stop offset="0%" stopColor={GLOW_JOURNEY_PALETTE.ambientGlowMint} stopOpacity="0.06" />
-          <Stop offset="60%" stopColor={GLOW_JOURNEY_PALETTE.ambientGlowMint} stopOpacity="0.025" />
-          <Stop offset="100%" stopColor={GLOW_JOURNEY_PALETTE.ambientGlowMint} stopOpacity="0" />
-        </RadialGradient>
-        {/* Juice two-tone: mint band at surface, warm orange body */}
-        <LinearGradient id={liquidGradId} x1="0" y1="0" x2="0" y2="1">
-          <Stop offset="0%" stopColor={GLOW_JOURNEY_PALETTE.juiceLiquidTopBand} stopOpacity="0.85" />
-          <Stop offset="12%" stopColor={GLOW_JOURNEY_PALETTE.juiceLiquidTopBand} stopOpacity="0.7" />
-          <Stop offset="13%" stopColor={GLOW_JOURNEY_PALETTE.juiceLiquidBase} stopOpacity="0.9" />
-          <Stop offset="100%" stopColor={GLOW_JOURNEY_PALETTE.juiceLiquidBase} stopOpacity="0.75" />
+        {/* Juice body gradient — vertical, surface to bottom */}
+        <LinearGradient id={ids.juice} x1="0" y1={String(surfaceY)} x2="0" y2="252" gradientUnits="userSpaceOnUse">
+          <Stop offset="0" stopColor={GLOW_PALETTE.juiceHighlight} />
+          <Stop offset="0.38" stopColor={GLOW_PALETTE.juiceGoldMid} />
+          <Stop offset="1" stopColor={GLOW_PALETTE.juiceGoldDeep} />
         </LinearGradient>
-        <LinearGradient id={outlineGradId} x1="0" y1="0" x2="0" y2="1">
-          <Stop offset="0%" stopColor={GLOW_JOURNEY_PALETTE.haloFilledColor} stopOpacity="0.7" />
-          <Stop offset="100%" stopColor={GLOW_JOURNEY_PALETTE.haloFilledColor} stopOpacity="0.4" />
+        {/* Mint stratum gradient */}
+        <LinearGradient id={ids.strat} x1="0" y1={String(surfaceY - 8)} x2="0" y2={String(surfaceY + 12)} gradientUnits="userSpaceOnUse">
+          <Stop offset="0" stopColor={GLOW_PALETTE.juiceMintLight} />
+          <Stop offset="1" stopColor={GLOW_PALETTE.juiceMintDeep} />
         </LinearGradient>
+        {/* Glass interior gradient */}
+        <LinearGradient id={ids.glass} x1="0.1" y1="0" x2="0.9" y2="1">
+          <Stop offset="0" stopColor="#18271F" />
+          <Stop offset="1" stopColor="#0A1310" />
+        </LinearGradient>
+        {/* Rim gradient — mint to gold */}
+        <LinearGradient id={ids.rim} x1="0" y1="0" x2="0" y2="252" gradientUnits="userSpaceOnUse">
+          <Stop offset="0" stopColor={GLOW_PALETTE.juiceMint} stopOpacity="0.87" />
+          <Stop offset="0.5" stopColor="#A6EDCB" stopOpacity="0.64" />
+          <Stop offset="1" stopColor={GLOW_PALETTE.juiceGoldLight} stopOpacity="0.77" />
+        </LinearGradient>
+        {/* Ambient radial glow */}
+        <RadialGradient id={ids.amb} cx="0.5" cy="0.5" r="0.5">
+          <Stop offset="0" stopColor="#FF9D2E" stopOpacity="0.60" />
+          <Stop offset="0.5" stopColor="#E06A16" stopOpacity="0.20" />
+          <Stop offset="1" stopColor="#E06A16" stopOpacity="0" />
+        </RadialGradient>
+        {/* Completion bloom */}
+        <RadialGradient id={ids.bloom} cx="0.5" cy="0.5" r="0.5">
+          <Stop offset="0" stopColor="#FFC163" stopOpacity="0.30" />
+          <Stop offset="0.58" stopColor={GLOW_PALETTE.juiceGold} stopOpacity="0.16" />
+          <Stop offset="1" stopColor={GLOW_PALETTE.juiceMint} stopOpacity="0" />
+        </RadialGradient>
+        {/* Bottom caustic */}
+        <RadialGradient id={ids.caustic} cx="0.5" cy="0.5" r="0.5">
+          <Stop offset="0" stopColor={GLOW_PALETTE.juiceGoldLight} stopOpacity="0.30" />
+          <Stop offset="1" stopColor={GLOW_PALETTE.juiceGoldLight} stopOpacity="0" />
+        </RadialGradient>
+        {/* Depth shade */}
+        <RadialGradient id={ids.depth} cx="0.5" cy="0.5" r="0.5">
+          <Stop offset="0" stopColor="#8E3305" stopOpacity="0.30" />
+          <Stop offset="1" stopColor="#8E3305" stopOpacity="0" />
+        </RadialGradient>
       </Defs>
 
-      {/* glowjourney_drop_container */}
-      <G id="glowjourney_drop_container">
-        {/* glowjourney_ambient_glow — soft edgeless, no visible circle */}
-        <G id="glowjourney_ambient_glow">
-          <Rect x="0" y="0" width="400" height="460" fill={`url(#${goldGlowId})`} />
-          <Rect x="0" y="0" width="400" height="460" fill={`url(#${mintGlowId})`} />
+      {/* z1 — ambient light (edgeless radial ellipse) */}
+      <Ellipse cx="100" cy="172" rx="126" ry="140" fill={`url(#${ids.amb})`} opacity={ambientOpacity} />
+
+      {/* z1b — completion bloom (only when goal met) */}
+      {isComplete && (
+        <Ellipse cx="100" cy="100" rx="110" ry="120" fill={`url(#${ids.bloom})`} opacity={completionBloomOpacity} />
+      )}
+
+      {/* z2 — vessel interior (dark glass gradient) */}
+      <Path d={VESSEL_PATH} fill={`url(#${ids.glass})`} />
+
+      {/* z2b — interior shoulder shade (upper-right flank) */}
+      <Path d="M118,14 C112,50 130,76 150,104 C170,132 180,152 178,176"
+            fill="none" stroke="#2A4437" strokeWidth="6" opacity="0.5" />
+
+      {/* z3 — liquid group (clipped to vessel, translated to surface) */}
+      <G clipPath={`url(#${ids.clip})`}>
+        <G transform={`translate(0, ${surfaceTranslateY})`}>
+          {/* Juice body — meniscus curve down to bottom */}
+          <Path d={`${meniscusPath} L212,270 L-12,270 Z`} fill={`url(#${ids.juice})`} />
+
+          {/* Bottom caustic */}
+          <Ellipse cx="96" cy="236" rx="66" ry="28" fill={`url(#${ids.caustic})`} />
+
+          {/* Depth shade (lower right) */}
+          <Ellipse cx="150" cy="177" rx="40" ry="70" fill={`url(#${ids.depth})`} />
+
+          {/* Pulp bubbles */}
+          {pulpPositions.slice(0, pulpCount).map((pos, i) => (
+            <Circle key={`pulp_${i}`} cx={pos.cx} cy={pos.cy} r={i % 2 === 0 ? 4.5 : 3.5}
+                    fill={GLOW_PALETTE.juiceGoldLight} opacity="0.30" />
+          ))}
+
+          {/* Mint stratum — band on the surface curve */}
+          <Path d={`${meniscusPath} L212,${meniscusY + 12} Q100,${meniscusY + 1} -12,${meniscusY + 12} Z`}
+                fill={`url(#${ids.strat})`} opacity="0.86" />
+
+          {/* Glow line soft halo — gradient-filled band, no blur */}
+          <Path d={`${meniscusPath} L212,${meniscusY + 22} Q100,${meniscusY + 11} -12,${meniscusY + 22} Z`}
+                fill={GLOW_PALETTE.juiceMintLight} opacity="0.25" />
+
+          {/* Glow line core — crisp stroke */}
+          <Path d={meniscusPath} fill="none" stroke={GLOW_PALETTE.glowLine} strokeWidth="2.8" opacity="0.95" />
+
+          {/* Surface bloom — radial ellipse above surface */}
+          <Ellipse cx="100" cy={meniscusY - 6} rx="84" ry="26"
+                   fill={GLOW_PALETTE.juiceMintLight} opacity={surfaceBloomOpacity} />
+
+          {/* Inner highlight — plain rounded path, low opacity */}
+          <Path d="M64,4 C50,38 48,72 58,100" fill="none"
+                stroke="#FFFFFF" strokeWidth="9" strokeLinecap="round" opacity="0.14" />
+
+          {/* Inner rim shadow — two stacked clipped strokes */}
+          <Path d={VESSEL_PATH} fill="none" stroke="#5A1F02" strokeWidth="12" opacity="0.18" />
+          <Path d={VESSEL_PATH} fill="none" stroke="#5A1F02" strokeWidth="5" opacity="0.12" />
         </G>
-
-        {/* glowjourney_drop_glass */}
-        <G id="glowjourney_drop_glass" clipPath={`url(#${clipId})`}>
-          <Rect x="100" y="65" width="200" height="320" fill={GLOW_JOURNEY_PALETTE.juiceLiquidBase} opacity="0.06" />
-        </G>
-
-        {/* glowjourney_leaf_halo — leaves closer, larger, thicker */}
-        <G id="glowjourney_leaf_halo">
-          {LEAF_PATHS.map((leafPath, i) => {
-            const leaf = leafStates[i]
-            if (!leaf) return null
-            const scale = activeLeafScales[i] || 1
-            const leafCx = 200
-            const leafCy = 200
-            return (
-              <G key={`leaf_${i}`} id={`glowjourney_leaf_${String(i + 1).padStart(2, '0')}`}
-                 transform={`translate(${leafCx}, ${leafCy}) scale(${scale}) translate(${-leafCx}, ${-leafCy})`}>
-                {/* _outline */}
-                <G id={`glowjourney_leaf_${String(i + 1).padStart(2, '0')}_outline`}>
-                  <Path d={leafPath} fill="none" opacity={leaf.visual.opacity}
-                        stroke={leaf.visual.strokeColor} strokeWidth={leaf.visual.strokeWidth} />
-                  <Path d={LEAF_VEIN_PATHS[i]} stroke={leaf.visual.strokeColor}
-                        strokeOpacity="0.35" strokeWidth="1" fill="none" />
-                </G>
-                {/* _fill */}
-                {leaf.visual.filled && (
-                  <G id={`glowjourney_leaf_${String(i + 1).padStart(2, '0')}_fill`}>
-                    <Path d={leafPath} fill={leaf.visual.fillColor} opacity={leaf.visual.opacity} />
-                    <Path d={LEAF_VEIN_PATHS[i]} stroke={leaf.visual.fillColor}
-                          strokeOpacity="0.35" strokeWidth="1" fill="none" />
-                    {/* Gold center dot on filled leaves */}
-                    {leaf.visual.showGoldDot && (
-                      <Circle cx={LEAF_DOT_POSITIONS[i].cx} cy={LEAF_DOT_POSITIONS[i].cy}
-                              r="3.5" fill={leaf.visual.goldDotColor} opacity="0.9" />
-                    )}
-                  </G>
-                )}
-              </G>
-            )
-          })}
-        </G>
-
-        {/* glowjourney_liquid_fill */}
-        <G id="glowjourney_liquid_fill" clipPath={`url(#${clipId})`}>
-          {liquidGeometry.height > 0 && (
-            <Rect
-              x={liquidGeometry.x}
-              y={liquidGeometry.y}
-              width={liquidGeometry.width}
-              height={liquidGeometry.height}
-              fill={`url(#${liquidGradId})`}
-            />
-          )}
-        </G>
-
-        {/* glowjourney_liquid_highlight */}
-        <G id="glowjourney_liquid_highlight" clipPath={`url(#${clipId})`}>
-          <Path d={LIQUID_HIGHLIGHT_PATH} fill={GLOW_JOURNEY_PALETTE.liquidHighlightColor} opacity="0.30" />
-        </G>
-
-        {/* glowjourney_drop_outline */}
-        <G id="glowjourney_drop_outline">
-          <Path d={DROP_PATH} fill="none" stroke={`url(#${outlineGradId})`} strokeWidth={stageProps.outlineWidth} />
-        </G>
-
-        {/* glowjourney_liquid_ripple */}
-        {showRipple && (
-          <G id="glowjourney_liquid_ripple">
-            <Path d={RIPPLE_PATH} stroke={GLOW_JOURNEY_PALETTE.liquidHighlightColor}
-                  strokeWidth="3" fill="none" opacity={rippleOpacity} />
-          </G>
-        )}
-
-        {/* glowjourney_falling_droplet */}
-        {showFallingDroplet && (
-          <G id="glowjourney_falling_droplet">
-            <Path d={FALLING_DROPLET_PATH} fill={GLOW_JOURNEY_PALETTE.fallingDropletColor}
-                  opacity={fallingDropletOpacity} />
-          </G>
-        )}
-
-        {/* glowjourney_stage_ornamentation */}
-        <GlowJourneyStageMotif stageKey={visualState.stageKey} stageProps={stageProps} />
-
-        {/* glowjourney_particle_01…07 */}
-        {showParticles && PARTICLE_POSITIONS.slice(0, activeParticleCount).map((pos, i) => (
-          <G key={`particle_${i}`} id={`glowjourney_particle_${String(i + 1).padStart(2, '0')}`}>
-            <Circle cx={pos.cx} cy={pos.cy} r="5"
-                    fill={GLOW_JOURNEY_PALETTE.particleColor}
-                    opacity={particleOpacities[i] !== undefined ? particleOpacities[i] : 0} />
-          </G>
-        ))}
       </G>
-    </Svg>
+
+      {/* z4 — vessel rim (mint→gold gradient stroke) */}
+      <Path d={VESSEL_PATH} fill="none" stroke={`url(#${ids.rim})`} strokeWidth="2.8"
+            strokeLinejoin="round" opacity={rimMintOpacity} />
+
+      {/* z4b — specular upper-left (plain rounded path) */}
+      <Path d="M74,86 C62,104 54,120 48,138" fill="none"
+            stroke="#FFFFFF" strokeWidth="5" strokeLinecap="round" opacity="0.40" />
+
+      {/* z4c — rim light lower-right (gold stroke, progress-driven) */}
+      <Path d="M166,192 C162,220 142,240 118,246" fill="none"
+            stroke={GLOW_PALETTE.juiceGoldLight} strokeWidth="4"
+            strokeLinecap="round" opacity={rimLightLowerRight} />
+    </G>
   )
 }
 
-function GlowJourneyStageMotif({ stageKey, stageProps }) {
-  if (!stageKey) return null
+// ── Week Vine SVG ────────────────────────────────────────────
+function GlowWeekVine({ leafStates, isReduced }) {
+  const ids = useMemo(() => {
+    const s = Math.random().toString(36).slice(2, 8)
+    return {
+      leafGrad: `vine_leafgrad_${s}`,
+      leafGlow: `vine_leafglow_${s}`,
+    }
+  }, [])
 
-  const goldTrim = GLOW_JOURNEY_PALETTE.stageGoldTrim
+  return (
+    <G id="glowweekvine_container">
+      <Defs>
+        {/* Logged leaf gradient — gold vertical */}
+        <LinearGradient id={ids.leafGrad} x1="0" y1="7" x2="0" y2="41" gradientUnits="userSpaceOnUse">
+          <Stop offset="0" stopColor={GLOW_PALETTE.juiceGoldLight} />
+          <Stop offset="0.55" stopColor={GLOW_PALETTE.juiceGold} />
+          <Stop offset="1" stopColor="#EE7F16" />
+        </LinearGradient>
+        {/* Logged leaf glow — radial */}
+        <RadialGradient id={ids.leafGlow} cx="0.5" cy="0.5" r="0.5">
+          <Stop offset="0" stopColor={GLOW_PALETTE.juiceGold} stopOpacity="0.45" />
+          <Stop offset="1" stopColor={GLOW_PALETTE.juiceGold} stopOpacity="0" />
+        </RadialGradient>
+      </Defs>
 
-  switch (stageKey) {
-    case 'seed':
-      return (
-        <G id="glowjourney_stage_seed">
-          <Ellipse cx="200" cy="379" rx="10" ry="3.5" fill={GLOW_JOURNEY_PALETTE.haloUnfilledStroke} opacity="0.6" />
-        </G>
-      )
-    case 'sprout':
-      return (
-        <G id="glowjourney_stage_sprout">
-          <Path d="M 200.0,84.0 Q 194.2,79.1 194.4,70.1 Q 200.7,76.4 200.0,84.0 Z"
-                fill={GLOW_JOURNEY_PALETTE.fallingDropletColor} opacity="1.0" />
-          <Path d="M 200.0,84.0 Q 199.3,76.4 205.6,70.1 Q 205.8,79.1 200.0,84.0 Z"
-                fill={GLOW_JOURNEY_PALETTE.fallingDropletColor} opacity="1.0" />
-        </G>
-      )
-    case 'growing':
-      return (
-        <G id="glowjourney_stage_growing">
-          <Circle cx="200" cy="200" r="140" fill="none"
-                  stroke={GLOW_JOURNEY_PALETTE.haloFilledColor} strokeWidth="1.5" opacity="0.25" />
-        </G>
-      )
-    case 'blooming':
-      return (
-        <G id="glowjourney_stage_blooming">
-          <Circle cx="76.8" cy="174.9" r="2.2" fill="#F3D6DC" />
-          <Circle cx="81.0" cy="177.9" r="2.2" fill="#F3D6DC" />
-          <Circle cx="79.4" cy="182.8" r="2.2" fill="#F3D6DC" />
-          <Circle cx="74.2" cy="182.8" r="2.2" fill="#F3D6DC" />
-          <Circle cx="72.6" cy="177.9" r="2.2" fill="#F3D6DC" />
-          <Circle cx="76.8" cy="179.3" r="1.6" fill="#F2C14E" />
-          <Circle cx="200.0" cy="82.6" r="2.2" fill="#F3D6DC" />
-          <Circle cx="204.2" cy="85.6" r="2.2" fill="#F3D6DC" />
-          <Circle cx="202.6" cy="90.6" r="2.2" fill="#F3D6DC" />
-          <Circle cx="197.4" cy="90.6" r="2.2" fill="#F3D6DC" />
-          <Circle cx="195.8" cy="85.6" r="2.2" fill="#F3D6DC" />
-          <Circle cx="200.0" cy="87.0" r="1.6" fill="#F2C14E" />
-          <Circle cx="323.2" cy="174.9" r="2.2" fill="#F3D6DC" />
-          <Circle cx="327.4" cy="177.9" r="2.2" fill="#F3D6DC" />
-          <Circle cx="325.8" cy="182.8" r="2.2" fill="#F3D6DC" />
-          <Circle cx="320.6" cy="182.8" r="2.2" fill="#F3D6DC" />
-          <Circle cx="319.0" cy="177.9" r="2.2" fill="#F3D6DC" />
-          <Circle cx="323.2" cy="179.3" r="1.6" fill="#F2C14E" />
-        </G>
-      )
-    case 'thriving':
-      return (
-        <G id="glowjourney_stage_thriving">
-          {LEAF_VEIN_PATHS.map((vein, i) => {
-            const [x1, y1, x2, y2] = vein.match(/-?\d+\.?\d*/g).map(Number)
-            return (
-              <Line key={`vein_${i}`} x1={x1} y1={y1} x2={x2} y2={y2}
-                    stroke={goldTrim} strokeWidth="1.4" opacity="0.7" />
-            )
-          })}
-        </G>
-      )
-    case 'radiant':
-      return (
-        <G id="glowjourney_stage_radiant">
-          {LEAF_VEIN_PATHS.map((vein, i) => {
-            const [x1, y1, x2, y2] = vein.match(/-?\d+\.?\d*/g).map(Number)
-            return (
-              <Line key={`vein_${i}`} x1={x1} y1={y1} x2={x2} y2={y2}
-                    stroke={goldTrim} strokeWidth="1.4" opacity="0.7" />
-            )
-          })}
-          {/* Soft gold rays */}
-          {[
-            { x1: 200, y1: 200, x2: 200, y2: 20 },
-            { x1: 200, y1: 200, x2: 370, y2: 80 },
-            { x1: 200, y1: 200, x2: 400, y2: 200 },
-            { x1: 200, y1: 200, x2: 370, y2: 360 },
-            { x1: 200, y1: 200, x2: 200, y2: 440 },
-            { x1: 200, y1: 200, x2: 30, y2: 360 },
-            { x1: 200, y1: 200, x2: 0, y2: 200 },
-            { x1: 200, y1: 200, x2: 30, y2: 80 },
-          ].map((ray, i) => (
-            <Line key={`ray_${i}`} x1={ray.x1} y1={ray.y1} x2={ray.x2} y2={ray.y2}
-                  stroke={goldTrim} strokeWidth="1.0" opacity="0.15" />
-          ))}
-        </G>
-      )
-    case 'legend':
-      return (
-        <G id="glowjourney_stage_legend">
-          {LEAF_VEIN_PATHS.map((vein, i) => {
-            const [x1, y1, x2, y2] = vein.match(/-?\d+\.?\d*/g).map(Number)
-            return (
-              <Line key={`vein_${i}`} x1={x1} y1={y1} x2={x2} y2={y2}
-                    stroke={goldTrim} strokeWidth="1.4" opacity="0.7" />
-            )
-          })}
-          {/* Connecting flourish between outermost leaves */}
-          <Path d="M 80.2,272.1 Q 200,440 319.8,272.1"
-                fill="none" stroke={goldTrim} strokeWidth="1.2" opacity="0.5" />
-          {/* Badge accent at base */}
-          <Circle cx="200" cy="395" r="6" fill={goldTrim} opacity="0.6" />
-          <Circle cx="200" cy="395" r="3" fill={GLOW_JOURNEY_PALETTE.particleColor} opacity="0.8" />
-        </G>
-      )
-    default:
-      return null
-  }
+      {/* Stem — drawn first, behind leaves */}
+      <Path d={VINE_STEM_PATH} fill="none"
+            stroke={GLOW_PALETTE.weekStem} strokeWidth="2.5" strokeLinecap="round" />
+
+      {/* 7 leaves */}
+      {VINE_LEAF_CENTERS.map((cx, i) => {
+        const leaf = leafStates[i]
+        if (!leaf) return null
+        const vs = leaf.visual || {}
+        const logged = vs.logged || leaf.hasLog
+        const leafPath = vineLeafPath(cx)
+
+        return (
+          <G key={`vine_leaf_${i}`} id={`glowweekvine_leaf_${i}`}
+             transform={`rotate(-16 ${cx} 24)`}>
+            {/* Glow behind logged leaves only */}
+            {logged && (
+              <Ellipse cx={cx} cy="24" rx="26" ry="16"
+                       fill={`url(#${ids.leafGlow})`} opacity="0.5" />
+            )}
+            {/* Leaf body */}
+            <Path d={leafPath}
+                  fill={logged ? `url(#${ids.leafGrad})` : GLOW_PALETTE.weekLeafOffFill}
+                  opacity={leaf.isFuture ? 0.4 : 1} />
+            {/* Midrib — logged only */}
+            {logged && (
+              <Line x1={cx - 15} y1="24" x2={cx + 15} y2="24"
+                    stroke="#B85B12" strokeWidth="2" opacity="0.55" strokeLinecap="round" />
+            )}
+            {/* Leaf stroke */}
+            <Path d={leafPath} fill="none"
+                  stroke={logged ? '#FFE9C2' : GLOW_PALETTE.weekLeafOffStroke}
+                  strokeWidth={logged ? 1.6 : 2}
+                  strokeOpacity={logged ? 0.75 : 1} />
+          </G>
+        )
+      })}
+
+      {/* Day initials — M T W T F S S */}
+      {VINE_LEAF_CENTERS.map((cx, i) => {
+        const leaf = leafStates[i]
+        if (!leaf) return null
+        const vs = leaf.visual || {}
+        const logged = vs.logged || leaf.hasLog
+        return (
+          <SvgText key={`vine_initial_${i}`}
+                   x={cx} y="61" fontSize="16" fontWeight={logged ? '600' : '500'}
+                   fill={logged ? GLOW_PALETTE.ink : GLOW_PALETTE.inkMuted}
+                   textAnchor="middle"
+                   fontFamily="system-ui, sans-serif">
+            {VINE_DAY_INITIALS[i]}
+          </SvgText>
+        )
+      })}
+
+      {/* Today dot — mint circle under today's initial */}
+      {leafStates.map((leaf, i) => {
+        if (!leaf || !leaf.isToday) return null
+        return (
+          <Circle key="vine_today_dot"
+                  cx={VINE_LEAF_CENTERS[i]} cy="71" r="3"
+                  fill={GLOW_PALETTE.juiceMint} />
+        )
+      })}
+    </G>
+  )
+}
+
+// ── Main artwork component ───────────────────────────────────
+function GlowJourneyDropArtwork({
+  visualState,
+  heroWidth = 187,
+  vineWidth = 292,
+  surfaceTranslateY = 0,
+  isReduced = false,
+}) {
+  const { heroState, leafStates } = visualState
+
+  // Hero SVG: viewBox 0 0 200 260, width = heroWidth, height follows aspect
+  const heroHeight = heroWidth * (260 / 200)
+
+  // Vine SVG: viewBox 0 0 360 80, width = vineWidth, height follows aspect
+  const vineHeight = vineWidth * (80 / 360)
+
+  return (
+    <G id="glowjourney_artwork">
+      {/* GlowHero — viewBox 0 0 200 260 */}
+      <G id="glowhero_wrap">
+        <Svg width={heroWidth} height={heroHeight} viewBox="0 0 200 260"
+             accessibilityLabel="Glow Journey hero"
+             accessibilityRole="progressbar"
+             accessibilityValue={{ min: 0, max: 3, now: heroState.q }}>
+          <GlowHero
+            heroState={heroState}
+            surfaceTranslateY={surfaceTranslateY}
+            isReduced={isReduced}
+          />
+        </Svg>
+      </G>
+
+      {/* GlowWeekVine — viewBox 0 0 360 80 */}
+      <G id="glowweekvine_wrap" transform={`translate(0, ${heroHeight + 6})`}>
+        <Svg width={vineWidth} height={vineHeight} viewBox={`0 0 ${VINE_VIEWBOX_W} ${VINE_VIEWBOX_H}`}
+             accessibilityLabel="Weekly vine tracker">
+          <GlowWeekVine leafStates={leafStates} isReduced={isReduced} />
+        </Svg>
+      </G>
+    </G>
+  )
 }
 
 export default GlowJourneyDropArtwork

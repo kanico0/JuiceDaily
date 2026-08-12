@@ -1036,7 +1036,8 @@ describe('GlowJourneyVisualState', () => {
   })
 
   test('GLOW_JOURNEY_PALETTE has required color tokens', () => {
-    expect(GLOW_JOURNEY_PALETTE.haloUnfilledStroke).toBe('#C9C2B0')
+    // Correction addendum §1.2: halo unfilled stroke deepened to #4A6B57
+    expect(GLOW_JOURNEY_PALETTE.haloUnfilledStroke).toBe('#4A6B57')
     expect(GLOW_JOURNEY_PALETTE.particleColor).toBe('#F5D98B')
     expect(GLOW_JOURNEY_PALETTE.fallingDropletColor).toBe('#8FBF9F')
     expect(GLOW_JOURNEY_PALETTE.liquidHighlightColor).toBe('#FFFFFF')
@@ -1056,7 +1057,8 @@ describe('GlowJourneyDropArtwork component', () => {
     )
     expect(source).toMatch(/glowjourney_drop_container/)
     expect(source).toMatch(/glowjourney_drop_glass/)
-    expect(source).toMatch(/glowjourney_glow_ring/)
+    // Correction addendum §1.2: filled circle replaced with ambient glow
+    expect(source).toMatch(/glowjourney_ambient_glow/)
     expect(source).toMatch(/glowjourney_leaf_halo/)
     expect(source).toMatch(/glowjourney_liquid_fill/)
     expect(source).toMatch(/glowjourney_liquid_highlight/)
@@ -1090,8 +1092,9 @@ describe('GlowJourneyDropArtwork component', () => {
       path.join(__dirname, '..', '..', 'components', 'GlowJourneyDropArtwork.js'),
       'utf8'
     )
-    expect(source).toMatch(/M 200,90/)
-    expect(source).toMatch(/144\.8,194\.5/)
+    // Correction addendum §1.2: drop enlarged, apex moved from y=90 to y=75
+    expect(source).toMatch(/M 200,75/)
+    expect(source).toMatch(/139\.3,190\.0/)
   })
 
   test('source does not load SVG files from Docs at runtime', () => {

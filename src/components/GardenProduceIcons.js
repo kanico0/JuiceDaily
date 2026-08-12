@@ -18,7 +18,7 @@
 // ─────────────────────────────────────────────────────────────
 
 import React from 'react'
-import Svg, { G, Path, Circle, Ellipse, Line, Rect } from 'react-native-svg'
+import Svg, { G, Path, Circle, Ellipse, Line, Rect, Defs, ClipPath } from 'react-native-svg'
 
 // ── Tier visual props ────────────────────────────────────────
 const TIER_PROPS = {
@@ -77,24 +77,37 @@ function GreensIcon({ tier, color }) {
 
 function RootsIcon({ tier, color }) {
   const p = TIER_PROPS[tier]
+  const greenColor = '#5FD98A'
+  const ridgeColor = '#B4611F'
   return (
     <G id="produce_roots_container">
       <G id="produce_roots_outline">
-        {/* Carrot: tapered root + small green top */}
-        <Path d="M 50,88 Q 44,75 42,60 Q 41,45 50,28 Q 59,45 58,60 Q 56,75 50,88 Z"
+        {/* Tapered wedge carrot body — wide rounded top, pointed bottom */}
+        <Path d="M 42,40 Q 41,36 46,34 L 54,34 Q 59,36 58,40 L 50,80 Z"
               fill={color} fillOpacity={p.fillOpacity}
               stroke={color} strokeOpacity={p.strokeOpacity} strokeWidth={p.strokeWidth} strokeLinejoin="round" />
-        {/* Green top */}
-        <Path d="M 50,30 Q 42,22 38,14 Q 44,20 50,24 Q 56,20 62,14 Q 58,22 50,30 Z"
-              fill={color} fillOpacity={p.fillOpacity * 0.6}
-              stroke={color} strokeOpacity={p.strokeOpacity * 0.7} strokeWidth={p.strokeWidth * 0.8} />
+      </G>
+      {/* Green leaf blades (3-4 thin leaves) */}
+      <G id="produce_roots_leaves">
+        <Path d="M 50,35 Q 46.5,28.5 45,17 Q 49,25.5 50,35 Z"
+              fill={greenColor} fillOpacity={p.fillOpacity}
+              stroke={greenColor} strokeOpacity={p.strokeOpacity * 0.8} strokeWidth={p.strokeWidth * 0.7} />
+        <Path d="M 50,35 Q 47,25 48,12 Q 51,24.5 50,35 Z"
+              fill={greenColor} fillOpacity={p.fillOpacity}
+              stroke={greenColor} strokeOpacity={p.strokeOpacity * 0.8} strokeWidth={p.strokeWidth * 0.7} />
+        <Path d="M 50,35 Q 49,25 52,12 Q 53,24.5 50,35 Z"
+              fill={greenColor} fillOpacity={p.fillOpacity}
+              stroke={greenColor} strokeOpacity={p.strokeOpacity * 0.8} strokeWidth={p.strokeWidth * 0.7} />
+        <Path d="M 50,35 Q 50.5,28.5 55,17 Q 53.5,25.5 50,35 Z"
+              fill={greenColor} fillOpacity={p.fillOpacity}
+              stroke={greenColor} strokeOpacity={p.strokeOpacity * 0.8} strokeWidth={p.strokeWidth * 0.7} />
       </G>
       {p.showDetail && (
         <G id="produce_roots_detail">
-          {/* Horizontal ridges on carrot body */}
-          <Line x1="44" y1="55" x2="56" y2="55" stroke={color} strokeOpacity="0.25" strokeWidth="0.6" />
-          <Line x1="43" y1="65" x2="57" y2="65" stroke={color} strokeOpacity="0.25" strokeWidth="0.6" />
-          <Line x1="45" y1="45" x2="55" y2="45" stroke={color} strokeOpacity="0.25" strokeWidth="0.6" />
+          {/* Horizontal ridge lines on carrot body */}
+          <Line x1="45" y1="44" x2="55" y2="44" stroke={ridgeColor} strokeOpacity="0.6" strokeWidth="1.4" />
+          <Line x1="46" y1="52" x2="54" y2="52" stroke={ridgeColor} strokeOpacity="0.6" strokeWidth="1.4" />
+          <Line x1="47" y1="60" x2="53" y2="60" stroke={ridgeColor} strokeOpacity="0.6" strokeWidth="1.4" />
         </G>
       )}
     </G>
@@ -103,32 +116,42 @@ function RootsIcon({ tier, color }) {
 
 function CitrusIcon({ tier, color }) {
   const p = TIER_PROPS[tier]
+  const rindColor = '#C98A2E'
+  const pithColor = '#FFF6D8'
+  const fleshColor = '#F2C14E'
+  const segmentColor = '#C98A2E'
   return (
     <G id="produce_citrus_container">
       <G id="produce_citrus_outline">
-        {/* Lemon/orange slice: circle + segment lines */}
-        <Circle cx="50" cy="52" r="30"
-                fill={color} fillOpacity={p.fillOpacity}
-                stroke={color} strokeOpacity={p.strokeOpacity} strokeWidth={p.strokeWidth} />
-        {/* Inner ring */}
-        <Circle cx="50" cy="52" r="24"
-                fill="none"
-                stroke={color} strokeOpacity={p.strokeOpacity * 0.5} strokeWidth="1" />
+        {/* Outer rind ring */}
+        <Circle cx="50" cy="50" r="30"
+                fill={rindColor} fillOpacity={p.fillOpacity}
+                stroke={rindColor} strokeOpacity={p.strokeOpacity} strokeWidth={p.strokeWidth} />
+        {/* Pale pith ring */}
+        <Circle cx="50" cy="50" r="27"
+                fill={pithColor} fillOpacity={p.fillOpacity}
+                stroke="none" />
+        {/* Bright flesh center */}
+        <Circle cx="50" cy="50" r="23"
+                fill={fleshColor} fillOpacity={p.fillOpacity}
+                stroke="none" />
       </G>
       {p.showDetail && (
         <G id="produce_citrus_detail">
-          {/* Segment divider lines */}
-          {[
-            { x1: 50, y1: 28, x2: 50, y2: 76 },
-            { x1: 26, y1: 52, x2: 74, y2: 52 },
-            { x1: 33, y1: 35, x2: 67, y2: 69 },
-            { x1: 33, y1: 69, x2: 67, y2: 35 },
-          ].map((seg, i) => (
-            <Line key={`seg_${i}`} x1={seg.x1} y1={seg.y1} x2={seg.x2} y2={seg.y2}
-                  stroke={color} strokeOpacity="0.3" strokeWidth="0.8" />
-          ))}
+          {/* 12 radial segment lines from center to just inside rind */}
+          {Array.from({ length: 12 }, (_, i) => {
+            const angle = (i * 30 - 90) * Math.PI / 180
+            const x1 = 50
+            const y1 = 50
+            const x2 = 50 + Math.cos(angle) * 22
+            const y2 = 50 + Math.sin(angle) * 22
+            return (
+              <Line key={`seg_${i}`} x1={x1} y1={y1} x2={x2} y2={y2}
+                    stroke={segmentColor} strokeOpacity="0.75" strokeWidth="1.6" />
+            )
+          })}
           {/* Center dot */}
-          <Circle cx="50" cy="52" r="2" fill={color} opacity="0.4" />
+          <Circle cx="50" cy="50" r="4" fill={pithColor} opacity="0.9" />
         </G>
       )}
     </G>
@@ -167,29 +190,45 @@ function OrchardIcon({ tier, color }) {
 
 function BerriesIcon({ tier, color }) {
   const p = TIER_PROPS[tier]
+  const redColor = '#D9453A'
+  const seedColor = '#FFE9A8'
+  const calyxColor = '#4C8F63'
   return (
     <G id="produce_berries_container">
       <G id="produce_berries_outline">
-        {/* Strawberry: teardrop body + calyx + seeds */}
-        <Path d="M 50,82 Q 30,70 30,48 Q 30,32 50,28 Q 70,32 70,48 Q 70,70 50,82 Z"
-              fill={color} fillOpacity={p.fillOpacity}
-              stroke={color} strokeOpacity={p.strokeOpacity} strokeWidth={p.strokeWidth} strokeLinejoin="round" />
-        {/* Calyx (leafy top) */}
-        <Path d="M 50,30 Q 42,24 36,22 Q 40,28 44,30 Q 38,26 34,28 Q 40,30 46,30 Q 50,26 54,30 Q 60,30 66,28 Q 62,26 56,30 Q 60,28 64,22 Q 58,24 50,30 Z"
-              fill={color} fillOpacity={p.fillOpacity * 0.6}
-              stroke={color} strokeOpacity={p.strokeOpacity * 0.6} strokeWidth={p.strokeWidth * 0.7} />
+        {/* Strawberry red body — rounded heart/teardrop shape */}
+        <Path d="M 33,40 Q 50,33 67,40 Q 67,66 50,78 Q 33,66 33,40 Z"
+              fill={redColor} fillOpacity={p.fillOpacity}
+              stroke={redColor} strokeOpacity={p.strokeOpacity} strokeWidth={p.strokeWidth} strokeLinejoin="round" />
+      </G>
+      {/* Green five-point star calyx at top */}
+      <G id="produce_berries_calyx">
+        <Path d="M 50,35 Q 44.4,33.6 42.2,27.2 Q 48.6,29.4 50,35 Z"
+              fill={calyxColor} fillOpacity={p.fillOpacity}
+              stroke={calyxColor} strokeOpacity={p.strokeOpacity * 0.8} strokeWidth={p.strokeWidth * 0.7} />
+        <Path d="M 50,35 Q 45.4,31.5 45.9,24.8 Q 50.9,29.3 50,35 Z"
+              fill={calyxColor} fillOpacity={p.fillOpacity}
+              stroke={calyxColor} strokeOpacity={p.strokeOpacity * 0.8} strokeWidth={p.strokeWidth * 0.7} />
+        <Path d="M 50,35 Q 47,30 50,24 Q 53,30 50,35 Z"
+              fill={calyxColor} fillOpacity={p.fillOpacity}
+              stroke={calyxColor} strokeOpacity={p.strokeOpacity * 0.8} strokeWidth={p.strokeWidth * 0.7} />
+        <Path d="M 50,35 Q 50.9,29.3 54.1,24.8 Q 54.6,31.5 50,35 Z"
+              fill={calyxColor} fillOpacity={p.fillOpacity}
+              stroke={calyxColor} strokeOpacity={p.strokeOpacity * 0.8} strokeWidth={p.strokeWidth * 0.7} />
+        <Path d="M 50,35 Q 55.6,33.6 57.8,27.2 Q 51.4,29.4 50,35 Z"
+              fill={calyxColor} fillOpacity={p.fillOpacity}
+              stroke={calyxColor} strokeOpacity={p.strokeOpacity * 0.8} strokeWidth={p.strokeWidth * 0.7} />
       </G>
       {p.showDetail && (
         <G id="produce_berries_detail">
-          {/* Seeds — small dots scattered on body */}
+          {/* 8 small light seed dots across body */}
           {[
-            { cx: 42, cy: 45 }, { cx: 55, cy: 43 }, { cx: 48, cy: 52 },
-            { cx: 38, cy: 55 }, { cx: 58, cy: 55 }, { cx: 45, cy: 62 },
-            { cx: 55, cy: 62 }, { cx: 50, cy: 68 }, { cx: 42, cy: 70 },
-            { cx: 58, cy: 70 },
+            { cx: 43, cy: 45 }, { cx: 57, cy: 45 }, { cx: 50, cy: 53 },
+            { cx: 41, cy: 58 }, { cx: 59, cy: 58 }, { cx: 50, cy: 66 },
+            { cx: 44, cy: 70 }, { cx: 56, cy: 70 },
           ].map((seed, i) => (
-            <Ellipse key={`seed_${i}`} cx={seed.cx} cy={seed.cy} rx="1.2" ry="2"
-                     fill={color} opacity="0.4" transform={`rotate(${(seed.cx - 50) * 5} ${seed.cx} ${seed.cy})`} />
+            <Ellipse key={`seed_${i}`} cx={seed.cx} cy={seed.cy} rx="1.6" ry="2.2"
+                     fill={seedColor} opacity="0.9" />
           ))}
         </G>
       )}
@@ -199,66 +238,93 @@ function BerriesIcon({ tier, color }) {
 
 function TropicalIcon({ tier, color }) {
   const p = TIER_PROPS[tier]
+  const bodyColor = '#E0A83E'
+  const latticeColor = '#B4791F'
+  const crownColor = '#4C8F63'
+  const clipId = `tropical_clip_${tier}_${Math.random().toString(36).slice(2, 8)}`
   return (
     <G id="produce_tropical_container">
+      <Defs>
+        <ClipPath id={clipId}>
+          <Ellipse cx="50" cy="58" rx="20" ry="28" />
+        </ClipPath>
+      </Defs>
       <G id="produce_tropical_outline">
-        {/* Pineapple: textured oval body + spiky top */}
-        <Path d="M 50,82 Q 34,75 34,55 Q 34,40 50,36 Q 66,40 66,55 Q 66,75 50,82 Z"
-              fill={color} fillOpacity={p.fillOpacity}
-              stroke={color} strokeOpacity={p.strokeOpacity} strokeWidth={p.strokeWidth} strokeLinejoin="round" />
-        {/* Spiky top leaves */}
-        <Path d="M 50,38 Q 44,28 40,18 Q 46,24 50,32 Q 54,24 60,18 Q 56,28 50,38 Z"
-              fill={color} fillOpacity={p.fillOpacity * 0.6}
-              stroke={color} strokeOpacity={p.strokeOpacity * 0.6} strokeWidth={p.strokeWidth * 0.7} />
-        <Path d="M 50,36 Q 46,22 44,12 Q 50,18 50,30 Q 50,18 56,12 Q 54,22 50,36 Z"
-              fill={color} fillOpacity={p.fillOpacity * 0.5}
-              stroke={color} strokeOpacity={p.strokeOpacity * 0.5} strokeWidth={p.strokeWidth * 0.6} />
+        {/* Pineapple body — rich gold/tan */}
+        <Ellipse cx="50" cy="58" rx="20" ry="28"
+                 fill={bodyColor} fillOpacity={p.fillOpacity}
+                 stroke={bodyColor} strokeOpacity={p.strokeOpacity} strokeWidth={p.strokeWidth} />
       </G>
+      {/* Criss-cross diamond lattice texture */}
       {p.showDetail && (
-        <G id="produce_tropical_detail">
-          {/* Diamond cross-hatch texture */}
-          {[
-            { y: 46 }, { y: 54 }, { y: 62 }, { y: 70 },
-          ].map((row, i) => (
-            <G key={`row_${i}`}>
-              <Line x1="36" y1={row.y} x2="64" y2={row.y} stroke={color} strokeOpacity="0.2" strokeWidth="0.6" />
-              <Line x1="36" y1={row.y - 4} x2="64" y2={row.y + 4} stroke={color} strokeOpacity="0.15" strokeWidth="0.5" />
-              <Line x1="36" y1={row.y + 4} x2="64" y2={row.y - 4} stroke={color} strokeOpacity="0.15" strokeWidth="0.5" />
-            </G>
+        <G id="produce_tropical_detail" clipPath={`url(#${clipId})`}>
+          {/* Diagonal set 1 */}
+          {[-12, -6, 0, 6, 12, 18, 24].map((offset, i) => (
+            <Path key={`d1_${i}`} d={`M ${30 + offset},30 Q ${50 + offset * 0.3},58 ${30 + offset},86`}
+                  stroke={latticeColor} strokeOpacity="0.65" strokeWidth="1.3" fill="none" />
+          ))}
+          {/* Diagonal set 2 */}
+          {[-12, -6, 0, 6, 12, 18, 24].map((offset, i) => (
+            <Path key={`d2_${i}`} d={`M ${70 - offset},30 Q ${50 - offset * 0.3},58 ${70 - offset},86`}
+                  stroke={latticeColor} strokeOpacity="0.5" strokeWidth="1.3" fill="none" />
           ))}
         </G>
       )}
+      {/* Five pointed spiky crown leaves */}
+      <G id="produce_tropical_crown">
+        <Path d="M 50,32 Q 44.3,23.5 42.8,15.4 Q 47.9,24.4 50,32 Z"
+              fill={crownColor} fillOpacity={p.fillOpacity}
+              stroke={crownColor} strokeOpacity={p.strokeOpacity * 0.8} strokeWidth={p.strokeWidth * 0.7} />
+        <Path d="M 50,32 Q 46.7,22 47.8,10.8 Q 51.3,21.2 50,32 Z"
+              fill={crownColor} fillOpacity={p.fillOpacity}
+              stroke={crownColor} strokeOpacity={p.strokeOpacity * 0.8} strokeWidth={p.strokeWidth * 0.7} />
+        <Path d="M 50,32 Q 49,22 50,8 Q 51,22 50,32 Z"
+              fill={crownColor} fillOpacity={p.fillOpacity}
+              stroke={crownColor} strokeOpacity={p.strokeOpacity * 0.8} strokeWidth={p.strokeWidth * 0.7} />
+        <Path d="M 50,32 Q 50.7,21.2 52.2,10.8 Q 53.3,22 50,32 Z"
+              fill={crownColor} fillOpacity={p.fillOpacity}
+              stroke={crownColor} strokeOpacity={p.strokeOpacity * 0.8} strokeWidth={p.strokeWidth * 0.7} />
+        <Path d="M 50,32 Q 55.7,23.5 57.2,15.4 Q 52.1,24.4 50,32 Z"
+              fill={crownColor} fillOpacity={p.fillOpacity}
+              stroke={crownColor} strokeOpacity={p.strokeOpacity * 0.8} strokeWidth={p.strokeWidth * 0.7} />
+      </G>
     </G>
   )
 }
 
 function HerbsIcon({ tier, color }) {
   const p = TIER_PROPS[tier]
+  const mintColor = '#6FA97D'
+  const stemColor = '#3E5A48'
   return (
     <G id="produce_herbs_container">
       <G id="produce_herbs_outline">
-        {/* Mint sprig: stem + alternating small leaves */}
-        <Path d="M 50,85 Q 50,65 50,40 Q 50,25 50,15"
-              stroke={color} strokeOpacity={p.strokeOpacity} strokeWidth={p.strokeWidth * 1.2} fill="none" strokeLinecap="round" />
-        {/* Alternating leaves */}
-        <Path d="M 50,68 Q 40,64 34,58 Q 42,60 50,68 Z" fill={color} fillOpacity={p.fillOpacity} stroke={color} strokeOpacity={p.strokeOpacity * 0.7} strokeWidth={p.strokeWidth * 0.7} />
-        <Path d="M 50,68 Q 60,64 66,58 Q 58,60 50,68 Z" fill={color} fillOpacity={p.fillOpacity} stroke={color} strokeOpacity={p.strokeOpacity * 0.7} strokeWidth={p.strokeWidth * 0.7} />
-        <Path d="M 50,52 Q 38,48 32,40 Q 42,44 50,52 Z" fill={color} fillOpacity={p.fillOpacity} stroke={color} strokeOpacity={p.strokeOpacity * 0.7} strokeWidth={p.strokeWidth * 0.7} />
-        <Path d="M 50,52 Q 62,48 68,40 Q 58,44 50,52 Z" fill={color} fillOpacity={p.fillOpacity} stroke={color} strokeOpacity={p.strokeOpacity * 0.7} strokeWidth={p.strokeWidth * 0.7} />
-        <Path d="M 50,36 Q 40,32 35,24 Q 44,28 50,36 Z" fill={color} fillOpacity={p.fillOpacity} stroke={color} strokeOpacity={p.strokeOpacity * 0.7} strokeWidth={p.strokeWidth * 0.7} />
-        <Path d="M 50,36 Q 60,32 65,24 Q 56,28 50,36 Z" fill={color} fillOpacity={p.fillOpacity} stroke={color} strokeOpacity={p.strokeOpacity * 0.7} strokeWidth={p.strokeWidth * 0.7} />
-        {/* Top leaf */}
-        <Path d="M 50,22 Q 46,18 44,14 Q 50,16 50,22 Q 50,16 56,14 Q 54,18 50,22 Z" fill={color} fillOpacity={p.fillOpacity} stroke={color} strokeOpacity={p.strokeOpacity * 0.7} strokeWidth={p.strokeWidth * 0.7} />
+        {/* Central stem */}
+        <Line x1="50" y1="85" x2="50" y2="41"
+              stroke={stemColor} strokeOpacity={p.strokeOpacity} strokeWidth="2.2" strokeLinecap="round" />
+        {/* 3 opposite pairs of rounded oval leaves (mint-like) */}
+        {/* Bottom pair — largest */}
+        <Ellipse cx="38.9" cy="73" rx="7.8" ry="4.9" fill={mintColor} fillOpacity={p.fillOpacity}
+                 stroke={mintColor} strokeOpacity={p.strokeOpacity * 0.8} strokeWidth={p.strokeWidth * 0.7}
+                 transform="rotate(-55 38.9 73)" />
+        <Ellipse cx="61.1" cy="73" rx="7.8" ry="4.9" fill={mintColor} fillOpacity={p.fillOpacity}
+                 stroke={mintColor} strokeOpacity={p.strokeOpacity * 0.8} strokeWidth={p.strokeWidth * 0.7}
+                 transform="rotate(55 61.1 73)" />
+        {/* Middle pair — medium */}
+        <Ellipse cx="37.8" cy="59" rx="9" ry="5.7" fill={mintColor} fillOpacity={p.fillOpacity}
+                 stroke={mintColor} strokeOpacity={p.strokeOpacity * 0.8} strokeWidth={p.strokeWidth * 0.7}
+                 transform="rotate(-55 37.8 59)" />
+        <Ellipse cx="62.2" cy="59" rx="9" ry="5.7" fill={mintColor} fillOpacity={p.fillOpacity}
+                 stroke={mintColor} strokeOpacity={p.strokeOpacity * 0.8} strokeWidth={p.strokeWidth * 0.7}
+                 transform="rotate(55 62.2 59)" />
+        {/* Top pair — smallest */}
+        <Ellipse cx="39.4" cy="45" rx="7.2" ry="4.6" fill={mintColor} fillOpacity={p.fillOpacity}
+                 stroke={mintColor} strokeOpacity={p.strokeOpacity * 0.8} strokeWidth={p.strokeWidth * 0.7}
+                 transform="rotate(-55 39.4 45)" />
+        <Ellipse cx="60.6" cy="45" rx="7.2" ry="4.6" fill={mintColor} fillOpacity={p.fillOpacity}
+                 stroke={mintColor} strokeOpacity={p.strokeOpacity * 0.8} strokeWidth={p.strokeWidth * 0.7}
+                 transform="rotate(55 60.6 45)" />
       </G>
-      {p.showDetail && (
-        <G id="produce_herbs_detail">
-          {/* Leaf vein details */}
-          <Line x1="50" y1="68" x2="36" y2="60" stroke={color} strokeOpacity="0.25" strokeWidth="0.5" />
-          <Line x1="50" y1="68" x2="64" y2="60" stroke={color} strokeOpacity="0.25" strokeWidth="0.5" />
-          <Line x1="50" y1="52" x2="34" y2="42" stroke={color} strokeOpacity="0.25" strokeWidth="0.5" />
-          <Line x1="50" y1="52" x2="66" y2="42" stroke={color} strokeOpacity="0.25" strokeWidth="0.5" />
-        </G>
-      )}
     </G>
   )
 }

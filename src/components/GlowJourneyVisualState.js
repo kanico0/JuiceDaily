@@ -53,11 +53,15 @@ const STAGE_VISUAL_PROPS = {
   },
 }
 
-const HALO_UNFILLED_STROKE = '#C9C2B0'
+const HALO_UNFILLED_STROKE = '#4A6B57'
+const HALO_FILLED_COLOR = '#8FE8A8'
+const HALO_GOLD_DOT_COLOR = '#E8B84B'
 const PARTICLE_COLOR = '#F5D98B'
 const FALLING_DROPLET_COLOR = '#8FBF9F'
 const LIQUID_HIGHLIGHT_COLOR = '#FFFFFF'
 const STAGE_GOLD_TRIM = '#D9A63E'
+const AMBIENT_GLOW_GOLD = '#E8B84B'
+const AMBIENT_GLOW_MINT = '#4ADE9C'
 
 // ── Juice-colored liquid (FINAL handoff §5.2) ────────────────
 // Warm carrot/orange dominant base with a thin mint/green
@@ -67,12 +71,16 @@ const JUICE_LIQUID_TOP_BAND = '#8FBF9F'
 
 export const GLOW_JOURNEY_PALETTE = {
   haloUnfilledStroke: HALO_UNFILLED_STROKE,
+  haloFilledColor: HALO_FILLED_COLOR,
+  haloGoldDotColor: HALO_GOLD_DOT_COLOR,
   particleColor: PARTICLE_COLOR,
   fallingDropletColor: FALLING_DROPLET_COLOR,
   liquidHighlightColor: LIQUID_HIGHLIGHT_COLOR,
   stageGoldTrim: STAGE_GOLD_TRIM,
   juiceLiquidBase: JUICE_LIQUID_BASE,
   juiceLiquidTopBand: JUICE_LIQUID_TOP_BAND,
+  ambientGlowGold: AMBIENT_GLOW_GOLD,
+  ambientGlowMint: AMBIENT_GLOW_MINT,
 }
 
 export function clampProgress(value) {
@@ -87,25 +95,30 @@ export function getStageVisualProps(stageKey) {
 
 export function getLeafVisualState(leaf, stageProps) {
   const filled = leaf.hasLog
+  // Correction addendum §1.2: high contrast between filled and unfilled.
+  // Filled: solid bright green/mint fill + gold center dot.
+  // Unfilled: thin dim outline only, no fill.
   return {
     filled,
-    fillColor: filled ? GLOW_JOURNEY_PALETTE.juiceLiquidTopBand : 'none',
-    strokeColor: filled ? GLOW_JOURNEY_PALETTE.juiceLiquidTopBand : HALO_UNFILLED_STROKE,
-    strokeWidth: leaf.isToday ? 2 : 1,
+    fillColor: filled ? GLOW_JOURNEY_PALETTE.haloFilledColor : 'none',
+    strokeColor: filled ? GLOW_JOURNEY_PALETTE.haloFilledColor : GLOW_JOURNEY_PALETTE.haloUnfilledStroke,
+    strokeWidth: leaf.isToday ? 2.8 : 1.4,
     opacity: leaf.isFuture ? 0.4 : 1,
     scale: leaf.isToday ? 1.25 : 1,
+    showGoldDot: filled,
+    goldDotColor: GLOW_JOURNEY_PALETTE.haloGoldDotColor,
   }
 }
 
-export function getLiquidFillGeometry(fillRatio, viewBoxHeight = 385, liquidTop = 80, liquidBottom = 385) {
+export function getLiquidFillGeometry(fillRatio, viewBoxHeight = 385, liquidTop = 65, liquidBottom = 378) {
   const clamped = clampProgress(fillRatio)
   const fillHeight = (liquidBottom - liquidTop) * clamped
   const y = liquidBottom - fillHeight
   return {
     y,
     height: fillHeight,
-    x: 105,
-    width: 190,
+    x: 100,
+    width: 200,
   }
 }
 

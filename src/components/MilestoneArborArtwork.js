@@ -124,9 +124,10 @@ function MedallionOrnament({ cx, cy, color }) {
 }
 
 function EmptyPeg({ cx, cy }) {
+  // Correction addendum §2.2: empty pegs should be small, faint, hollow.
   return (
     <G id="arbor_slot_empty">
-      <Circle cx={cx} cy={cy} r="5" fill="none" stroke={PEG_STROKE} strokeWidth="1.2" opacity="0.6" />
+      <Circle cx={cx} cy={cy} r="2.5" fill="none" stroke={PEG_STROKE} strokeWidth="0.8" opacity="0.35" />
     </G>
   )
 }
@@ -147,28 +148,25 @@ const TIER_COLORS = {
 }
 
 // ── Main Arbor component ─────────────────────────────────────
-function MilestoneArborArtwork({ ctx, size = 100 }) {
+function MilestoneArborArtwork({ ctx, size = 118 }) {
   const slotStates = useMemo(() => getArborSlotStates(ctx), [ctx])
   const earnedCount = useMemo(() => getArborEarnedCount(ctx), [ctx])
 
-  // Layout: trellis frame with slots arranged in a grid
-  // 12 slots in a 4-column × 3-row grid within the trellis
-  const cols = 4
-  const rows = 3
-  const gridLeft = 18
-  const gridTop = 28
-  const gridW = 64
-  const gridH = 50
-  const cellW = gridW / cols
-  const cellH = gridH / rows
-
+  // Correction addendum §2.2: arrange ornaments along the frame/crossbeam
+  // rather than as a rigid interior grid. Two crossbeams with ornaments
+  // hanging from each, reading architecturally (things hanging on a trellis).
+  // 12 slots: 6 hanging from upper beam, 6 hanging from lower beam.
+  const upperY = 28
+  const lowerY = 62
+  const leftX = 16
+  const rightX = 84
+  const span = rightX - leftX
   const slotPositions = slotStates.map((_, i) => {
-    const col = i % cols
-    const row = Math.floor(i / cols)
-    return {
-      cx: gridLeft + col * cellW + cellW / 2,
-      cy: gridTop + row * cellH + cellH / 2,
-    }
+    const onUpper = i < 6
+    const idx = onUpper ? i : i - 6
+    const cx = leftX + (span / 5) * idx
+    const cy = onUpper ? upperY : lowerY
+    return { cx, cy }
   })
 
   const frameColor = '#7A5B44'
@@ -178,28 +176,33 @@ function MilestoneArborArtwork({ ctx, size = 100 }) {
     <Svg width={size} height={size} viewBox="0 0 100 100"
          accessibilityLabel={`Milestone Arbor: ${earnedCount} earned so far`}>
       <G id="arbor_container">
-        {/* Arbor frame — two posts and crossbeam */}
+        {/* Arbor frame — two posts and two crossbeams */}
         <G id="arbor_frame">
           {/* Left post */}
-          <Line x1="10" y1="15" x2="10" y2="90" stroke={frameColor} strokeWidth="3" strokeLinecap="round" />
+          <Line x1="10" y1="15" x2="10" y2="88" stroke={frameColor} strokeWidth="3" strokeLinecap="round" />
           {/* Right post */}
-          <Line x1="90" y1="15" x2="90" y2="90" stroke={frameColor} strokeWidth="3" strokeLinecap="round" />
-          {/* Crossbeam */}
-          <Line x1="10" y1="20" x2="90" y2="20" stroke={frameColor} strokeWidth="2.5" strokeLinecap="round" />
-          {/* Lower beam */}
+          <Line x1="90" y1="15" x2="90" y2="88" stroke={frameColor} strokeWidth="3" strokeLinecap="round" />
+          {/* Upper crossbeam */}
+          <Line x1="10" y1="22" x2="90" y2="22" stroke={frameColor} strokeWidth="2.5" strokeLinecap="round" />
+          {/* Lower crossbeam */}
+          <Line x1="10" y1="56" x2="90" y2="56" stroke={frameColor} strokeWidth="2.5" strokeLinecap="round" />
+          {/* Lower rail */}
           <Line x1="10" y1="85" x2="90" y2="85" stroke={frameColor} strokeWidth="2" strokeLinecap="round" opacity="0.7" />
           {/* Decorative top caps */}
           <Circle cx="10" cy="15" r="2" fill={frameColor} opacity="0.8" />
           <Circle cx="90" cy="15" r="2" fill={frameColor} opacity="0.8" />
         </G>
 
-        {/* Slots */}
+        {/* Slots — ornaments hanging from crossbeams */}
         {slotStates.map((slot, i) => {
           const pos = slotPositions[i]
           const OrnamentRenderer = ORNAMENT_RENDERERS[slot.tier]
           const ornamentColor = TIER_COLORS[slot.tier]
           return (
             <G key={slot.id} id={`arbor_slot_${String(i + 1).padStart(2, '0')}`}>
+              {/* Small hanger line from beam to ornament */}
+              <Line x1={pos.cx} y1={pos.cy - 6} x2={pos.cx} y2={pos.cy - 2}
+                    stroke={frameColor} strokeWidth="0.6" opacity="0.5" />
               {slot.earned && OrnamentRenderer ? (
                 <OrnamentRenderer cx={pos.cx} cy={pos.cy} color={ornamentColor} />
               ) : (

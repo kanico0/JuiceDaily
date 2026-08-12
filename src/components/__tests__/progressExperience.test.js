@@ -97,11 +97,24 @@ describe('Glow Journey — FINAL handoff delta', () => {
     expect(src).not.toMatch(/[🌱🌿🌳🌸✨🌅👑]/)
   })
 
-  test('halo leaf fill uses juice top band color', () => {
+  test('halo leaf fill uses bright green/mint color', () => {
+    // Correction addendum §1.2: filled leaves use solid bright green/mint
     const leaf = { hasLog: true, isToday: false, isFuture: false }
     const stageProps = { liquidColor: '#DCE7D3' }
     const visual = getLeafVisualState(leaf, stageProps)
-    expect(visual.fillColor).toBe(GLOW_JOURNEY_PALETTE.juiceLiquidTopBand)
+    expect(visual.fillColor).toBe(GLOW_JOURNEY_PALETTE.haloFilledColor)
+    expect(visual.showGoldDot).toBe(true)
+  })
+
+  test('halo unfilled leaf has dim outline only, no fill', () => {
+    // Correction addendum §1.2: unfilled leaves are thin outline only
+    const leaf = { hasLog: false, isToday: false, isFuture: false }
+    const stageProps = { liquidColor: '#DCE7D3' }
+    const visual = getLeafVisualState(leaf, stageProps)
+    expect(visual.filled).toBe(false)
+    expect(visual.fillColor).toBe('none')
+    expect(visual.strokeColor).toBe(GLOW_JOURNEY_PALETTE.haloUnfilledStroke)
+    expect(visual.showGoldDot).toBe(false)
   })
 
   test('Journey stages and thresholds unchanged', () => {

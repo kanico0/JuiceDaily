@@ -19,8 +19,8 @@ import { buildGlowJourneyVisualState, clampProgress } from './GlowJourneyVisualS
 import GlowJourneyDropArtwork from './GlowJourneyDropArtwork'
 import GlowJourneyStageIcon from './GlowJourneyStageIcon'
 
-const MAX_DROP_SIZE = 180
-const MIN_DROP_SIZE = 120
+const MAX_DROP_SIZE = 220
+const MIN_DROP_SIZE = 140
 
 function numberToWord(n) {
   if (n === 0) return 'Zero'
@@ -51,7 +51,7 @@ function GlowJourneyDrop({
   const reducedMotion = useReducedMotion()
   const isReduced = isReducedProp !== undefined ? isReducedProp : reducedMotion
   const { width: screenWidth } = useWindowDimensions()
-  const dropSize = useMemo(() => Math.max(MIN_DROP_SIZE, Math.min(screenWidth * 0.42, MAX_DROP_SIZE)), [screenWidth])
+  const dropSize = useMemo(() => Math.max(MIN_DROP_SIZE, Math.min(screenWidth * 0.52, MAX_DROP_SIZE)), [screenWidth])
 
   const visualState = useMemo(() => buildGlowJourneyVisualState({
     lifetimeDays,
@@ -265,10 +265,10 @@ function GlowJourneyDrop({
     ...visualState,
     fillRatio: animatedFillRatio,
     liquidGeometry: {
-      x: 105,
-      width: 190,
-      y: 385 - (385 - 80) * clampProgress(animatedFillRatio),
-      height: (385 - 80) * clampProgress(animatedFillRatio),
+      x: 100,
+      width: 200,
+      y: 378 - (378 - 65) * clampProgress(animatedFillRatio),
+      height: (378 - 65) * clampProgress(animatedFillRatio),
     },
   }), [visualState, animatedFillRatio])
 

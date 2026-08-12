@@ -38,14 +38,16 @@ export const TREE_DESCRIPTORS = {
   legend: 'Heritage Tree',
 }
 
-function JourneyTreeArtwork({ stageKey, size = 100 }) {
+function JourneyTreeArtwork({ stageKey, size = 118 }) {
   if (!stageKey) {
     // Before first juice — render as Seed (tree exists from Day 1)
     stageKey = 'seed'
   }
 
   const goldTrim = GLOW_JOURNEY_PALETTE.stageGoldTrim
-  const canopyColor = GLOW_JOURNEY_PALETTE.juiceLiquidTopBand
+  // Correction addendum §2.2: deepen canopy green for better visual presence.
+  // Use a deeper mint/green than the juice top band.
+  const canopyColor = '#4C8F63'
   const trunkColor = '#7A5B44'
   const soilColor = GLOW_JOURNEY_PALETTE.haloUnfilledStroke
 

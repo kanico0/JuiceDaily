@@ -49,7 +49,7 @@ export const FOCUS_NUTRIENTS = [
     name: 'Potassium',
     emoji: '🍌',
     benefit: 'Regulates blood pressure and muscle function.',
-    combos: ['Banana + Spinach + Coconut Water', 'Sweet Potato + Orange + Carrot'],
+    combos: ['Spinach + Coconut Water + Orange', 'Sweet Potato + Orange + Carrot'],
     tips: [
       'Coconut water is a natural potassium powerhouse.',
       'Potassium helps counterbalance sodium in your diet.',
@@ -62,7 +62,7 @@ export const FOCUS_NUTRIENTS = [
     name: 'Folate',
     emoji: '🥬',
     benefit: 'Essential for cell repair and energy metabolism.',
-    combos: ['Spinach + Beet + Orange', 'Kale + Avocado + Lemon'],
+    combos: ['Spinach + Beet + Orange', 'Kale + Spinach + Lemon'],
     tips: [
       'Dark leafy greens are the richest natural folate source.',
       'Folate is heat-sensitive — raw juicing preserves it well.',
@@ -88,7 +88,7 @@ export const FOCUS_NUTRIENTS = [
     name: 'Magnesium',
     emoji: '🌿',
     benefit: 'Calms the nervous system and supports sleep.',
-    combos: ['Spinach + Banana + Cacao', 'Swiss Chard + Pineapple + Mint'],
+    combos: ['Spinach + Swiss Chard + Pineapple', 'Swiss Chard + Pineapple + Mint'],
     tips: [
       'Up to 60% of adults don\'t get enough magnesium.',
       'Dark leafy greens are the best juice-friendly magnesium source.',
@@ -114,7 +114,7 @@ export const FOCUS_NUTRIENTS = [
     name: 'Antioxidants',
     emoji: '🫐',
     benefit: 'Protects cells from oxidative stress and aging.',
-    combos: ['Blueberry + Pomegranate + Beet', 'Acai + Grape + Ginger'],
+    combos: ['Blueberry + Pomegranate + Beet', 'Grape + Ginger + Beet'],
     tips: [
       'Deep purple and red produce are highest in polyphenols.',
       'Pomegranate juice has 3× the antioxidant power of green tea.',
@@ -127,7 +127,7 @@ export const FOCUS_NUTRIENTS = [
     name: 'Omega-3 Support',
     emoji: '🐟',
     benefit: 'Reduces inflammation and supports brain health.',
-    combos: ['Flaxseed + Spinach + Apple', 'Chia + Walnut Milk + Blueberry'],
+    combos: ['Spinach + Apple + Lemon', 'Blueberry + Spinach + Apple'],
     tips: [
       'Ground flaxseed or chia seeds add plant-based omega-3 to juice.',
       'Omega-3 fats are anti-inflammatory — great for recovery.',
@@ -140,7 +140,7 @@ export const FOCUS_NUTRIENTS = [
     name: 'Protein Support',
     emoji: '🥜',
     benefit: 'Supports muscle repair and satiety.',
-    combos: ['Hemp Seed + Spinach + Banana', 'Pea Protein + Mango + Coconut'],
+    combos: ['Spinach + Mango + Ginger', 'Mango + Coconut Water + Spinach'],
     tips: [
       'Hemp seeds add 10g protein per 3 tablespoons to any juice.',
       'Protein slows sugar absorption — great for balanced energy.',
@@ -166,7 +166,7 @@ export const FOCUS_NUTRIENTS = [
     name: 'Vitamin E',
     emoji: '🥑',
     benefit: 'Protects skin and supports heart health.',
-    combos: ['Avocado + Spinach + Mango', 'Almond Milk + Kiwi + Banana'],
+    combos: ['Spinach + Mango + Kiwi', 'Kiwi + Spinach + Apple'],
     tips: [
       'Vitamin E is a powerful fat-soluble antioxidant.',
       'Avocado blended into juice adds creamy texture plus vitamin E.',
@@ -179,7 +179,7 @@ export const FOCUS_NUTRIENTS = [
     name: 'Zinc',
     emoji: '🛡️',
     benefit: 'Strengthens immune response and wound healing.',
-    combos: ['Pumpkin Seed + Spinach + Orange', 'Cashew Milk + Ginger + Turmeric'],
+    combos: ['Spinach + Orange + Ginger', 'Ginger + Turmeric + Orange'],
     tips: [
       'Pumpkin seeds are one of the best plant-based zinc sources.',
       'Zinc is critical for immune cell function.',
@@ -192,7 +192,7 @@ export const FOCUS_NUTRIENTS = [
     name: 'B Vitamins',
     emoji: '⚡',
     benefit: 'Converts food to energy and supports mood.',
-    combos: ['Banana + Spinach + Nutritional Yeast', 'Beet + Orange + Ginger'],
+    combos: ['Spinach + Beet + Ginger', 'Beet + Orange + Ginger'],
     tips: [
       'B vitamins are water-soluble — your body needs them daily.',
       'Leafy greens provide folate (B9) and other B vitamins.',
@@ -218,7 +218,7 @@ export const FOCUS_NUTRIENTS = [
     name: 'Calcium',
     emoji: '🦴',
     benefit: 'Builds strong bones and supports nerve signaling.',
-    combos: ['Kale + Orange + Almond Milk', 'Broccoli + Fig + Sesame'],
+    combos: ['Kale + Orange + Ginger', 'Broccoli + Kale + Lemon'],
     tips: [
       'Kale and broccoli have highly absorbable plant calcium.',
       'Vitamin D helps your body use calcium effectively.',

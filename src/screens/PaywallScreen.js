@@ -4,6 +4,10 @@
 // Rules: localized prices only (no hardcoding), auto-renewal
 // disclosure, Restore Purchases, Terms + Privacy links, close
 // control, no dark patterns, double-tap protection (store-level).
+//
+// QA10: Redesigned with accurate, verified feature lists only.
+// Free side: positive but honest about limits.
+// Pro side: substantial, scrollable, organized into sections.
 // ─────────────────────────────────────────────────────────────
 
 import React, { useEffect, useMemo, useState } from 'react'
@@ -17,7 +21,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'
-import { X, Check, Sparkles } from 'lucide-react-native'
+import { X, Check, Sparkles, Camera, BookOpen, RefreshCw, Search, Leaf, Clock, Heart, Beaker, TrendingUp } from 'lucide-react-native'
 
 import { useSubscription } from '../services/subscriptions/SubscriptionStore'
 import { useQuota } from '../services/quota/QuotaStore'
@@ -31,26 +35,130 @@ import { formatSavingsBadge } from '../services/subscriptions/subscriptionSelect
 import { subscriptionAnalytics } from '../services/subscriptions/subscriptionAnalytics'
 import AccountGateModal from '../components/AccountGateModal'
 
-const FREE_FEATURES = [
-  `${FREE_MONTHLY_SCAN_LIMIT} complimentary AI Snap each month`,
-  'Expanded Ingredient Analysis — 3 complimentary lifetime analyses for blends with 5+ ingredients',
-  'Detailed History — free preview of your latest juice',
-  'Unlimited manual produce entry',
-  'Basic Glow Streak',
-  'Weekly Momentum',
+// ── Free feature groups ──
+const FREE_FEATURE_GROUPS = [
+  {
+    heading: 'Unlimited Manual Juicing',
+    items: [
+      'Manually build and log juices without an AI-use quota',
+      'Simple blends (1–4 ingredients): free and unlimited',
+    ],
+  },
+  {
+    heading: 'Juice Snap',
+    items: [
+      `${FREE_MONTHLY_SCAN_LIMIT} successful Juice Snap per monthly RawLifeFlow window`,
+    ],
+  },
+  {
+    heading: 'Expanded Ingredient Analysis',
+    items: [
+      '3 complimentary lifetime analyses for blends with 5+ ingredients',
+    ],
+  },
+  {
+    heading: 'History',
+    items: [
+      'Basic History list — always available',
+      'Detailed History preview of your newest juice',
+    ],
+  },
+  {
+    heading: 'Core Habit Experience',
+    items: [
+      'Today dashboard',
+      'Glow streak',
+      'Journey',
+      'Garden',
+      'Focus',
+      'Achievements',
+      'Reminders',
+    ],
+  },
 ]
 
-const PRO_FEATURES = [
-  `${PRO_MONTHLY_SCAN_LIMIT} AI Snaps each month`,
-  'Unlimited Expanded Ingredient Analysis',
-  'Full Detailed History',
-  'Advanced Glow Reports',
-  'Ingredient and consistency trends',
-  'Personalized challenges',
-  'Custom goals',
-  'Photo recaps',
-  'Advanced reminders',
-  'Premium achievements',
+const FREE_LIMITATIONS = [
+  `Only ${FREE_MONTHLY_SCAN_LIMIT} Juice Snap per monthly window`,
+  'Only 3 lifetime Expanded Ingredient Analyses for 5+ ingredient juices',
+  'Detailed History across older entries requires Pro',
+  'History search requires Pro',
+  'Advanced History filters require Pro',
+  'Make This Juice Again on older entries requires Pro',
+  'Ratings, notes & favorites across full History require Pro',
+  'Organic / conventional details across older entries require Pro',
+  'Entry method & logged time across older entries require Pro',
+]
+
+// ── Pro feature groups ──
+const PRO_FEATURE_GROUPS = [
+  {
+    heading: 'More Juice Snap',
+    icon: Camera,
+    items: [
+      `${PRO_MONTHLY_SCAN_LIMIT} successful Juice Snaps per monthly RawLifeFlow window`,
+      'Use the camera more often instead of manually identifying produce',
+    ],
+  },
+  {
+    heading: 'Unlimited Expanded Ingredient Analysis',
+    icon: Beaker,
+    items: [
+      'Unlimited 5+ ingredient analyses with Pro',
+      'Analyze complex juices without exhausting the Free lifetime allowance',
+    ],
+  },
+  {
+    heading: 'Your Full Juicing Story',
+    icon: BookOpen,
+    items: [
+      'Ingredient portions',
+      'Organic vs. conventional status',
+      'Entry method',
+      'Logged time / time of day',
+      'Estimated Nutrition',
+      'Top Nutrients (% Daily Reference)',
+      'Estimated Yield',
+      'Produce Balance',
+      'Rating, notes & favorites',
+    ],
+  },
+  {
+    heading: 'Search & Filter Your History',
+    icon: Search,
+    items: [
+      'Text search across ingredients, notes, and titles',
+      'Filter by favorites, rating, recorded portions',
+      'Filter by Estimated Nutrition nutrient threshold',
+      'Filter by ≥ / ≤ Daily Reference threshold',
+    ],
+  },
+  {
+    heading: 'Make This Juice Again',
+    icon: RefreshCw,
+    items: [
+      'Revisit an older juice and repopulate the builder',
+      'Preserved metadata: produce, quantity, unit, size, organic setting',
+      'Creates a new current juice — original timestamp stays with the original entry',
+    ],
+  },
+  {
+    heading: 'Richer Personal Record',
+    icon: Heart,
+    items: [
+      'Remember how you made it — portions and organic choices stay attached',
+      'Remember when you made it — see the logged time and part of day',
+      'Remember what you thought — ratings, notes and favorites',
+      'Repeat what worked — use Make This Juice Again',
+    ],
+  },
+  {
+    heading: 'Core Habit Experience',
+    icon: TrendingUp,
+    items: [
+      'Everything in Free, plus full Detailed History for every saved juice',
+      'History search and advanced filters across your entire juicing journey',
+    ],
+  },
 ]
 
 export default function PaywallScreen({ navigation, route }) {
@@ -188,10 +296,11 @@ export default function PaywallScreen({ navigation, route }) {
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <Sparkles size={28} color="#7EE787" />
-          <Text style={styles.title}>Build Your Juicing Habit with Pro</Text>
+          <Text style={styles.title}>Build Your Juicing Habit</Text>
           <Text style={styles.subtitle}>
-            Scan your juices faster, understand your progress, and stay motivated with deeper
-            reports, personalized challenges, and monthly insights.
+            Free is a complete way to start and manually build your habit.
+            Pro adds more convenience, more detail, and a richer long-term record
+            of your juicing journey.
           </Text>
         </View>
 
@@ -202,27 +311,58 @@ export default function PaywallScreen({ navigation, route }) {
           </View>
         )}
 
-        {/* Plan comparison */}
-        <View style={styles.compareRow}>
-          <View style={styles.compareCol}>
-            <Text style={styles.compareTitle}>Free</Text>
-            {FREE_FEATURES.map((f) => (
-              <Text key={f} style={styles.compareItem}>
-                • {f}
-              </Text>
-            ))}
-          </View>
-          <View style={[styles.compareCol, styles.compareColPro]}>
-            <Text style={[styles.compareTitle, styles.compareTitlePro]}>Pro</Text>
-            {PRO_FEATURES.map((f) => (
-              <Text key={f} style={[styles.compareItem, styles.compareItemPro]}>
-                • {f}
-              </Text>
-            ))}
-          </View>
+        {/* ── FREE section ── */}
+        <View style={styles.freeSection}>
+          <Text style={styles.freeHeading}>Free</Text>
+          <Text style={styles.freeSubheading}>Start building your juicing habit</Text>
+          {FREE_FEATURE_GROUPS.map((group) => (
+            <View key={group.heading} style={styles.featureGroup}>
+              <Text style={styles.featureGroupHeading}>{group.heading}</Text>
+              {group.items.map((item) => (
+                <View key={item} style={styles.featureItemRow}>
+                  <Check size={12} color="#7EE787" />
+                  <Text style={styles.featureItemText}>{item}</Text>
+                </View>
+              ))}
+            </View>
+          ))}
         </View>
 
-        {/* Package selection */}
+        {/* ── Free limitations ── */}
+        <View style={styles.limitationsSection}>
+          <Text style={styles.limitationsHeading}>What Free doesn't include</Text>
+          {FREE_LIMITATIONS.map((item) => (
+            <View key={item} style={styles.limitationRow}>
+              <Text style={styles.limitationDot}>·</Text>
+              <Text style={styles.limitationText}>{item}</Text>
+            </View>
+          ))}
+        </View>
+
+        {/* ── PRO section ── */}
+        <View style={styles.proSection}>
+          <Text style={styles.proHeading}>Pro</Text>
+          <Text style={styles.proSubheading}>Turn every juice into part of your journey</Text>
+          {PRO_FEATURE_GROUPS.map((group) => {
+            const Icon = group.icon
+            return (
+              <View key={group.heading} style={styles.proFeatureGroup}>
+                <View style={styles.proFeatureGroupHeader}>
+                  <Icon size={16} color="#7EE787" />
+                  <Text style={styles.proFeatureGroupHeading}>{group.heading}</Text>
+                </View>
+                {group.items.map((item) => (
+                  <View key={item} style={styles.proFeatureItemRow}>
+                    <Check size={12} color="#7EE787" />
+                    <Text style={styles.proFeatureItemText}>{item}</Text>
+                  </View>
+                ))}
+              </View>
+            )
+          })}
+        </View>
+
+        {/* ── Package selection ── */}
         {state.loading && !offering ? (
           <View style={styles.loadingBox}>
             <ActivityIndicator color="#7EE787" />
@@ -272,19 +412,24 @@ export default function PaywallScreen({ navigation, route }) {
           </View>
         )}
 
-        {/* CTA */}
+        {/* ── CTA ── */}
         {!isPro && (monthly || annual) && (
           <TouchableOpacity
             style={[styles.cta, purchasing && styles.ctaDisabled]}
             onPress={handlePurchase}
             disabled={purchasing}
             accessibilityRole="button"
-            accessibilityLabel="Subscribe to RawLifeFlow Pro"
+            accessibilityLabel="Unlock RawLifeFlow Pro"
           >
             {purchasing ? (
               <ActivityIndicator color="#0D1117" />
             ) : (
-              <Text style={styles.ctaText}>Continue</Text>
+              <View style={styles.ctaContent}>
+                <Text style={styles.ctaText}>Unlock RawLifeFlow Pro</Text>
+                <Text style={styles.ctaSubtext}>
+                  More Juice Snaps. Unlimited Expanded Ingredient Analysis. Full Detailed History.
+                </Text>
+              </View>
             )}
           </TouchableOpacity>
         )}
@@ -387,38 +532,122 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
   },
-  compareRow: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 24,
-  },
-  compareCol: {
-    flex: 1,
+  // ── Free section ──
+  freeSection: {
     backgroundColor: '#161B22',
-    borderRadius: 12,
-    padding: 14,
+    borderRadius: 14,
+    padding: 18,
+    marginBottom: 16,
   },
-  compareColPro: {
+  freeHeading: {
+    color: '#8B949E',
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  freeSubheading: {
+    color: '#8B949E',
+    fontSize: 13,
+    marginBottom: 16,
+  },
+  featureGroup: {
+    marginBottom: 14,
+  },
+  featureGroupHeading: {
+    color: '#C9D1D9',
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 6,
+  },
+  featureItemRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    marginBottom: 4,
+  },
+  featureItemText: {
+    color: '#8B949E',
+    fontSize: 13,
+    lineHeight: 19,
+    flex: 1,
+  },
+  // ── Limitations ──
+  limitationsSection: {
+    backgroundColor: '#161B22',
+    borderRadius: 14,
+    padding: 18,
+    marginBottom: 16,
+  },
+  limitationsHeading: {
+    color: '#8B949E',
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 10,
+  },
+  limitationRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 6,
+    marginBottom: 4,
+  },
+  limitationDot: {
+    color: '#6E7681',
+    fontSize: 13,
+    lineHeight: 19,
+  },
+  limitationText: {
+    color: '#6E7681',
+    fontSize: 13,
+    lineHeight: 19,
+    flex: 1,
+  },
+  // ── Pro section ──
+  proSection: {
+    backgroundColor: '#161B22',
+    borderRadius: 14,
+    padding: 18,
+    marginBottom: 24,
     borderWidth: 1,
     borderColor: '#7EE787',
   },
-  compareTitle: {
-    color: '#8B949E',
-    fontSize: 15,
+  proHeading: {
+    color: '#7EE787',
+    fontSize: 18,
     fontWeight: '700',
+    marginBottom: 4,
+  },
+  proSubheading: {
+    color: '#C9D1D9',
+    fontSize: 13,
+    marginBottom: 16,
+  },
+  proFeatureGroup: {
+    marginBottom: 18,
+  },
+  proFeatureGroupHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
     marginBottom: 8,
   },
-  compareTitlePro: {
-    color: '#7EE787',
+  proFeatureGroupHeading: {
+    color: '#E6EDF3',
+    fontSize: 15,
+    fontWeight: '600',
   },
-  compareItem: {
-    color: '#8B949E',
-    fontSize: 12,
-    lineHeight: 20,
+  proFeatureItemRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    marginBottom: 4,
   },
-  compareItemPro: {
+  proFeatureItemText: {
     color: '#C9D1D9',
+    fontSize: 13,
+    lineHeight: 19,
+    flex: 1,
   },
+  // ── Packages ──
   loadingBox: {
     alignItems: 'center',
     padding: 24,
@@ -466,6 +695,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginTop: 4,
   },
+  // ── CTA ──
   cta: {
     backgroundColor: '#7EE787',
     borderRadius: 14,
@@ -476,10 +706,20 @@ const styles = StyleSheet.create({
   ctaDisabled: {
     opacity: 0.6,
   },
+  ctaContent: {
+    alignItems: 'center',
+    gap: 4,
+  },
   ctaText: {
     color: '#0D1117',
     fontSize: 16,
     fontWeight: '700',
+  },
+  ctaSubtext: {
+    color: '#0D1117',
+    fontSize: 11,
+    opacity: 0.8,
+    textAlign: 'center',
   },
   disclosure: {
     color: '#6E7681',

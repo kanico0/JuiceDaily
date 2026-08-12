@@ -2,14 +2,14 @@ import React, { useCallback, useEffect, useState } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { Camera, FlaskConical, Crown } from 'lucide-react-native'
 import { useQuota } from '../services/quota/QuotaStore'
-import { useSubscription } from '../services/subscriptions/SubscriptionStore'
+import { useEffectiveProAccess } from '../hooks/useEffectiveProAccess'
 import { fetchEffectiveBlendAllowance, FREE_ADVANCED_BLEND_ALLOWANCE } from '../services/quota/blendAllowanceService'
 import { FREE_MONTHLY_SCAN_LIMIT, PRO_MONTHLY_SCAN_LIMIT } from '../services/subscriptions/subscriptionConfig'
 import { trackEvent } from '../services/AnalyticsService'
 
 export default function FreePlanUsageCard ({ onUpgrade, refreshTrigger }) {
   const { quota, loading: quotaLoading, refresh: refreshQuota } = useQuota()
-  const { isPro } = useSubscription()
+  const { isPro } = useEffectiveProAccess()
   const [blendRemaining, setBlendRemaining] = useState(null)
   const [blendLoading, setBlendLoading] = useState(true)
   const [hasViewed, setHasViewed] = useState(false)

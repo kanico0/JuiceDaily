@@ -2,6 +2,9 @@
 // comboAuditExactCount.test.js — Programmatically verifies the
 // exact launchable vs non-launchable count for all Today's Focus
 // combos against the authoritative comboToProduceIds resolver.
+//
+// After QA5 corrections, ALL 32 combos are launchable — every
+// ingredient resolves to a builder-supported produce ID.
 // ─────────────────────────────────────────────────────────────
 
 // Mock AsyncStorage (required by focusNutrient.js)
@@ -29,12 +32,12 @@ describe("Today's Focus combo audit — exact programmatic count", () => {
   const launchable = allCombos.filter((c) => isComboLaunchable(c.combo))
   const nonLaunchable = allCombos.filter((c) => !isComboLaunchable(c.combo))
 
-  test('launchable count is 17', () => {
-    expect(launchable.length).toBe(17)
+  test('launchable count is 32 (all combos launchable)', () => {
+    expect(launchable.length).toBe(32)
   })
 
-  test('non-launchable count is 15', () => {
-    expect(nonLaunchable.length).toBe(15)
+  test('non-launchable count is 0', () => {
+    expect(nonLaunchable.length).toBe(0)
   })
 
   test('launchable + non-launchable = total', () => {
@@ -49,67 +52,10 @@ describe("Today's Focus combo audit — exact programmatic count", () => {
     }
   })
 
-  test('every non-launchable combo has at least one unresolved ingredient', () => {
-    for (const c of nonLaunchable) {
-      const { produceIds } = comboToProduceIds(c.combo)
-      const ingredientCount = c.combo.split('+').map((s) => s.trim()).length
-      expect(produceIds.length).toBeLessThan(ingredientCount)
+  test('no combo produces the "unavailable ingredients" warning', () => {
+    for (const c of allCombos) {
+      const { unmapped } = comboToProduceIds(c.combo)
+      expect(unmapped).toEqual([])
     }
-  })
-
-  test('partially resolvable combos are NOT launchable', () => {
-    for (const c of nonLaunchable) {
-      const { produceIds } = comboToProduceIds(c.combo)
-      // Some ingredients may resolve but not all
-      expect(produceIds.length).toBeGreaterThan(0)
-      expect(isComboLaunchable(c.combo)).toBe(false)
-    }
-  })
-
-  // ── List all launchable combos ──
-  test('launchable combos list', () => {
-    const list = launchable.map((c) => c.combo)
-    // Snapshot the exact list for documentation
-    expect(list).toEqual([
-      'Orange + Red Pepper + Pineapple',
-      'Kiwi + Strawberry + Lemon',
-      'Apple + Celery + Ginger',
-      'Pear + Spinach + Cucumber',
-      'Sweet Potato + Orange + Carrot',
-      'Spinach + Beet + Orange',
-      'Carrot + Mango + Turmeric',
-      'Sweet Potato + Ginger + Orange',
-      'Swiss Chard + Pineapple + Mint',
-      'Spinach + Lemon + Beet',
-      'Kale + Orange + Ginger',
-      'Blueberry + Pomegranate + Beet',
-      'Kale + Cucumber + Apple',
-      'Broccoli + Parsley + Lemon',
-      'Beet + Orange + Ginger',
-      'Tomato + Watermelon + Basil',
-      'Red Grapefruit + Carrot + Ginger',
-    ])
-  })
-
-  // ── List all non-launchable combos with unresolved ingredients ──
-  test('non-launchable combos list', () => {
-    const list = nonLaunchable.map((c) => c.combo)
-    expect(list).toEqual([
-      'Banana + Spinach + Coconut Water',
-      'Kale + Avocado + Lemon',
-      'Spinach + Banana + Cacao',
-      'Acai + Grape + Ginger',
-      'Flaxseed + Spinach + Apple',
-      'Chia + Walnut Milk + Blueberry',
-      'Hemp Seed + Spinach + Banana',
-      'Pea Protein + Mango + Coconut',
-      'Avocado + Spinach + Mango',
-      'Almond Milk + Kiwi + Banana',
-      'Pumpkin Seed + Spinach + Orange',
-      'Cashew Milk + Ginger + Turmeric',
-      'Banana + Spinach + Nutritional Yeast',
-      'Kale + Orange + Almond Milk',
-      'Broccoli + Fig + Sesame',
-    ])
   })
 })

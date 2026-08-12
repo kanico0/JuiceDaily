@@ -19,11 +19,13 @@ import {
   Animated,
   BackHandler,
   Modal,
+  TextInput,
+  ActivityIndicator,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { LinearGradient } from 'expo-linear-gradient'
 import * as Haptics from 'expo-haptics'
-import { Check, Leaf, Beaker, TrendingUp, Flame, X } from 'lucide-react-native'
+import { Check, Leaf, Beaker, TrendingUp, Flame, X, Star, Heart } from 'lucide-react-native'
 import { TASTE_REACTIONS } from '../constants/recipeData'
 import MeshGradientBg from '../components/MeshGradientBg'
 import GlassSurface from '../components/GlassSurface'
@@ -49,7 +51,7 @@ export default function ScanSuccessScreen({ route, navigation }) {
 
   const { momentum, streak, diversity, coverage } = useNutritionScore()
   const { activation } = useActivation()
-  const { setTasteReaction } = useJuiceLog()
+  const { entries, setTasteReaction, setRating, setNote, toggleFavorite, setFavorite, updateEntryMetadata, markTasteFeedbackResolved } = useJuiceLog()
 
   // Compute live score increase from pre-log snapshot
   const scoreIncrease = Math.max(0, momentum - previousMomentum)
@@ -59,11 +61,43 @@ export default function ScanSuccessScreen({ route, navigation }) {
   const [glowToast, setGlowToast] = useState(null)
   const [pendingAchievement, setPendingAchievement] = useState(null)
   const [showTasteFeedback, setShowTasteFeedback] = useState(false)
+  const [pendingIndicator, setPendingIndicator] = useState(true)
+  // Session Logged content is hidden until taste feedback is resolved.
+  // This enforces the required order:
+  //   juice saved → pending → taste feedback → resolve → Session Logged
+  const [sessionLoggedVisible, setSessionLoggedVisible] = useState(false)
+  // Post-juice enrichment state (rating, note, favorite)
+  const [enrichRating, setEnrichRating] = useState(0)
+  const [enrichNote, setEnrichNote] = useState('')
+  const [enrichFavorite, setEnrichFavorite] = useState(false)
   const achievementCheckedRef = useRef(false)
   const hasAchievementRef = useRef(false)
   const achievementTimerRef = useRef(null)
+  // Track whether taste feedback is eligible for this entry.
+  // Currently always eligible — no Pro gate on the feedback panel.
+  // If a Pro gate is added later, set this to false for ineligible users
+  // and sessionLoggedVisible will be set immediately.
+  const tasteFeedbackEligible = true
 
   useEffect(() => {
+    // QA11: If this entry's taste feedback was already resolved
+    // (e.g., screen re-mounted after app restart or navigation
+    // back to ScanSuccess), skip directly to Session Logged.
+    if (logEntryId) {
+      const existing = entries.find((e) => e.id === logEntryId)
+      if (existing && existing.tasteFeedbackResolved === true) {
+        setPendingIndicator(false)
+        setSessionLoggedVisible(true)
+        return
+      }
+    }
+    // If user is not eligible for taste feedback, skip directly to
+    // Session Logged confirmation.
+    if (!tasteFeedbackEligible) {
+      setPendingIndicator(false)
+      setSessionLoggedVisible(true)
+      return
+    }
     let cancelled = false
     ;(async () => {
       try {
@@ -86,13 +120,26 @@ export default function ScanSuccessScreen({ route, navigation }) {
             setPendingAchievement(newlyUnlocked[0])
           }, 1500)
         } else {
-          // No achievement — show taste feedback after toast auto-dismisses
+          // No achievement — show taste feedback
           hasAchievementRef.current = false
+          // If no glow toast was shown (e.g., second juice same day,
+          // checkInToday was not incremented), show taste feedback
+          // immediately instead of waiting for a toast that will
+          // never appear.
+          if (!result.wasIncremented) {
+            setShowTasteFeedback(true)
+            setPendingIndicator(false)
+          }
+          // Otherwise, the glow toast auto-dismiss useEffect will
+          // trigger taste feedback after 3 seconds.
         }
       } catch (e) {
         console.warn('[GlowStreak] auto check-in failed:', e)
         achievementCheckedRef.current = true
         hasAchievementRef.current = false
+        // On error, still show taste feedback — don't block the user
+        setShowTasteFeedback(true)
+        setPendingIndicator(false)
       }
     })()
     return () => {
@@ -109,7 +156,23 @@ export default function ScanSuccessScreen({ route, navigation }) {
   const handleAchievementDismiss = useCallback(() => {
     setPendingAchievement(null)
     setShowTasteFeedback(true)
+    setPendingIndicator(false)
   }, [])
+
+  // Centralized resolution of the taste feedback step.
+  // Called when the user taps Save/Continue, Skip, or the X button.
+  // This reveals the Session Logged confirmation content.
+  // QA11: Also marks the entry's taste feedback as resolved in the
+  // persisted store, so no other screen (e.g., RecipeDetailScreen
+  // focus listener) can re-prompt for the same entry.
+  const resolveTasteFeedback = useCallback(() => {
+    if (logEntryId) {
+      markTasteFeedbackResolved(logEntryId)
+    }
+    setShowTasteFeedback(false)
+    setPendingIndicator(false)
+    setSessionLoggedVisible(true)
+  }, [logEntryId, markTasteFeedbackResolved])
 
   // Auto-dismiss toast
   useEffect(() => {
@@ -119,6 +182,7 @@ export default function ScanSuccessScreen({ route, navigation }) {
       // If no achievement pending, show taste feedback after toast dismisses
       if (achievementCheckedRef.current && !hasAchievementRef.current) {
         setShowTasteFeedback(true)
+        setPendingIndicator(false)
       }
     }, 3000)
     return () => clearTimeout(t)
@@ -130,16 +194,22 @@ export default function ScanSuccessScreen({ route, navigation }) {
   const slideAnim = useRef(new Animated.Value(30)).current
   const checkScale = useRef(new Animated.Value(0)).current
 
+  // Track event on mount
   useEffect(() => {
-    // Light haptic on mount
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
-
     trackEvent('scan_success_viewed', {
       ingredient_count: ingredientCount,
       nutrients_found: nutrientsFound,
       score_increase: scoreIncrease,
       new_momentum: momentum,
     })
+  }, [])
+
+  // Entrance animation — runs when Session Logged content becomes visible
+  useEffect(() => {
+    if (!sessionLoggedVisible) return
+
+    // Light haptic when Session Logged is revealed
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
 
     if (reducedMotion) {
       glowAnim.setValue(1)
@@ -199,7 +269,7 @@ export default function ScanSuccessScreen({ route, navigation }) {
       entranceAnim.stop()
       glowLoop.stop()
     }
-  }, [])
+  }, [sessionLoggedVisible, reducedMotion])
 
   const glowOpacity = glowAnim.interpolate({
     inputRange: [0, 1],
@@ -286,18 +356,20 @@ export default function ScanSuccessScreen({ route, navigation }) {
     <View style={s.root}>
       <MeshGradientBg />
 
-      {/* Soft glow behind check icon */}
-      <Animated.View style={[s.glowOrb, { opacity: glowOpacity }]}>
-        <LinearGradient
-          colors={['rgba(61,139,64,0.35)', 'rgba(61,139,64,0.0)']}
-          start={{ x: 0.5, y: 0.5 }}
-          end={{ x: 0.5, y: 0 }}
-          style={StyleSheet.absoluteFill}
-        />
-      </Animated.View>
+      {/* Soft glow behind check icon — only when Session Logged is visible */}
+      {sessionLoggedVisible && (
+        <Animated.View style={[s.glowOrb, { opacity: glowOpacity }]}>
+          <LinearGradient
+            colors={['rgba(61,139,64,0.35)', 'rgba(61,139,64,0.0)']}
+            start={{ x: 0.5, y: 0.5 }}
+            end={{ x: 0.5, y: 0 }}
+            style={StyleSheet.absoluteFill}
+          />
+        </Animated.View>
+      )}
 
       <SafeAreaView style={s.safe} edges={['top', 'bottom']}>
-        {/* Close button — top-right */}
+        {/* Close button — top-right (always available) */}
         <Pressable
           onPress={handleDone}
           style={s.closeBtn}
@@ -308,95 +380,117 @@ export default function ScanSuccessScreen({ route, navigation }) {
           <X size={22} color={BRAND.text.muted} />
         </Pressable>
 
-        {/* Check icon */}
-        <View style={s.checkArea}>
-          <Animated.View style={[s.checkCircle, { transform: [{ scale: checkScale }] }]}>
-            <Check size={32} color="#FFFFFF" strokeWidth={2.5} />
-          </Animated.View>
-          <Text style={s.headline}>Session Logged</Text>
-        </View>
+        {/* ── Pending state: shown before Session Logged is revealed ── */}
+        {!sessionLoggedVisible && (
+          <View style={s.pendingContainer}>
+            <ActivityIndicator size="large" color={BRAND.accent} />
+            <Text style={s.pendingTitle}>
+              {pendingAchievement
+                ? 'Achievement unlocked!'
+                : 'Saving your juice…'}
+            </Text>
+            <Text style={s.pendingSubtitle}>
+              {pendingAchievement
+                ? 'Taste check coming up…'
+                : 'Taste check coming up…'}
+            </Text>
+          </View>
+        )}
 
-        {/* Momentum score */}
-        <Animated.View
-          style={[
-            s.momentumWrap,
-            {
-              opacity: fadeAnim,
-              transform: [{ translateY: slideAnim }],
-            },
-          ]}
-        >
-          <GlassSurface elevated style={s.momentumCard}>
-            <Text style={s.momentumLabel}>Nutrition Momentum</Text>
-            <Text style={s.momentumScore}>{momentum}</Text>
-            <View style={s.momentumBar}>
-              <View style={[s.momentumFill, { width: `${Math.min(momentum / 1000, 1) * 100}%` }]} />
+        {/* ── Session Logged content: only after taste feedback is resolved ── */}
+        {sessionLoggedVisible && (
+          <>
+            {/* Check icon */}
+            <View style={s.checkArea}>
+              <Animated.View style={[s.checkCircle, { transform: [{ scale: checkScale }] }]}>
+                <Check size={32} color="#FFFFFF" strokeWidth={2.5} />
+              </Animated.View>
+              <Text style={s.headline}>Session Logged</Text>
             </View>
-          </GlassSurface>
-        </Animated.View>
 
-        {/* Metrics grid */}
-        <Animated.View
-          style={[
-            s.metricsGrid,
-            {
-              opacity: fadeAnim,
-              transform: [{ translateY: slideAnim }],
-            },
-          ]}
-        >
-          {metrics.map((m) => (
-            <GlassSurface key={m.label} style={s.metricCell} borderRadius={RADIUS.lg}>
-              <View style={[s.metricIcon, { backgroundColor: m.dimColor }]}>
-                <m.icon size={16} color={m.iconColor} strokeWidth={2} />
-              </View>
-              <Text style={s.metricValue}>{m.value}</Text>
-              <Text style={s.metricLabel}>{m.label}</Text>
-              {m.sub && <Text style={s.metricSub}>{m.sub}</Text>}
-            </GlassSurface>
-          ))}
-        </Animated.View>
-
-        {/* Actions */}
-        <Animated.View style={[s.actions, { opacity: fadeAnim }]}>
-          <TouchableOpacity
-            onPress={handleContinue}
-            activeOpacity={0.85}
-            hitSlop={4}
-            accessibilityRole="button"
-            accessibilityLabel="View Today"
-          >
-            <LinearGradient
-              colors={BRAND.cta.gradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={s.primaryBtn}
+            {/* Momentum score */}
+            <Animated.View
+              style={[
+                s.momentumWrap,
+                {
+                  opacity: fadeAnim,
+                  transform: [{ translateY: slideAnim }],
+                },
+              ]}
             >
-              <Text style={s.primaryBtnText}>View Today</Text>
-            </LinearGradient>
-          </TouchableOpacity>
+              <GlassSurface elevated style={s.momentumCard}>
+                <Text style={s.momentumLabel}>Nutrition Momentum</Text>
+                <Text style={s.momentumScore}>{momentum}</Text>
+                <View style={s.momentumBar}>
+                  <View style={[s.momentumFill, { width: `${Math.min(momentum / 1000, 1) * 100}%` }]} />
+                </View>
+              </GlassSurface>
+            </Animated.View>
 
-          <TouchableOpacity
-            onPress={handleScanAnother}
-            activeOpacity={0.7}
-            hitSlop={4}
-            style={s.secondaryBtn}
-            accessibilityRole="button"
-            accessibilityLabel="Scan Another"
-          >
-            <Text style={s.secondaryBtnText}>Scan Another</Text>
-          </TouchableOpacity>
+            {/* Metrics grid */}
+            <Animated.View
+              style={[
+                s.metricsGrid,
+                {
+                  opacity: fadeAnim,
+                  transform: [{ translateY: slideAnim }],
+                },
+              ]}
+            >
+              {metrics.map((m) => (
+                <GlassSurface key={m.label} style={s.metricCell} borderRadius={RADIUS.lg}>
+                  <View style={[s.metricIcon, { backgroundColor: m.dimColor }]}>
+                    <m.icon size={16} color={m.iconColor} strokeWidth={2} />
+                  </View>
+                  <Text style={s.metricValue}>{m.value}</Text>
+                  <Text style={s.metricLabel}>{m.label}</Text>
+                  {m.sub && <Text style={s.metricSub}>{m.sub}</Text>}
+                </GlassSurface>
+              ))}
+            </Animated.View>
 
-          <Pressable
-            onPress={handleDone}
-            style={({ pressed }) => [s.doneBtn, pressed && { opacity: 0.6 }]}
-            hitSlop={10}
-            accessibilityRole="button"
-            accessibilityLabel="Done — return to home"
-          >
-            <Text style={s.doneBtnText}>Done</Text>
-          </Pressable>
-        </Animated.View>
+            {/* Actions */}
+            <Animated.View style={[s.actions, { opacity: fadeAnim }]}>
+              <TouchableOpacity
+                onPress={handleContinue}
+                activeOpacity={0.85}
+                hitSlop={4}
+                accessibilityRole="button"
+                accessibilityLabel="View Today"
+              >
+                <LinearGradient
+                  colors={BRAND.cta.gradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={s.primaryBtn}
+                >
+                  <Text style={s.primaryBtnText}>View Today</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={handleScanAnother}
+                activeOpacity={0.7}
+                hitSlop={4}
+                style={s.secondaryBtn}
+                accessibilityRole="button"
+                accessibilityLabel="Scan Another"
+              >
+                <Text style={s.secondaryBtnText}>Scan Another</Text>
+              </TouchableOpacity>
+
+              <Pressable
+                onPress={handleDone}
+                style={({ pressed }) => [s.doneBtn, pressed && { opacity: 0.6 }]}
+                hitSlop={10}
+                accessibilityRole="button"
+                accessibilityLabel="Done — return to home"
+              >
+                <Text style={s.doneBtnText}>Done</Text>
+              </Pressable>
+            </Animated.View>
+          </>
+        )}
       </SafeAreaView>
 
       {/* Glow Streak toast */}
@@ -407,6 +501,18 @@ export default function ScanSuccessScreen({ route, navigation }) {
         </View>
       )}
 
+      {/* Lightweight pending indicator — shown while post-juice feedback is queued */}
+      {pendingIndicator && !showTasteFeedback && !pendingAchievement && (
+        <View style={s.pendingIndicator} pointerEvents="none">
+          <ActivityIndicator size="small" color={BRAND.accent} />
+          <Text style={s.pendingIndicatorText}>
+            {hasAchievementRef.current
+              ? 'Taste check queued…'
+              : 'Saving your juice…'}
+          </Text>
+        </View>
+      )}
+
       {/* Achievement Overlay */}
       <AchievementOverlay
         achievement={pendingAchievement}
@@ -414,13 +520,13 @@ export default function ScanSuccessScreen({ route, navigation }) {
         onDismiss={handleAchievementDismiss}
       />
 
-      {/* Taste Feedback Modal */}
+      {/* Taste Feedback Modal — enhanced with optional rating, note, favorite */}
       <Modal
         visible={showTasteFeedback}
         transparent
         animationType="fade"
         statusBarTranslucent
-        onRequestClose={() => setShowTasteFeedback(false)}
+        onRequestClose={resolveTasteFeedback}
       >
         <View style={s.tasteOverlay}>
           <View style={s.tasteCard}>
@@ -430,7 +536,7 @@ export default function ScanSuccessScreen({ route, navigation }) {
                 style={s.tasteCloseBtn}
                 onPress={() => {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-                  setShowTasteFeedback(false)
+                  resolveTasteFeedback()
                 }}
                 activeOpacity={0.7}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
@@ -455,7 +561,6 @@ export default function ScanSuccessScreen({ route, navigation }) {
                     if (logEntryId) {
                       setTasteReaction(logEntryId, r)
                     }
-                    setShowTasteFeedback(false)
                   }}
                   activeOpacity={0.7}
                 >
@@ -464,18 +569,107 @@ export default function ScanSuccessScreen({ route, navigation }) {
                 </TouchableOpacity>
               ))}
             </View>
-            <TouchableOpacity
-              style={s.tasteSkipBtn}
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-                setShowTasteFeedback(false)
-              }}
-              activeOpacity={0.7}
-              accessibilityRole="button"
-              accessibilityLabel="Skip taste feedback"
-            >
-              <Text style={s.tasteSkipText}>Skip</Text>
-            </TouchableOpacity>
+
+            {/* Optional enrichment: rating, note, favorite */}
+            <View style={s.enrichSection}>
+              <Text style={s.enrichLabel}>Rate this juice (optional)</Text>
+              <View style={s.enrichStars}>
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <Pressable
+                    key={star}
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+                      setEnrichRating((prev) => (prev === star ? 0 : star))
+                    }}
+                    hitSlop={4}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${star} star${star !== 1 ? 's' : ''}`}
+                  >
+                    <Star
+                      size={22}
+                      color={star <= enrichRating ? '#FFD54F' : '#8B949E'}
+                      fill={star <= enrichRating ? '#FFD54F' : 'transparent'}
+                    />
+                  </Pressable>
+                ))}
+              </View>
+
+              <Text style={[s.enrichLabel, { marginTop: 12 }]}>Add a note (optional)</Text>
+              <TextInput
+                style={s.enrichNoteInput}
+                value={enrichNote}
+                onChangeText={setEnrichNote}
+                placeholder="Great morning juice. Use a little less ginger next time."
+                placeholderTextColor="#8B949E"
+                multiline
+                maxLength={500}
+              />
+
+              <Pressable
+                style={({ pressed }) => [s.enrichFavoriteBtn, pressed && { opacity: 0.7 }]}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+                  setEnrichFavorite((prev) => !prev)
+                }}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel={enrichFavorite ? 'Remove from favorites' : 'Add to favorites'}
+              >
+                <Heart
+                  size={16}
+                  color={enrichFavorite ? '#EF5DA8' : '#8B949E'}
+                  fill={enrichFavorite ? '#EF5DA8' : 'transparent'}
+                />
+                <Text style={[s.enrichFavoriteText, enrichFavorite && { color: '#EF5DA8' }]}>
+                  {enrichFavorite ? 'Added to Favorites' : 'Add to Favorites'}
+                </Text>
+              </Pressable>
+            </View>
+
+            <View style={s.tasteActions}>
+              <TouchableOpacity
+                style={s.tasteSaveBtn}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+                  if (logEntryId) {
+                    // Atomic single-dispatch save — prevents stale-closure
+                    // races that occurred when calling setRating + setNote +
+                    // toggleFavorite separately.
+                    const metadataUpdates = {}
+                    if (enrichRating > 0) metadataUpdates.rating = enrichRating
+                    if (enrichNote.trim().length > 0) metadataUpdates.note = enrichNote.trim()
+                    if (enrichFavorite) metadataUpdates.favorite = true
+                    if (Object.keys(metadataUpdates).length > 0) {
+                      updateEntryMetadata(logEntryId, metadataUpdates)
+                    }
+                  }
+                  trackEvent('post_juice_enrichment_saved', {
+                    has_rating: enrichRating > 0,
+                    has_note: enrichNote.trim().length > 0,
+                    is_favorite: enrichFavorite,
+                    log_entry_id: logEntryId,
+                  })
+                  resolveTasteFeedback()
+                }}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel="Save and continue"
+              >
+                <Text style={s.tasteSaveText}>Save / Continue</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={s.tasteSkipBtn}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+                  resolveTasteFeedback()
+                }}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel="Skip enrichment"
+              >
+                <Text style={s.tasteSkipText}>Skip</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>
@@ -667,6 +861,41 @@ const s = StyleSheet.create({
     fontWeight: FONT_WEIGHT.semibold,
     color: '#FFB74D',
   },
+  pendingIndicator: {
+    position: 'absolute',
+    bottom: 80,
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(30,30,30,0.88)',
+    borderRadius: 16,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+  },
+  pendingIndicatorText: {
+    fontSize: FONT_SIZE.xs,
+    fontWeight: FONT_WEIGHT.medium,
+    color: BRAND.text.secondary,
+  },
+  pendingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: SPACE.xl,
+    gap: SPACE.md,
+  },
+  pendingTitle: {
+    fontSize: FONT_SIZE.lg,
+    fontWeight: FONT_WEIGHT.semibold,
+    color: BRAND.text.primary,
+    letterSpacing: -0.3,
+  },
+  pendingSubtitle: {
+    fontSize: FONT_SIZE.sm,
+    color: BRAND.text.muted,
+    letterSpacing: 0.3,
+  },
   tasteOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.6)',
@@ -726,5 +955,60 @@ const s = StyleSheet.create({
   tasteSkipText: {
     fontSize: FONT_SIZE.xs,
     color: BRAND.text.muted,
+  },
+  // Post-juice enrichment styles
+  enrichSection: {
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.08)',
+  },
+  enrichLabel: {
+    fontSize: FONT_SIZE.xs,
+    fontWeight: FONT_WEIGHT.semibold,
+    color: BRAND.text.muted,
+    marginBottom: 8,
+  },
+  enrichStars: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  enrichNoteInput: {
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderRadius: RADIUS.md,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: FONT_SIZE.sm,
+    color: BRAND.text.primary,
+    minHeight: 60,
+    maxHeight: 100,
+    marginBottom: 12,
+    textAlignVertical: 'top',
+  },
+  enrichFavoriteBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 8,
+  },
+  enrichFavoriteText: {
+    fontSize: FONT_SIZE.sm,
+    fontWeight: FONT_WEIGHT.semibold,
+    color: BRAND.text.muted,
+  },
+  tasteActions: {
+    marginTop: 16,
+  },
+  tasteSaveBtn: {
+    alignItems: 'center',
+    paddingVertical: 12,
+    backgroundColor: BRAND.cta.primary,
+    borderRadius: RADIUS.md,
+    marginBottom: 8,
+  },
+  tasteSaveText: {
+    fontSize: FONT_SIZE.sm,
+    fontWeight: FONT_WEIGHT.bold,
+    color: '#FFFFFF',
   },
 })

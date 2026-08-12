@@ -94,6 +94,7 @@ export async function authorizeAndProcessBatch(
   scannedItems: ScannedIngredient[],
   juiceMethod: JuiceMethod = 'cold_pressed',
   operationId?: string,
+  effectiveIsPro?: boolean,
 ): Promise<AuthorizedJuiceResult> {
   const distinctCount = countDistinctProduceIds(scannedItems)
   const blendType = classifyBlend(distinctCount)
@@ -124,7 +125,12 @@ export async function authorizeAndProcessBatch(
   // Pro users bypass this check entirely (unlimited).
   // Unknown account allowance → fail-closed (blocked).
   // Dev bypass (no Supabase configured) skips this check.
-  if (!isDevBypass()) {
+  //
+  // effectiveIsPro (from useEffectivePlanAccess) allows QA Pro
+  // Simulation to bypass the client-side install guard. The server
+  // still enforces the real quota via reserveBlendAllowance below.
+  const clientIsPro = effectiveIsPro === true
+  if (!isDevBypass() && !clientIsPro) {
     const accountSnapshot = await fetchBlendAllowance()
     const isProFromSnapshot = accountSnapshot?.plan === 'pro'
     const accountRemaining = accountSnapshot?.remaining ?? null

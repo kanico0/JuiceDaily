@@ -229,9 +229,9 @@ describe('FIX 4: Entitlement loading state in HistoryScreen', () => {
     'utf8',
   )
 
-  test('17. HistoryScreen reads subState from useSubscription', () => {
-    expect(source).toContain('subState')
-    expect(source).toContain('initialized')
+  test('17. HistoryScreen uses useEffectiveProAccess for entitlement', () => {
+    expect(source).toContain('useEffectiveProAccess')
+    expect(source).toContain('entitlementInitialized')
   })
 
   test('18. During loading, isPro is false (neutral, not optimistic)', () => {

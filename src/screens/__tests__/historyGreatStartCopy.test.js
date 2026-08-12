@@ -117,7 +117,8 @@ describe('History "Great start" copy: entitlement and state behavior', () => {
 
   test('15. EncouragementCard renders for both empty and populated history', () => {
     // The encouragement card is rendered when encouragement is truthy
-    expect(historySource).toContain('{encouragement && (')
+    // (hidden during active search/filter to maximize result space)
+    expect(historySource).toContain('encouragement &&')
     expect(historySource).toContain('<EncouragementCard')
   })
 })

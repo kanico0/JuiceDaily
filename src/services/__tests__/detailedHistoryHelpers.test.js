@@ -22,12 +22,12 @@ describe('formatIngredientPortion', () => {
     expect(formatIngredientPortion({})).toBeNull()
   })
 
-  test('returns grams for weight-mode ingredient with weightG', () => {
+  test('returns grams for weight-mode ingredient with weightG (grams mode)', () => {
     const result = formatIngredientPortion({
       produceId: 'carrot',
       weightG: 120,
       portionEntryMode: 'weight',
-    })
+    }, 'grams')
     expect(result).toBe('120g')
   })
 
@@ -61,8 +61,79 @@ describe('formatIngredientPortion', () => {
       produceId: 'carrot',
       weightG: 0,
       portionEntryMode: 'weight',
-    })
+    }, 'grams')
     expect(result).toBeNull()
+  })
+
+  // ── entered weight unit preservation tests ──
+
+  test('displays enteredWeightValue with enteredWeightUnit when available (oz)', () => {
+    const result = formatIngredientPortion({
+      produceId: 'lemon',
+      weightG: 150,
+      portionEntryMode: 'weight',
+      enteredWeightValue: 5.3,
+      enteredWeightUnit: 'oz',
+    }, 'grams')
+    expect(result).toBe('5.3 oz')
+  })
+
+  test('displays enteredWeightValue with enteredWeightUnit when available (g)', () => {
+    const result = formatIngredientPortion({
+      produceId: 'lemon',
+      weightG: 150,
+      portionEntryMode: 'weight',
+      enteredWeightValue: 150,
+      enteredWeightUnit: 'g',
+    }, 'oz')
+    expect(result).toBe('150 g')
+  })
+
+  test('legacy entry falls back to current weight display mode (oz)', () => {
+    const result = formatIngredientPortion({
+      produceId: 'lemon',
+      weightG: 150,
+      portionEntryMode: 'weight',
+    }, 'oz')
+    expect(result).toBe('5.3 oz')
+  })
+
+  test('legacy entry falls back to current weight display mode (grams)', () => {
+    const result = formatIngredientPortion({
+      produceId: 'lemon',
+      weightG: 150,
+      portionEntryMode: 'weight',
+    }, 'grams')
+    expect(result).toBe('150g')
+  })
+
+  test('legacy entry falls back to current weight display mode (both)', () => {
+    const result = formatIngredientPortion({
+      produceId: 'lemon',
+      weightG: 150,
+      portionEntryMode: 'weight',
+    }, 'both')
+    expect(result).toBe('150g (5.3 oz)')
+  })
+
+  test('falls back to default both mode when no mode specified', () => {
+    const result = formatIngredientPortion({
+      produceId: 'lemon',
+      weightG: 150,
+      portionEntryMode: 'weight',
+    })
+    expect(result).toBe('150g (5.3 oz)')
+  })
+
+  test('falls back to current mode when enteredWeightUnit is empty string', () => {
+    const result = formatIngredientPortion({
+      produceId: 'lemon',
+      weightG: 150,
+      portionEntryMode: 'weight',
+      enteredWeightValue: 150,
+      enteredWeightUnit: '',
+    }, 'oz')
+    expect(result).toBe('5.3 oz')
   })
 })
 

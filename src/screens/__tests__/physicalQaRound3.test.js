@@ -126,25 +126,14 @@ describe('Issue 3 — Disable Log to Today with invalid ingredients', () => {
     expect(HOME_SRC).toMatch(/useMemo\(\(\) => \{[\s\S]*?hasInvalidIngredients/)
   })
 
-  it('hasInvalidIngredients checks for missing sizeKey when hasSML', () => {
+  it('hasInvalidIngredients delegates to validateBatchForLog', () => {
     const memoMatch = HOME_SRC.match(
       /const hasInvalidIngredients = useMemo\(\(\) => \{([\s\S]*?)\n  \}, \[batch\.scannedIngredients\]\)/,
     )
     expect(memoMatch).toBeTruthy()
     const body = memoMatch[1]
-    expect(body).toContain('hasSML')
-    expect(body).toContain('sizeKey')
-    expect(body).toContain('!sizeKey')
-  })
-
-  it('hasInvalidIngredients calls estimateRawWeightGrams and checks result.ok', () => {
-    const memoMatch = HOME_SRC.match(
-      /const hasInvalidIngredients = useMemo\(\(\) => \{([\s\S]*?)\n  \}, \[batch\.scannedIngredients\]\)/,
-    )
-    expect(memoMatch).toBeTruthy()
-    const body = memoMatch[1]
-    expect(body).toContain('estimateRawWeightGrams')
-    expect(body).toContain('!result.ok')
+    expect(body).toContain('validateBatchForLog')
+    expect(body).toContain('.valid')
   })
 
   it('Log to Today button is disabled when hasInvalidIngredients', () => {
@@ -165,13 +154,14 @@ describe('Issue 3 — Disable Log to Today with invalid ingredients', () => {
   })
 
   it('handleLogToChallenge enforces guard before any persistence or navigation', () => {
-    const guardIdx = HOME_SRC.indexOf('if (hasInvalidIngredients) return')
-    expect(guardIdx).toBeGreaterThan(-1)
     const handlerIdx = HOME_SRC.indexOf('const handleLogToChallenge')
-    expect(guardIdx).toBeGreaterThan(handlerIdx)
-    // Guard must appear before any try block, navigation, or logJuice call
+    expect(handlerIdx).toBeGreaterThan(-1)
+    // Guard must use validateBatchForLog and appear before the try block
     const tryIdx = HOME_SRC.indexOf('try {', handlerIdx)
-    expect(guardIdx).toBeLessThan(tryIdx)
+    expect(tryIdx).toBeGreaterThan(-1)
+    const section = HOME_SRC.substring(handlerIdx, tryIdx)
+    expect(section).toContain('validateBatchForLog')
+    expect(section).toContain('.valid')
   })
 })
 

@@ -26,8 +26,8 @@ const MAKE_AGAIN_SRC = readSrc('../../services/makeAgainHelper.js')
 const ANALYTICS_SRC = readSrc('../../services/AnalyticsService.js')
 
 describe('Detailed History Preview — source audit: imports & helpers', () => {
-  test('1. HistoryScreen imports useSubscription', () => {
-    expect(HISTORY_SRC).toContain('useSubscription')
+  test('1. HistoryScreen imports useEffectiveProAccess', () => {
+    expect(HISTORY_SRC).toContain('useEffectiveProAccess')
   })
 
   test('2. HistoryScreen imports getHistoryAccessPolicy', () => {

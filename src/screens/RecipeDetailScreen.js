@@ -11,6 +11,7 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  Pressable,
   Animated,
   Platform,
   Modal,
@@ -47,6 +48,7 @@ import {
 import { getRecipeById, getCleanupLabel, TASTE_REACTIONS } from '../constants/recipeData'
 import { classifyProduceAllPillars, DAILY_PILLARS } from '../services/ChallengeStore'
 import { PRODUCE_DATA } from '../services/JuiceEngine'
+import { useJuiceLog } from '../services/JuiceLogStore'
 import MeshGradientBg from '../components/MeshGradientBg'
 import { useFormatWeight } from '../utils/weightFormat'
 import { useOrganicPref, getDefaultOrganic } from '../utils/organicPreference'
@@ -175,7 +177,42 @@ function CleanupScore({ score }) {
 
 // ── Taste Feedback Modal ─────────────────────────────────────
 
-function TasteFeedbackModal({ visible, onSelect, onDismiss }) {
+function TasteFeedbackModal({ visible, onSelect, onDismiss, logEntryId, onSaveMetadata }) {
+  const [selectedReaction, setSelectedReaction] = useState(null)
+  const [enrichRating, setEnrichRating] = useState(0)
+  const [enrichNote, setEnrichNote] = useState('')
+  const [enrichFavorite, setEnrichFavorite] = useState(false)
+
+  // Reset enrichment state each time the modal opens
+  useEffect(() => {
+    if (visible) {
+      setSelectedReaction(null)
+      setEnrichRating(0)
+      setEnrichNote('')
+      setEnrichFavorite(false)
+    }
+  }, [visible])
+
+  const handleSave = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    // Save taste reaction via the existing onSelect callback
+    if (selectedReaction) {
+      onSelect(selectedReaction)
+    }
+    // Atomically save rating + note + favorite to the same History entry
+    if (logEntryId && onSaveMetadata) {
+      const metadataUpdates = {}
+      if (enrichRating > 0) metadataUpdates.rating = enrichRating
+      if (enrichNote.trim().length > 0) metadataUpdates.note = enrichNote.trim()
+      if (enrichFavorite) metadataUpdates.favorite = true
+      if (selectedReaction) metadataUpdates.tasteReaction = selectedReaction
+      if (Object.keys(metadataUpdates).length > 0) {
+        onSaveMetadata(logEntryId, metadataUpdates)
+      }
+    }
+    onDismiss()
+  }
+
   return (
     <Modal visible={visible} transparent animationType="fade" statusBarTranslucent onRequestClose={onDismiss}>
       <View style={styles.tasteOverlay}>
@@ -196,14 +233,16 @@ function TasteFeedbackModal({ visible, onSelect, onDismiss }) {
               <X size={18} color="#8B949E" />
             </TouchableOpacity>
           </View>
+
+          {/* Existing Taste Vote — emoji reactions */}
           <View style={styles.tasteOptions}>
             {TASTE_REACTIONS.map((r) => (
               <TouchableOpacity
                 key={r.emoji}
-                style={styles.tasteBtn}
+                style={[styles.tasteBtn, selectedReaction?.emoji === r.emoji && styles.tasteBtnSelected]}
                 onPress={() => {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
-                  onSelect(r)
+                  setSelectedReaction(r)
                 }}
                 activeOpacity={0.7}
               >
@@ -212,6 +251,75 @@ function TasteFeedbackModal({ visible, onSelect, onDismiss }) {
               </TouchableOpacity>
             ))}
           </View>
+
+          {/* Optional Rating — 1-5 stars */}
+          <Text style={styles.enrichLabel}>Rate this juice (optional)</Text>
+          <View style={styles.enrichStars}>
+            {[1, 2, 3, 4, 5].map((star) => (
+              <Pressable
+                key={star}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+                  setEnrichRating((prev) => (prev === star ? 0 : star))
+                }}
+                hitSlop={4}
+                accessibilityRole="button"
+                accessibilityLabel={`${star} star${star !== 1 ? 's' : ''}`}
+              >
+                <Star
+                  size={22}
+                  color={star <= enrichRating ? '#FFD54F' : '#8B949E'}
+                  fill={star <= enrichRating ? '#FFD54F' : 'transparent'}
+                />
+              </Pressable>
+            ))}
+          </View>
+
+          {/* Optional Note — up to 500 chars */}
+          <Text style={[styles.enrichLabel, { marginTop: 12 }]}>Add a note (optional)</Text>
+          <TextInput
+            style={styles.enrichNoteInput}
+            value={enrichNote}
+            onChangeText={setEnrichNote}
+            placeholder="Great morning juice. Use a little less ginger next time."
+            placeholderTextColor="#8B949E"
+            multiline
+            maxLength={500}
+          />
+
+          {/* Optional Favorite — heart toggle */}
+          <Pressable
+            style={({ pressed }) => [styles.enrichFavoriteBtn, pressed && { opacity: 0.7 }]}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+              setEnrichFavorite((prev) => !prev)
+            }}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={enrichFavorite ? 'Remove from favorites' : 'Add to favorites'}
+          >
+            <Heart
+              size={16}
+              color={enrichFavorite ? '#EF5DA8' : '#8B949E'}
+              fill={enrichFavorite ? '#EF5DA8' : 'transparent'}
+            />
+            <Text style={[styles.enrichFavoriteText, enrichFavorite && { color: '#EF5DA8' }]}>
+              {enrichFavorite ? 'Added to Favorites' : 'Add to Favorites'}
+            </Text>
+          </Pressable>
+
+          {/* Save / Continue */}
+          <TouchableOpacity
+            style={styles.tasteSaveBtn}
+            onPress={handleSave}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="Save and continue"
+          >
+            <Text style={styles.tasteSaveText}>Save / Continue</Text>
+          </TouchableOpacity>
+
+          {/* Skip */}
           <TouchableOpacity
             style={styles.tasteSkipBtn}
             onPress={() => {
@@ -220,10 +328,9 @@ function TasteFeedbackModal({ visible, onSelect, onDismiss }) {
             }}
             activeOpacity={0.7}
             accessibilityRole="button"
-            accessibilityLabel="I didn't juice, exit without logging"
+            accessibilityLabel="Skip without saving"
           >
-            <Text style={styles.tasteSkipEmoji}>🚫</Text>
-            <Text style={styles.tasteSkipText}>I didn't juice</Text>
+            <Text style={styles.tasteSkipText}>Skip</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -256,7 +363,18 @@ export default function RecipeDetailScreen({ route, navigation }) {
   const [showTaste, setShowTaste] = useState(false)
   const [tasteResponse, setTasteResponse] = useState(null)
   const [isFavorite, setIsFavorite] = useState(false)
-  const pendingTasteRef = useRef(false)
+  // Per-entry FIFO queue for post-juice taste feedback. Replaces the
+  // single boolean pendingTasteRef which could be overwritten when
+  // multiple juices were logged in sequence. Each entry ID is queued
+  // exactly once; Save or Skip dequeues it.
+  // Since the entry ID isn't known at "Start Juicing" time (it's
+  // created in HomeScreen after logging), we queue a count of pending
+  // requests and resolve entry IDs from the store when focus returns.
+  const pendingTasteCountRef = useRef(0)
+  const handledEntryIdsRef = useRef(new Set())
+  // Track the most recent log entry ID for post-juice taste enrichment
+  const [recentLogEntryId, setRecentLogEntryId] = useState(null)
+  const { entries, setTasteReaction, updateEntryMetadata, markTasteFeedbackResolved } = useJuiceLog()
   const [showAddModal, setShowAddModal] = useState(false)
   const [addSearch, setAddSearch] = useState('')
 
@@ -362,16 +480,39 @@ export default function RecipeDetailScreen({ route, navigation }) {
 
   const allChecked = ingredients.length > 0 && ingredients.every((_, i) => checkedItems[i])
 
-  // Show taste feedback when returning to this screen after Start Juicing
+  // Show taste feedback when returning to this screen after Start Juicing.
+  // Uses a per-entry count: each "Start Juicing" increments the pending
+  // count. When focus returns, we find the most recent unhandled entry
+  // and show the taste modal for it. Save/Skip marks it handled and
+  // decrements the count. If more requests are pending, the next focus
+  // shows the next one. No once-per-day suppression.
+  //
+  // QA11: Also consults the persisted `tasteFeedbackResolved` field on
+  // each entry. If an entry was already resolved (e.g., in
+  // ScanSuccessScreen), it is skipped — preventing duplicate prompts.
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
-      if (pendingTasteRef.current) {
-        pendingTasteRef.current = false
-        setShowTaste(true)
+      if (pendingTasteCountRef.current > 0) {
+        // Find the most recent entry that hasn't been handled yet
+        // AND hasn't been persisted as resolved (QA11)
+        const sorted = [...entries].sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+        const nextEntry = sorted.find((e) =>
+          !handledEntryIdsRef.current.has(e.id) &&
+          e.tasteFeedbackResolved !== true
+        )
+        if (nextEntry) {
+          setRecentLogEntryId(nextEntry.id)
+          setShowTaste(true)
+        } else {
+          // No unhandled entry found — clear pending count.
+          // This also clears stale counts from entries that were
+          // resolved in ScanSuccessScreen (QA11).
+          pendingTasteCountRef.current = 0
+        }
       }
     })
     return unsubscribe
-  }, [navigation])
+  }, [navigation, entries])
 
   const handleStartJuicing = useCallback(() => {
     if (!recipe || ingredients.length === 0) return
@@ -387,7 +528,7 @@ export default function RecipeDetailScreen({ route, navigation }) {
       ...(ing.portionMetadata ? { portionMetadata: ing.portionMetadata } : {}),
       ...(ing.portionEntryMode ? { portionEntryMode: ing.portionEntryMode } : {}),
     }))
-    pendingTasteRef.current = true
+    pendingTasteCountRef.current += 1
     // Map recipe origin to a specific provenance source for History.
     // Each launch path gets its own source label so History can show
     // accurate provenance. manualEntry: true is passed so the builder
@@ -411,15 +552,24 @@ export default function RecipeDetailScreen({ route, navigation }) {
 
   const handleTasteSelect = useCallback((reaction) => {
     setTasteResponse(reaction)
-    setShowTaste(false)
-    if (reaction.emoji === '😋') {
-      setIsFavorite(true)
+    // Save taste reaction to the JuiceLogStore entry
+    if (recentLogEntryId) {
+      setTasteReaction(recentLogEntryId, reaction)
     }
-  }, [])
+  }, [recentLogEntryId, setTasteReaction])
 
   const handleTasteDismiss = useCallback(() => {
+    // Mark this entry's feedback as handled and dequeue it.
+    // QA11: Also persist the resolution so it survives navigation
+    // and app restart. This is the canonical marker consulted by
+    // all prompt surfaces.
+    if (recentLogEntryId) {
+      handledEntryIdsRef.current.add(recentLogEntryId)
+      pendingTasteCountRef.current = Math.max(0, pendingTasteCountRef.current - 1)
+      markTasteFeedbackResolved(recentLogEntryId)
+    }
     setShowTaste(false)
-  }, [])
+  }, [recentLogEntryId, markTasteFeedbackResolved])
 
   if (!recipe) {
     return (
@@ -682,7 +832,13 @@ export default function RecipeDetailScreen({ route, navigation }) {
         </View>
       )}
 
-      <TasteFeedbackModal visible={showTaste} onSelect={handleTasteSelect} onDismiss={handleTasteDismiss} />
+      <TasteFeedbackModal
+        visible={showTaste}
+        onSelect={handleTasteSelect}
+        onDismiss={handleTasteDismiss}
+        logEntryId={recentLogEntryId}
+        onSaveMetadata={updateEntryMetadata}
+      />
 
       {/* ── Add Ingredient Modal ─────────────────────────── */}
       <Modal visible={showAddModal} transparent animationType="slide" statusBarTranslucent>
@@ -1205,23 +1361,70 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   tasteSkipBtn: {
-    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
     alignSelf: 'stretch',
-    marginTop: 18,
+    marginTop: 10,
     paddingVertical: 12,
     borderRadius: 14,
     backgroundColor: 'rgba(255,255,255,0.04)',
     borderWidth: 0.5,
     borderColor: 'rgba(255,255,255,0.08)',
   },
-  tasteSkipEmoji: {
-    fontSize: 16,
-  },
   tasteSkipText: {
     fontSize: 13,
+    fontWeight: '700',
+    color: '#8B949E',
+  },
+  tasteBtnSelected: {
+    backgroundColor: 'rgba(76,175,80,0.12)',
+    borderColor: 'rgba(76,175,80,0.3)',
+  },
+  tasteSaveBtn: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'stretch',
+    marginTop: 16,
+    paddingVertical: 14,
+    borderRadius: 14,
+    backgroundColor: '#3d8b40',
+  },
+  tasteSaveText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  enrichLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#8B949E',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  enrichStars: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  enrichNoteInput: {
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14,
+    color: '#E6EDF3',
+    minHeight: 60,
+    maxHeight: 100,
+    textAlignVertical: 'top',
+  },
+  enrichFavoriteBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 8,
+    marginTop: 8,
+  },
+  enrichFavoriteText: {
+    fontSize: 14,
     fontWeight: '700',
     color: '#8B949E',
   },

@@ -12,19 +12,32 @@
 import { PRODUCE_DATA } from './JuiceEngine'
 import { USDA_RDA } from '../constants/nutrition'
 import { formatQuantityDescription } from './producePortionConversion'
+import { formatWeightG } from '../utils/weightFormat'
+import {
+  CANONICAL_NUTRIENT_KEYS,
+  NUTRIENT_LABELS,
+  getStoredNutrientValue,
+  hasMicronutrientData,
+} from './nutrientKeys'
 
 /**
  * Format the portion display string for a single ingredient.
  *
  * Uses the existing portionMetadata + producePortionConversion system
- * for quantity-mode ingredients. Falls back to weight in grams for
- * weight-mode ingredients. Returns null if no portion data is available.
+ * for quantity-mode ingredients. For weight-mode ingredients:
+ *   - NEW entries with enteredWeightValue/enteredWeightUnit: preserve
+ *     the exact original representation (e.g. "5.3 oz" or "150 g").
+ *   - LEGACY entries without those fields: use the user's CURRENT weight
+ *     display preference via formatWeightG(weightG, mode).
  *
  * @param {Object} detail - ingredientDetails entry
- *   { produceId, weightG, portionEntryMode, portionMetadata }
- * @returns {string|null} e.g. "4" or "1/2 inch" or "150g" or null
+ *   { produceId, weightG, portionEntryMode, portionMetadata,
+ *     enteredWeightValue?, enteredWeightUnit? }
+ * @param {string} [weightDisplayMode='both'] - current user preference
+ *   ('grams' | 'oz' | 'both') for legacy weight-only entries
+ * @returns {string|null} e.g. "4" or "1/2 inch" or "150g" or "5.3 oz" or null
  */
-export function formatIngredientPortion(detail) {
+export function formatIngredientPortion(detail, weightDisplayMode = 'both') {
   if (!detail || typeof detail !== 'object') return null
 
   const mode = detail.portionEntryMode || 'weight'
@@ -46,9 +59,17 @@ export function formatIngredientPortion(detail) {
     }
   }
 
-  // Weight mode — show grams if available
+  // Weight mode — prefer the original entered weight representation
+  // (e.g. "5 oz" vs "150 g") when available.
+  if (typeof detail.enteredWeightValue === 'number' && typeof detail.enteredWeightUnit === 'string' && detail.enteredWeightUnit) {
+    return `${detail.enteredWeightValue} ${detail.enteredWeightUnit}`
+  }
+
+  // LEGACY weight-only entries — use the user's CURRENT weight display
+  // preference so History and Make Again are consistent. Do NOT hardcode
+  // grams; if the user prefers ounces, show ounces.
   if (typeof detail.weightG === 'number' && detail.weightG > 0) {
-    return `${Math.round(detail.weightG)}g`
+    return formatWeightG(detail.weightG, weightDisplayMode)
   }
 
   return null
@@ -142,24 +163,15 @@ export function computeProduceBalance(ingredients, ingredientDetails) {
  * @returns {Array} [{ key, label, pct, value }] sorted by % Daily Reference descending
  */
 export function getTopNutrients(nutrientSummary, limit = 5) {
-  const nutrients = nutrientSummary || {}
-  const NUTRIENT_LABELS = {
-    vitaminC: 'Vitamin C',
-    vitaminA: 'Vitamin A',
-    potassium: 'Potassium',
-    iron: 'Iron',
-    magnesium: 'Magnesium',
-    folate: 'Folate',
-  }
-
-  return Object.entries(USDA_RDA)
-    .map(([key, rda]) => {
-      const val = nutrients[key] || 0
+  return CANONICAL_NUTRIENT_KEYS
+    .map((key) => {
+      const rda = USDA_RDA[key]
+      const val = getStoredNutrientValue(nutrientSummary, key)
       const pct = rda > 0 ? Math.round((val / rda) * 100) : 0
       const label = NUTRIENT_LABELS[key] || key
       return { key, label, pct, value: val }
     })
-    .filter((n) => n.pct > 0)
+    .filter((n) => n.value > 0)
     .sort((a, b) => b.pct - a.pct)
     .slice(0, limit)
 }
@@ -178,3 +190,6 @@ export function getBasicNutritionStats(nutrientSummary) {
     sugar: typeof n.sugar === 'number' ? Math.round(n.sugar * 10) / 10 : 0,
   }
 }
+
+// Re-export for UI components that need to check legacy vs new nutrient data
+export { hasMicronutrientData } from './nutrientKeys'

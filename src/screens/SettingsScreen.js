@@ -1391,12 +1391,39 @@ export default function SettingsScreen({ navigation }) {
                 activeOpacity={0.7}
               >
                 <Text style={devStyles.resetLaunchText}>
-                  {isPro ? '👑 Pro Mode ON' : 'Toggle Pro Mode'}
+                  {isPro ? 'QA Pro Simulation: ON' : 'Toggle QA Pro Simulation'}
                 </Text>
                 <Text style={devStyles.resetLaunchHint}>
-                  {isPro ? 'Tap to switch back to Free tier' : 'Tap to activate Pro for testing'}
+                  {isPro
+                    ? 'Simulates Pro features and client allowances. Tap to switch back to Free.'
+                    : 'Simulates Pro features and client allowances for QA testing.'}
                 </Text>
               </TouchableOpacity>
+              {isPro && (
+                <Text style={devStyles.devProWarningText}>
+                  QA Pro Simulation: ON — Simulates Pro features and client allowances. Remote AI services require this test account to be recognized as Pro by the server.
+                </Text>
+              )}
+
+              {/* Reset QA Pro Snap Usage */}
+              {isPro && (
+                <TouchableOpacity
+                  style={devStyles.resetLaunchBtn}
+                  onPress={async () => {
+                    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+                    const { resetQaProSnapUsage } = await import('../services/quota/qaSnapCounter')
+                    await resetQaProSnapUsage()
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={devStyles.resetLaunchText}>
+                    Reset QA Pro Snap Usage
+                  </Text>
+                  <Text style={devStyles.resetLaunchHint}>
+                    Resets the QA-only simulated Pro snap counter to 0 of 12.
+                  </Text>
+                </TouchableOpacity>
+              )}
 
               {/* Advance Day Count */}
               <TouchableOpacity
@@ -1891,6 +1918,13 @@ const devStyles = StyleSheet.create({
   devProActiveBtn: {
     backgroundColor: 'rgba(255,213,79,0.12)',
     borderColor: 'rgba(255,213,79,0.3)',
+  },
+  devProWarningText: {
+    fontSize: 10,
+    fontWeight: '400',
+    color: '#8B949E',
+    marginTop: 6,
+    marginHorizontal: 16,
   },
   nameInputWrap: {
     marginHorizontal: 16,

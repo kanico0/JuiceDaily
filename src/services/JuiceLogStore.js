@@ -9,6 +9,12 @@
 //   - rating (optional 1–5 stars, null = unrated)
 //   - note (optional personal note string)
 //   - favorite (optional boolean)
+//   - tasteFeedbackResolved (optional boolean — QA11: per-entry
+//     feedback-prompt resolution marker. True once the user has
+//     voted, skipped, or dismissed the Taste Feedback modal for
+//     this specific entry. Prevents duplicate prompts across
+//     navigation and app restarts. Legacy entries without this
+//     field are NOT prompted.)
 //
 // Entries are grouped by dateKey (YYYY-MM-DD local time).
 // Uses storage.ts for schema-versioned persistence.
@@ -103,6 +109,58 @@ function logReducer(state, action) {
       }
     }
 
+    // Atomic multi-field metadata update — merges only the provided
+    // fields into the CURRENT reducer entry. Used by updateEntryMetadata
+    // to prevent stale-closure races when saving rating + note + favorite
+    // together. Each field is applied independently; undefined fields are
+    // skipped so they don't clobber values set by a prior dispatch.
+    case 'UPDATE_ENTRY_METADATA': {
+      const { id, updates } = action.payload
+      return {
+        ...state,
+        entries: state.entries.map((e) => {
+          if (e.id !== id) return e
+          const merged = { ...e }
+          if (updates && typeof updates === 'object') {
+            for (const key of Object.keys(updates)) {
+              if (updates[key] !== undefined) {
+                merged[key] = updates[key]
+              }
+            }
+          }
+          return merged
+        }),
+      }
+    }
+
+    // Toggle favorite inside the reducer — reads the CURRENT entry state,
+    // not a stale closure. Prevents race conditions when toggleFavorite
+    // is called after other metadata dispatches haven't re-rendered yet.
+    case 'TOGGLE_FAVORITE': {
+      const { id } = action.payload
+      return {
+        ...state,
+        entries: state.entries.map((e) =>
+          e.id === id ? { ...e, favorite: !e.favorite } : e
+        ),
+      }
+    }
+
+    // QA11: Mark taste feedback as resolved for a specific entry.
+    // This is the canonical per-entry resolution marker consulted by
+    // ALL feedback-prompt surfaces (ScanSuccessScreen, RecipeDetailScreen).
+    // Survives navigation and app restart because it's persisted with
+    // the entry. Legacy entries without this field are NOT prompted.
+    case 'MARK_TASTE_FEEDBACK_RESOLVED': {
+      const { id } = action.payload
+      return {
+        ...state,
+        entries: state.entries.map((e) =>
+          e.id === id ? { ...e, tasteFeedbackResolved: true } : e
+        ),
+      }
+    }
+
     case 'RESET':
       return createEmptyState()
 
@@ -158,7 +216,7 @@ export function JuiceLogProvider({ children }) {
     saveState(STORAGE_KEY, SCHEMA_VERSION, state)
   }, [state])
 
-  const addEntry = useCallback(({ source, ingredientIds, nutrientSummary, scoreContribution, ingredientDetails }) => {
+  const addEntry = useCallback(({ source, ingredientIds, nutrientSummary, scoreContribution, ingredientDetails, totalJuiceWeightG }) => {
     const entry = {
       id: generateId(),
       createdAt: localISOString(),
@@ -171,6 +229,8 @@ export function JuiceLogProvider({ children }) {
       // Optional portion data for Detailed History (Pro)
       // Array of { produceId, weightG, portionEntryMode, portionMetadata }
       ingredientDetails: Array.isArray(ingredientDetails) ? ingredientDetails : undefined,
+      // Optional estimated juice yield in grams (from JuiceEngine.processJuiceBatch)
+      totalJuiceWeightG: typeof totalJuiceWeightG === 'number' ? totalJuiceWeightG : undefined,
       // Optional personal fields (Pro Detailed History)
       rating: undefined,   // 1–5 or null/undefined = unrated
       note: undefined,     // string or undefined
@@ -205,10 +265,57 @@ export function JuiceLogProvider({ children }) {
   }, [])
 
   const toggleFavorite = useCallback((id) => {
-    const entry = state.entries.find((e) => e.id === id)
-    const current = entry?.favorite === true
-    dispatch({ type: 'UPDATE_ENTRY', payload: { id, updates: { favorite: !current } } })
-  }, [state.entries])
+    // Dispatch TOGGLE_FAVORITE which reads the current entry inside the
+    // reducer — avoids stale-closure races that occurred when reading
+    // state.entries in the callback body.
+    dispatch({ type: 'TOGGLE_FAVORITE', payload: { id } })
+  }, [])
+
+  // Explicit set (not toggle) — used by post-juice enrichment and any
+  // multi-field save where the intended boolean is known upfront.
+  const setFavorite = useCallback((id, value) => {
+    dispatch({ type: 'UPDATE_ENTRY_METADATA', payload: { id, updates: { favorite: !!value } } })
+  }, [])
+
+  // Atomic multi-field metadata update — merges rating, note, favorite,
+  // and/or tasteReaction into the CURRENT reducer entry in a single
+  // dispatch. Prevents stale-closure races that occur when calling
+  // setRating + setNote + toggleFavorite separately.
+  const updateEntryMetadata = useCallback((id, updates) => {
+    const clean = {}
+    if (updates && typeof updates === 'object') {
+      // rating
+      if (updates.rating !== undefined) {
+        clean.rating = (typeof updates.rating === 'number' && updates.rating >= 1 && updates.rating <= 5)
+          ? Math.round(updates.rating)
+          : null
+      }
+      // note
+      if (updates.note !== undefined) {
+        clean.note = (typeof updates.note === 'string' && updates.note.trim().length > 0)
+          ? updates.note.trim().slice(0, 500)
+          : null
+      }
+      // favorite
+      if (updates.favorite !== undefined) {
+        clean.favorite = !!updates.favorite
+      }
+      // tasteReaction
+      if (updates.tasteReaction !== undefined) {
+        clean.tasteReaction = updates.tasteReaction || null
+      }
+    }
+    dispatch({ type: 'UPDATE_ENTRY_METADATA', payload: { id, updates: clean } })
+  }, [])
+
+  // QA11: Mark taste feedback as resolved for a specific entry.
+  // Called when the user votes, skips, or dismisses the Taste Feedback
+  // modal. This is the canonical per-entry resolution marker that
+  // prevents duplicate prompts across navigation and app restarts.
+  const markTasteFeedbackResolved = useCallback((id) => {
+    if (!id) return
+    dispatch({ type: 'MARK_TASTE_FEEDBACK_RESOLVED', payload: { id } })
+  }, [])
 
   const resetLog = useCallback(() => {
     dispatch({ type: 'RESET' })
@@ -288,6 +395,9 @@ export function JuiceLogProvider({ children }) {
     setRating,
     setNote,
     toggleFavorite,
+    setFavorite,
+    updateEntryMetadata,
+    markTasteFeedbackResolved,
     resetLog,
   }
 

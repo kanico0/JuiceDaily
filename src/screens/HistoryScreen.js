@@ -5,7 +5,7 @@
 // ─────────────────────────────────────────────────────────────
 
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react'
-import { View, Text, StyleSheet, ScrollView, Pressable, Modal, Alert, TextInput } from 'react-native'
+import { View, Text, StyleSheet, ScrollView, Pressable, Modal, Alert, TextInput, Switch } from 'react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import * as Haptics from 'expo-haptics'
 import {
@@ -35,15 +35,21 @@ import {
   Star,
   Pencil,
   Check,
+  Search,
+  SlidersHorizontal,
+  XCircle,
 } from 'lucide-react-native'
 import MeshGradientBg from '../components/MeshGradientBg'
 import { useJuiceLog } from '../services/JuiceLogStore'
 import { PRODUCE_DATA } from '../services/JuiceEngine'
+import { gramsToOz } from '../services/JuiceCalculatorEngine'
+import { useFormatWeight } from '../utils/weightFormat'
 import {
   formatIngredientPortion,
   computeProduceBalance,
   getTopNutrients,
   getBasicNutritionStats,
+  hasMicronutrientData,
 } from '../services/detailedHistoryHelpers'
 import {
   BRAND,
@@ -55,7 +61,7 @@ import {
   SEMANTIC_COLORS,
 } from '../constants/tokens'
 import { getDevNow, onDevClockChange } from '../utils/DevClock'
-import { useSubscription } from '../services/subscriptions/SubscriptionStore'
+import { useEffectiveProAccess } from '../hooks/useEffectiveProAccess'
 import {
   getHistoryAccessPolicy,
   getAccessType,
@@ -66,6 +72,12 @@ import {
   createEditableDraftFromHistoryEntry,
   draftToPreloadIngredients,
 } from '../services/makeAgainHelper'
+import {
+  applySearchAndFilters,
+  hasActiveFilters,
+  createDefaultFilters,
+  FILTERABLE_NUTRIENTS,
+} from '../services/historyFilters'
 import { trackEvent } from '../services/AnalyticsService'
 import { TASTE_REACTIONS } from '../constants/recipeData'
 import { useRoute } from '@react-navigation/native'
@@ -227,6 +239,17 @@ function formatTime(isoStr) {
   return `${h % 12 || 12}:${m} ${ampm}`
 }
 
+// Derive a deterministic daypart label from the existing createdAt
+// timestamp. No health claims — historical context only.
+function getDaypart(isoStr) {
+  const d = new Date(isoStr)
+  const h = d.getHours()
+  if (h >= 5 && h < 12) return 'Morning'
+  if (h >= 12 && h < 17) return 'Afternoon'
+  if (h >= 17 && h < 21) return 'Evening'
+  return 'Night'
+}
+
 // ── Ingredient count bucket for analytics ───────────────────
 function getIngredientCountBucket(count) {
   if (count <= 0) return '0'
@@ -253,8 +276,10 @@ function AdvancedPreviewBanner({ onUpgrade }) {
         <Text style={ms.previewBannerTitle}>Your Detailed History Preview</Text>
       </View>
       <Text style={ms.previewBannerBody}>
-        Your latest juice includes the complete history experience. Upgrade to RawLifeFlow Pro to
-        revisit detailed insights for every juice you have logged.
+        Your latest juice includes a preview of Detailed History — organic vs. conventional
+        ingredients, portions, entry method, time logged, estimated nutrition, top nutrients,
+        produce balance, and more. Upgrade to RawLifeFlow Pro to revisit detailed insights for
+        every juice you have logged.
       </Text>
       <Pressable
         style={({ pressed }) => [ms.previewCtaBtn, pressed && { opacity: 0.7 }]}
@@ -276,33 +301,43 @@ function LockedAdvancedCard({ onUpgrade, onMakeAgainLocked }) {
     <View style={ms.lockedCard}>
       <View style={ms.lockedCardHeader}>
         <Lock size={16} color={SEMANTIC_COLORS.textMuted} />
-        <Text style={ms.lockedCardTitle}>Your juice is safely saved</Text>
+        <Text style={ms.lockedCardTitle}>More details with Pro</Text>
       </View>
       <Text style={ms.lockedCardBody}>
-        Upgrade to RawLifeFlow Pro to reopen its detailed nutrition, insights, and comparisons.
+        See how you made each juice, including organic vs. conventional ingredients,
+        ingredient portions, entry method, when you logged it, estimated nutrition,
+        top nutrients, produce balance, ratings, notes, favorites, and Make This Juice Again.
       </Text>
 
       {/* Locked feature previews */}
       <View style={ms.lockedPreviewList}>
         <View style={ms.lockedPreviewItem}>
           <Lock size={12} color={SEMANTIC_COLORS.textMuted} />
-          <Text style={ms.lockedPreviewText}>Portions — Recreate this juice accurately.</Text>
+          <Text style={ms.lockedPreviewText}>Organic vs. conventional ingredients</Text>
         </View>
         <View style={ms.lockedPreviewItem}>
           <Lock size={12} color={SEMANTIC_COLORS.textMuted} />
-          <Text style={ms.lockedPreviewText}>Nutrition Details — See more of what was in your juice.</Text>
+          <Text style={ms.lockedPreviewText}>Ingredient portions</Text>
         </View>
         <View style={ms.lockedPreviewItem}>
           <Lock size={12} color={SEMANTIC_COLORS.textMuted} />
-          <Text style={ms.lockedPreviewText}>Produce Balance — See your fruit and vegetable mix.</Text>
+          <Text style={ms.lockedPreviewText}>Entry method & time logged</Text>
         </View>
         <View style={ms.lockedPreviewItem}>
           <Lock size={12} color={SEMANTIC_COLORS.textMuted} />
-          <Text style={ms.lockedPreviewText}>Rating & Personal Notes</Text>
+          <Text style={ms.lockedPreviewText}>Estimated nutrition & top nutrients</Text>
         </View>
         <View style={ms.lockedPreviewItem}>
           <Lock size={12} color={SEMANTIC_COLORS.textMuted} />
-          <Text style={ms.lockedPreviewText}>Make Again</Text>
+          <Text style={ms.lockedPreviewText}>Produce balance</Text>
+        </View>
+        <View style={ms.lockedPreviewItem}>
+          <Lock size={12} color={SEMANTIC_COLORS.textMuted} />
+          <Text style={ms.lockedPreviewText}>Rating, notes & favorites</Text>
+        </View>
+        <View style={ms.lockedPreviewItem}>
+          <Lock size={12} color={SEMANTIC_COLORS.textMuted} />
+          <Text style={ms.lockedPreviewText}>Make This Juice Again</Text>
         </View>
       </View>
 
@@ -369,15 +404,22 @@ function EntryDetailsModal({
   onUpgrade,
   onMakeAgain,
   makeAgainInProgress,
-  onSetRating,
-  onSetNote,
-  onToggleFavorite,
+  onUpdateEntryMetadata,
 }) {
   const insets = useSafeAreaInsets()
+  const { mode: weightDisplayMode } = useFormatWeight()
   const previewViewedRef = useRef(false)
   const lockedViewedRef = useRef(false)
-  const [noteDraft, setNoteDraft] = useState('')
-  const [isEditingNote, setIsEditingNote] = useState(false)
+
+  // ── Staged metadata form ──
+  // Instead of persisting rating/note/favorite independently (which
+  // caused fields to overwrite each other), we stage all three in a
+  // local draft and persist them with ONE updateEntryMetadata call
+  // when the user taps "Save Changes".
+  const [isEditingMetadata, setIsEditingMetadata] = useState(false)
+  const [draftRating, setDraftRating] = useState(0)
+  const [draftNote, setDraftNote] = useState('')
+  const [draftFavorite, setDraftFavorite] = useState(false)
 
   useEffect(() => {
     if (!visible || !entry) {
@@ -407,15 +449,44 @@ function EntryDetailsModal({
     }
   }, [visible, entry, isPro, isAdvancedPreview, entitlementInitialized])
 
-  // Sync note draft when entry changes or modal opens
+  // Initialize draft from the live entry when entering edit mode
+  const handleStartEdit = () => {
+    if (!entry) return
+    setDraftRating(typeof entry.rating === 'number' ? entry.rating : 0)
+    setDraftNote(entry.note || '')
+    setDraftFavorite(entry.favorite === true)
+    setIsEditingMetadata(true)
+  }
+
+  const handleCancelEdit = () => {
+    setIsEditingMetadata(false)
+    // Restore from live entry (not draft)
+    setDraftRating(typeof entry?.rating === 'number' ? entry.rating : 0)
+    setDraftNote(entry?.note || '')
+    setDraftFavorite(entry?.favorite === true)
+  }
+
+  const handleSaveMetadata = () => {
+    if (!entry || !onUpdateEntryMetadata) return
+    const updates = {}
+    // Rating: 0 means cleared
+    updates.rating = draftRating > 0 ? draftRating : null
+    // Note: empty string means cleared
+    updates.note = draftNote.trim().length > 0 ? draftNote.trim() : null
+    // Favorite: explicit boolean
+    updates.favorite = draftFavorite
+    onUpdateEntryMetadata(entry.id, updates)
+    setIsEditingMetadata(false)
+  }
+
+  // Reset edit state when modal closes or entry changes
   useEffect(() => {
     if (!visible || !entry) {
-      setNoteDraft('')
-      setIsEditingNote(false)
-      return
+      setIsEditingMetadata(false)
+      setDraftRating(0)
+      setDraftNote('')
+      setDraftFavorite(false)
     }
-    setNoteDraft(entry.note || '')
-    setIsEditingNote(false)
   }, [visible, entry])
 
   if (!entry) return null
@@ -423,7 +494,7 @@ function EntryDetailsModal({
   const policy = getHistoryAccessPolicy(isPro, isAdvancedPreview, entitlementInitialized)
 
   const nutrients = entry.nutrientSummary || {}
-  const topNutrients = getTopNutrients(nutrients)
+  const topNutrients = getTopNutrients(nutrients, 10)
   const basicStats = getBasicNutritionStats(nutrients)
   const produceBalance = computeProduceBalance(entry.ingredients, entry.ingredientDetails)
   const ingredientDetails = Array.isArray(entry.ingredientDetails) ? entry.ingredientDetails : null
@@ -464,27 +535,6 @@ function EntryDetailsModal({
     onUpgrade('history_advanced_locked')
   }
 
-  const handleRatingPress = (star) => {
-    if (!policy.canViewAdvancedDetails) return
-    if (!onSetRating) return
-    // Toggle off if same star is tapped
-    const newRating = currentRating === star ? null : star
-    onSetRating(entry.id, newRating)
-  }
-
-  const handleSaveNote = () => {
-    if (!policy.canViewAdvancedDetails) return
-    if (!onSetNote) return
-    onSetNote(entry.id, noteDraft)
-    setIsEditingNote(false)
-  }
-
-  const handleToggleFavorite = () => {
-    if (!policy.canViewAdvancedDetails) return
-    if (!onToggleFavorite) return
-    onToggleFavorite(entry.id)
-  }
-
   return (
     <Modal visible={visible} transparent animationType="fade">
       <View
@@ -523,7 +573,8 @@ function EntryDetailsModal({
           >
             <Text style={ms.entryTitle}>{entry.title}</Text>
             <View style={ms.entrySourceRow}>
-              {(() => {
+              {/* Source badge and time are advanced details — gated */}
+              {policy.canViewAdvancedDetails && (() => {
                 const SrcIcon = getSourceIcon(entry.source)
                 const srcColor = getSourceColor(entry.source)
                 return (
@@ -535,9 +586,11 @@ function EntryDetailsModal({
                   </View>
                 )
               })()}
-              <Text style={ms.entryMeta}>
-                · {formatTime(entry.createdAt)}
-              </Text>
+              {policy.canViewAdvancedDetails && (
+                <Text style={ms.entryMeta}>
+                  · {formatTime(entry.createdAt)}
+                </Text>
+              )}
             </View>
 
             {/* Advanced Preview Banner for free newest item */}
@@ -551,8 +604,14 @@ function EntryDetailsModal({
               const prod = PRODUCE_DATA[id]
               const detail = ingredientDetails?.find((d) => d && d.produceId === id)
               const portionText = policy.canViewAdvancedDetails && detail
-                ? formatIngredientPortion(detail)
+                ? formatIngredientPortion(detail, weightDisplayMode)
                 : null
+              // Per-ingredient organic status from ingredientDetails.
+              // Only show when the user can view advanced details (Pro or
+              // Free newest-entry preview). Legacy entries without the
+              // field show no indicator.
+              const ingredientIsOrganic = (policy.canViewAdvancedDetails && detail) ? detail.isOrganic : undefined
+              const showOrganicIndicator = typeof ingredientIsOrganic === 'boolean'
               return (
                 <View key={`${id}-${i}`} style={ms.ingredientRow}>
                   <View
@@ -564,6 +623,22 @@ function EntryDetailsModal({
                   <Text style={ms.ingredientName}>{prod?.name || id}</Text>
                   {portionText && (
                     <Text style={ms.ingredientPortion}>{portionText}</Text>
+                  )}
+                  {showOrganicIndicator && (
+                    <View style={ms.organicIndicator}>
+                      <Leaf
+                        size={10}
+                        color={ingredientIsOrganic ? '#81C784' : '#90A4AE'}
+                      />
+                      <Text
+                        style={[
+                          ms.organicIndicatorText,
+                          { color: ingredientIsOrganic ? '#81C784' : '#90A4AE' },
+                        ]}
+                      >
+                        {ingredientIsOrganic ? 'Organic' : 'Conv.'}
+                      </Text>
+                    </View>
                   )}
                 </View>
               )
@@ -610,7 +685,7 @@ function EntryDetailsModal({
                       <View key={n.key} style={ms.statRow}>
                         <Text style={ms.statLabel}>{n.label}</Text>
                         <Text style={[ms.statValue, n.pct >= 20 && { color: SEMANTIC_COLORS.success }]}>
-                          {n.pct}%
+                          {n.pct > 0 ? `${n.pct}%` : '<1%'}
                         </Text>
                       </View>
                     ))}
@@ -619,6 +694,32 @@ function EntryDetailsModal({
                     </Text>
                   </>
                 )}
+                {/* Legacy entry — has calories/sugar but no micronutrient data */}
+                {topNutrients.length === 0 && (basicStats.calories > 0 || basicStats.sugar > 0) && !hasMicronutrientData(nutrients) && (
+                  <Text style={ms.estimateNote}>
+                    Detailed nutrient data was not recorded for this older entry.
+                  </Text>
+                )}
+              </>
+            )}
+
+            {/* Estimated Yield — visible for Pro and free preview when stored */}
+            {policy.canViewAdvancedDetails && typeof entry.totalJuiceWeightG === 'number' && entry.totalJuiceWeightG > 0 && (
+              <>
+                <Text style={[ms.sectionTitle, { marginTop: SPACE.lg }]}>Estimated Yield</Text>
+                <View style={ms.basicStatsRow}>
+                  <View style={ms.basicStatItem}>
+                    <Text style={ms.basicStatValue}>
+                      {Math.round(gramsToOz(entry.totalJuiceWeightG))} oz
+                    </Text>
+                    <Text style={ms.basicStatLabel}>
+                      / {Math.round(entry.totalJuiceWeightG / 1.04)} mL
+                    </Text>
+                  </View>
+                </View>
+                <Text style={ms.estimateNote}>
+                  Estimated juice volume from produce amounts and yield factors.
+                </Text>
               </>
             )}
 
@@ -651,115 +752,169 @@ function EntryDetailsModal({
               </>
             )}
 
-            {/* Rating — visible for Pro and free preview */}
+            {/* ── Juice Details — Entry Method + Logged Time ── */}
+            {/* Visible for Pro and free newest-entry preview. */}
+            {/* Legacy entries without a recognized source show neutral copy. */}
             {policy.canViewAdvancedDetails && (
-              <View style={ms.ratingSection}>
-                <Text style={[ms.sectionTitle, { marginTop: SPACE.lg }]}>Rating</Text>
-                <View style={ms.starRow}>
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <Pressable
-                      key={star}
-                      onPress={() => handleRatingPress(star)}
-                      hitSlop={4}
-                      accessibilityRole="button"
-                      accessibilityLabel={`${star} star${star !== 1 ? 's' : ''}`}
-                    >
-                      <Star
-                        size={24}
-                        color={star <= currentRating ? '#FFD54F' : BRAND.text.muted}
-                        fill={star <= currentRating ? '#FFD54F' : 'transparent'}
-                      />
-                    </Pressable>
-                  ))}
+              <>
+                <Text style={[ms.sectionTitle, { marginTop: SPACE.lg }]}>Juice Details</Text>
+                <View style={ms.detailRow}>
+                  <Text style={ms.detailLabel}>Entry Method</Text>
+                  <Text style={ms.detailValue}>
+                    {entry.source && entry.source !== 'unknown'
+                      ? getSourceLabel(entry.source)
+                      : 'Entry method not recorded'}
+                  </Text>
                 </View>
-              </View>
+                <View style={ms.detailRow}>
+                  <Text style={ms.detailLabel}>Logged</Text>
+                  <Text style={ms.detailValue}>
+                    {formatTime(entry.createdAt)} · {getDaypart(entry.createdAt)}
+                  </Text>
+                </View>
+              </>
             )}
 
-            {/* Personal Note — visible for Pro and free preview */}
+            {/* ── Your Experience — staged metadata form ── */}
+            {/* Rating, Personal Note, and Favorite are staged in a local */}
+            {/* draft and saved atomically with ONE updateEntryMetadata call. */}
+            {/* This prevents fields from overwriting each other. */}
             {policy.canViewAdvancedDetails && (
-              <View style={ms.noteSection}>
-                <Text style={[ms.sectionTitle, { marginTop: SPACE.lg }]}>Personal Note</Text>
-                {isEditingNote ? (
-                  <View>
+              <View style={ms.experienceSection}>
+                <Text style={[ms.sectionTitle, { marginTop: SPACE.lg }]}>Your Experience</Text>
+
+                {isEditingMetadata ? (
+                  /* ── Edit Mode: staged draft with single Save ── */
+                  <View style={ms.experienceEditForm}>
+                    {/* Rating */}
+                    <Text style={ms.experienceLabel}>Rating</Text>
+                    <View style={ms.starRow}>
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <Pressable
+                          key={star}
+                          onPress={() => {
+                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+                            setDraftRating((prev) => (prev === star ? 0 : star))
+                          }}
+                          hitSlop={4}
+                          accessibilityRole="button"
+                          accessibilityLabel={`${star} star${star !== 1 ? 's' : ''}`}
+                        >
+                          <Star
+                            size={24}
+                            color={star <= draftRating ? '#FFD54F' : BRAND.text.muted}
+                            fill={star <= draftRating ? '#FFD54F' : 'transparent'}
+                          />
+                        </Pressable>
+                      ))}
+                    </View>
+
+                    {/* Favorite */}
+                    <Pressable
+                      style={({ pressed }) => [ms.favoriteBtn, pressed && { opacity: 0.7 }]}
+                      onPress={() => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+                        setDraftFavorite((prev) => !prev)
+                      }}
+                      hitSlop={8}
+                      accessibilityRole="button"
+                      accessibilityLabel={draftFavorite ? 'Remove from favorites' : 'Add to favorites'}
+                    >
+                      <Heart
+                        size={18}
+                        color={draftFavorite ? '#EF5DA8' : BRAND.text.muted}
+                        fill={draftFavorite ? '#EF5DA8' : 'transparent'}
+                      />
+                      <Text style={[ms.favoriteText, draftFavorite && { color: '#EF5DA8' }]}>
+                        {draftFavorite ? 'Favorited' : 'Add to Favorites'}
+                      </Text>
+                    </Pressable>
+
+                    {/* Personal Note */}
+                    <Text style={[ms.experienceLabel, { marginTop: SPACE.sm }]}>Personal Note</Text>
                     <TextInput
                       style={ms.noteInput}
-                      value={noteDraft}
-                      onChangeText={setNoteDraft}
+                      value={draftNote}
+                      onChangeText={setDraftNote}
                       placeholder="Add a note about this juice…"
                       placeholderTextColor={BRAND.text.muted}
                       multiline
                       maxLength={500}
-                      autoFocus
                     />
-                    <View style={ms.noteActions}>
+
+                    {/* Save / Cancel */}
+                    <View style={ms.metadataActions}>
                       <Pressable
-                        style={({ pressed }) => [ms.noteSaveBtn, pressed && { opacity: 0.7 }]}
-                        onPress={handleSaveNote}
+                        style={({ pressed }) => [ms.metadataSaveBtn, pressed && { opacity: 0.7 }]}
+                        onPress={handleSaveMetadata}
                         hitSlop={8}
                         accessibilityRole="button"
-                        accessibilityLabel="Save note"
+                        accessibilityLabel="Save changes"
                       >
-                        <Check size={16} color={SEMANTIC_COLORS.success} />
-                        <Text style={ms.noteSaveText}>Save</Text>
+                        <Check size={16} color="#FFFFFF" />
+                        <Text style={ms.metadataSaveText}>Save Changes</Text>
                       </Pressable>
                       <Pressable
-                        style={({ pressed }) => [ms.noteCancelBtn, pressed && { opacity: 0.7 }]}
-                        onPress={() => {
-                          setNoteDraft(entry.note || '')
-                          setIsEditingNote(false)
-                        }}
+                        style={({ pressed }) => [ms.metadataCancelBtn, pressed && { opacity: 0.7 }]}
+                        onPress={handleCancelEdit}
                         hitSlop={8}
                         accessibilityRole="button"
-                        accessibilityLabel="Cancel note edit"
+                        accessibilityLabel="Cancel editing"
                       >
-                        <Text style={ms.noteCancelText}>Cancel</Text>
+                        <Text style={ms.metadataCancelText}>Cancel</Text>
                       </Pressable>
                     </View>
                   </View>
-                ) : entry.note ? (
-                  <Pressable
-                    style={({ pressed }) => [ms.noteDisplay, pressed && { opacity: 0.7 }]}
-                    onPress={() => setIsEditingNote(true)}
-                    hitSlop={4}
-                    accessibilityRole="button"
-                    accessibilityLabel="Edit note"
-                  >
-                    <Text style={ms.noteText}>{entry.note}</Text>
-                    <Pencil size={14} color={BRAND.text.muted} />
-                  </Pressable>
                 ) : (
-                  <Pressable
-                    style={({ pressed }) => [ms.noteAddBtn, pressed && { opacity: 0.7 }]}
-                    onPress={() => setIsEditingNote(true)}
-                    hitSlop={8}
-                    accessibilityRole="button"
-                    accessibilityLabel="Add a note"
-                  >
-                    <Pencil size={14} color={BRAND.text.muted} />
-                    <Text style={ms.noteAddText}>Add a note</Text>
-                  </Pressable>
+                  /* ── View Mode: display current values with Edit button ── */
+                  <View style={ms.experienceViewForm}>
+                    {/* Rating display */}
+                    <Text style={ms.experienceLabel}>Rating</Text>
+                    <View style={ms.starRow}>
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <Star
+                          key={star}
+                          size={24}
+                          color={star <= currentRating ? '#FFD54F' : BRAND.text.muted}
+                          fill={star <= currentRating ? '#FFD54F' : 'transparent'}
+                        />
+                      ))}
+                    </View>
+
+                    {/* Favorite display */}
+                    <View style={[ms.favoriteBtn, { marginTop: SPACE.sm }]}>
+                      <Heart
+                        size={18}
+                        color={isFavorite ? '#EF5DA8' : BRAND.text.muted}
+                        fill={isFavorite ? '#EF5DA8' : 'transparent'}
+                      />
+                      <Text style={[ms.favoriteText, isFavorite && { color: '#EF5DA8' }]}>
+                        {isFavorite ? 'Favorited' : 'Not favorited'}
+                      </Text>
+                    </View>
+
+                    {/* Note display */}
+                    <Text style={[ms.experienceLabel, { marginTop: SPACE.sm }]}>Personal Note</Text>
+                    {entry.note ? (
+                      <Text style={ms.noteText}>{entry.note}</Text>
+                    ) : (
+                      <Text style={ms.noteEmptyText}>No note added</Text>
+                    )}
+
+                    {/* Edit button */}
+                    <Pressable
+                      style={({ pressed }) => [ms.editMetadataBtn, pressed && { opacity: 0.7 }]}
+                      onPress={handleStartEdit}
+                      hitSlop={8}
+                      accessibilityRole="button"
+                      accessibilityLabel="Edit rating, note, and favorite"
+                    >
+                      <Pencil size={14} color={SEMANTIC_COLORS.success} />
+                      <Text style={ms.editMetadataText}>Edit</Text>
+                    </Pressable>
+                  </View>
                 )}
               </View>
-            )}
-
-            {/* Favorite — visible for Pro and free preview */}
-            {policy.canViewAdvancedDetails && (
-              <Pressable
-                style={({ pressed }) => [ms.favoriteBtn, pressed && { opacity: 0.7 }]}
-                onPress={handleToggleFavorite}
-                hitSlop={8}
-                accessibilityRole="button"
-                accessibilityLabel={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
-              >
-                <Heart
-                  size={18}
-                  color={isFavorite ? '#EF5DA8' : BRAND.text.muted}
-                  fill={isFavorite ? '#EF5DA8' : 'transparent'}
-                />
-                <Text style={[ms.favoriteText, isFavorite && { color: '#EF5DA8' }]}>
-                  {isFavorite ? 'Favorited' : 'Add to Favorites'}
-                </Text>
-              </Pressable>
             )}
 
             {/* Taste vote — visible for Pro and free preview */}
@@ -905,23 +1060,365 @@ function DaySection({ dateKey, entries, onEntryPress, devClockTick, previewEntry
   )
 }
 
+// ── Compact Dropdown Picker ───────────────────────────────────
+function CompactDropdown({ label, value, options, onSelect, searchable, placeholder, disabled }) {
+  const [open, setOpen] = useState(false)
+  const [search, setSearch] = useState('')
+
+  const selectedLabel = options.find((o) => o.value === value)?.label || value || placeholder
+
+  const filteredOptions = useMemo(() => {
+    if (!searchable || !search.trim()) return options
+    const q = search.trim().toLowerCase()
+    return options.filter((o) => o.label.toLowerCase().includes(q))
+  }, [options, search, searchable])
+
+  const handleSelect = (val) => {
+    onSelect(val)
+    setOpen(false)
+    setSearch('')
+  }
+
+  return (
+    <View style={fm.dropdownWrap}>
+      <Text style={fm.dropdownLabel}>{label}</Text>
+      <Pressable
+        style={[fm.dropdownTrigger, disabled && fm.dropdownTriggerDisabled]}
+        onPress={() => !disabled && setOpen(true)}
+        accessibilityRole="button"
+        accessibilityLabel={`Select ${label}`}
+      >
+        <Text style={fm.dropdownValue} numberOfLines={1}>{selectedLabel}</Text>
+        <ChevronDown size={16} color={disabled ? BRAND.text.muted : BRAND.text.secondary} />
+      </Pressable>
+      {value && !disabled && (
+        <Pressable
+          style={fm.dropdownClear}
+          onPress={() => handleSelect(null)}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel={`Clear ${label}`}
+        >
+          <XCircle size={14} color={BRAND.text.muted} />
+        </Pressable>
+      )}
+      <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
+        <Pressable style={fm.dropdownOverlay} onPress={() => setOpen(false)}>
+          <Pressable style={fm.dropdownSheet} onPress={(e) => e.stopPropagation()}>
+            <View style={fm.dropdownHeader}>
+              <Text style={fm.dropdownTitle}>{label}</Text>
+              <Pressable onPress={() => setOpen(false)} hitSlop={12}>
+                <X size={20} color={BRAND.text.muted} />
+              </Pressable>
+            </View>
+            {searchable && (
+              <TextInput
+                style={fm.dropdownSearch}
+                value={search}
+                onChangeText={setSearch}
+                placeholder="Search…"
+                placeholderTextColor={BRAND.text.muted}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+            )}
+            <ScrollView style={fm.dropdownList} showsVerticalScrollIndicator={false}>
+              {filteredOptions.map((opt) => (
+                <Pressable
+                  key={String(opt.value)}
+                  style={[fm.dropdownItem, value === opt.value && fm.dropdownItemActive]}
+                  onPress={() => handleSelect(opt.value)}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected: value === opt.value }}
+                >
+                  <Text style={[fm.dropdownItemText, value === opt.value && fm.dropdownItemTextActive]}>
+                    {opt.label}
+                  </Text>
+                  {value === opt.value && <Check size={16} color={SEMANTIC_COLORS.accentPrimary} />}
+                </Pressable>
+              ))}
+              {filteredOptions.length === 0 && (
+                <Text style={fm.dropdownEmpty}>No results</Text>
+              )}
+            </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
+    </View>
+  )
+}
+
+// ── Filter Modal ─────────────────────────────────────────────
+function FilterModal({ visible, filters, onApply, onClear, onClose, isPro, onUpgrade }) {
+  const insets = useSafeAreaInsets()
+  const [draft, setDraft] = useState(filters)
+
+  useEffect(() => {
+    if (visible) {
+      setDraft(filters)
+    }
+  }, [visible, filters])
+
+  const updateDraft = (patch) => setDraft((prev) => ({ ...prev, ...patch }))
+
+  // Build produce options from the authoritative PRODUCE_DATA registry
+  const produceOptions = useMemo(() =>
+    Object.entries(PRODUCE_DATA)
+      .map(([id, p]) => ({ value: p.name || id, label: p.name || id }))
+      .filter((p) => p.label)
+      .sort((a, b) => a.label.localeCompare(b.label)),
+  [])
+
+  const ratingOptions = [
+    { label: 'Any rating', value: 0 },
+    { label: '5 stars', value: 5 },
+    { label: '4+ stars', value: 4 },
+    { label: '3+ stars', value: 3 },
+  ]
+
+  const portionOptions = [
+    { label: 'Any', value: 'any' },
+    { label: 'Has recorded portions', value: 'has_portions' },
+    { label: 'Portion not recorded', value: 'no_portions' },
+  ]
+
+  const nutrientOptions = FILTERABLE_NUTRIENTS.map((n) => ({ value: n.key, label: n.label }))
+
+  const conditionOptions = [
+    { label: 'At least (>=)', value: '>=' },
+    { label: 'At most (<=)', value: '<=' },
+  ]
+
+  // Advanced filters require Pro
+  const advancedLocked = !isPro
+
+  const handleApply = () => {
+    onApply(draft)
+  }
+
+  const handleLockedTap = () => {
+    onUpgrade('history_filter_upgrade')
+  }
+
+  const LockedRow = () => (
+    <Pressable style={fm.lockedRow} onPress={handleLockedTap} accessibilityRole="button" accessibilityLabel="Unlock filter with Pro">
+      <Lock size={14} color={BRAND.text.muted} />
+      <Text style={fm.lockedText}>Pro feature — tap to unlock</Text>
+    </Pressable>
+  )
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <Pressable style={fm.overlay} onPress={onClose}>
+        <Pressable
+          style={[fm.sheet, { paddingBottom: insets.bottom + SPACE.md }]}
+          onPress={(e) => e.stopPropagation()}
+        >
+          <View style={fm.handle} />
+          <View style={fm.header}>
+            <Text style={fm.title}>Filters</Text>
+            <Pressable onPress={onClose} hitSlop={12} accessibilityRole="button" accessibilityLabel="Close filters">
+              <X size={20} color={BRAND.text.muted} />
+            </Pressable>
+          </View>
+
+          <ScrollView style={fm.body} showsVerticalScrollIndicator={false}>
+            {/* Ingredient filter */}
+            <View style={fm.section}>
+              {advancedLocked ? (
+                <>
+                  <Text style={fm.sectionTitle}>Ingredient</Text>
+                  <LockedRow />
+                </>
+              ) : (
+                <CompactDropdown
+                  label="Ingredient"
+                  value={draft.ingredient}
+                  options={produceOptions}
+                  onSelect={(val) => updateDraft({ ingredient: val })}
+                  searchable
+                  placeholder="Any ingredient"
+                />
+              )}
+            </View>
+
+            {/* Rating filter */}
+            <View style={fm.section}>
+              {advancedLocked ? (
+                <>
+                  <Text style={fm.sectionTitle}>Rating</Text>
+                  <LockedRow />
+                </>
+              ) : (
+                <CompactDropdown
+                  label="Rating"
+                  value={draft.minRating}
+                  options={ratingOptions}
+                  onSelect={(val) => updateDraft({ minRating: val })}
+                  placeholder="Any rating"
+                />
+              )}
+            </View>
+
+            {/* Portions filter */}
+            <View style={fm.section}>
+              {advancedLocked ? (
+                <>
+                  <Text style={fm.sectionTitle}>Portions</Text>
+                  <LockedRow />
+                </>
+              ) : (
+                <CompactDropdown
+                  label="Portions"
+                  value={draft.portionFilter}
+                  options={portionOptions}
+                  onSelect={(val) => updateDraft({ portionFilter: val })}
+                  placeholder="Any"
+                />
+              )}
+            </View>
+
+            {/* Favorites filter */}
+            <View style={fm.section}>
+              <Text style={fm.sectionTitle}>Favorites</Text>
+              {advancedLocked ? (
+                <LockedRow />
+              ) : (
+                <View style={fm.switchRow}>
+                  <Text style={fm.switchLabel}>Favorites only</Text>
+                  <Switch
+                    value={draft.favoritesOnly}
+                    onValueChange={(v) => updateDraft({ favoritesOnly: v })}
+                    accessibilityLabel="Toggle favorites only"
+                  />
+                </View>
+              )}
+            </View>
+
+            {/* Estimated Nutrition section */}
+            <View style={fm.section}>
+              <Text style={fm.sectionTitle}>Estimated Nutrition</Text>
+              {advancedLocked ? (
+                <LockedRow />
+              ) : (
+                <View>
+                  <CompactDropdown
+                    label="Nutrient"
+                    value={draft.nutrientFilter?.nutrientKey || null}
+                    options={nutrientOptions}
+                    onSelect={(val) => {
+                      if (!val) {
+                        updateDraft({ nutrientFilter: null })
+                      } else {
+                        const current = draft.nutrientFilter || {}
+                        updateDraft({
+                          nutrientFilter: {
+                            nutrientKey: val,
+                            condition: current.condition || '>=',
+                            threshold: current.threshold != null ? current.threshold : 50,
+                          },
+                        })
+                      }
+                    }}
+                    placeholder="Select nutrient"
+                  />
+
+                  {draft.nutrientFilter?.nutrientKey && (
+                    <View style={fm.nutrientConfigRow}>
+                      <View style={fm.conditionDropdownWrap}>
+                        <CompactDropdown
+                          label="Condition"
+                          value={draft.nutrientFilter.condition}
+                          options={conditionOptions}
+                          onSelect={(val) => updateDraft({
+                            nutrientFilter: { ...draft.nutrientFilter, condition: val },
+                          })}
+                          placeholder="At least (>=)"
+                        />
+                      </View>
+                      <View style={fm.thresholdWrap}>
+                        <Text style={fm.dropdownLabel}>Threshold</Text>
+                        <View style={fm.thresholdInputRow}>
+                          <TextInput
+                            style={fm.thresholdInput}
+                            value={String(draft.nutrientFilter.threshold ?? '')}
+                            onChangeText={(v) => {
+                              const num = parseInt(v, 10)
+                              updateDraft({
+                                nutrientFilter: {
+                                  ...draft.nutrientFilter,
+                                  threshold: isNaN(num) ? 0 : Math.max(0, Math.min(500, num)),
+                                },
+                              })
+                            }}
+                            placeholder="60"
+                            placeholderTextColor={BRAND.text.muted}
+                            keyboardType="numeric"
+                            maxLength={3}
+                          />
+                          <Text style={fm.thresholdSuffix}>% Daily Reference</Text>
+                        </View>
+                      </View>
+                    </View>
+                  )}
+                </View>
+              )}
+            </View>
+          </ScrollView>
+
+          {/* Footer actions */}
+          <View style={fm.footer}>
+            <Pressable
+              style={fm.clearBtn}
+              onPress={onClear}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Clear all filters"
+            >
+              <Text style={fm.clearBtnText}>Clear All</Text>
+            </Pressable>
+            <Pressable
+              style={fm.applyBtn}
+              onPress={handleApply}
+              accessibilityRole="button"
+              accessibilityLabel="Apply filters"
+            >
+              <Text style={fm.applyBtnText}>Apply</Text>
+            </Pressable>
+          </View>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  )
+}
+
 // ── Main Screen ──────────────────────────────────────────────
 
 export default function HistoryScreen({ navigation }) {
   const route = useRoute()
-  const { entries, deleteEntry, setRating, setNote, toggleFavorite } = useJuiceLog()
-  const { isPro: isProActive, state: subState } = useSubscription()
-  const entitlementInitialized = subState.initialized
-  const isPro = entitlementInitialized ? isProActive : false
-  const [selectedEntry, setSelectedEntry] = useState(null)
+  const { entries, deleteEntry, updateEntryMetadata } = useJuiceLog()
+  const { isPro, entitlementInitialized } = useEffectiveProAccess()
+  const [selectedEntryId, setSelectedEntryId] = useState(null)
   const [devClockTick, setDevClockTick] = useState(0)
   const [makeAgainInProgress, setMakeAgainInProgress] = useState(false)
+  // Search + filter state
+  const [searchQuery, setSearchQuery] = useState('')
+  const [filters, setFilters] = useState(createDefaultFilters())
+  const [showFilterModal, setShowFilterModal] = useState(false)
   const makeAgainRef = useRef(false)
   const historyViewedRef = useRef(false)
   // Tracks resolved entitlement state for Free→Pro transition detection.
   // Starts as null (unknown) so initialization to Pro is NOT treated as a transition.
   const resolvedEntitlementRef = useRef(null)
   const pendingOpenEntryIdRef = useRef(null)
+
+  // Derive the live selected entry from the current entries array.
+  // This ensures the modal always reflects the latest store state
+  // (rating, note, favorite, etc.) after UPDATE_ENTRY dispatches.
+  const selectedEntry = useMemo(
+    () => (selectedEntryId ? entries.find((e) => e.id === selectedEntryId) || null : null),
+    [selectedEntryId, entries],
+  )
 
   // Open a specific entry when navigated with openEntryId param
   // (e.g. from TodayScreen "View Today's Juice" button)
@@ -932,7 +1429,7 @@ export default function HistoryScreen({ navigation }) {
     const entry = entries.find((e) => e.id === openEntryId)
     if (entry) {
       pendingOpenEntryIdRef.current = openEntryId
-      setSelectedEntry(entry)
+      setSelectedEntryId(openEntryId)
     }
   }, [route?.params?.openEntryId, entries])
 
@@ -973,10 +1470,20 @@ export default function HistoryScreen({ navigation }) {
     resolvedEntitlementRef.current = isPro
   }, [isPro, entitlementInitialized])
 
-  // Group entries by dateKey, descending
+  // Apply search + filters to entries (memoized)
+  // ALL search and filter capabilities are Pro-only.
+  // Free users retain basic History access but cannot search or filter.
+  const filteredEntries = useMemo(() => {
+    if (!isPro) return entries
+    return applySearchAndFilters(entries, searchQuery, filters)
+  }, [entries, searchQuery, filters, isPro])
+
+  const filtersActive = useMemo(() => isPro && hasActiveFilters(filters), [filters, isPro])
+
+  // Group filtered entries by dateKey, descending
   const groupedDays = useMemo(() => {
     const groups = {}
-    entries.forEach((e) => {
+    filteredEntries.forEach((e) => {
       const key = e.dateKey || 'unknown'
       if (!groups[key]) groups[key] = []
       groups[key].push(e)
@@ -987,10 +1494,11 @@ export default function HistoryScreen({ navigation }) {
       dateKey: key,
       entries: groups[key].sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
     }))
-  }, [entries, devClockTick])
+  }, [filteredEntries, devClockTick])
 
-  const totalEntries = entries.length
+  const totalEntries = filteredEntries.length
   const totalDays = groupedDays.length
+  const hasSearchOrFilters = searchQuery.trim().length > 0 || filtersActive
   const distinctLoggedDays = useMemo(() => countDistinctLoggedDays(entries), [entries])
   const encouragement = useMemo(
     () => getEncouragementCopy(distinctLoggedDays),
@@ -1074,7 +1582,7 @@ export default function HistoryScreen({ navigation }) {
             source: 'history_make_again',
           },
         })
-        setSelectedEntry(null)
+        setSelectedEntryId(null)
         makeAgainRef.current = false
         setMakeAgainInProgress(false)
       }
@@ -1111,7 +1619,7 @@ export default function HistoryScreen({ navigation }) {
           entry_position: getEntryPosition(previewEntryId === entry.id),
         })
       }
-      setSelectedEntry(entry)
+      setSelectedEntryId(entry.id)
     },
     [isPro, previewEntryId, entitlementInitialized],
   )
@@ -1139,7 +1647,70 @@ export default function HistoryScreen({ navigation }) {
                 {totalDays !== 1 ? 's' : ''}
               </Text>
             </View>
+            <Pressable
+              onPress={() => setShowFilterModal(true)}
+              style={[s.filterBtn, filtersActive && s.filterBtnActive]}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Filter history"
+            >
+              <SlidersHorizontal size={18} color={filtersActive ? BRAND.cta.primary : BRAND.text.muted} />
+            </Pressable>
           </View>
+
+          {/* Search bar — Pro only. Free users see a locked indicator. */}
+          {isPro ? (
+            <View style={s.searchRow}>
+              <Search size={16} color={BRAND.text.muted} />
+              <TextInput
+                style={s.searchInput}
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                placeholder="Search juices, ingredients, notes…"
+                placeholderTextColor={BRAND.text.muted}
+                autoCapitalize="none"
+                autoCorrect={false}
+                returnKeyType="search"
+              />
+              {searchQuery.length > 0 && (
+                <Pressable
+                  onPress={() => setSearchQuery('')}
+                  hitSlop={8}
+                  accessibilityRole="button"
+                  accessibilityLabel="Clear search"
+                >
+                  <XCircle size={16} color={BRAND.text.muted} />
+                </Pressable>
+              )}
+            </View>
+          ) : (
+            <Pressable
+              style={s.searchRowLocked}
+              onPress={() => handleUpgrade('history_search_upgrade')}
+              hitSlop={4}
+              accessibilityRole="button"
+              accessibilityLabel="Unlock History search with Pro"
+            >
+              <Search size={16} color={BRAND.text.muted} />
+              <Text style={s.searchLockedText}>Search juices, ingredients, notes…</Text>
+              <Lock size={14} color={BRAND.text.muted} />
+            </Pressable>
+          )}
+
+          {/* Active filter indicator + clear */}
+          {filtersActive && (
+            <View style={s.activeFilterRow}>
+              <Text style={s.activeFilterText}>Filters active</Text>
+              <Pressable
+                onPress={() => setFilters(createDefaultFilters())}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel="Clear all filters"
+              >
+                <Text style={s.clearFiltersText}>Clear Filters</Text>
+              </Pressable>
+            </View>
+          )}
         </View>
 
         <ScrollView
@@ -1147,14 +1718,34 @@ export default function HistoryScreen({ navigation }) {
           contentContainerStyle={s.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          {encouragement && (
+          {encouragement && !hasSearchOrFilters && (
             <EncouragementCard title={encouragement.title} body={encouragement.body} />
           )}
           {groupedDays.length === 0 ? (
             <View style={s.emptyState}>
               <Clock size={32} color={BRAND.text.muted} />
-              <Text style={s.emptyTitle}>No history yet</Text>
-              <Text style={s.emptyDesc}>Your juice log entries will appear here.</Text>
+              <Text style={s.emptyTitle}>
+                {hasSearchOrFilters ? 'No juices match these filters.' : 'No history yet'}
+              </Text>
+              <Text style={s.emptyDesc}>
+                {hasSearchOrFilters
+                  ? 'Try adjusting your search or filters.'
+                  : 'Your juice log entries will appear here.'}
+              </Text>
+              {hasSearchOrFilters && (
+                <Pressable
+                  style={s.clearFiltersBtn}
+                  onPress={() => {
+                    setSearchQuery('')
+                    setFilters(createDefaultFilters())
+                  }}
+                  hitSlop={8}
+                  accessibilityRole="button"
+                  accessibilityLabel="Clear all filters and search"
+                >
+                  <Text style={s.clearFiltersBtnText}>Clear Filters</Text>
+                </Pressable>
+              )}
             </View>
           ) : (
             groupedDays.map((group) => (
@@ -1176,7 +1767,7 @@ export default function HistoryScreen({ navigation }) {
       <EntryDetailsModal
         entry={selectedEntry}
         visible={!!selectedEntry}
-        onClose={() => setSelectedEntry(null)}
+        onClose={() => setSelectedEntryId(null)}
         onDelete={deleteEntry}
         isPro={isPro}
         isAdvancedPreview={isSelectedPreview}
@@ -1184,9 +1775,27 @@ export default function HistoryScreen({ navigation }) {
         onUpgrade={handleUpgrade}
         onMakeAgain={handleMakeAgain}
         makeAgainInProgress={makeAgainInProgress}
-        onSetRating={setRating}
-        onSetNote={setNote}
-        onToggleFavorite={toggleFavorite}
+        onUpdateEntryMetadata={updateEntryMetadata}
+      />
+
+      {/* Filter Modal */}
+      <FilterModal
+        visible={showFilterModal}
+        filters={filters}
+        onApply={(next) => {
+          setFilters(next)
+          setShowFilterModal(false)
+        }}
+        onClear={() => {
+          setFilters(createDefaultFilters())
+          setShowFilterModal(false)
+        }}
+        onClose={() => setShowFilterModal(false)}
+        isPro={isPro}
+        onUpgrade={(src) => {
+          setShowFilterModal(false)
+          handleUpgrade(src)
+        }}
       />
     </View>
   )
@@ -1304,6 +1913,24 @@ const ms = StyleSheet.create({
     fontSize: FONT_SIZE.sm,
     fontWeight: FONT_WEIGHT.bold,
     color: BRAND.text.primary,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderBottomWidth: 0.5,
+    borderBottomColor: 'rgba(255,255,255,0.04)',
+  },
+  detailLabel: {
+    fontSize: FONT_SIZE.sm,
+    fontWeight: FONT_WEIGHT.medium,
+    color: BRAND.text.muted,
+  },
+  detailValue: {
+    fontSize: FONT_SIZE.sm,
+    fontWeight: FONT_WEIGHT.semibold,
+    color: BRAND.text.secondary,
   },
   deleteBtn: {
     flexDirection: 'row',
@@ -1506,6 +2133,16 @@ const ms = StyleSheet.create({
     color: BRAND.text.muted,
     marginLeft: 'auto',
   },
+  organicIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    marginLeft: 4,
+  },
+  organicIndicatorText: {
+    fontSize: 10,
+    fontWeight: FONT_WEIGHT.medium,
+  },
   portionHint: {
     fontSize: FONT_SIZE.xs,
     fontWeight: FONT_WEIGHT.regular,
@@ -1687,6 +2324,69 @@ const ms = StyleSheet.create({
     fontSize: FONT_SIZE.sm,
     fontWeight: FONT_WEIGHT.semibold,
     color: BRAND.text.muted,
+  },
+  // ── Staged Metadata Form (Your Experience) ─────────────────
+  experienceSection: {
+    marginTop: SPACE.xs,
+  },
+  experienceViewForm: {
+    marginTop: SPACE.xs,
+  },
+  experienceEditForm: {
+    marginTop: SPACE.xs,
+  },
+  experienceLabel: {
+    fontSize: FONT_SIZE.xs,
+    fontWeight: FONT_WEIGHT.semibold,
+    color: BRAND.text.muted,
+    marginTop: SPACE.sm,
+    marginBottom: SPACE.xs,
+  },
+  noteEmptyText: {
+    fontSize: FONT_SIZE.sm,
+    color: BRAND.text.muted,
+    fontStyle: 'italic',
+  },
+  metadataActions: {
+    flexDirection: 'row',
+    gap: SPACE.md,
+    marginTop: SPACE.md,
+    alignItems: 'center',
+  },
+  metadataSaveBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 10,
+    paddingHorizontal: SPACE.md,
+    borderRadius: RADIUS.sm,
+    backgroundColor: SEMANTIC_COLORS.success,
+  },
+  metadataSaveText: {
+    fontSize: FONT_SIZE.sm,
+    fontWeight: FONT_WEIGHT.semibold,
+    color: '#FFFFFF',
+  },
+  metadataCancelBtn: {
+    paddingVertical: 10,
+    paddingHorizontal: SPACE.md,
+  },
+  metadataCancelText: {
+    fontSize: FONT_SIZE.sm,
+    fontWeight: FONT_WEIGHT.medium,
+    color: BRAND.text.muted,
+  },
+  editMetadataBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: SPACE.sm,
+    marginTop: SPACE.md,
+  },
+  editMetadataText: {
+    fontSize: FONT_SIZE.sm,
+    fontWeight: FONT_WEIGHT.semibold,
+    color: SEMANTIC_COLORS.success,
   },
   // ── Locked preview list ────────────────────────────────────
   lockedPreviewList: {
@@ -1880,5 +2580,318 @@ const s = StyleSheet.create({
     fontWeight: FONT_WEIGHT.regular,
     color: SEMANTIC_COLORS.textSecondary,
     lineHeight: LINE_HEIGHT.relaxed * FONT_SIZE.sm,
+  },
+  // Search + filter styles
+  filterBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  filterBtnActive: {
+    backgroundColor: 'rgba(61,139,64,0.12)',
+  },
+  searchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: BRAND.glass.surfaceElevated,
+    borderRadius: RADIUS.md,
+    borderWidth: 0.5,
+    borderColor: BRAND.glass.border,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginTop: 12,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: FONT_SIZE.sm,
+    color: BRAND.text.primary,
+    padding: 0,
+  },
+  searchRowLocked: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: BRAND.glass.surfaceElevated,
+    borderRadius: RADIUS.md,
+    borderWidth: 0.5,
+    borderColor: BRAND.glass.border,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginTop: 12,
+    opacity: 0.7,
+  },
+  searchLockedText: {
+    flex: 1,
+    fontSize: FONT_SIZE.sm,
+    color: BRAND.text.muted,
+  },
+  activeFilterRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  activeFilterText: {
+    fontSize: FONT_SIZE.xs,
+    fontWeight: FONT_WEIGHT.semibold,
+    color: SEMANTIC_COLORS.accentPrimary,
+  },
+  clearFiltersText: {
+    fontSize: FONT_SIZE.xs,
+    fontWeight: FONT_WEIGHT.semibold,
+    color: BRAND.text.muted,
+  },
+  clearFiltersBtn: {
+    marginTop: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderRadius: RADIUS.md,
+  },
+  clearFiltersBtnText: {
+    fontSize: FONT_SIZE.sm,
+    fontWeight: FONT_WEIGHT.semibold,
+    color: BRAND.text.primary,
+  },
+})
+
+// ── Filter Modal Styles ──────────────────────────────────────
+const fm = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.6)',
+  },
+  sheet: {
+    backgroundColor: BRAND.background.primary,
+    borderTopLeftRadius: RADIUS.xl,
+    borderTopRightRadius: RADIUS.xl,
+    paddingHorizontal: SPACE.xl,
+    paddingTop: SPACE.md,
+    maxHeight: '85%',
+  },
+  handle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignSelf: 'center',
+    marginBottom: SPACE.md,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: SPACE.md,
+  },
+  title: {
+    fontSize: FONT_SIZE.lg,
+    fontWeight: FONT_WEIGHT.bold,
+    color: BRAND.text.primary,
+  },
+  body: {
+    maxHeight: 400,
+  },
+  section: {
+    marginBottom: SPACE.lg,
+  },
+  sectionTitle: {
+    fontSize: FONT_SIZE.sm,
+    fontWeight: FONT_WEIGHT.bold,
+    color: BRAND.text.primary,
+    marginBottom: 8,
+  },
+  switchRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  switchLabel: {
+    fontSize: FONT_SIZE.sm,
+    color: BRAND.text.secondary,
+  },
+  lockedRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderRadius: RADIUS.md,
+  },
+  lockedText: {
+    fontSize: FONT_SIZE.xs,
+    fontWeight: FONT_WEIGHT.semibold,
+    color: BRAND.text.muted,
+  },
+  // ── Compact Dropdown styles ──
+  dropdownWrap: {
+    position: 'relative',
+  },
+  dropdownLabel: {
+    fontSize: FONT_SIZE.xs,
+    fontWeight: FONT_WEIGHT.semibold,
+    color: BRAND.text.muted,
+    marginBottom: 4,
+  },
+  dropdownTrigger: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: BRAND.glass.surfaceElevated,
+    borderRadius: RADIUS.md,
+    borderWidth: 0.5,
+    borderColor: BRAND.glass.border,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  dropdownTriggerDisabled: {
+    opacity: 0.5,
+  },
+  dropdownValue: {
+    fontSize: FONT_SIZE.sm,
+    color: BRAND.text.primary,
+    flex: 1,
+    marginRight: 8,
+  },
+  dropdownClear: {
+    position: 'absolute',
+    right: 36,
+    top: 34,
+  },
+  dropdownOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    padding: SPACE.lg,
+  },
+  dropdownSheet: {
+    backgroundColor: BRAND.background.primary,
+    borderRadius: RADIUS.lg,
+    maxHeight: '70%',
+  },
+  dropdownHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: SPACE.md,
+    borderBottomWidth: 0.5,
+    borderBottomColor: 'rgba(255,255,255,0.08)',
+  },
+  dropdownTitle: {
+    fontSize: FONT_SIZE.sm,
+    fontWeight: FONT_WEIGHT.bold,
+    color: BRAND.text.primary,
+  },
+  dropdownSearch: {
+    backgroundColor: BRAND.glass.surfaceElevated,
+    borderRadius: RADIUS.md,
+    borderWidth: 0.5,
+    borderColor: BRAND.glass.border,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    fontSize: FONT_SIZE.sm,
+    color: BRAND.text.primary,
+    margin: SPACE.md,
+    marginBottom: 8,
+  },
+  dropdownList: {
+    maxHeight: 300,
+    paddingHorizontal: SPACE.sm,
+    paddingBottom: SPACE.md,
+  },
+  dropdownItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderRadius: RADIUS.md,
+  },
+  dropdownItemActive: {
+    backgroundColor: 'rgba(61,139,64,0.08)',
+  },
+  dropdownItemText: {
+    fontSize: FONT_SIZE.sm,
+    color: BRAND.text.secondary,
+  },
+  dropdownItemTextActive: {
+    color: SEMANTIC_COLORS.accentPrimary,
+    fontWeight: FONT_WEIGHT.semibold,
+  },
+  dropdownEmpty: {
+    fontSize: FONT_SIZE.sm,
+    color: BRAND.text.muted,
+    textAlign: 'center',
+    paddingVertical: SPACE.md,
+    fontStyle: 'italic',
+  },
+  // ── Nutrient config row ──
+  nutrientConfigRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 12,
+  },
+  conditionDropdownWrap: {
+    flex: 1,
+  },
+  thresholdWrap: {
+    flex: 1,
+  },
+  thresholdInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  thresholdInput: {
+    width: 60,
+    backgroundColor: BRAND.glass.surfaceElevated,
+    borderRadius: RADIUS.md,
+    borderWidth: 0.5,
+    borderColor: BRAND.glass.border,
+    paddingHorizontal: 10,
+    paddingVertical: 10,
+    fontSize: FONT_SIZE.sm,
+    color: BRAND.text.primary,
+    textAlign: 'center',
+  },
+  thresholdSuffix: {
+    fontSize: FONT_SIZE.xs,
+    color: BRAND.text.muted,
+    flex: 1,
+  },
+  footer: {
+    flexDirection: 'row',
+    gap: 12,
+    paddingTop: SPACE.md,
+    borderTopWidth: 0.5,
+    borderTopColor: 'rgba(255,255,255,0.08)',
+  },
+  clearBtn: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderRadius: RADIUS.md,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+  },
+  clearBtnText: {
+    fontSize: FONT_SIZE.sm,
+    fontWeight: FONT_WEIGHT.semibold,
+    color: BRAND.text.muted,
+  },
+  applyBtn: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderRadius: RADIUS.md,
+    backgroundColor: BRAND.cta.primary,
+  },
+  applyBtnText: {
+    fontSize: FONT_SIZE.sm,
+    fontWeight: FONT_WEIGHT.bold,
+    color: '#FFFFFF',
   },
 })

@@ -38,6 +38,21 @@ export default function QuantityPortionEditor({
     [units, unitKey],
   )
 
+  // When the provided unitKey doesn't match any count unit, sync the
+  // parent state to the fallback unit so the editor and parent agree.
+  // This prevents stale volume-family units (e.g. kale's loose_cup)
+  // from causing validation mismatches between the red-X display and
+  // the Log button.
+  useEffect(() => {
+    if (!currentUnit || !onUnitChange) return
+    if (currentUnit.unitKey !== unitKey) {
+      onUnitChange(currentUnit.unitKey)
+    }
+  }, [currentUnit, unitKey, onUnitChange])
+
+  // When the unit has S/M/L sizes and no size has been selected,
+  // auto-select the default (medium) so the size selector always
+  // shows a selected size on first render and after unit changes.
   const hasMultipleSizes = useMemo(() => {
     if (!currentUnit) return false
     return currentUnit.sizes.some((s) => s.sizeKey !== 'standard')
@@ -48,13 +63,32 @@ export default function QuantityPortionEditor({
     [produceId, currentUnit],
   )
 
-  // Sync localQuantity when the quantity prop changes from parent
   useEffect(() => {
-    const normalized = quantity || 1
-    setLocalQuantity(String(normalized))
+    if (!hasMultipleSizes || !onSizeChange || !currentUnit) return
+    if (!sizeKey || !sizes.some((s) => s.sizeKey === sizeKey)) {
+      const defaultSize = currentUnit.sizes.find((s) => s.sizeKey === 'medium') || currentUnit.sizes[0]
+      if (defaultSize && defaultSize.sizeKey !== sizeKey) {
+        onSizeChange(defaultSize.sizeKey)
+      }
+    }
+  }, [hasMultipleSizes, sizeKey, sizes, currentUnit, onSizeChange])
+
+  // Sync localQuantity when the quantity prop changes from parent.
+  // Only sync when the prop differs from the current local parsed value
+  // to avoid overriding the user's in-progress draft (e.g., typing "0").
+  useEffect(() => {
+    if (quantity == null) return
+    const currentParsed = parseFloat(localQuantity)
+    if (currentParsed !== quantity) {
+      setLocalQuantity(String(quantity))
+    }
   }, [quantity])
 
-  // Recompute estimate when inputs change
+  // Recompute estimate when inputs change.
+  // This drives the local validationError display but does NOT gate
+  // the parent state — the parent receives every draft value via
+  // handleQuantityTextChange so the canonical validator always sees
+  // the current draft.
   useEffect(() => {
     if (!supported || !currentUnit) return
     const qty = parseFloat(localQuantity)
@@ -80,13 +114,23 @@ export default function QuantityPortionEditor({
     onEstimatedWeightChange(result.estimatedRawWeightG)
   }, [localQuantity, currentUnit, sizeKey, hasMultipleSizes, supported, produceId])
 
+  // On every text change, update local state AND notify parent with
+  // the parsed draft value — even if invalid (0, NaN, blank).
+  // This makes the editor draft authoritative for canonical validation.
+  // The parent stores the draft enteredQuantity and the canonical
+  // validator flags it as invalid, disabling Log to Today.
+  const handleQuantityTextChange = useCallback((text) => {
+    setLocalQuantity(text)
+    const parsed = parseFloat(text)
+    onQuantityChange(isNaN(parsed) ? null : parsed)
+  }, [onQuantityChange])
+
+  // On end editing, ensure the parent has the final value.
+  // This is now redundant with handleQuantityTextChange but kept
+  // for safety in case onChangeText fires before the final parse.
   const handleQuantitySubmit = useCallback(() => {
     const qty = parseFloat(localQuantity)
-    if (!qty || qty <= 0 || isNaN(qty)) {
-      setValidationError('Enter a quantity greater than zero')
-      return
-    }
-    onQuantityChange(qty)
+    onQuantityChange(isNaN(qty) ? null : qty)
   }, [localQuantity, onQuantityChange])
 
   const handleStepperIncrement = useCallback(() => {
@@ -180,7 +224,7 @@ export default function QuantityPortionEditor({
         <TextInput
           style={styles.quantityInput}
           value={localQuantity}
-          onChangeText={setLocalQuantity}
+          onChangeText={handleQuantityTextChange}
           onEndEditing={handleQuantitySubmit}
           keyboardType={keyboardType}
           placeholder="0"

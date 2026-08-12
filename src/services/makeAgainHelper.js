@@ -136,6 +136,7 @@ export function createEditableDraftFromHistoryEntry(entry, catalog) {
   for (let idx = 0; idx < rawList.length; idx++) {
     const raw = rawList[idx]
     let rawId, rawQuantity, rawMode, rawUnit, rawSize, rawOrganic, rawWeightG
+    let rawEnteredWeightValue, rawEnteredWeightUnit
 
     if (typeof raw === 'string') {
       rawId = raw
@@ -145,11 +146,20 @@ export function createEditableDraftFromHistoryEntry(entry, catalog) {
         const d = ingredientDetails[idx]
         rawWeightG = typeof d.weightG === 'number' ? d.weightG : undefined
         rawMode = d.portionEntryMode
+        // Preserve original weight display representation (g vs oz)
+        rawEnteredWeightValue = typeof d.enteredWeightValue === 'number' ? d.enteredWeightValue : undefined
+        rawEnteredWeightUnit = typeof d.enteredWeightUnit === 'string' ? d.enteredWeightUnit : undefined
         // Extract portion info from portionMetadata
         if (d.portionMetadata) {
           rawQuantity = d.portionMetadata.enteredQuantity
           rawUnit = d.portionMetadata.unitKey
           rawSize = d.portionMetadata.sizeKey
+        }
+        // Override entry-level organic with per-ingredient organic
+        // from ingredientDetails when available. This preserves the
+        // individual organic/conventional status for Make Again.
+        if (typeof d.isOrganic === 'boolean') {
+          rawOrganic = d.isOrganic
         }
       }
     } else if (raw && typeof raw === 'object') {
@@ -230,8 +240,12 @@ export function createEditableDraftFromHistoryEntry(entry, catalog) {
       portionEntryMode,
       portionUnit: portionUnit || (portionEntryMode === 'volume' ? 'cups' : undefined),
       portionSize,
-      isOrganic: typeof rawOrganic === 'boolean' ? rawOrganic : false,
+      isOrganic: typeof rawOrganic === 'boolean' ? rawOrganic : undefined,
       isPrimary: false,
+      // Preserve original weight display representation for Make Again fidelity.
+      // Only set for weight-mode ingredients; quantity mode uses portionMetadata.
+      enteredWeightValue: portionEntryMode === 'weight' ? rawEnteredWeightValue : undefined,
+      enteredWeightUnit: portionEntryMode === 'weight' ? rawEnteredWeightUnit : undefined,
     })
   }
 
@@ -302,5 +316,9 @@ export function draftToPreloadIngredients(ingredients) {
           quantity: ing.quantity,
         }
       : undefined,
+    // Preserve original weight display representation (g vs oz) so the
+    // editor shows the user's original unit instead of converting.
+    enteredWeightValue: typeof ing.enteredWeightValue === 'number' ? ing.enteredWeightValue : undefined,
+    enteredWeightUnit: typeof ing.enteredWeightUnit === 'string' ? ing.enteredWeightUnit : undefined,
   }))
 }

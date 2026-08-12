@@ -46,7 +46,9 @@ describe('Count Stepper: rendering and wiring', () => {
   })
 
   test('5. Quantity field remains directly editable', () => {
-    expect(editorSource).toContain('onChangeText={setLocalQuantity}')
+    // QA9: onChangeText now calls handleQuantityTextChange which
+    // updates local state AND notifies parent with the draft value
+    expect(editorSource).toContain('onChangeText={handleQuantityTextChange}')
     expect(editorSource).toContain('onEndEditing={handleQuantitySubmit}')
   })
 })
@@ -127,11 +129,13 @@ describe('Count Stepper: disabled state at minimum', () => {
 })
 
 describe('Count Stepper: direct input validation preserved', () => {
-  test('18. handleQuantitySubmit still validates zero as invalid', () => {
+  test('18. handleQuantitySubmit notifies parent with draft value', () => {
+    // QA9: handleQuantitySubmit now always calls onQuantityChange
+    // with the parsed value (even if invalid), so the parent state
+    // reflects the current draft for canonical validation.
     const idx = editorSource.indexOf('const handleQuantitySubmit = useCallback')
     const section = editorSource.substring(idx, idx + 200)
-    expect(section).toContain('qty <= 0')
-    expect(section).toContain('Enter a quantity greater than zero')
+    expect(section).toContain('onQuantityChange')
   })
 
   test('19. No Math.max clamp in handleQuantitySubmit (prior defect not reintroduced)', () => {
@@ -143,6 +147,13 @@ describe('Count Stepper: direct input validation preserved', () => {
   test('20. Validation error state is still set for invalid input', () => {
     expect(editorSource).toContain('setValidationError')
     expect(editorSource).toContain('validationError')
+  })
+
+  test('20b. handleQuantityTextChange notifies parent on every keystroke', () => {
+    const idx = editorSource.indexOf('const handleQuantityTextChange = useCallback')
+    expect(idx).toBeGreaterThanOrEqual(0)
+    const section = editorSource.substring(idx, idx + 300)
+    expect(section).toContain('onQuantityChange')
   })
 })
 

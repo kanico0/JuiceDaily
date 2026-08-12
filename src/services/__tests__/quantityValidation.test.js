@@ -69,12 +69,17 @@ describe('Quantity validation fix', () => {
     expect(modeBlock).not.toContain("Don't fabricate a quantity")
   })
 
-  // 8. handleQuantityChange does NOT clamp — validation happens in QuantityPortionEditor
-  test('handleQuantityChange does not clamp user input (no Math.max)', () => {
+  // 8. handleQuantityChange stores draft even when invalid (QA9 fix)
+  test('handleQuantityChange stores draft quantity even when recomputation fails', () => {
     expect(homeSource).not.toContain('Math.max(1, qty)')
     expect(homeSource).not.toContain('Math.max(0, qty)')
-    // Should have a comment explaining why clamping is not done here
-    expect(homeSource).toContain('Do NOT clamp')
+    // QA9: handleQuantityChange now stores the draft enteredQuantity
+    // even when recomputeFromQuantityChange returns null, so the
+    // canonical validator sees the current draft value.
+    const qtyIdx = homeSource.indexOf('handleQuantityChange')
+    expect(qtyIdx).not.toBe(-1)
+    const qtyBlock = homeSource.slice(qtyIdx, qtyIdx + 2000)
+    expect(qtyBlock).toContain('enteredQuantity')
   })
 
   // 9. currentQuantity defaults to 1, not empty string
@@ -144,13 +149,15 @@ describe('Quantity validation fix', () => {
     expect(editorSource).toContain('handleQuantitySubmit')
   })
 
-  // 18. handleQuantitySubmit blocks submission of invalid input
-  test('handleQuantitySubmit returns early on invalid input without calling onQuantityChange', () => {
+  // 18. handleQuantitySubmit notifies parent with draft value (QA9 fix)
+  test('handleQuantitySubmit calls onQuantityChange with parsed value', () => {
     const submitIdx = editorSource.indexOf('handleQuantitySubmit')
     expect(submitIdx).not.toBe(-1)
     const submitBlock = editorSource.slice(submitIdx, submitIdx + 300)
-    expect(submitBlock).toContain('qty <= 0')
-    expect(submitBlock).toContain('return')
+    // QA9: handleQuantitySubmit now always calls onQuantityChange
+    // with the parsed value, even if invalid. The canonical validator
+    // in the parent determines validity.
+    expect(submitBlock).toContain('onQuantityChange')
   })
 
   // 19. Server-side validation also rejects zero

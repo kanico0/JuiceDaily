@@ -42,8 +42,11 @@ describe('Snap exhausted UX — HomeScreen', () => {
     expect(homeSource).toMatch(/complimentary AI Snap for this month/)
   })
 
-  it('15. Free exhausted UI offers manual entry', () => {
-    expect(homeSource).toMatch(/Enter Produce Manually/)
+  it('15. Free exhausted UI offers manual entry via helper text', () => {
+    // QA12: "Enter Produce Manually" button removed; replaced with
+    // non-interactive helper text above the produce options.
+    expect(homeSource).not.toMatch(/Enter Produce Manually/)
+    expect(homeSource).toMatch(/Prefer manual entry\? Tap a produce below\./)
   })
 
   it('16. Free exhausted UI offers Pro upgrade', () => {

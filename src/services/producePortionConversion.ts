@@ -124,12 +124,46 @@ export function getDefaultPortionUnit(produceId: string): PortionUnit | null {
   return unit ?? null
 }
 
+/**
+ * Returns the default COUNT unit for a produce.
+ *
+ * The registry's `defaultUnitKey` may point to a volume-family unit
+ * (e.g. kale's `loose_cup`) that is filtered out of `getSupportedCountUnits`.
+ * The QuantityPortionEditor only displays count units, so initializing
+ * quantity mode with a volume unit causes a mismatch: the editor falls
+ * back to `units[0]` while the parent state retains the volume unit.
+ *
+ * This function prefers the registry default when it is a count unit;
+ * otherwise it returns the first count unit.
+ */
+export function getDefaultCountUnit(produceId: string): PortionUnit | null {
+  const countUnits = getSupportedCountUnits(produceId)
+  if (countUnits.length === 0) return null
+  const record = getPortionRegistryRecord(produceId)
+  if (record?.defaultUnitKey) {
+    const defaultAsCount = countUnits.find((u) => u.unitKey === record.defaultUnitKey)
+    if (defaultAsCount) return defaultAsCount
+  }
+  return countUnits[0]
+}
+
 export function getSupportedSizes(produceId: string, unitKey: string): readonly PortionSize[] {
   const record = getPortionRegistryRecord(produceId)
   if (!record) return []
   const unit = record.units.find((u) => u.unitKey === unitKey)
   if (!unit) return []
   return unit.sizes
+}
+
+/**
+ * Returns the default size for a unit, preferring 'medium' when the
+ * unit has S/M/L sizes. Returns null for standard-only units.
+ */
+export function getDefaultSizeForUnit(unit: PortionUnit): string | null {
+  const hasSML = unit.sizes.some((s) => s.sizeKey !== 'standard')
+  if (!hasSML) return null
+  const medium = unit.sizes.find((s) => s.sizeKey === 'medium')
+  return (medium || unit.sizes[0])?.sizeKey || null
 }
 
 // ── Validation ───────────────────────────────────────────────

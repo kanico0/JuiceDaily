@@ -77,16 +77,27 @@ describe('JuiceLogStore — Detailed History fields (source inspection)', () => 
     expect(STORE_SRC).toMatch(/note\.trim\(\)\.length > 0/)
   })
 
-  test('toggleFavorite flips the current value', () => {
+  test('toggleFavorite dispatches TOGGLE_FAVORITE (reads current reducer state)', () => {
     expect(STORE_SRC).toMatch(/toggleFavorite = useCallback/)
-    expect(STORE_SRC).toMatch(/entry\?\.favorite === true/)
-    expect(STORE_SRC).toMatch(/favorite: !current/)
+    expect(STORE_SRC).toMatch(/TOGGLE_FAVORITE/)
+  })
+
+  test('setFavorite provides explicit boolean set', () => {
+    expect(STORE_SRC).toMatch(/setFavorite = useCallback/)
+    expect(STORE_SRC).toMatch(/favorite: !!value/)
+  })
+
+  test('updateEntryMetadata provides atomic multi-field save', () => {
+    expect(STORE_SRC).toMatch(/updateEntryMetadata = useCallback/)
+    expect(STORE_SRC).toMatch(/UPDATE_ENTRY_METADATA/)
   })
 
   test('context value exposes new functions', () => {
     expect(STORE_SRC).toMatch(/setRating,/)
     expect(STORE_SRC).toMatch(/setNote,/)
     expect(STORE_SRC).toMatch(/toggleFavorite,/)
+    expect(STORE_SRC).toMatch(/setFavorite,/)
+    expect(STORE_SRC).toMatch(/updateEntryMetadata,/)
   })
 
   test('existing functions are preserved', () => {
@@ -175,15 +186,15 @@ describe('HistoryScreen — Detailed History UI (source inspection)', () => {
     expect(HISTORY_SRC).toMatch(/TextInput/)
   })
 
-  test('EntryDetailsModal accepts new callbacks', () => {
-    expect(HISTORY_SRC).toMatch(/onSetRating/)
-    expect(HISTORY_SRC).toMatch(/onSetNote/)
-    expect(HISTORY_SRC).toMatch(/onToggleFavorite/)
+  test('EntryDetailsModal accepts atomic metadata callback', () => {
+    expect(HISTORY_SRC).toMatch(/onUpdateEntryMetadata/)
   })
 
-  test('modal has note editing state', () => {
-    expect(HISTORY_SRC).toMatch(/noteDraft/)
-    expect(HISTORY_SRC).toMatch(/isEditingNote/)
+  test('modal has staged metadata form state', () => {
+    expect(HISTORY_SRC).toMatch(/draftRating/)
+    expect(HISTORY_SRC).toMatch(/draftNote/)
+    expect(HISTORY_SRC).toMatch(/draftFavorite/)
+    expect(HISTORY_SRC).toMatch(/isEditingMetadata/)
   })
 
   test('modal renders ingredient portions for Pro', () => {
@@ -229,10 +240,12 @@ describe('HistoryScreen — Detailed History UI (source inspection)', () => {
 
   test('Locked card shows feature previews', () => {
     expect(HISTORY_SRC).toMatch(/lockedPreviewList/)
-    expect(HISTORY_SRC).toMatch(/Portions — Recreate this juice accurately/)
-    expect(HISTORY_SRC).toMatch(/Nutrition Details/)
-    expect(HISTORY_SRC).toMatch(/Produce Balance — See your fruit and vegetable mix/)
-    expect(HISTORY_SRC).toMatch(/Rating & Personal Notes/)
+    // QA10: Updated locked card copy includes organic, entry method, time
+    expect(HISTORY_SRC).toMatch(/Organic vs\. conventional ingredients/)
+    expect(HISTORY_SRC).toMatch(/Ingredient portions/)
+    expect(HISTORY_SRC).toMatch(/Entry method & time logged/)
+    expect(HISTORY_SRC).toMatch(/Estimated nutrition & top nutrients/)
+    expect(HISTORY_SRC).toMatch(/Rating, notes & favorites/)
   })
 
   test('existing behavior preserved — Entry Details title', () => {
@@ -261,10 +274,9 @@ describe('HistoryScreen — Detailed History UI (source inspection)', () => {
   })
 
   test('new sections are gated behind canViewAdvancedDetails', () => {
-    // Rating, Note, Favorite should all check policy.canViewAdvancedDetails
-    const ratingSection = HISTORY_SRC.match(/handleRatingPress[\s\S]*?\n  \}/)
-    expect(ratingSection).toBeTruthy()
-    expect(ratingSection[0]).toMatch(/canViewAdvancedDetails/)
+    // Your Experience section should check policy.canViewAdvancedDetails
+    const experienceSection = HISTORY_SRC.match(/Your Experience[\s\S]*?canViewAdvancedDetails/)
+    expect(experienceSection).toBeTruthy()
   })
 
   test('no cross-history analytics were added', () => {

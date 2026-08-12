@@ -87,10 +87,12 @@ describe('makeAgainHelper — basic draft creation (string array)', () => {
     })
   })
 
-  test('7. Each ingredient has isOrganic boolean', () => {
+  test('7. Each ingredient has isOrganic property (boolean or undefined)', () => {
     const result = createEditableDraftFromHistoryEntry(entry, MOCK_CATALOG)
     result.ingredients.forEach((ing) => {
-      expect(typeof ing.isOrganic).toBe('boolean')
+      // isOrganic may be boolean (when explicitly set) or undefined
+      // (for legacy entries without organic metadata)
+      expect(ing.isOrganic === undefined || typeof ing.isOrganic === 'boolean').toBe(true)
     })
   })
 
@@ -177,7 +179,7 @@ describe('makeAgainHelper — draft creation (object array)', () => {
     expect(result.ingredients[0].quantity).toBe(1)
   })
 
-  test('18. Handles missing isOrganic in object (defaults to false)', () => {
+  test('18. Handles missing isOrganic in object (defaults to undefined for legacy)', () => {
     const entry2 = {
       id: 'h5',
       createdAt: '2026-07-15T10:00:00',
@@ -185,7 +187,9 @@ describe('makeAgainHelper — draft creation (object array)', () => {
       ingredients: [{ produceId: 'kale' }],
     }
     const result = createEditableDraftFromHistoryEntry(entry2, MOCK_CATALOG)
-    expect(result.ingredients[0].isOrganic).toBe(false)
+    // Legacy entries without isOrganic should have undefined, not false,
+    // so seedPreloadIngredients uses the global organic default.
+    expect(result.ingredients[0].isOrganic).toBeUndefined()
   })
 
   test('19. Handles missing portionEntryMode (defaults to quantity)', () => {

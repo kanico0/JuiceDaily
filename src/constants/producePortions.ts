@@ -1945,17 +1945,11 @@ export const PRODUCE_PORTIONS: ReadonlyProducePortions = deepFreeze({
   grape: {
     produceId: 'grape',
     quantitySupported: true,
-    defaultUnitKey: 'loose_cup',
+    // Default to 'piece' (individual grapes) since users typically
+    // count grapes rather than measure them in cups. The cup option
+    // remains available as a secondary unit.
+    defaultUnitKey: 'piece',
     units: [
-      {
-        unitKey: 'loose_cup',
-        family: 'loose_cup',
-        displaySingular: 'cup',
-        displayPlural: 'cups',
-        allowDecimal: true,
-        inputStep: 0.5,
-        sizes: [{ sizeKey: 'standard', displaySize: '1 cup', gramWeight: 151 }],
-      },
       {
         unitKey: 'piece',
         family: 'piece',
@@ -1964,6 +1958,15 @@ export const PRODUCE_PORTIONS: ReadonlyProducePortions = deepFreeze({
         allowDecimal: false,
         inputStep: 1,
         sizes: [{ sizeKey: 'medium', displaySize: 'medium grape', gramWeight: 5 }],
+      },
+      {
+        unitKey: 'loose_cup',
+        family: 'loose_cup',
+        displaySingular: 'cup',
+        displayPlural: 'cups',
+        allowDecimal: true,
+        inputStep: 0.5,
+        sizes: [{ sizeKey: 'standard', displaySize: '1 cup', gramWeight: 151 }],
       },
     ],
     sourceRecords: [
@@ -1976,8 +1979,23 @@ export const PRODUCE_PORTIONS: ReadonlyProducePortions = deepFreeze({
   strawberry: {
     produceId: 'strawberry',
     quantitySupported: true,
-    defaultUnitKey: 'loose_cup',
+    // Default to individual strawberries — users typically count
+    // them rather than measuring by cup. Cup options remain available.
+    defaultUnitKey: 'piece',
     units: [
+      {
+        unitKey: 'piece',
+        family: 'piece',
+        displaySingular: 'strawberry',
+        displayPlural: 'strawberries',
+        allowDecimal: false,
+        inputStep: 1,
+        sizes: [
+          { sizeKey: 'small', displaySize: 'small (1 inch dia)', gramWeight: 9 },
+          { sizeKey: 'medium', displaySize: 'medium (1-1/4 inch dia)', gramWeight: 12 },
+          { sizeKey: 'large', displaySize: 'large (1-1/2 inch dia)', gramWeight: 18 },
+        ],
+      },
       {
         unitKey: 'loose_cup',
         family: 'loose_cup',
@@ -1996,19 +2014,6 @@ export const PRODUCE_PORTIONS: ReadonlyProducePortions = deepFreeze({
         inputStep: 0.5,
         sizes: [{ sizeKey: 'standard', displaySize: '1 cup, sliced', gramWeight: 166 }],
       },
-      {
-        unitKey: 'piece',
-        family: 'piece',
-        displaySingular: 'strawberry',
-        displayPlural: 'strawberries',
-        allowDecimal: false,
-        inputStep: 1,
-        sizes: [
-          { sizeKey: 'small', displaySize: 'small (1 inch dia)', gramWeight: 9 },
-          { sizeKey: 'medium', displaySize: 'medium (1-1/4 inch dia)', gramWeight: 12 },
-          { sizeKey: 'large', displaySize: 'large (1-1/2 inch dia)', gramWeight: 18 },
-        ],
-      },
     ],
     sourceRecords: [
       sr('USDA', 'SR Legacy', '9316', 167762, '1 cup whole (152 g); 1 cup sliced (166 g); 1 large (18 g); 1 medium (12 g); 1 small (9 g)', 'raw', 'edible portion without refuse (caps, stems removed)', 'USDA FoodData Central SR Legacy NDB 9316, Strawberries, raw (FDC ID 167762)'),
@@ -2019,17 +2024,10 @@ export const PRODUCE_PORTIONS: ReadonlyProducePortions = deepFreeze({
   blueberry: {
     produceId: 'blueberry',
     quantitySupported: true,
-    defaultUnitKey: 'loose_cup',
+    // Default to handful — users typically grab handfuls of blueberries
+    // rather than measuring them in cups. Cup option remains available.
+    defaultUnitKey: 'handful',
     units: [
-      {
-        unitKey: 'loose_cup',
-        family: 'loose_cup',
-        displaySingular: 'cup',
-        displayPlural: 'cups',
-        allowDecimal: true,
-        inputStep: 0.5,
-        sizes: [{ sizeKey: 'standard', displaySize: '1 cup', gramWeight: 148 }],
-      },
       {
         unitKey: 'handful',
         family: 'handful',
@@ -2038,6 +2036,15 @@ export const PRODUCE_PORTIONS: ReadonlyProducePortions = deepFreeze({
         allowDecimal: false,
         inputStep: 1,
         sizes: [{ sizeKey: 'standard', displaySize: 'handful (~25 berries)', gramWeight: 50 }],
+      },
+      {
+        unitKey: 'loose_cup',
+        family: 'loose_cup',
+        displaySingular: 'cup',
+        displayPlural: 'cups',
+        allowDecimal: true,
+        inputStep: 0.5,
+        sizes: [{ sizeKey: 'standard', displaySize: '1 cup', gramWeight: 148 }],
       },
     ],
     sourceRecords: [
@@ -2050,7 +2057,8 @@ export const PRODUCE_PORTIONS: ReadonlyProducePortions = deepFreeze({
   raspberry: {
     produceId: 'raspberry',
     quantitySupported: true,
-    defaultUnitKey: 'loose_cup',
+    // Default to individual berries — users typically count them.
+    defaultUnitKey: 'piece',
     units: [
       {
         unitKey: 'piece',
@@ -2082,7 +2090,8 @@ export const PRODUCE_PORTIONS: ReadonlyProducePortions = deepFreeze({
   blackberry: {
     produceId: 'blackberry',
     quantitySupported: true,
-    defaultUnitKey: 'loose_cup',
+    // Default to individual berries — users typically count them.
+    defaultUnitKey: 'piece',
     units: [
       {
         unitKey: 'piece',
@@ -2114,7 +2123,8 @@ export const PRODUCE_PORTIONS: ReadonlyProducePortions = deepFreeze({
   cranberry: {
     produceId: 'cranberry',
     quantitySupported: true,
-    defaultUnitKey: 'loose_cup',
+    // Default to individual berries — users typically count them.
+    defaultUnitKey: 'piece',
     units: [
       {
         unitKey: 'piece',
@@ -2155,17 +2165,9 @@ export const PRODUCE_PORTIONS: ReadonlyProducePortions = deepFreeze({
   cherry: {
     produceId: 'cherry',
     quantitySupported: true,
-    defaultUnitKey: 'loose_cup',
+    // Default to individual cherries — users typically count them.
+    defaultUnitKey: 'piece',
     units: [
-      {
-        unitKey: 'loose_cup',
-        family: 'loose_cup',
-        displaySingular: 'cup (with pits)',
-        displayPlural: 'cups (with pits)',
-        allowDecimal: true,
-        inputStep: 0.5,
-        sizes: [{ sizeKey: 'standard', displaySize: '1 cup, with pits', gramWeight: 155 }],
-      },
       {
         unitKey: 'piece',
         family: 'piece',
@@ -2174,6 +2176,15 @@ export const PRODUCE_PORTIONS: ReadonlyProducePortions = deepFreeze({
         allowDecimal: false,
         inputStep: 1,
         sizes: [{ sizeKey: 'medium', displaySize: 'medium cherry (with pit)', gramWeight: 8 }],
+      },
+      {
+        unitKey: 'loose_cup',
+        family: 'loose_cup',
+        displaySingular: 'cup (with pits)',
+        displayPlural: 'cups (with pits)',
+        allowDecimal: true,
+        inputStep: 0.5,
+        sizes: [{ sizeKey: 'standard', displaySize: '1 cup, with pits', gramWeight: 155 }],
       },
     ],
     sourceRecords: [

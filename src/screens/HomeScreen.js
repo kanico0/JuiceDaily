@@ -60,6 +60,7 @@ import AccountGateModal from '../components/AccountGateModal'
 import TrafficLightBadge from '../components/TrafficLightBadge'
 import CameraScreen from './CameraScreen'
 import { usePro } from '../services/ProStore'
+import { useEffectivePlanAccess } from '../hooks/useEffectivePlanAccess'
 import MeshGradientBg from '../components/MeshGradientBg'
 import { processJuiceBatch, PRODUCE_DATA } from '../services/JuiceEngine'
 import AdvancedBlendModal from '../components/AdvancedBlendModal'
@@ -69,6 +70,7 @@ import { authorizeGuestLog, isGuestLogAllowed } from '../services/quota/guestLog
 import { checkCameraEligibility } from '../services/cameraEligibilityCoordinator'
 import { SUPABASE_CONFIGURED } from '../services/subscriptions/subscriptionConfig'
 import { trackEvent } from '../services/AnalyticsService'
+import { getQaProSnapRemaining, incrementQaProSnapUsage } from '../services/quota/qaSnapCounter'
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true)
@@ -80,7 +82,7 @@ import {
   classifyProduceAllPillars,
   DAILY_PILLARS,
 } from '../services/ChallengeStore'
-import { useFormatWeight } from '../utils/weightFormat'
+import { useFormatWeight, useWeightUnit } from '../utils/weightFormat'
 import { useOrganicPref, getDefaultOrganic } from '../utils/organicPreference'
 import { useNutritionScore } from '../services/NutritionScoreStore'
 import { useJuiceLog } from '../services/JuiceLogStore'
@@ -88,14 +90,18 @@ import { recordMeaningfulActivity } from '../services/DormantReminderService'
 import {
   isQuantitySupported as isProduceQuantitySupported,
   getSupportedPortionUnits,
-  getDefaultPortionUnit,
+  getSupportedCountUnits,
+  getDefaultCountUnit,
+  getDefaultSizeForUnit,
   getSupportedSizes,
-  estimateRawWeightGrams,
-  createQuantityMetadata,
   recomputeFromQuantityChange,
   restoreQuantityMetadata,
   getPortionRegistryRecord,
 } from '../services/producePortionConversion'
+import {
+  validateIngredientForLog,
+  validateBatchForLog,
+} from '../services/validateIngredientForLog'
 import {
   getPreferredPortionEntryMode,
 } from '../services/portionEntryPreference'
@@ -189,8 +195,19 @@ function ProduceEditRow({
 
   const qtyMeta = portionMeta?.inputMode === 'quantity' ? portionMeta : null
   const currentQuantity = qtyMeta?.enteredQuantity || 1
-  const currentUnitKey = qtyMeta?.unitKey || getDefaultPortionUnit(item.produceId)?.unitKey || null
-  const currentSizeKey = qtyMeta?.sizeKey || null
+  // Validate unit key against the produce's supported units to prevent
+  // stale unit keys from a previous produce (e.g. 'leaf' from kale)
+  // from being displayed for a different produce (e.g. spinach)
+  const supportedUnits = getSupportedPortionUnits(item.produceId)
+  const countUnits = getSupportedCountUnits(item.produceId)
+  const rawUnitKey = qtyMeta?.unitKey || item.pendingUnitKey || getDefaultCountUnit(item.produceId)?.unitKey || null
+  const unitIsValid = rawUnitKey && supportedUnits.some((u) => u.unitKey === rawUnitKey)
+  const currentUnitKey = unitIsValid ? rawUnitKey : (getDefaultCountUnit(item.produceId)?.unitKey || null)
+  const currentSizeKey = qtyMeta?.sizeKey || item.pendingSizeKey || null
+
+  // Canonical validation — same function used by Log button and submission guard
+  const validation = validateIngredientForLog(item)
+  const rowErrorMessage = validation.valid ? null : validation.message
 
   return (
     <View style={styles.editRow}>
@@ -289,7 +306,11 @@ function ProduceEditRow({
               <Minus size={12} color="#8B949E" />
             </TouchableOpacity>
             <View style={styles.editWeightLabels}>
-              <Text style={styles.editWeightText}>{fmtG(item.weightG)}</Text>
+              <Text style={styles.editWeightText}>
+                {item.enteredWeightValue != null && item.enteredWeightUnit
+                  ? `${item.enteredWeightValue} ${item.enteredWeightUnit}`
+                  : fmtG(item.weightG)}
+              </Text>
             </View>
             <TouchableOpacity
               onPress={() => onWeightChange(index, item.weightG + 25)}
@@ -355,6 +376,12 @@ function ProduceEditRow({
             onEstimatedWeightChange={(weightG) => onEstimatedWeightChange(index, weightG)}
             confidence={confidence}
           />
+          {rowErrorMessage && (
+            <View style={styles.rowErrorContainer}>
+              <X size={12} color="#F85149" />
+              <Text style={styles.rowErrorText}>{rowErrorMessage}</Text>
+            </View>
+          )}
         </View>
       )}
 
@@ -573,6 +600,41 @@ function IngredientCloud({ searchQuery, onAdd, addedIds }) {
 
 function QuotaMeter({ navigation }) {
   const { quota } = useQuota()
+  const { isPro: effectiveIsPro, isQaProSimulation, snapMonthlyLimit } = useEffectivePlanAccess()
+  const [qaSnapUsed, setQaSnapUsed] = useState(0)
+
+  useEffect(() => {
+    if (isQaProSimulation) {
+      getQaProSnapRemaining(snapMonthlyLimit).then((remaining) => {
+        setQaSnapUsed(snapMonthlyLimit - remaining)
+      })
+    }
+  }, [isQaProSimulation, snapMonthlyLimit])
+
+  // When QA Pro Simulation is active, show the QA counter
+  if (isQaProSimulation) {
+    const qaRemaining = snapMonthlyLimit - qaSnapUsed
+    const qaExhausted = qaRemaining <= 0
+    return (
+      <TouchableOpacity
+        onPress={() => {
+          if (qaExhausted) navigation.navigate('Paywall', { source: 'scan_meter' })
+        }}
+        activeOpacity={qaExhausted ? 0.7 : 1}
+        accessibilityRole="text"
+        accessibilityLabel={`QA Pro: ${qaRemaining} of ${snapMonthlyLimit} snaps remaining`}
+        style={{ alignItems: 'center', marginTop: 8 }}
+      >
+        <Text style={{ color: qaExhausted ? '#F0883E' : '#90A4AE', fontSize: 12 }}>
+          {qaRemaining} of {snapMonthlyLimit} Juice Snaps remaining
+        </Text>
+        <Text style={{ color: '#7EE787', fontSize: 11, marginTop: 2 }}>
+          QA Pro Simulation — client allowance only
+        </Text>
+      </TouchableOpacity>
+    )
+  }
+
   const label = selectQuotaLabel(quota)
   if (!label) return null
 
@@ -653,6 +715,9 @@ function seedPreloadIngredients(preload, organicMode) {
       isOrganic: typeof item.isOrganic === 'boolean' ? item.isOrganic : getDefaultOrganic(organicMode),
       portionEntryMode: item.portionEntryMode || 'weight',
       portionMetadata: item.portionMetadata || undefined,
+      // Preserve original weight display representation for Make Again fidelity
+      enteredWeightValue: typeof item.enteredWeightValue === 'number' ? item.enteredWeightValue : undefined,
+      enteredWeightUnit: typeof item.enteredWeightUnit === 'string' ? item.enteredWeightUnit : undefined,
     }
 
     // Normalize quantity-mode ingredients through the canonical
@@ -675,15 +740,18 @@ function seedPreloadIngredients(preload, organicMode) {
         const rawUnitKey = meta?.unitKey ?? meta?.unit ?? null
         const rawSizeKey = meta?.sizeKey ?? meta?.size ?? null
 
-        const defaultUnit = getDefaultPortionUnit(item.produceId)
+        const defaultUnit = getDefaultCountUnit(item.produceId)
         if (defaultUnit) {
-          const unitKey = rawUnitKey || defaultUnit.unitKey
-          const sizes = getSupportedSizes(item.produceId, unitKey)
-          const hasSML = sizes.some((s) => s.sizeKey !== 'standard')
-          const sizeKey = rawSizeKey
-            || (hasSML
-              ? (sizes.find((s) => s.sizeKey === 'medium') || sizes[0])?.sizeKey
-              : null)
+          // Validate rawUnitKey against the produce's count units
+          // to prevent stale unit keys (e.g. 'leaf' from kale) from
+          // being applied to a different produce (e.g. spinach).
+          // Use getSupportedCountUnits (not getSupportedPortionUnits)
+          // because the QuantityPortionEditor only displays count units.
+          const countUnits = getSupportedCountUnits(item.produceId)
+          const rawUnitIsValid = rawUnitKey && countUnits.some((u) => u.unitKey === rawUnitKey)
+          const unitKey = rawUnitIsValid ? rawUnitKey : defaultUnit.unitKey
+          const unit = countUnits.find((u) => u.unitKey === unitKey) || defaultUnit
+          const sizeKey = rawSizeKey || getDefaultSizeForUnit(unit)
 
           const normalizedResult = recomputeFromQuantityChange({
             produceId: item.produceId,
@@ -696,23 +764,21 @@ function seedPreloadIngredients(preload, organicMode) {
             baseIngredient.portionMetadata = normalizedResult.metadata
             baseIngredient.weightG = normalizedResult.weightG
             baseIngredient.pendingUnitKey = unitKey
-            baseIngredient.pendingSizeKey = sizeKey || null
+            baseIngredient.pendingSizeKey = sizeKey
           } else {
             // Fallback: initialize with defaults like the manual-entry path
-            const fallbackSize = hasSML
-              ? (sizes.find((s) => s.sizeKey === 'medium') || sizes[0])
-              : null
+            const fallbackSizeKey = getDefaultSizeForUnit(defaultUnit)
             const fallbackResult = recomputeFromQuantityChange({
               produceId: item.produceId,
               quantity: 1,
               unitKey: defaultUnit.unitKey,
-              sizeKey: fallbackSize?.sizeKey || undefined,
+              sizeKey: fallbackSizeKey || undefined,
             })
             if (fallbackResult) {
               baseIngredient.portionMetadata = fallbackResult.metadata
               baseIngredient.weightG = fallbackResult.weightG
               baseIngredient.pendingUnitKey = defaultUnit.unitKey
-              baseIngredient.pendingSizeKey = fallbackSize?.sizeKey || null
+              baseIngredient.pendingSizeKey = fallbackSizeKey
             }
           }
         }
@@ -725,6 +791,7 @@ function seedPreloadIngredients(preload, organicMode) {
 
 export default function JuiceSnapScreen({ navigation, route }) {
   const { mode: organicMode } = useOrganicPref()
+  const { mode: weightDisplayMode } = useWeightUnit()
   const shouldAutoOpenCamera = route?.params?.openCamera === true
   const preloadIngredients = route?.params?.preloadIngredients || null
   const source = route?.params?.source || 'manual'
@@ -744,10 +811,17 @@ export default function JuiceSnapScreen({ navigation, route }) {
   const { recordNutritionLog, momentum: preMomentum } = useNutritionScore()
   const { addEntry: addLogEntry, setTasteReaction: setLogTasteReaction } = useJuiceLog()
   const { isPro } = usePro()
+  const { isPro: effectiveIsPro, snapMonthlyLimit: effectiveSnapLimit, isQaProSimulation } = useEffectivePlanAccess()
   const { quota: serverQuota, applySnapshot: applyQuotaSnapshot, refresh: refreshQuota, markInstallSnapConsumed } = useQuota()
   const filmRollLabel = selectFilmRollLabel(serverQuota)
   const filmRollRemaining = selectFilmRollRemaining(serverQuota)
   const filmRollIsPro = selectFilmRollIsPro(serverQuota)
+  const [qaSnapUsed, setQaSnapUsed] = useState(0)
+  useEffect(() => {
+    if (isQaProSimulation) {
+      getQaProSnapRemaining(effectiveSnapLimit).then((r) => setQaSnapUsed(effectiveSnapLimit - r))
+    }
+  }, [isQaProSimulation, effectiveSnapLimit])
   const [showSnapGate, setShowSnapGate] = useState(false)
   const [showAccountGate, setShowAccountGate] = useState(false)
   const [accountGateMode, setAccountGateMode] = useState('guest')
@@ -862,7 +936,14 @@ export default function JuiceSnapScreen({ navigation, route }) {
   // Fetch authoritative Advanced Blend allowance from server on mount and
   // on focus so the pre-analysis modal shows the correct remaining count
   // instead of defaulting to FREE_ADVANCED_BLEND_ALLOWANCE (3).
+  // When QA Pro Simulation is active, the client shows Unlimited.
   const refreshBlendAllowance = useCallback(async () => {
+    if (effectiveIsPro) {
+      // Effective Pro (real or QA simulation) — unlimited Expanded Ingredient
+      setBlendUsedCount(0)
+      setBlendAllowanceVerified(true)
+      return
+    }
     const snapshot = await fetchEffectiveBlendAllowance(isPro)
     if (snapshot) {
       // Compute effective used from effective remaining so the
@@ -876,7 +957,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
     } else {
       setBlendAllowanceVerified(false)
     }
-  }, [isPro])
+  }, [isPro, effectiveIsPro])
 
   useEffect(() => {
     refreshBlendAllowance()
@@ -903,29 +984,18 @@ export default function JuiceSnapScreen({ navigation, route }) {
 
   const hasInvalidIngredients = useMemo(() => {
     const ingredients = batch.scannedIngredients || []
-    for (const item of ingredients) {
-      if (!isProduceQuantitySupported(item.produceId)) continue
-      if (item.portionEntryMode !== 'quantity') continue
-      const unitKey = item.portionMetadata?.unitKey || item.pendingUnitKey
-      if (!unitKey) return true
-      const sizes = getSupportedSizes(item.produceId, unitKey)
-      const hasSML = sizes.some((s) => s.sizeKey !== 'standard')
-      const sizeKey = item.portionMetadata?.sizeKey || item.pendingSizeKey || null
-      if (hasSML && !sizeKey) return true
-      const qty = item.portionMetadata?.enteredQuantity
-      if (!qty || qty <= 0 || isNaN(qty)) return true
-      const result = estimateRawWeightGrams({
-        produceId: item.produceId,
-        quantity: qty,
-        unitKey,
-        sizeKey: hasSML ? sizeKey : undefined,
-      })
-      if (!result.ok) return true
-    }
-    return false
+    if (ingredients.length === 0) return false
+    return !validateBatchForLog(ingredients).valid
   }, [batch.scannedIngredients])
 
-  const isSnapDepleted = selectQuotaExhausted(serverQuota)
+  const isSnapDepleted = isQaProSimulation
+    ? qaSnapUsed >= effectiveSnapLimit
+    : selectQuotaExhausted(serverQuota)
+
+  // Temporary diagnostic for QA7 Snap gate verification
+  if (process.env.EXPO_PUBLIC_ENABLE_DEVELOPER_TOOLS === '1') {
+    console.log(`[SNAP_QA] isQaProSimulation=${isQaProSimulation} qaSnapUsed=${qaSnapUsed} effectiveSnapLimit=${effectiveSnapLimit} isSnapDepleted=${isSnapDepleted} serverQuotaRemaining=${serverQuota?.remaining ?? 'null'}`)
+  }
 
   // Open manual entry when navigated with manualEntry: true
   useEffect(() => {
@@ -1045,15 +1115,32 @@ export default function JuiceSnapScreen({ navigation, route }) {
         return
       }
 
-      // Use the confirmed quota values for snap eligibility
-      const currentRemaining = selectFilmRollRemaining(currentQuota)
-      const currentIsPro = selectFilmRollIsPro(currentQuota)
+      // Use the confirmed quota values for snap eligibility.
+      // The effective Pro status (from useEffectivePlanAccess) is used
+      // for the UI gate so QA Pro Simulation can open the camera.
+      // The server still enforces the real quota when the scan is
+      // actually submitted.
+      const serverRemaining = selectFilmRollRemaining(currentQuota)
+      const serverIsPro = selectFilmRollIsPro(currentQuota)
+
+      // When QA Pro Simulation is active, use the QA-only snap counter
+      // with the Pro monthly limit (12). Otherwise use real server quota.
+      let snapRemaining
+      let snapIsPro
+      if (isQaProSimulation) {
+        const qaRemaining = await getQaProSnapRemaining(effectiveSnapLimit)
+        snapRemaining = qaRemaining
+        snapIsPro = true
+      } else {
+        snapRemaining = serverRemaining
+        snapIsPro = effectiveIsPro || serverIsPro
+      }
 
       const snapElig = {
-        eligible: currentRemaining > 0,
-        remaining: currentRemaining,
-        reason: currentRemaining > 0 ? null : 'Scan limit reached for this period',
-        isPro: currentIsPro,
+        eligible: snapIsPro || snapRemaining > 0,
+        remaining: snapRemaining,
+        reason: snapIsPro || snapRemaining > 0 ? null : 'Scan limit reached for this period',
+        isPro: snapIsPro,
       }
       let eligibilityTimer = null
       const eligibilityTimeout = new Promise((resolve) => {
@@ -1164,7 +1251,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
   const handleSnap = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
     attemptCameraOpen(false)
-  }, [attemptCameraOpen])
+  }, [attemptCameraOpen, isSnapDepleted])
 
   // Manual entry: add from NutrientLibrary (no credit consumed)
   const handleManualAdd = useCallback((item) => {
@@ -1181,18 +1268,15 @@ export default function JuiceSnapScreen({ navigation, route }) {
       portionEntryMode: globalPortionMode,
     }
     if (globalPortionMode === 'quantity' && isProduceQuantitySupported(item.id)) {
-      const defaultUnit = getDefaultPortionUnit(item.id)
+      const defaultUnit = getDefaultCountUnit(item.id)
       if (defaultUnit) {
-        const hasSML = defaultUnit.sizes.some((s) => s.sizeKey !== 'standard')
-        const defaultSize = hasSML
-          ? (defaultUnit.sizes.find((s) => s.sizeKey === 'medium') || defaultUnit.sizes[0])
-          : null
+        const defaultSizeKey = getDefaultSizeForUnit(defaultUnit)
         // Initialize with quantity: 1 so the default passes validation
         const initialResult = recomputeFromQuantityChange({
           produceId: item.id,
           quantity: 1,
           unitKey: defaultUnit.unitKey,
-          sizeKey: defaultSize?.sizeKey || undefined,
+          sizeKey: defaultSizeKey || undefined,
         })
         if (initialResult) {
           newIngredient.portionMetadata = initialResult.metadata
@@ -1201,7 +1285,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
           newIngredient.portionMetadata = undefined
         }
         newIngredient.pendingUnitKey = defaultUnit.unitKey
-        newIngredient.pendingSizeKey = defaultSize?.sizeKey || null
+        newIngredient.pendingSizeKey = defaultSizeKey
       }
     }
     setBatch((prev) => {
@@ -1242,22 +1326,19 @@ export default function JuiceSnapScreen({ navigation, route }) {
     // User can type ingredients manually or navigate away via tabs/back
   }, [])
 
-  const handleProduceIdentified = useCallback((visionResult) => {
+  const handleProduceIdentified = useCallback(async (visionResult) => {
     console.log('[SCAN] handleProduceIdentified —', visionResult.scannedIngredients.length, 'items')
     cameraUsedRef.current = true
     const enriched = visionResult.scannedIngredients.map((ing) => {
       if (isProduceQuantitySupported(ing.produceId)) {
-        const defaultUnit = getDefaultPortionUnit(ing.produceId)
+        const defaultUnit = getDefaultCountUnit(ing.produceId)
         if (defaultUnit) {
-          const hasSML = defaultUnit.sizes.some((s) => s.sizeKey !== 'standard')
-          const defaultSize = hasSML
-            ? (defaultUnit.sizes.find((s) => s.sizeKey === 'medium') || defaultUnit.sizes[0])
-            : null
+          const defaultSizeKey = getDefaultSizeForUnit(defaultUnit)
           const initialResult = recomputeFromQuantityChange({
             produceId: ing.produceId,
             quantity: 1,
             unitKey: defaultUnit.unitKey,
-            sizeKey: defaultSize?.sizeKey || undefined,
+            sizeKey: defaultSizeKey || undefined,
           })
           if (initialResult) {
             return {
@@ -1266,7 +1347,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
               portionMetadata: initialResult.metadata,
               portionEntryMode: 'quantity',
               pendingUnitKey: defaultUnit.unitKey,
-              pendingSizeKey: defaultSize?.sizeKey || null,
+              pendingSizeKey: defaultSizeKey,
             }
           }
         }
@@ -1298,6 +1379,13 @@ export default function JuiceSnapScreen({ navigation, route }) {
         markInstallSnapConsumed()
       }
     } else {
+      refreshQuota()
+    }
+
+    // When QA Pro Simulation is active, increment the QA-only snap counter
+    if (isQaProSimulation) {
+      await incrementQaProSnapUsage()
+      setQaSnapUsed((prev) => prev + 1)
       refreshQuota()
     }
 
@@ -1384,7 +1472,14 @@ export default function JuiceSnapScreen({ navigation, route }) {
   const handleWeightChange = useCallback((index, newWeight) => {
     setBatch((prev) => {
       const updated = [...prev.scannedIngredients]
-      updated[index] = { ...updated[index], weightG: newWeight }
+      // Clear entered weight representation when user manually adjusts —
+      // the display reverts to the current global weight format preference.
+      updated[index] = {
+        ...updated[index],
+        weightG: newWeight,
+        enteredWeightValue: undefined,
+        enteredWeightUnit: undefined,
+      }
       return buildBatch(updated, juiceMethod)
     })
     setIsLogged(false)
@@ -1417,17 +1512,19 @@ export default function JuiceSnapScreen({ navigation, route }) {
           }
         } else {
           // No prior metadata — initialize with quantity: 1
-          const defaultUnit = getDefaultPortionUnit(item.produceId)
+          // Use getDefaultCountUnit (not getDefaultPortionUnit) because
+          // the QuantityPortionEditor only displays count units. Using
+          // a volume-family default (e.g. kale's loose_cup) causes the
+          // editor to fall back to units[0] while the parent state
+          // retains the volume unit, breaking size selection.
+          const defaultUnit = getDefaultCountUnit(item.produceId)
           if (defaultUnit) {
-            const hasSML = defaultUnit.sizes.some((s) => s.sizeKey !== 'standard')
-            const defaultSize = hasSML
-              ? (defaultUnit.sizes.find((s) => s.sizeKey === 'medium') || defaultUnit.sizes[0])
-              : null
+            const defaultSizeKey = getDefaultSizeForUnit(defaultUnit)
             const initialResult = recomputeFromQuantityChange({
               produceId: item.produceId,
               quantity: 1,
               unitKey: defaultUnit.unitKey,
-              sizeKey: defaultSize?.sizeKey || undefined,
+              sizeKey: defaultSizeKey || undefined,
             })
             if (initialResult) {
               updated[index] = {
@@ -1436,7 +1533,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
                 weightG: initialResult.weightG,
                 portionMetadata: initialResult.metadata,
                 pendingUnitKey: defaultUnit.unitKey,
-                pendingSizeKey: defaultSize?.sizeKey || null,
+                pendingSizeKey: defaultSizeKey,
               }
             } else {
               updated[index] = {
@@ -1464,23 +1561,45 @@ export default function JuiceSnapScreen({ navigation, route }) {
   }, [juiceMethod])
 
   const handleQuantityChange = useCallback((index, qty) => {
-    // Do NOT clamp here — validation in QuantityPortionEditor.handleQuantitySubmit
-    // already prevents 0/negative/NaN from reaching this point.
-    // If an invalid value somehow gets through, recomputeFromQuantityChange
-    // will return null and the batch will remain unchanged.
+    // Store the draft quantity in batch state even when invalid (0, null, NaN).
+    // This makes the editor draft authoritative for canonical validation.
+    // The validator checks enteredQuantity and flags invalid values,
+    // disabling Log to Today. The last valid weightG is preserved
+    // separately for display when recomputation fails.
     setBatch((prev) => {
       const updated = [...prev.scannedIngredients]
       const item = updated[index]
-      const unitKey = item.portionMetadata?.unitKey || item.pendingUnitKey || getDefaultPortionUnit(item.produceId)?.unitKey
+      const unitKey = item.portionMetadata?.unitKey || item.pendingUnitKey || getDefaultCountUnit(item.produceId)?.unitKey
       const sizeKey = item.portionMetadata?.sizeKey || item.pendingSizeKey || null
-      const input = { produceId: item.produceId, quantity: qty, unitKey, sizeKey: sizeKey || undefined }
+      const input = { produceId: item.produceId, quantity: qty || 0, unitKey, sizeKey: sizeKey || undefined }
       const result = recomputeFromQuantityChange(input)
-      if (!result) return prev
-      updated[index] = {
-        ...item,
-        weightG: result.weightG,
-        portionMetadata: result.metadata,
-        portionEntryMode: 'quantity',
+      if (result) {
+        // Recomputation succeeded — update weight and metadata
+        updated[index] = {
+          ...item,
+          weightG: result.weightG,
+          portionMetadata: result.metadata,
+          portionEntryMode: 'quantity',
+        }
+      } else {
+        // Recomputation failed (qty=0, null, NaN) — still store the draft
+        // enteredQuantity so the canonical validator sees the current value.
+        // Keep the last valid weightG for display purposes.
+        updated[index] = {
+          ...item,
+          portionEntryMode: 'quantity',
+          portionMetadata: {
+            ...(item.portionMetadata || {}),
+            inputMode: 'quantity',
+            enteredQuantity: qty,
+            unitKey,
+            sizeKey,
+            estimatedRawWeightG: item.portionMetadata?.estimatedRawWeightG ?? 0,
+            sourceVersion: item.portionMetadata?.sourceVersion || 'draft',
+            wasEstimateOverridden: item.portionMetadata?.wasEstimateOverridden || false,
+            originalEstimatedRawWeightG: item.portionMetadata?.originalEstimatedRawWeightG ?? 0,
+          },
+        }
       }
       return buildBatch(updated, juiceMethod)
     })
@@ -1492,20 +1611,23 @@ export default function JuiceSnapScreen({ navigation, route }) {
       const updated = [...prev.scannedIngredients]
       const item = updated[index]
       const qty = item.portionMetadata?.enteredQuantity
+      // Use getSupportedCountUnits because the QuantityPortionEditor
+      // only displays count units. getSupportedPortionUnits includes
+      // volume-family units that are not selectable in the editor.
+      const units = getSupportedCountUnits(item.produceId)
+      const newUnit = units.find((u) => u.unitKey === newUnitKey)
+      const defaultSizeKey = newUnit ? getDefaultSizeForUnit(newUnit) : null
       if (!qty) {
-        // Just update pending unit if no quantity entered yet
-        updated[index] = { ...item, pendingUnitKey: newUnitKey }
+        // Update pending unit AND initialize pending size if the new unit requires it
+        updated[index] = {
+          ...item,
+          pendingUnitKey: newUnitKey,
+          pendingSizeKey: defaultSizeKey,
+        }
         return { ...prev, scannedIngredients: updated }
       }
       // Recompute with new unit
-      const units = getSupportedPortionUnits(item.produceId)
-      const newUnit = units.find((u) => u.unitKey === newUnitKey)
-      const hasSML = newUnit?.sizes.some((s) => s.sizeKey !== 'standard') || false
-      const defaultSize = hasSML
-        ? (newUnit.sizes.find((s) => s.sizeKey === 'medium') || newUnit.sizes[0])
-        : null
-      const sizeKey = defaultSize?.sizeKey || undefined
-      const input = { produceId: item.produceId, quantity: qty, unitKey: newUnitKey, sizeKey }
+      const input = { produceId: item.produceId, quantity: qty, unitKey: newUnitKey, sizeKey: defaultSizeKey || undefined }
       const result = recomputeFromQuantityChange(input)
       if (!result) return prev
       updated[index] = {
@@ -1513,6 +1635,8 @@ export default function JuiceSnapScreen({ navigation, route }) {
         weightG: result.weightG,
         portionMetadata: result.metadata,
         portionEntryMode: 'quantity',
+        pendingUnitKey: newUnitKey,
+        pendingSizeKey: defaultSizeKey,
       }
       return buildBatch(updated, juiceMethod)
     })
@@ -1575,20 +1699,17 @@ export default function JuiceSnapScreen({ navigation, route }) {
         portionEntryMode: globalPortionMode,
       }
       if (globalPortionMode === 'quantity' && isProduceQuantitySupported(produceId)) {
-        const defaultUnit = getDefaultPortionUnit(produceId)
+        const defaultUnit = getDefaultCountUnit(produceId)
         if (defaultUnit) {
-          const hasSML = defaultUnit.sizes.some((s) => s.sizeKey !== 'standard')
-          const defaultSize = hasSML
-            ? (defaultUnit.sizes.find((s) => s.sizeKey === 'medium') || defaultUnit.sizes[0])
-            : null
+          const defaultSizeKey = getDefaultSizeForUnit(defaultUnit)
           newIngredient.pendingUnitKey = defaultUnit.unitKey
-          newIngredient.pendingSizeKey = defaultSize?.sizeKey || null
+          newIngredient.pendingSizeKey = defaultSizeKey
 
           const initialResult = recomputeFromQuantityChange({
             produceId,
             quantity: 1,
             unitKey: defaultUnit.unitKey,
-            sizeKey: defaultSize?.sizeKey || undefined,
+            sizeKey: defaultSizeKey || undefined,
           })
           if (initialResult) {
             newIngredient.weightG = initialResult.weightG
@@ -1605,7 +1726,8 @@ export default function JuiceSnapScreen({ navigation, route }) {
   const handleLogToChallenge = useCallback(async () => {
     if (!hasItems) return
     if (isLoggingRef.current) return
-    if (hasInvalidIngredients) return
+    // Canonical guard — same validator as red-X and Log button
+    if (!validateBatchForLog(batch?.scannedIngredients || []).valid) return
 
     try {
       const ingredients = batch?.scannedIngredients || []
@@ -1677,6 +1799,10 @@ export default function JuiceSnapScreen({ navigation, route }) {
   const executeLogToChallenge = useCallback(async () => {
     if (!hasItems) return
     if (isLoggingRef.current) return
+    // Canonical submission guard — uses the same validator as the
+    // red-X display and the Log button disabled state.
+    const batchValidation = validateBatchForLog(batch?.scannedIngredients || [])
+    if (!batchValidation.valid) return
     isLoggingRef.current = true
     setIsLogging(true)
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
@@ -1687,6 +1813,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
     const logSource = resolveLogSource(source, cameraUsedRef.current, effectiveManualMode)
 
     let totals = batch?.totals || {}
+    let juiceYieldG = batch?.totalJuiceWeightG
     let allowanceResult = null
     let loggingSucceeded = false
 
@@ -1710,8 +1837,11 @@ export default function JuiceSnapScreen({ navigation, route }) {
             source: logSource,
           })
 
-          const authorized = await authorizeAndProcessBatch(ingredients, batch.juiceMethod || 'cold_pressed', blendOperationIdRef.current || undefined)
+          const authorized = await authorizeAndProcessBatch(ingredients, batch.juiceMethod || 'cold_pressed', blendOperationIdRef.current || undefined, effectiveIsPro)
           totals = authorized.totals || totals
+          if (typeof authorized.totalJuiceWeightG === 'number') {
+            juiceYieldG = authorized.totalJuiceWeightG
+          }
           allowanceResult = authorized.allowance
 
           // Preserve successful analysis result for retry
@@ -1749,7 +1879,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
             return
           }
         } catch (err) {
-          if (err instanceof BlendAllowanceError && err.code === 'advanced_blend_limit_reached') {
+          if (err instanceof BlendAllowanceError && (err.code === 'advanced_blend_limit_reached' || err.code === 'install_exhausted' || err.code === 'allowance_unknown')) {
             setAdvancedBlendStage('allowance_exhausted')
             setAdvancedBlendRemaining(0)
             if (err.result) {
@@ -1762,6 +1892,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
               used: err.result?.used ?? 0,
               limit: err.result?.limit ?? FREE_ADVANCED_BLEND_ALLOWANCE,
               source: logSource,
+              error_code: err.code,
             })
             return
           }
@@ -1820,21 +1951,62 @@ export default function JuiceSnapScreen({ navigation, route }) {
 
       // Create a JuiceLogEntry for the Today log
       // Include ingredientDetails (portion data) for Pro Detailed History
+      // Capture the original weight display unit/value so Make Again can
+      // reproduce the user's chosen representation (g vs oz) instead of
+      // converting to the current global preference.
+      const G_PER_OZ = 28.3495
       const ingredientDetails = ingredients
         .filter((i) => i && typeof i.produceId === 'string')
-        .map((i) => ({
-          produceId: i.produceId,
-          weightG: typeof i.weightG === 'number' ? i.weightG : 150,
-          portionEntryMode: i.portionEntryMode || 'weight',
-          portionMetadata: i.portionMetadata || undefined,
-        }))
+        .map((i) => {
+          const wG = typeof i.weightG === 'number' ? i.weightG : 150
+          const detail = {
+            produceId: i.produceId,
+            weightG: wG,
+            portionEntryMode: i.portionEntryMode || 'weight',
+            portionMetadata: i.portionMetadata || undefined,
+            // Persist per-ingredient organic status for History display
+            // and Make Again fidelity. Use undefined (not false) when
+            // isOrganic was never set, so legacy entries are not
+            // fabricated as conventional.
+            isOrganic: typeof i.isOrganic === 'boolean' ? i.isOrganic : undefined,
+          }
+          // Only capture entered weight for weight-mode ingredients
+          // (quantity mode preserves its own representation via portionMetadata)
+          if (detail.portionEntryMode === 'weight') {
+            if (weightDisplayMode === 'grams') {
+              detail.enteredWeightValue = Math.round(wG)
+              detail.enteredWeightUnit = 'g'
+            } else if (weightDisplayMode === 'oz') {
+              detail.enteredWeightValue = parseFloat((wG / G_PER_OZ).toFixed(1))
+              detail.enteredWeightUnit = 'oz'
+            } else {
+              // 'both' mode — preserve grams as the primary representation
+              detail.enteredWeightValue = Math.round(wG)
+              detail.enteredWeightUnit = 'g'
+            }
+          }
+          return detail
+        })
       const logEntry = addLogEntry({
         source: logSource,
         ingredientIds: ingredientIds,
         nutrientSummary: totals,
         ingredientDetails,
+        totalJuiceWeightG: juiceYieldG,
       })
       recordMeaningfulActivity().catch(() => {})
+
+      // Developer-tools-only diagnostic: log nutrient keys and values
+      // for the newly created entry. Helps QA trace micronutrient
+      // persistence without exposing personal information.
+      if (process.env.EXPO_PUBLIC_ENABLE_DEVELOPER_TOOLS === '1') {
+        const supportedKeys = ['calories', 'sugar', 'fiber', 'vitaminC', 'vitaminA', 'potassium', 'iron', 'magnesium', 'folate']
+        const keysPresent = Object.keys(totals).filter((k) => supportedKeys.includes(k))
+        const values = {}
+        supportedKeys.forEach((k) => { values[k] = Number(totals[k]) || 0 })
+        // eslint-disable-next-line no-console
+        console.log(`[HISTORY_NUTRIENT_QA] logEntryId=${logEntry?.id || 'null'} keys=[${keysPresent.join(',')}] values=${JSON.stringify(values)} totalJuiceWeightG=${juiceYieldG ?? 'null'}`)
+      }
 
       // Navigate to ScanSuccess with session metrics and entry ID
       const nutrientKeys = Object.keys(totals).filter(
@@ -1871,7 +2043,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
       // If analysisCompletedRef.current is true but !loggingSucceeded,
       // preserve analysis state for retry (partial-success)
     }
-  }, [hasItems, batch, isPro, effectiveManualMode, logJuice, recordNutritionLog, preMomentum, navigation, addLogEntry])
+  }, [hasItems, hasInvalidIngredients, batch, isPro, effectiveManualMode, logJuice, recordNutritionLog, preMomentum, navigation, addLogEntry])
 
   const handleAdvancedBlendConfirm = useCallback(() => {
     blendApprovedRef.current = true
@@ -2036,15 +2208,6 @@ export default function JuiceSnapScreen({ navigation, route }) {
                   : 'Keep adding produce manually for free, or upgrade to RawLifeFlow Pro for 12 AI Snaps each month.'}
               </Text>
               <View style={styles.depletedActions}>
-                <TouchableOpacity
-                  style={styles.depletedManualBtn}
-                  onPress={() => setIsManualMode(true)}
-                  activeOpacity={0.7}
-                  accessibilityRole="button"
-                  accessibilityLabel="Enter produce manually"
-                >
-                  <Text style={styles.depletedManualBtnText}>Enter Produce Manually</Text>
-                </TouchableOpacity>
                 {!filmRollIsPro && (
                   <TouchableOpacity
                     style={styles.depletedUpgradeBtn}
@@ -2074,6 +2237,9 @@ export default function JuiceSnapScreen({ navigation, route }) {
 
         {/* ── Manual Entry: Search + Ingredient Cloud ─────────── */}
         <View style={manualStyles.manualSection}>
+          <Text style={manualStyles.manualHelperText}>
+            Prefer manual entry? Tap a produce below.
+          </Text>
           <Text style={manualStyles.manualLabel}>Or type it in</Text>
           <View style={manualStyles.searchBar}>
             <Search size={16} color="#90A4AE" />
@@ -2180,6 +2346,12 @@ export default function JuiceSnapScreen({ navigation, route }) {
               )}
             </LinearGradient>
           </TouchableOpacity>
+        )}
+
+        {hasInvalidIngredients && hasItems && !isLogging && (
+          <Text style={{ color: '#EF4444', fontSize: 12, textAlign: 'center', marginTop: 6 }}>
+            Resolve ingredient errors before logging.
+          </Text>
         )}
 
         {isLogged && (
@@ -2412,6 +2584,20 @@ const styles = StyleSheet.create({
   editQuantityContainer: {
     flexDirection: 'column',
     gap: 8,
+  },
+  rowErrorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingLeft: 16,
+    paddingRight: 4,
+  },
+  rowErrorText: {
+    fontSize: 11,
+    color: '#F85149',
+    lineHeight: 16,
+    flexShrink: 1,
+    flexWrap: 'wrap',
   },
   editNameRow: {
     flexDirection: 'row',
@@ -2843,6 +3029,13 @@ const manualStyles = StyleSheet.create({
   },
   manualSection: {
     marginBottom: 16,
+  },
+  manualHelperText: {
+    fontSize: 12,
+    fontWeight: '400',
+    color: '#78909C',
+    marginBottom: 6,
+    textAlign: 'center',
   },
   manualLabel: {
     fontSize: 13,

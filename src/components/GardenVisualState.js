@@ -93,13 +93,13 @@ export function getBedStageVisualProps(stageKey) {
   return STAGE_VISUAL_PROPS[stageKey] || STAGE_VISUAL_PROPS.empty
 }
 
-// ── Color group marker colors ────────────────────────────────
+// ── Color group marker colors (FINAL handoff dark palette) ───
 const COLOR_MARKER_COLORS = {
-  green: '#81C784',
-  red: '#E91E63',
-  orange: '#FFB74D',
-  yellow: '#FFD54F',
-  purple: '#AB47BC',
+  green: '#5FD98A',
+  red: '#E0605A',
+  orange: '#E8873A',
+  yellow: '#F2C14E',
+  purple: '#A374C9',
   tan: '#D7CCB8',
 }
 
@@ -108,30 +108,38 @@ export function getColorMarkerColor(colorKey) {
 }
 
 // ── Bed positions on the full canvas (400×520 viewBox) ───────
-// Seven beds arranged in a garden layout:
-//   Top row:    greens (left),  herbs (center),  roots (right)
-//   Middle row: citrus (left), orchard (center), berries (right)
-//   Bottom row: tropical (center)
+// FINAL handoff 3×3 grid layout:
+//   Top row:    greens (left),  roots (center),   citrus (right)
+//   Middle row: orchard (left), tropical (center), berries (right)
+//   Bottom row: journey_tree (left), herbs (center), milestone_arbor (right)
 export const BED_POSITIONS = {
   greens:   { x: 30,  y: 40,  w: 100, h: 130 },
-  herbs:    { x: 150, y: 40,  w: 100, h: 130 },
-  roots:    { x: 270, y: 40,  w: 100, h: 130 },
-  citrus:   { x: 30,  y: 190, w: 100, h: 130 },
-  orchard:  { x: 150, y: 190, w: 100, h: 130 },
+  roots:    { x: 150, y: 40,  w: 100, h: 130 },
+  citrus:   { x: 270, y: 40,  w: 100, h: 130 },
+  orchard:  { x: 30,  y: 190, w: 100, h: 130 },
+  tropical: { x: 150, y: 190, w: 100, h: 130 },
   berries:  { x: 270, y: 190, w: 100, h: 130 },
-  tropical: { x: 150, y: 340, w: 100, h: 130 },
+  herbs:    { x: 150, y: 340, w: 100, h: 130 },
 }
 
+// Tree and Arbor positions (bottom-row bookends)
+export const TREE_POSITION = { x: 30,  y: 340, w: 100, h: 130 }
+export const ARBOR_POSITION = { x: 270, y: 340, w: 100, h: 130 }
+
 // ── Compact layout positions (160×200 viewBox) ───────────────
+// 3×3 grid: 7 beds + Tree + Arbor
 export const BED_POSITIONS_COMPACT = {
   greens:   { x: 12,  y: 16,  w: 40, h: 52 },
-  herbs:    { x: 60,  y: 16,  w: 40, h: 52 },
-  roots:    { x: 108, y: 16,  w: 40, h: 52 },
-  citrus:   { x: 12,  y: 76,  w: 40, h: 52 },
-  orchard:  { x: 60,  y: 76,  w: 40, h: 52 },
+  roots:    { x: 60,  y: 16,  w: 40, h: 52 },
+  citrus:   { x: 108, y: 16,  w: 40, h: 52 },
+  orchard:  { x: 12,  y: 76,  w: 40, h: 52 },
+  tropical: { x: 60,  y: 76,  w: 40, h: 52 },
   berries:  { x: 108, y: 76,  w: 40, h: 52 },
-  tropical: { x: 60,  y: 136, w: 40, h: 52 },
+  herbs:    { x: 60,  y: 136, w: 40, h: 52 },
 }
+
+export const TREE_POSITION_COMPACT = { x: 12,  y: 136, w: 40, h: 52 }
+export const ARBOR_POSITION_COMPACT = { x: 108, y: 136, w: 40, h: 52 }
 
 // ── Build visual state from garden summary ───────────────────
 export function buildGardenVisualState(summary) {

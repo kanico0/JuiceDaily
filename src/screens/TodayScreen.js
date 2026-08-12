@@ -622,6 +622,8 @@ export default function TodayScreen({ navigation }) {
               entries={entries}
               onPress={handleGardenPress}
               isReduced={isReduced}
+              journeyStageKey={journeyStage?.key || null}
+              unlockedAchievementIds={unlockedAchievementIds}
             />
 
             {/* === POST-LOG STATE ========================= */}
@@ -1091,6 +1093,7 @@ export default function TodayScreen({ navigation }) {
         onClose={() => setShowGardenDetail(false)}
         entries={entries}
         isReduced={isReduced}
+        unlockedAchievementIds={unlockedAchievementIds}
       />
 
       {/* Garden Celebration (only when no achievement or stage celebration showing) */}

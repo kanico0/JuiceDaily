@@ -20,12 +20,15 @@ import {
   useWindowDimensions,
 } from 'react-native'
 import GardenArtwork from './GardenArtwork'
+import JourneyTreeArtwork, { TREE_DESCRIPTORS } from './JourneyTreeArtwork'
+import MilestoneArborArtwork, { ARBOR_CATALOG, getArborEarnedCount, getArborSlotStates } from './MilestoneArborArtwork'
 import { buildGardenVisualState, GARDEN_PALETTE } from './GardenVisualState'
 import {
   getGardenSummary,
   getProduceByBed,
   getBedStages,
   getDiscoveredColors,
+  isRainbowHarvestComplete,
 } from '../services/gardenService'
 import {
   GARDEN_BEDS,
@@ -36,6 +39,8 @@ import {
   getColorForProduce,
 } from '../constants/gardenTaxonomy'
 import { PRODUCE_DATA } from '../services/JuiceEngine'
+import { getJourneyStage } from '../constants/glowJourneyStages'
+import { getLifetimeQualifyingDays } from '../services/glowJourneyService'
 import {
   SEMANTIC_COLORS,
   SEMANTIC_TYPOGRAPHY,
@@ -49,6 +54,7 @@ function GardenDetail({
   onClose,
   entries,
   isReduced = false,
+  unlockedAchievementIds = [],
 }) {
   const { width: screenWidth } = useWindowDimensions()
   const [selectedBed, setSelectedBed] = useState(null)
@@ -58,6 +64,19 @@ function GardenDetail({
   const produceByBed = useMemo(() => getProduceByBed(entries), [entries])
   const bedStages = useMemo(() => getBedStages(entries), [entries])
   const discoveredColors = useMemo(() => getDiscoveredColors(entries), [entries])
+  const rainbowComplete = useMemo(() => isRainbowHarvestComplete(entries), [entries])
+  const lifetimeDays = useMemo(() => getLifetimeQualifyingDays(entries), [entries])
+  const journeyStage = useMemo(() => getJourneyStage(lifetimeDays), [lifetimeDays])
+  const journeyStageKey = journeyStage?.key || null
+
+  const arborCtx = useMemo(() => ({
+    unlockedAchievementIds,
+    bedStages,
+    rainbowComplete,
+  }), [unlockedAchievementIds, bedStages, rainbowComplete])
+
+  const arborEarned = useMemo(() => getArborEarnedCount(arborCtx), [arborCtx])
+  const arborSlots = useMemo(() => getArborSlotStates(arborCtx), [arborCtx])
 
   const artworkSize = Math.min(screenWidth - 32, 380)
 
@@ -109,6 +128,8 @@ function GardenDetail({
               size={artworkSize}
               isReduced={isReduced}
               highlightBed={selectedBed}
+              journeyStageKey={journeyStageKey}
+              arborCtx={arborCtx}
             />
           </View>
 
@@ -255,6 +276,63 @@ function GardenDetail({
                 </View>
               )
             })}
+          </View>
+
+          {/* ── Journey Tree section ── */}
+          <Text style={styles.sectionTitle}>Journey Tree</Text>
+          <View style={styles.treeSection}>
+            <View style={styles.treeArtworkWrap}>
+              <JourneyTreeArtwork stageKey={journeyStageKey} size={120} />
+            </View>
+            <View style={styles.treeInfo}>
+              <Text style={styles.treePrimaryLabel}>
+                {journeyStage ? journeyStage.label : 'Seed'}
+              </Text>
+              <Text style={styles.treeSecondaryLabel}>
+                {journeyStageKey ? TREE_DESCRIPTORS[journeyStageKey] : 'Seed'}
+              </Text>
+              <Text style={styles.treeDescription}>
+                Your Journey Tree grows permanently with every juice you log.
+                It never resets — even if your streak breaks.
+              </Text>
+              <Text style={styles.treeLifetimeDays}>
+                {lifetimeDays} lifetime juicing {lifetimeDays === 1 ? 'day' : 'days'}
+              </Text>
+            </View>
+          </View>
+
+          {/* ── Milestone Arbor section ── */}
+          <Text style={styles.sectionTitle}>Milestone Arbor</Text>
+          <View style={styles.arborSection}>
+            <View style={styles.arborArtworkWrap}>
+              <MilestoneArborArtwork ctx={arborCtx} size={120} />
+            </View>
+            <View style={styles.arborInfo}>
+              <Text style={styles.arborEarnedText}>
+                {arborEarned} earned so far
+              </Text>
+              <Text style={styles.arborDescription}>
+                Ornaments are earned by reaching lifetime milestones across
+                your Garden and Glow Journey. Unearned slots appear as empty
+                pegs — they fill in as you progress.
+              </Text>
+              <View style={styles.arborSlotList}>
+                {arborSlots.map((slot) => (
+                  <View key={slot.id} style={styles.arborSlotItem}>
+                    <View style={[
+                      styles.arborSlotDot,
+                      { backgroundColor: slot.earned ? GARDEN_PALETTE.glowColor : 'rgba(255,255,255,0.08)' },
+                    ]} />
+                    <Text style={[
+                      styles.arborSlotLabel,
+                      { opacity: slot.earned ? 1 : 0.4 },
+                    ]}>
+                      {slot.label}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            </View>
           </View>
         </ScrollView>
       </View>
@@ -470,6 +548,85 @@ const styles = StyleSheet.create({
   colorLabel: {
     ...SEMANTIC_TYPOGRAPHY.caption,
     color: SEMANTIC_COLORS.textSecondary,
+  },
+  treeSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SEMANTIC_SPACE.md,
+    backgroundColor: SEMANTIC_COLORS.surface,
+    borderRadius: SEMANTIC_RADIUS.large,
+    padding: SEMANTIC_SPACE.md,
+    marginBottom: SEMANTIC_SPACE.md,
+  },
+  treeArtworkWrap: {
+    flexShrink: 0,
+  },
+  treeInfo: {
+    flex: 1,
+  },
+  treePrimaryLabel: {
+    ...SEMANTIC_TYPOGRAPHY.cardTitle,
+    color: SEMANTIC_COLORS.textPrimary,
+  },
+  treeSecondaryLabel: {
+    ...SEMANTIC_TYPOGRAPHY.caption,
+    color: GARDEN_PALETTE.particleColor,
+    fontStyle: 'italic',
+    marginTop: 2,
+  },
+  treeDescription: {
+    ...SEMANTIC_TYPOGRAPHY.body,
+    color: SEMANTIC_COLORS.textSecondary,
+    marginTop: 6,
+    lineHeight: 18,
+  },
+  treeLifetimeDays: {
+    ...SEMANTIC_TYPOGRAPHY.bodyStrong,
+    color: GARDEN_PALETTE.glowColor,
+    marginTop: 4,
+  },
+  arborSection: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: SEMANTIC_SPACE.md,
+    backgroundColor: SEMANTIC_COLORS.surface,
+    borderRadius: SEMANTIC_RADIUS.large,
+    padding: SEMANTIC_SPACE.md,
+    marginBottom: SEMANTIC_SPACE.md,
+  },
+  arborArtworkWrap: {
+    flexShrink: 0,
+  },
+  arborInfo: {
+    flex: 1,
+  },
+  arborEarnedText: {
+    ...SEMANTIC_TYPOGRAPHY.cardTitle,
+    color: GARDEN_PALETTE.particleColor,
+  },
+  arborDescription: {
+    ...SEMANTIC_TYPOGRAPHY.body,
+    color: SEMANTIC_COLORS.textSecondary,
+    marginTop: 6,
+    lineHeight: 18,
+  },
+  arborSlotList: {
+    marginTop: SEMANTIC_SPACE.sm,
+  },
+  arborSlotItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 3,
+  },
+  arborSlotDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  arborSlotLabel: {
+    ...SEMANTIC_TYPOGRAPHY.caption,
+    color: SEMANTIC_COLORS.textPrimary,
   },
 })
 

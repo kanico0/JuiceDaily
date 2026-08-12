@@ -13,7 +13,8 @@ import { View, Text, StyleSheet, Pressable } from 'react-native'
 import { useWindowDimensions } from 'react-native'
 import GardenCompactArtwork from './GardenCompactArtwork'
 import { buildGardenVisualState, GARDEN_PALETTE } from './GardenVisualState'
-import { getGardenSummary, getNextDiscoveryHint } from '../services/gardenService'
+import { getGardenSummary, getNextDiscoveryHint, getBedStages, isRainbowHarvestComplete } from '../services/gardenService'
+import { getArborEarnedCount } from './MilestoneArborArtwork'
 import { SEMANTIC_COLORS, SEMANTIC_TYPOGRAPHY, SEMANTIC_RADIUS, SEMANTIC_SHADOWS } from '../constants/tokens'
 
 const MIN_CARD_WIDTH = 280
@@ -23,17 +24,29 @@ function GardenCard({
   entries,
   onPress,
   isReduced = false,
+  journeyStageKey = null,
+  unlockedAchievementIds = [],
 }) {
   const { width: screenWidth } = useWindowDimensions()
 
   const summary = useMemo(() => getGardenSummary(entries), [entries])
   const visualState = useMemo(() => buildGardenVisualState(summary), [summary])
   const hint = useMemo(() => getNextDiscoveryHint(entries), [entries])
+  const bedStages = useMemo(() => getBedStages(entries), [entries])
+  const rainbowComplete = useMemo(() => isRainbowHarvestComplete(entries), [entries])
+
+  const arborCtx = useMemo(() => ({
+    unlockedAchievementIds,
+    bedStages,
+    rainbowComplete,
+  }), [unlockedAchievementIds, bedStages, rainbowComplete])
+
+  const arborEarned = useMemo(() => getArborEarnedCount(arborCtx), [arborCtx])
 
   const cardWidth = Math.min(Math.max(screenWidth - 32, MIN_CARD_WIDTH), MAX_CARD_WIDTH)
   const artworkSize = Math.min(cardWidth * 0.38, 140)
 
-  const accessibilityLabel = `RawLife Garden: ${summary.discoveredCount} produce discovered across ${summary.bedsStarted} of ${summary.totalBeds} beds. ${summary.discoveredColorCount} of ${summary.totalColors} colors discovered. ${summary.rainbowComplete ? 'Rainbow Harvest complete.' : ''}`
+  const accessibilityLabel = `RawLife Garden: ${summary.discoveredCount} produce discovered across ${summary.bedsStarted} of ${summary.totalBeds} beds. ${summary.discoveredColorCount} of ${summary.totalColors} colors discovered. ${summary.rainbowComplete ? 'Rainbow Harvest complete.' : ''} Milestone Arbor: ${arborEarned} earned so far.`
 
   return (
     <Pressable
@@ -53,6 +66,8 @@ function GardenCard({
             visualState={visualState}
             size={artworkSize}
             isReduced={isReduced}
+            journeyStageKey={journeyStageKey}
+            arborCtx={arborCtx}
           />
         </View>
 
@@ -76,6 +91,9 @@ function GardenCard({
               {hint.message}
             </Text>
           )}
+          <Text style={styles.arborText}>
+            Arbor: {arborEarned} earned so far
+          </Text>
           <Text style={styles.motivationalCopy}>
             {summary.discoveredCount === 0
               ? 'Plant your first seed today. Every scan grows your garden!'
@@ -133,6 +151,11 @@ const styles = StyleSheet.create({
   rainbowText: {
     ...SEMANTIC_TYPOGRAPHY.bodyStrong,
     color: GARDEN_PALETTE.particleColor,
+  },
+  arborText: {
+    ...SEMANTIC_TYPOGRAPHY.caption,
+    color: GARDEN_PALETTE.particleColor,
+    marginTop: 2,
   },
   hintText: {
     ...SEMANTIC_TYPOGRAPHY.caption,

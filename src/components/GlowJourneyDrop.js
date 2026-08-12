@@ -17,6 +17,7 @@ import { useReducedMotion, EASING } from '../utils/motion'
 import { trackEvent } from '../services/AnalyticsService'
 import { buildGlowJourneyVisualState, clampProgress } from './GlowJourneyVisualState'
 import GlowJourneyDropArtwork from './GlowJourneyDropArtwork'
+import GlowJourneyStageIcon from './GlowJourneyStageIcon'
 
 const MAX_DROP_SIZE = 180
 const MIN_DROP_SIZE = 120
@@ -322,7 +323,7 @@ function GlowJourneyDrop({
         <View style={styles.infoSection}>
           {stage ? (
             <View style={styles.stageRow}>
-              <Text style={styles.stageEmoji}>{stage.emoji}</Text>
+              <GlowJourneyStageIcon stageKey={stage.key} size={18} color={SEMANTIC_COLORS.textPrimary} />
               <Text style={styles.stageLabel}>{stage.label}</Text>
               <Text style={styles.stageDays}>· {lifetimeDays} days</Text>
             </View>
@@ -338,11 +339,21 @@ function GlowJourneyDrop({
           />
         </View>
 
-        {/* Supporting chips */}
+        {/* Supporting chips — grouped by time horizon for clarity */}
         <View style={styles.chipsRow}>
-          <Chip label="Momentum" value={streakCount > 0 ? `${streakCount}d` : '—'} />
-          <Chip label="Weekly" value={`${weeklyQualifyingDays}/${WEEKLY_GLOW_GOAL}`} />
-          <Chip label="Lifetime" value={lifetimeDays > 0 ? `${lifetimeDays}d` : '—'} />
+          <View style={styles.chipGroup}>
+            <Text style={styles.chipGroupLabel}>This Week</Text>
+            <View style={styles.chipPair}>
+              <Chip label="Weekly" value={`${weeklyQualifyingDays}/${WEEKLY_GLOW_GOAL}`} />
+              <Chip label="Momentum" value={streakCount > 0 ? `${streakCount}d` : '—'} />
+            </View>
+          </View>
+          <View style={styles.chipGroup}>
+            <Text style={styles.chipGroupLabel}>Lifetime</Text>
+            <View style={styles.chipPair}>
+              <Chip label="Days" value={lifetimeDays > 0 ? `${lifetimeDays}d` : '—'} />
+            </View>
+          </View>
         </View>
 
         {/* Motivational copy */}
@@ -451,9 +462,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
   },
-  stageEmoji: {
-    fontSize: 16,
-  },
   stageLabel: {
     fontSize: 15,
     fontWeight: '700',
@@ -484,8 +492,24 @@ const styles = StyleSheet.create({
   },
   chipsRow: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 12,
     marginTop: SEMANTIC_SPACE.sm,
+    justifyContent: 'center',
+  },
+  chipGroup: {
+    alignItems: 'center',
+  },
+  chipGroupLabel: {
+    fontSize: 9,
+    fontWeight: '600',
+    color: SEMANTIC_COLORS.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 3,
+  },
+  chipPair: {
+    flexDirection: 'row',
+    gap: 6,
   },
   chip: {
     flexDirection: 'row',

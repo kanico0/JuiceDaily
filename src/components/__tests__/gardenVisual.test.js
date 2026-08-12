@@ -287,24 +287,33 @@ describe('Reduced motion support', () => {
   })
 })
 
-// ── No Glow Journey imports in Garden components ─────────────
+// ── No Glow Journey component imports in Garden components ───
+// Note: Garden components MAY import canonical stage data
+// (glowJourneyStages, GlowJourneyVisualState palette) since the
+// Journey Tree is a pure second renderer of the same stage.
+// They must NOT import full Glow Journey UI components.
 
 describe('No cross-contamination with Glow Journey', () => {
-  test('GardenArtwork does not import GlowJourney components', () => {
+  test('GardenArtwork does not import GlowJourney UI components', () => {
     const src = readSrc('GardenArtwork.js')
-    expect(src).not.toContain('GlowJourney')
-    expect(src).not.toContain('glowJourney')
+    // Allowed: canonical stage constants and palette
+    // Not allowed: full UI components like GlowJourneyDrop
+    expect(src).not.toContain('GlowJourneyDrop')
+    expect(src).not.toContain('GlowJourneyDetail')
+    expect(src).not.toContain('GlowJourneyCelebrationOverlay')
   })
 
-  test('GardenCard does not import GlowJourney components', () => {
+  test('GardenCard does not import GlowJourney UI components', () => {
     const src = readSrc('GardenCard.js')
-    expect(src).not.toContain('GlowJourney')
-    expect(src).not.toContain('glowJourney')
+    expect(src).not.toContain('GlowJourneyDrop')
+    expect(src).not.toContain('GlowJourneyDetail')
+    expect(src).not.toContain('GlowJourneyCelebrationOverlay')
   })
 
-  test('GardenDetail does not import GlowJourney components', () => {
+  test('GardenDetail does not import GlowJourney UI components', () => {
     const src = readSrc('GardenDetail.js')
-    expect(src).not.toContain('GlowJourney')
-    expect(src).not.toContain('glowJourney')
+    expect(src).not.toContain('GlowJourneyDrop')
+    expect(src).not.toContain('GlowJourneyDetail')
+    expect(src).not.toContain('GlowJourneyCelebrationOverlay')
   })
 })

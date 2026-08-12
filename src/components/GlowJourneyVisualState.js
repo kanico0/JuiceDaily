@@ -59,12 +59,20 @@ const FALLING_DROPLET_COLOR = '#8FBF9F'
 const LIQUID_HIGHLIGHT_COLOR = '#FFFFFF'
 const STAGE_GOLD_TRIM = '#D9A63E'
 
+// ── Juice-colored liquid (FINAL handoff §5.2) ────────────────
+// Warm carrot/orange dominant base with a thin mint/green
+// secondary band near the top — reads as "juice" on sight.
+const JUICE_LIQUID_BASE = '#E8873A'
+const JUICE_LIQUID_TOP_BAND = '#8FBF9F'
+
 export const GLOW_JOURNEY_PALETTE = {
   haloUnfilledStroke: HALO_UNFILLED_STROKE,
   particleColor: PARTICLE_COLOR,
   fallingDropletColor: FALLING_DROPLET_COLOR,
   liquidHighlightColor: LIQUID_HIGHLIGHT_COLOR,
   stageGoldTrim: STAGE_GOLD_TRIM,
+  juiceLiquidBase: JUICE_LIQUID_BASE,
+  juiceLiquidTopBand: JUICE_LIQUID_TOP_BAND,
 }
 
 export function clampProgress(value) {
@@ -81,8 +89,8 @@ export function getLeafVisualState(leaf, stageProps) {
   const filled = leaf.hasLog
   return {
     filled,
-    fillColor: filled ? stageProps.liquidColor : 'none',
-    strokeColor: filled ? stageProps.liquidColor : HALO_UNFILLED_STROKE,
+    fillColor: filled ? GLOW_JOURNEY_PALETTE.juiceLiquidTopBand : 'none',
+    strokeColor: filled ? GLOW_JOURNEY_PALETTE.juiceLiquidTopBand : HALO_UNFILLED_STROKE,
     strokeWidth: leaf.isToday ? 2 : 1,
     opacity: leaf.isFuture ? 0.4 : 1,
     scale: leaf.isToday ? 1.25 : 1,

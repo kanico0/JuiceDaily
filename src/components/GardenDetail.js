@@ -9,7 +9,7 @@
 //   - Accessible labels for each bed
 // ─────────────────────────────────────────────────────────────
 
-import React, { useMemo, useState, useCallback } from 'react'
+import React, { useMemo, useState, useCallback, useEffect, useRef } from 'react'
 import {
   View,
   Text,
@@ -19,10 +19,10 @@ import {
   Pressable,
   useWindowDimensions,
 } from 'react-native'
-import GardenArtwork from './GardenArtwork'
 import JourneyTreeArtwork, { TREE_DESCRIPTORS } from './JourneyTreeArtwork'
-import MilestoneArborArtwork, { ARBOR_CATALOG, getArborEarnedCount, getArborSlotStates } from './MilestoneArborArtwork'
-import { buildGardenVisualState, GARDEN_PALETTE } from './GardenVisualState'
+import MilestoneArborArtwork, { getArborEarnedCount, getArborSlotStates } from './MilestoneArborArtwork'
+import { GARDEN_PALETTE } from './GardenVisualState'
+import LivingGardenScene from './LivingGardenScene'
 import {
   getGardenSummary,
   getProduceByBed,
@@ -35,12 +35,20 @@ import {
   GARDEN_COLORS,
   BED_METADATA,
   COLOR_METADATA,
-  getBedForProduce,
   getColorForProduce,
 } from '../constants/gardenTaxonomy'
 import { PRODUCE_DATA } from '../services/JuiceEngine'
 import { getJourneyStage } from '../constants/glowJourneyStages'
 import { getLifetimeQualifyingDays } from '../services/glowJourneyService'
+import {
+  getLastSeenState,
+  saveLastSeenState,
+  initializeIfAbsent,
+  detectAdvancements,
+  buildCurrentSeenState,
+  isIntroSeen,
+  markIntroSeen,
+} from '../services/gardenSeenState'
 import {
   SEMANTIC_COLORS,
   SEMANTIC_TYPOGRAPHY,
@@ -60,7 +68,6 @@ function GardenDetail({
   const [selectedBed, setSelectedBed] = useState(null)
 
   const summary = useMemo(() => getGardenSummary(entries), [entries])
-  const visualState = useMemo(() => buildGardenVisualState(summary), [summary])
   const produceByBed = useMemo(() => getProduceByBed(entries), [entries])
   const bedStages = useMemo(() => getBedStages(entries), [entries])
   const discoveredColors = useMemo(() => getDiscoveredColors(entries), [entries])
@@ -80,8 +87,69 @@ function GardenDetail({
 
   const artworkSize = Math.min(screenWidth - 32, 380)
 
+  // ── Living Garden seen-state + intro ────────────────────────
+  const [showIntro, setShowIntro] = useState(false)
+  const seenStateLoaded = useRef(false)
+
+  // Current state for seen-state comparison
+  const currentSeenState = useMemo(() => buildCurrentSeenState({
+    bedStages,
+    journeyStageKey,
+    earnedMilestoneIds: unlockedAchievementIds,
+  }), [bedStages, journeyStageKey, unlockedAchievementIds])
+
+  // On first visible: initialize seen-state if absent, check intro
+  useEffect(() => {
+    if (!visible || seenStateLoaded.current) return
+    seenStateLoaded.current = true
+    let cancelled = false
+    ;(async () => {
+      const wasFirstOpen = await initializeIfAbsent(currentSeenState)
+      if (cancelled) return
+      if (!wasFirstOpen) {
+        // Check for missed advancements (for future visual transitions)
+        // For v1, we detect but the wake animation handles presentation
+        const lastSeen = await getLastSeenState()
+        if (lastSeen) {
+          detectAdvancements(lastSeen, currentSeenState)
+          // Advancements are detected; the scene's wake animation
+          // provides the visual transition. Snapshot is updated below.
+        }
+      }
+      // Show intro callouts if not yet seen
+      const introSeen = await isIntroSeen()
+      if (cancelled) return
+      if (!introSeen) {
+        setShowIntro(true)
+      }
+    })()
+    return () => { cancelled = true }
+  }, [visible, currentSeenState])
+
+  // Update seen-state AFTER user has seen the Garden (on close)
+  useEffect(() => {
+    if (!visible && seenStateLoaded.current) {
+      saveLastSeenState(currentSeenState)
+    }
+  }, [visible, currentSeenState])
+
+  const handleDismissIntro = useCallback(() => {
+    setShowIntro(false)
+    markIntroSeen()
+  }, [])
+
   const handleBedPress = useCallback((bedKey) => {
     setSelectedBed((prev) => (prev === bedKey ? null : bedKey))
+  }, [])
+
+  const handleTreePress = useCallback(() => {
+    // Scroll to Journey Tree section or show tree detail
+    setSelectedBed(null)
+  }, [])
+
+  const handleArborPress = useCallback(() => {
+    // Scroll to Arbor section or show arbor detail
+    setSelectedBed(null)
   }, [])
 
   const selectedBedData = selectedBed
@@ -121,25 +189,54 @@ function GardenDetail({
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          {/* Full artwork */}
-          <View style={styles.artworkContainer}>
-            <GardenArtwork
-              visualState={visualState}
-              size={artworkSize}
-              isReduced={isReduced}
-              highlightBed={selectedBed}
+          {/* Living Garden immersive scene */}
+          <View style={styles.livingGardenContainer}>
+            <LivingGardenScene
+              bedStages={bedStages}
               journeyStageKey={journeyStageKey}
               arborCtx={arborCtx}
+              isReduced={isReduced}
+              onBedPress={handleBedPress}
+              onTreePress={handleTreePress}
+              onArborPress={handleArborPress}
+              sceneId="garden-detail"
             />
           </View>
 
-          {/* How it works guidance */}
+          {/* First-visit intro callouts (shown once) */}
+          {showIntro && (
+            <View style={styles.introOverlay}>
+              <View style={styles.introCard}>
+                <Text style={styles.introTitle}>Your Living Garden</Text>
+                <Text style={styles.introItem}>
+                  Your produce areas grow as you explore.
+                </Text>
+                <Text style={styles.introItem}>
+                  Your Journey Tree will grow here.
+                </Text>
+                <Text style={styles.introItem}>
+                  Your Arbor keeps the milestones you've earned.
+                </Text>
+                <Pressable
+                  onPress={handleDismissIntro}
+                  accessibilityLabel="Dismiss intro"
+                  accessibilityRole="button"
+                  style={styles.introButton}
+                >
+                  <Text style={styles.introButtonText}>Got it</Text>
+                </Pressable>
+              </View>
+            </View>
+          )}
+
+          {/* How my Garden grows — help entry */}
           <View style={styles.guidanceBanner}>
-            <Text style={styles.guidanceTitle}>How your garden grows</Text>
+            <Text style={styles.guidanceTitle}>How my Garden grows</Text>
             <Text style={styles.guidanceBody}>
               Every time you scan or log a juice, the produce you use is planted here.
               Discover new ingredients to grow new areas, unlock colors, and complete
-              your Rainbow Harvest. Tap any area below to see what you've grown.
+              your Rainbow Harvest. Your Garden does not decay from inactivity —
+              it only grows. Tap any area in the scene above to see what you've grown.
             </Text>
           </View>
 
@@ -409,6 +506,57 @@ const styles = StyleSheet.create({
   artworkContainer: {
     alignItems: 'center',
     paddingVertical: SEMANTIC_SPACE.md,
+  },
+  livingGardenContainer: {
+    alignItems: 'center',
+    paddingVertical: SEMANTIC_SPACE.sm,
+    backgroundColor: '#04100A',
+    borderRadius: SEMANTIC_RADIUS.large,
+    overflow: 'hidden',
+  },
+  introOverlay: {
+    position: 'absolute',
+    top: 180,
+    left: 16,
+    right: 16,
+    zIndex: 10,
+    alignItems: 'center',
+  },
+  introCard: {
+    backgroundColor: 'rgba(10, 23, 16, 0.94)',
+    borderRadius: SEMANTIC_RADIUS.large,
+    paddingHorizontal: SEMANTIC_SPACE.lg,
+    paddingVertical: SEMANTIC_SPACE.md,
+    borderWidth: 1,
+    borderColor: 'rgba(217, 164, 65, 0.3)',
+    maxWidth: 340,
+  },
+  introTitle: {
+    ...SEMANTIC_TYPOGRAPHY.cardTitle,
+    color: '#F0D9A0',
+    marginBottom: SEMANTIC_SPACE.sm,
+    textAlign: 'center',
+  },
+  introItem: {
+    ...SEMANTIC_TYPOGRAPHY.body,
+    color: '#A8C4B0',
+    marginBottom: 6,
+    lineHeight: 18,
+  },
+  introButton: {
+    marginTop: SEMANTIC_SPACE.sm,
+    paddingHorizontal: SEMANTIC_SPACE.lg,
+    paddingVertical: SEMANTIC_SPACE.sm,
+    backgroundColor: 'rgba(217, 164, 65, 0.15)',
+    borderRadius: SEMANTIC_RADIUS.medium,
+    alignSelf: 'center',
+    minHeight: 44,
+    minWidth: 44,
+    justifyContent: 'center',
+  },
+  introButtonText: {
+    ...SEMANTIC_TYPOGRAPHY.buttonLabel,
+    color: '#F0D9A0',
   },
   statsRow: {
     flexDirection: 'row',

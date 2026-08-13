@@ -23,7 +23,7 @@
         "backgroundColor": "#000000"
       },
       "edgeToEdgeEnabled": true,
-      "versionCode": 19,
+      "versionCode": 20,
       "useNextNotificationsApi": true
     },
     "plugins": [

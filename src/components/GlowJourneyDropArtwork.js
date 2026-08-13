@@ -1,8 +1,18 @@
 import React, { useRef } from 'react'
 import { View } from 'react-native'
 import Svg, {
-  Defs, ClipPath, Path, G, Rect, Circle, Ellipse, Line,
-  LinearGradient, RadialGradient, Stop, Text as SvgText,
+  Defs,
+  ClipPath,
+  Path,
+  G,
+  Rect,
+  Circle,
+  Ellipse,
+  Line,
+  LinearGradient,
+  RadialGradient,
+  Stop,
+  Text as SvgText,
 } from 'react-native-svg'
 import { GLOW_PALETTE } from './GlowJourneyVisualState'
 
@@ -16,7 +26,8 @@ import { GLOW_PALETTE } from './GlowJourneyVisualState'
 // ─────────────────────────────────────────────────────────────
 
 // ── Locked vessel silhouette (spec §5 — do not redraw) ───────
-const VESSEL_PATH = 'M118,14 C112,50 130,76 150,104 C170,132 180,152 178,176 C174,220 142,250 98,250 C56,250 22,216 22,172 C22,146 34,124 52,100 C74,70 100,44 118,14 Z'
+const VESSEL_PATH =
+  'M118,14 C112,50 130,76 150,104 C170,132 180,152 178,176 C174,220 142,250 98,250 C56,250 22,216 22,172 C22,146 34,124 52,100 C74,70 100,44 118,14 Z'
 
 // ── Vine constants (spec §6) ─────────────────────────────────
 const VINE_VIEWBOX_W = 360
@@ -30,7 +41,18 @@ function vineLeafPath(cx) {
 }
 
 // ── Hero SVG ─────────────────────────────────────────────────
-function GlowHero({ heroState, surfaceTranslateY, isReduced }) {
+function GlowHero({
+  heroState,
+  surfaceTranslateY,
+  isReduced,
+  meniscusOffsetY = 0,
+  causticOpacity = 0,
+  causticY = 0,
+  glowLineResponse = 0,
+  vesselBreath = 0,
+  downwardSweepY = 0,
+  downwardSweepOpacity = 0,
+}) {
   const {
     surfaceY,
     ambientOpacity,
@@ -68,9 +90,15 @@ function GlowHero({ heroState, surfaceTranslateY, isReduced }) {
 
   // Pulp bubble positions (5 default, 9 when beyond goal)
   const pulpPositions = [
-    { cx: 78, cy: 147 }, { cx: 126, cy: 173 }, { cx: 94, cy: 203 },
-    { cx: 140, cy: 229 }, { cx: 60, cy: 190 },
-    { cx: 110, cy: 155 }, { cx: 150, cy: 200 }, { cx: 88, cy: 220 }, { cx: 130, cy: 240 },
+    { cx: 78, cy: 147 },
+    { cx: 126, cy: 173 },
+    { cx: 94, cy: 203 },
+    { cx: 140, cy: 229 },
+    { cx: 60, cy: 190 },
+    { cx: 110, cy: 155 },
+    { cx: 150, cy: 200 },
+    { cx: 88, cy: 220 },
+    { cx: 130, cy: 240 },
   ]
 
   return (
@@ -80,13 +108,27 @@ function GlowHero({ heroState, surfaceTranslateY, isReduced }) {
           <Path d={VESSEL_PATH} />
         </ClipPath>
         {/* Juice body gradient — vertical, surface to bottom */}
-        <LinearGradient id={ids.juice} x1="0" y1={String(surfaceY)} x2="0" y2="252" gradientUnits="userSpaceOnUse">
+        <LinearGradient
+          id={ids.juice}
+          x1="0"
+          y1={String(surfaceY)}
+          x2="0"
+          y2="252"
+          gradientUnits="userSpaceOnUse"
+        >
           <Stop offset="0" stopColor={GLOW_PALETTE.juiceHighlight} />
           <Stop offset="0.38" stopColor={GLOW_PALETTE.juiceGoldMid} />
           <Stop offset="1" stopColor={GLOW_PALETTE.juiceGoldDeep} />
         </LinearGradient>
         {/* Mint stratum gradient */}
-        <LinearGradient id={ids.strat} x1="0" y1={String(surfaceY - 8)} x2="0" y2={String(surfaceY + 12)} gradientUnits="userSpaceOnUse">
+        <LinearGradient
+          id={ids.strat}
+          x1="0"
+          y1={String(surfaceY - 8)}
+          x2="0"
+          y2={String(surfaceY + 12)}
+          gradientUnits="userSpaceOnUse"
+        >
           <Stop offset="0" stopColor={GLOW_PALETTE.juiceMintLight} />
           <Stop offset="1" stopColor={GLOW_PALETTE.juiceMintDeep} />
         </LinearGradient>
@@ -126,19 +168,38 @@ function GlowHero({ heroState, surfaceTranslateY, isReduced }) {
       </Defs>
 
       {/* z1 — ambient light (edgeless radial ellipse) */}
-      <Ellipse cx="100" cy="172" rx="126" ry="140" fill={`url(#${ids.amb})`} opacity={ambientOpacity} />
+      <Ellipse
+        cx="100"
+        cy="172"
+        rx="126"
+        ry="140"
+        fill={`url(#${ids.amb})`}
+        opacity={ambientOpacity}
+      />
 
       {/* z1b — completion bloom (only when goal met) */}
       {isComplete && (
-        <Ellipse cx="100" cy="100" rx="110" ry="120" fill={`url(#${ids.bloom})`} opacity={completionBloomOpacity} />
+        <Ellipse
+          cx="100"
+          cy="100"
+          rx="110"
+          ry="120"
+          fill={`url(#${ids.bloom})`}
+          opacity={completionBloomOpacity}
+        />
       )}
 
       {/* z2 — vessel interior (dark glass gradient) */}
       <Path d={VESSEL_PATH} fill={`url(#${ids.glass})`} />
 
       {/* z2b — interior shoulder shade (upper-right flank) */}
-      <Path d="M118,14 C112,50 130,76 150,104 C170,132 180,152 178,176"
-            fill="none" stroke="#2A4437" strokeWidth="6" opacity="0.5" />
+      <Path
+        d="M118,14 C112,50 130,76 150,104 C170,132 180,152 178,176"
+        fill="none"
+        stroke="#2A4437"
+        strokeWidth="6"
+        opacity="0.5"
+      />
 
       {/* z3 — liquid group (clipped to vessel, translated to surface) */}
       <G clipPath={`url(#${ids.clip})`}>
@@ -154,28 +215,85 @@ function GlowHero({ heroState, surfaceTranslateY, isReduced }) {
 
           {/* Pulp bubbles */}
           {pulpPositions.slice(0, pulpCount).map((pos, i) => (
-            <Circle key={`pulp_${i}`} cx={pos.cx} cy={pos.cy} r={i % 2 === 0 ? 4.5 : 3.5}
-                    fill={GLOW_PALETTE.juiceGoldLight} opacity="0.30" />
+            <Circle
+              key={`pulp_${i}`}
+              cx={pos.cx}
+              cy={pos.cy}
+              r={i % 2 === 0 ? 4.5 : 3.5}
+              fill={GLOW_PALETTE.juiceGoldLight}
+              opacity="0.30"
+            />
           ))}
 
-          {/* Mint stratum — band on the surface curve */}
-          <Path d={`${meniscusPath} L212,${meniscusY + 12} Q100,${meniscusY + 1} -12,${meniscusY + 12} Z`}
-                fill={`url(#${ids.strat})`} opacity="0.86" />
+          {/* Temporary interior caustic lane — one-pass sweep (q1→q2, q2→q3) */}
+          {causticOpacity > 0 && (
+            <Ellipse
+              cx="100"
+              cy={causticY}
+              rx="70"
+              ry="14"
+              fill={GLOW_PALETTE.juiceHighlight}
+              opacity={causticOpacity * 0.22}
+            />
+          )}
 
-          {/* Glow line soft halo — gradient-filled band, no blur */}
-          <Path d={`${meniscusPath} L212,${meniscusY + 22} Q100,${meniscusY + 11} -12,${meniscusY + 22} Z`}
-                fill={GLOW_PALETTE.juiceMintLight} opacity="0.25" />
+          {/* Temporary downward deepening sweep — post-goal q3→q4+ */}
+          {downwardSweepOpacity > 0 && (
+            <Ellipse
+              cx="100"
+              cy={downwardSweepY}
+              rx="64"
+              ry="18"
+              fill={GLOW_PALETTE.juiceGoldDeep}
+              opacity={downwardSweepOpacity * 0.18}
+            />
+          )}
 
-          {/* Glow line core — crisp stroke */}
-          <Path d={meniscusPath} fill="none" stroke={GLOW_PALETTE.glowLine} strokeWidth="2.8" opacity="0.95" />
+          {/* Mint stratum — band on the surface curve (with meniscus offset) */}
+          <Path
+            d={`${meniscusPath} L212,${meniscusY + 12} Q100,${meniscusY + 1} -12,${meniscusY + 12} Z`}
+            fill={`url(#${ids.strat})`}
+            opacity="0.86"
+            transform={`translate(0, ${meniscusOffsetY})`}
+          />
 
-          {/* Surface bloom — radial ellipse above surface */}
-          <Ellipse cx="100" cy={meniscusY - 6} rx="84" ry="26"
-                   fill={GLOW_PALETTE.juiceMintLight} opacity={surfaceBloomOpacity} />
+          {/* Glow line soft halo (with meniscus offset + response) */}
+          <Path
+            d={`${meniscusPath} L212,${meniscusY + 22} Q100,${meniscusY + 11} -12,${meniscusY + 22} Z`}
+            fill={GLOW_PALETTE.juiceMintLight}
+            opacity={0.25 + glowLineResponse * 0.15}
+            transform={`translate(0, ${meniscusOffsetY})`}
+          />
+
+          {/* Glow line core — crisp stroke (with meniscus offset + response) */}
+          <Path
+            d={meniscusPath}
+            fill="none"
+            stroke={GLOW_PALETTE.glowLine}
+            strokeWidth={2.8 + glowLineResponse * 0.6}
+            opacity={0.95}
+            transform={`translate(0, ${meniscusOffsetY})`}
+          />
+
+          {/* Surface bloom — radial ellipse above surface (with meniscus offset) */}
+          <Ellipse
+            cx="100"
+            cy={meniscusY - 6 + meniscusOffsetY}
+            rx="84"
+            ry="26"
+            fill={GLOW_PALETTE.juiceMintLight}
+            opacity={surfaceBloomOpacity + glowLineResponse * 0.1}
+          />
 
           {/* Inner highlight — plain rounded path, low opacity */}
-          <Path d="M64,4 C50,38 48,72 58,100" fill="none"
-                stroke="#FFFFFF" strokeWidth="9" strokeLinecap="round" opacity="0.14" />
+          <Path
+            d="M64,4 C50,38 48,72 58,100"
+            fill="none"
+            stroke="#FFFFFF"
+            strokeWidth="9"
+            strokeLinecap="round"
+            opacity="0.14"
+          />
 
           {/* Inner rim shadow — two stacked clipped strokes */}
           <Path d={VESSEL_PATH} fill="none" stroke="#5A1F02" strokeWidth="12" opacity="0.18" />
@@ -183,24 +301,48 @@ function GlowHero({ heroState, surfaceTranslateY, isReduced }) {
         </G>
       </G>
 
-      {/* z4 — vessel rim (mint→gold gradient stroke) */}
-      <Path d={VESSEL_PATH} fill="none" stroke={`url(#${ids.rim})`} strokeWidth="2.8"
-            strokeLinejoin="round" opacity={rimMintOpacity} />
+      {/* z4 — vessel rim (mint→gold gradient stroke, with breath) */}
+      <Path
+        d={VESSEL_PATH}
+        fill="none"
+        stroke={`url(#${ids.rim})`}
+        strokeWidth={2.8 + vesselBreath * 0.8}
+        strokeLinejoin="round"
+        opacity={rimMintOpacity + vesselBreath * 0.06}
+      />
 
       {/* z4b — specular upper-left (plain rounded path) */}
-      <Path d="M74,86 C62,104 54,120 48,138" fill="none"
-            stroke="#FFFFFF" strokeWidth="5" strokeLinecap="round" opacity="0.40" />
+      <Path
+        d="M74,86 C62,104 54,120 48,138"
+        fill="none"
+        stroke="#FFFFFF"
+        strokeWidth="5"
+        strokeLinecap="round"
+        opacity="0.40"
+      />
 
       {/* z4c — rim light lower-right (gold stroke, progress-driven) */}
-      <Path d="M166,192 C162,220 142,240 118,246" fill="none"
-            stroke={GLOW_PALETTE.juiceGoldLight} strokeWidth="4"
-            strokeLinecap="round" opacity={rimLightLowerRight} />
+      <Path
+        d="M166,192 C162,220 142,240 118,246"
+        fill="none"
+        stroke={GLOW_PALETTE.juiceGoldLight}
+        strokeWidth="4"
+        strokeLinecap="round"
+        opacity={rimLightLowerRight}
+      />
     </G>
   )
 }
 
 // ── Week Vine SVG ────────────────────────────────────────────
-function GlowWeekVine({ leafStates, isReduced }) {
+function GlowWeekVine({
+  leafStates,
+  isReduced,
+  ripenLeafIndex = -1,
+  ripenScale = 1,
+  ripenHighlight = 0,
+  ripenTranslateY = 0,
+}) {
   const idsRef = useRef(null)
   if (!idsRef.current) {
     const s = Math.random().toString(36).slice(2, 8)
@@ -215,7 +357,14 @@ function GlowWeekVine({ leafStates, isReduced }) {
     <G id="glowweekvine_container">
       <Defs>
         {/* Logged leaf gradient — gold vertical */}
-        <LinearGradient id={ids.leafGrad} x1="0" y1="7" x2="0" y2="41" gradientUnits="userSpaceOnUse">
+        <LinearGradient
+          id={ids.leafGrad}
+          x1="0"
+          y1="7"
+          x2="0"
+          y2="41"
+          gradientUnits="userSpaceOnUse"
+        >
           <Stop offset="0" stopColor={GLOW_PALETTE.juiceGoldLight} />
           <Stop offset="0.55" stopColor={GLOW_PALETTE.juiceGold} />
           <Stop offset="1" stopColor="#EE7F16" />
@@ -228,8 +377,13 @@ function GlowWeekVine({ leafStates, isReduced }) {
       </Defs>
 
       {/* Stem — drawn first, behind leaves */}
-      <Path d={VINE_STEM_PATH} fill="none"
-            stroke={GLOW_PALETTE.weekStem} strokeWidth="2.5" strokeLinecap="round" />
+      <Path
+        d={VINE_STEM_PATH}
+        fill="none"
+        stroke={GLOW_PALETTE.weekStem}
+        strokeWidth="2.5"
+        strokeLinecap="round"
+      />
 
       {/* 7 leaves */}
       {VINE_LEAF_CENTERS.map((cx, i) => {
@@ -238,29 +392,60 @@ function GlowWeekVine({ leafStates, isReduced }) {
         const vs = leaf.visual || {}
         const logged = vs.logged || leaf.hasLog
         const leafPath = vineLeafPath(cx)
+        const isRipening = i === ripenLeafIndex && !isReduced
+        const leafScale = isRipening ? ripenScale : 1
+        const leafTY = isRipening ? ripenTranslateY : 0
+        const leafHighlight = isRipening ? ripenHighlight : 0
 
         return (
-          <G key={`vine_leaf_${i}`} id={`glowweekvine_leaf_${i}`}
-             transform={`rotate(-16 ${cx} 24)`}>
+          <G
+            key={`vine_leaf_${i}`}
+            id={`glowweekvine_leaf_${i}`}
+            transform={`rotate(-16 ${cx} 24) translate(0 ${leafTY}) scale(${leafScale})`}
+            transformOrigin={`${cx} 24`}
+          >
             {/* Glow behind logged leaves only */}
             {logged && (
-              <Ellipse cx={cx} cy="24" rx="26" ry="16"
-                       fill={`url(#${ids.leafGlow})`} opacity="0.5" />
+              <Ellipse
+                cx={cx}
+                cy="24"
+                rx="26"
+                ry="16"
+                fill={`url(#${ids.leafGlow})`}
+                opacity={0.5 + leafHighlight * 0.15}
+              />
             )}
             {/* Leaf body */}
-            <Path d={leafPath}
-                  fill={logged ? `url(#${ids.leafGrad})` : GLOW_PALETTE.weekLeafOffFill}
-                  opacity={leaf.isFuture ? 0.4 : 1} />
+            <Path
+              d={leafPath}
+              fill={logged ? `url(#${ids.leafGrad})` : GLOW_PALETTE.weekLeafOffFill}
+              opacity={leaf.isFuture ? 0.4 : 1}
+            />
+            {/* Ripen highlight — restrained passing highlight on newly earned leaf */}
+            {isRipening && leafHighlight > 0 && (
+              <Path d={leafPath} fill={GLOW_PALETTE.juiceMintLight} opacity={leafHighlight * 0.2} />
+            )}
             {/* Midrib — logged only */}
             {logged && (
-              <Line x1={cx - 15} y1="24" x2={cx + 15} y2="24"
-                    stroke="#B85B12" strokeWidth="2" opacity="0.55" strokeLinecap="round" />
+              <Line
+                x1={cx - 15}
+                y1="24"
+                x2={cx + 15}
+                y2="24"
+                stroke="#B85B12"
+                strokeWidth="2"
+                opacity="0.55"
+                strokeLinecap="round"
+              />
             )}
             {/* Leaf stroke */}
-            <Path d={leafPath} fill="none"
-                  stroke={logged ? '#FFE9C2' : GLOW_PALETTE.weekLeafOffStroke}
-                  strokeWidth={logged ? 1.6 : 2}
-                  strokeOpacity={logged ? 0.75 : 1} />
+            <Path
+              d={leafPath}
+              fill="none"
+              stroke={logged ? '#FFE9C2' : GLOW_PALETTE.weekLeafOffStroke}
+              strokeWidth={logged ? 1.6 : 2}
+              strokeOpacity={logged ? 0.75 : 1}
+            />
           </G>
         )
       })}
@@ -272,11 +457,16 @@ function GlowWeekVine({ leafStates, isReduced }) {
         const vs = leaf.visual || {}
         const logged = vs.logged || leaf.hasLog
         return (
-          <SvgText key={`vine_initial_${i}`}
-                   x={cx} y="61" fontSize="16" fontWeight={logged ? '600' : '500'}
-                   fill={logged ? GLOW_PALETTE.ink : GLOW_PALETTE.inkMuted}
-                   textAnchor="middle"
-                   fontFamily="system-ui, sans-serif">
+          <SvgText
+            key={`vine_initial_${i}`}
+            x={cx}
+            y="61"
+            fontSize="16"
+            fontWeight={logged ? '600' : '500'}
+            fill={logged ? GLOW_PALETTE.ink : GLOW_PALETTE.inkMuted}
+            textAnchor="middle"
+            fontFamily="system-ui, sans-serif"
+          >
             {VINE_DAY_INITIALS[i]}
           </SvgText>
         )
@@ -286,9 +476,13 @@ function GlowWeekVine({ leafStates, isReduced }) {
       {leafStates.map((leaf, i) => {
         if (!leaf || !leaf.isToday) return null
         return (
-          <Circle key="vine_today_dot"
-                  cx={VINE_LEAF_CENTERS[i]} cy="71" r="3"
-                  fill={GLOW_PALETTE.juiceMint} />
+          <Circle
+            key="vine_today_dot"
+            cx={VINE_LEAF_CENTERS[i]}
+            cy="71"
+            r="3"
+            fill={GLOW_PALETTE.juiceMint}
+          />
         )
       })}
     </G>
@@ -302,6 +496,17 @@ function GlowJourneyDropArtwork({
   vineWidth = 292,
   surfaceTranslateY = 0,
   isReduced = false,
+  ripenLeafIndex = -1,
+  ripenScale = 1,
+  ripenHighlight = 0,
+  ripenTranslateY = 0,
+  meniscusOffsetY = 0,
+  causticOpacity = 0,
+  causticY = 0,
+  glowLineResponse = 0,
+  vesselBreath = 0,
+  downwardSweepY = 0,
+  downwardSweepOpacity = 0,
 }) {
   const { heroState, leafStates } = visualState
 
@@ -315,23 +520,45 @@ function GlowJourneyDropArtwork({
     <View id="glowjourney_artwork" style={{ alignItems: 'center' }}>
       {/* GlowHero — viewBox 0 0 200 260 */}
       <View testID="glowhero_wrap" style={{ alignItems: 'center' }}>
-        <Svg width={heroWidth} height={heroHeight} viewBox="0 0 200 260"
-             accessibilityLabel="Glow Journey hero"
-             accessibilityRole="progressbar"
-             accessibilityValue={{ min: 0, max: 3, now: heroState.q }}>
+        <Svg
+          width={heroWidth}
+          height={heroHeight}
+          viewBox="0 0 200 260"
+          accessibilityLabel="Glow Journey hero"
+          accessibilityRole="progressbar"
+          accessibilityValue={{ min: 0, max: 3, now: heroState.q }}
+        >
           <GlowHero
             heroState={heroState}
             surfaceTranslateY={surfaceTranslateY}
             isReduced={isReduced}
+            meniscusOffsetY={meniscusOffsetY}
+            causticOpacity={causticOpacity}
+            causticY={causticY}
+            glowLineResponse={glowLineResponse}
+            vesselBreath={vesselBreath}
+            downwardSweepY={downwardSweepY}
+            downwardSweepOpacity={downwardSweepOpacity}
           />
         </Svg>
       </View>
 
       {/* GlowWeekVine — viewBox 0 0 360 80 */}
       <View testID="glowweekvine_wrap" style={{ marginTop: 6, alignItems: 'center' }}>
-        <Svg width={vineWidth} height={vineHeight} viewBox={`0 0 ${VINE_VIEWBOX_W} ${VINE_VIEWBOX_H}`}
-             accessibilityLabel="Weekly vine tracker">
-          <GlowWeekVine leafStates={leafStates} isReduced={isReduced} />
+        <Svg
+          width={vineWidth}
+          height={vineHeight}
+          viewBox={`0 0 ${VINE_VIEWBOX_W} ${VINE_VIEWBOX_H}`}
+          accessibilityLabel="Weekly vine tracker"
+        >
+          <GlowWeekVine
+            leafStates={leafStates}
+            isReduced={isReduced}
+            ripenLeafIndex={ripenLeafIndex}
+            ripenScale={ripenScale}
+            ripenHighlight={ripenHighlight}
+            ripenTranslateY={ripenTranslateY}
+          />
         </Svg>
       </View>
     </View>

@@ -31,7 +31,15 @@ import { Animated, View, Pressable, StyleSheet } from 'react-native'
 import Svg from 'react-native-svg'
 import { SCENE_WIDTH, SCENE_HEIGHT, BED_PLACEMENT } from './LivingGardenGeometry'
 import { getAtmosphere } from './LivingGardenAtmosphere'
-import { Sky, Treeline, Ground, PathLayer, GroundDetail, Motes, Vignette } from './LivingGardenLayers'
+import {
+  Sky,
+  Treeline,
+  Ground,
+  PathLayer,
+  GroundDetail,
+  Motes,
+  Vignette,
+} from './LivingGardenLayers'
 import { LivingGardenBed } from './LivingGardenBed'
 import { LivingGardenJourneyTree } from './LivingGardenJourneyTree'
 import { LivingGardenArbor } from './LivingGardenArbor'
@@ -61,12 +69,12 @@ function getBedHitBox(bedKey) {
 
 // ── Scene component ───────────────────────────────────────────
 function LivingGardenSceneComponent({
-  bedStages,           // { greens: { key, label, ... }, ... } from getBedStages
-  journeyStageKey,     // string from existing Glow Journey
-  arborCtx,            // { unlockedAchievementIds, bedStages, rainbowComplete }
+  bedStages, // { greens: { key, label, ... }, ... } from getBedStages
+  journeyStageKey, // string from existing Glow Journey
+  arborCtx, // { unlockedAchievementIds, bedStages, rainbowComplete }
   isReduced = false,
-  onBedPress = null,   // (bedKey) => void
-  onTreePress = null,  // () => void
+  onBedPress = null, // (bedKey) => void
+  onTreePress = null, // () => void
   onArborPress = null, // () => void
   sceneId = 'living-garden', // stable SVG ID prefix
 }) {
@@ -155,8 +163,14 @@ function LivingGardenSceneComponent({
           sceneId={sceneId}
         />
       ))}
-      {/* z10 Ambient motes (Journey-driven) */}
-      <Motes atmosphere={atmosphere} isReduced={isReduced} sceneId={sceneId} />
+      {/* z10 Ambient motes (Journey-driven, hue-sampled from mature beds) */}
+      <Motes
+        atmosphere={atmosphere}
+        isReduced={isReduced}
+        sceneId={sceneId}
+        bedStages={bedStages}
+        journeyStageKey={journeyStageKey}
+      />
       {/* z11 Vignette */}
       <Vignette sceneId={sceneId} />
     </Svg>
@@ -252,11 +266,13 @@ const styles = StyleSheet.create({
 
 function sceneComparator(prev, next) {
   // Re-render only when meaningful props change
-  return prev.isReduced === next.isReduced
-    && prev.journeyStageKey === next.journeyStageKey
-    && prev.sceneId === next.sceneId
-    && prev.arborCtx === next.arborCtx
-    && prev.bedStages === next.bedStages
+  return (
+    prev.isReduced === next.isReduced &&
+    prev.journeyStageKey === next.journeyStageKey &&
+    prev.sceneId === next.sceneId &&
+    prev.arborCtx === next.arborCtx &&
+    prev.bedStages === next.bedStages
+  )
 }
 
 export const LivingGardenScene = memo(LivingGardenSceneComponent, sceneComparator)

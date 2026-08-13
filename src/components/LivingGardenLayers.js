@@ -17,7 +17,17 @@
 
 import React, { memo } from 'react'
 import { Animated } from 'react-native'
-import Svg, { G, Rect, Ellipse, Path, Circle, Defs, LinearGradient, RadialGradient, Stop } from 'react-native-svg'
+import Svg, {
+  G,
+  Rect,
+  Ellipse,
+  Path,
+  Circle,
+  Defs,
+  LinearGradient,
+  RadialGradient,
+  Stop,
+} from 'react-native-svg'
 import {
   SCENE_WIDTH,
   SCENE_HEIGHT,
@@ -28,8 +38,76 @@ import {
   DAPPLE_POOLS,
   MOTE_POSITIONS,
   STEPPING_STONES,
+  BED_PLACEMENT,
   SCENE_PALETTE,
 } from './LivingGardenGeometry'
+
+// ── Mote hue sampling (spec §6.3) ─────────────────────────────
+// Existing ambient particles take the nearest mature bed's hue at
+// mix(#6E8A72, hue, k) where k = 0.10 at One-Month, 0.20 at Established, 0.30 at Legend.
+const MOTE_NEUTRAL = '#6E8A72'
+const MOTE_K_BY_JOURNEY = {
+  blooming: 0.1,
+  thriving: 0.2,
+  radiant: 0.3,
+  legend: 0.3,
+}
+
+// Full-strength produce hues for mote sampling (matches BED_PALETTES)
+const MOTE_BED_HUES = {
+  greens: '#8FD46B',
+  roots: '#E8843A',
+  citrus: '#F2D24B',
+  orchard: '#D9453F',
+  berries: '#C42847',
+  tropical: '#E8B93C',
+  herbs: '#7FD6A2',
+}
+
+function mixHex(hex, mixHex, ratio) {
+  const r1 = parseInt(hex.slice(1, 3), 16)
+  const g1 = parseInt(hex.slice(3, 5), 16)
+  const b1 = parseInt(hex.slice(5, 7), 16)
+  const r2 = parseInt(mixHex.slice(1, 3), 16)
+  const g2 = parseInt(mixHex.slice(3, 5), 16)
+  const b2 = parseInt(mixHex.slice(5, 7), 16)
+  const r = Math.round(r1 + (r2 - r1) * ratio)
+  const g = Math.round(g1 + (g2 - g1) * ratio)
+  const b = Math.round(b1 + (b2 - b1) * ratio)
+  const toHex2 = (v) => v.toString(16).padStart(2, '0').toUpperCase()
+  return `#${toHex2(r)}${toHex2(g)}${toHex2(b)}`
+}
+
+// Find the nearest mature (Harvesting/Flourishing) bed to a given position
+function nearestMatureBedHue(x, y, bedStages) {
+  if (!bedStages) return null
+  let nearestHue = null
+  let nearestDist = Infinity
+  Object.keys(BED_PLACEMENT).forEach((bedKey) => {
+    const stage = bedStages[bedKey]
+    if (!stage) return
+    const sk = stage.key || stage
+    if (sk !== 'harvesting' && sk !== 'flourishing') return
+    const p = BED_PLACEMENT[bedKey]
+    const dx = x - p.cx
+    const dy = y - p.cy
+    const dist = dx * dx + dy * dy
+    if (dist < nearestDist) {
+      nearestDist = dist
+      nearestHue = MOTE_BED_HUES[bedKey]
+    }
+  })
+  return nearestHue
+}
+
+// Compute mote color: mix neutral with nearest mature bed hue
+function moteColor(mote, bedStages, journeyStageKey) {
+  const k = MOTE_K_BY_JOURNEY[journeyStageKey] || 0
+  if (k <= 0) return SCENE_PALETTE.goldPale
+  const hue = nearestMatureBedHue(mote.x, mote.y, bedStages)
+  if (!hue) return SCENE_PALETTE.goldPale
+  return mixHex(MOTE_NEUTRAL, hue, k)
+}
 
 // ── z00: Sky gradient + horizon glow ──────────────────────────
 // Horizon glow opacity is Journey-driven (atmosphere.horizonGlow).
@@ -67,7 +145,13 @@ function TreelineComponent({ sceneId }) {
   return (
     <G>
       <Path d={TREELINE_D} fill={SCENE_PALETTE.treeline} />
-      <Path d={TREELINE_D} fill="none" stroke={SCENE_PALETTE.gold} strokeWidth="0.8" opacity="0.07" />
+      <Path
+        d={TREELINE_D}
+        fill="none"
+        stroke={SCENE_PALETTE.gold}
+        strokeWidth="0.8"
+        opacity="0.07"
+      />
     </G>
   )
 }
@@ -84,7 +168,10 @@ function GroundComponent({ atmosphere, sceneId }) {
           <Stop offset="1" stopColor={SCENE_PALETTE.groundNear} />
         </LinearGradient>
       </Defs>
-      <Path d={`M 0 ${HORIZON_Y} L ${SCENE_WIDTH} ${HORIZON_Y} L ${SCENE_WIDTH} ${SCENE_HEIGHT} L 0 ${SCENE_HEIGHT} Z`} fill={`url(#${sceneId}-ground)`} />
+      <Path
+        d={`M 0 ${HORIZON_Y} L ${SCENE_WIDTH} ${HORIZON_Y} L ${SCENE_WIDTH} ${SCENE_HEIGHT} L 0 ${SCENE_HEIGHT} Z`}
+        fill={`url(#${sceneId}-ground)`}
+      />
       <Ellipse cx={196} cy={276} rx={240} ry={26} fill={SCENE_PALETTE.horizon} opacity="0.55" />
       {/* Dapple pools — soft light ellipses, no filters */}
       {DAPPLE_POOLS.map((pool, i) => (
@@ -112,7 +199,13 @@ function PathComponent({ sceneId }) {
           <Stop offset="1" stopColor={SCENE_PALETTE.pathColorNear} stopOpacity="0.65" />
         </LinearGradient>
       </Defs>
-      <Path d={PATH_D} stroke={`url(#${sceneId}-path)`} strokeWidth="14" fill="none" strokeLinecap="round" />
+      <Path
+        d={PATH_D}
+        stroke={`url(#${sceneId}-path)`}
+        strokeWidth="14"
+        fill="none"
+        strokeLinecap="round"
+      />
     </G>
   )
 }
@@ -151,7 +244,8 @@ function GroundDetailComponent({ sceneId }) {
 // ── z10: Ambient motes (Journey-driven) ───────────────────────
 // Motes drift upward and fade. Up to 12, count depends on Journey.
 // In reduced-motion mode, motes are static at 0.3 opacity.
-function MotesComponent({ atmosphere, isReduced, sceneId }) {
+// Hue-sampled motes (spec §6.3): take nearest mature bed's hue.
+function MotesComponent({ atmosphere, isReduced, sceneId, bedStages, journeyStageKey }) {
   const count = atmosphere.moteCount
   const baseOpacity = atmosphere.moteOpacity
   if (count === 0) return null
@@ -167,7 +261,7 @@ function MotesComponent({ atmosphere, isReduced, sceneId }) {
             cx={mote.x}
             cy={mote.y}
             r={mote.r}
-            fill={SCENE_PALETTE.goldPale}
+            fill={moteColor(mote, bedStages, journeyStageKey)}
             opacity="0.3"
           />
         ))}
@@ -183,6 +277,7 @@ function MotesComponent({ atmosphere, isReduced, sceneId }) {
           key={`mote-${i}`}
           mote={mote}
           baseOpacity={baseOpacity}
+          color={moteColor(mote, bedStages, journeyStageKey)}
         />
       ))}
     </G>
@@ -192,7 +287,7 @@ function MotesComponent({ atmosphere, isReduced, sceneId }) {
 // ── Single animated mote ──────────────────────────────────────
 // Uses RN Animated to drive opacity + translateY drift.
 // Period 14–22s, staggered negative delays (spec §19).
-function AnimatedMote({ mote, baseOpacity }) {
+function AnimatedMote({ mote, baseOpacity, color }) {
   const opacityRef = React.useRef(new Animated.Value(0))
   const translateYRef = React.useRef(new Animated.Value(0))
 
@@ -216,7 +311,7 @@ function AnimatedMote({ mote, baseOpacity }) {
           duration: mote.duration * 1000,
           useNativeDriver: true,
         }),
-      ])
+      ]),
     )
 
     driftAnim.start()
@@ -237,7 +332,7 @@ function AnimatedMote({ mote, baseOpacity }) {
       pointerEvents="none"
     >
       <Svg width={mote.r * 2} height={mote.r * 2} viewBox={`0 0 ${mote.r * 2} ${mote.r * 2}`}>
-        <Circle cx={mote.r} cy={mote.r} r={mote.r} fill={SCENE_PALETTE.goldPale} />
+        <Circle cx={mote.r} cy={mote.r} r={mote.r} fill={color || SCENE_PALETTE.goldPale} />
       </Svg>
     </Animated.View>
   )

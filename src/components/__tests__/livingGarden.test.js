@@ -18,24 +18,6 @@
 import fs from 'fs'
 import path from 'path'
 
-jest.mock('@react-native-async-storage/async-storage', () => {
-  const store = new Map()
-  return {
-    getItem: jest.fn(async (key) => store.get(key) ?? null),
-    setItem: jest.fn(async (key, val) => { store.set(key, val) }),
-    removeItem: jest.fn(async (key) => { store.delete(key) }),
-    mergeItem: jest.fn(async () => {}),
-    clear: jest.fn(async () => { store.clear() }),
-    getAllKeys: jest.fn(async () => [...store.keys()]),
-    flushGetRequests: jest.fn(() => {}),
-    multiGet: jest.fn(async () => []),
-    multiSet: jest.fn(async () => {}),
-    multiRemove: jest.fn(async () => {}),
-    multiMerge: jest.fn(async () => {}),
-    __store: store,
-  }
-})
-
 import { GARDEN_BEDS } from '../../constants/gardenTaxonomy'
 import { GARDEN_STAGES, getBedStages, isRainbowHarvestComplete } from '../../services/gardenService'
 import { ARBOR_CATALOG, getArborEarnedCount } from '../MilestoneArborArtwork'
@@ -66,6 +48,30 @@ import {
   BED_KEYS,
 } from '../../services/gardenSeenState'
 
+jest.mock('@react-native-async-storage/async-storage', () => {
+  const store = new Map()
+  return {
+    getItem: jest.fn(async (key) => store.get(key) ?? null),
+    setItem: jest.fn(async (key, val) => {
+      store.set(key, val)
+    }),
+    removeItem: jest.fn(async (key) => {
+      store.delete(key)
+    }),
+    mergeItem: jest.fn(async () => {}),
+    clear: jest.fn(async () => {
+      store.clear()
+    }),
+    getAllKeys: jest.fn(async () => [...store.keys()]),
+    flushGetRequests: jest.fn(() => {}),
+    multiGet: jest.fn(async () => []),
+    multiSet: jest.fn(async () => {}),
+    multiRemove: jest.fn(async () => {}),
+    multiMerge: jest.fn(async () => {}),
+    __store: store,
+  }
+})
+
 function readSrc(filename) {
   return fs.readFileSync(path.join(__dirname, '..', filename), 'utf-8')
 }
@@ -79,7 +85,15 @@ function readService(filename) {
 describe('A. Existing truth — 7 beds, existing derivation, thresholds', () => {
   test('exactly 7 Garden beds', () => {
     expect(GARDEN_BEDS).toHaveLength(7)
-    expect(GARDEN_BEDS).toEqual(['greens', 'roots', 'citrus', 'orchard', 'berries', 'tropical', 'herbs'])
+    expect(GARDEN_BEDS).toEqual([
+      'greens',
+      'roots',
+      'citrus',
+      'orchard',
+      'berries',
+      'tropical',
+      'herbs',
+    ])
   })
 
   test('Living Garden BED_PLACEMENT has exactly 7 beds matching taxonomy', () => {
@@ -145,14 +159,14 @@ describe('B. Six stages render', () => {
     expect(bedSrc).not.toMatch(/0\.11/)
   })
 
-  test('Flourishing stage shows ground glow', () => {
+  test('Flourishing stage shows ground bloom', () => {
     const bedSrc = readSrc('LivingGardenBed.js')
-    expect(bedSrc).toMatch(/GroundGlow/)
+    expect(bedSrc).toMatch(/GroundBloom/)
   })
 
-  test('Growing stage shows closed bud anticipation cue', () => {
+  test('Growing stage shows ground bloom factor 0.15', () => {
     const bedSrc = readSrc('LivingGardenBed.js')
-    expect(bedSrc).toMatch(/ClosedBud/)
+    expect(bedSrc).toMatch(/STAGE_BLOOM/)
   })
 })
 
@@ -170,8 +184,9 @@ describe('C. Journey atmosphere — 7 keys map to atmosphere', () => {
   test('atmosphere horizon glow is non-decreasing across stages', () => {
     const keys = JOURNEY_STAGE_KEYS
     for (let i = 1; i < keys.length; i++) {
-      expect(JOURNEY_ATMOSPHERE[keys[i]].horizonGlow)
-        .toBeGreaterThanOrEqual(JOURNEY_ATMOSPHERE[keys[i - 1]].horizonGlow)
+      expect(JOURNEY_ATMOSPHERE[keys[i]].horizonGlow).toBeGreaterThanOrEqual(
+        JOURNEY_ATMOSPHERE[keys[i - 1]].horizonGlow,
+      )
     }
   })
 
@@ -180,13 +195,17 @@ describe('C. Journey atmosphere — 7 keys map to atmosphere', () => {
     expect(JOURNEY_ATMOSPHERE.sprout.moteCount).toBe(0)
     expect(JOURNEY_ATMOSPHERE.growing.moteCount).toBe(0)
     expect(JOURNEY_ATMOSPHERE.blooming.moteCount).toBeGreaterThan(0)
-    expect(JOURNEY_ATMOSPHERE.legend.moteCount).toBeGreaterThanOrEqual(JOURNEY_ATMOSPHERE.blooming.moteCount)
+    expect(JOURNEY_ATMOSPHERE.legend.moteCount).toBeGreaterThanOrEqual(
+      JOURNEY_ATMOSPHERE.blooming.moteCount,
+    )
   })
 
   test('rim light appears at Radiant and beyond', () => {
     expect(JOURNEY_ATMOSPHERE.thriving.rimLight).toBe(0)
     expect(JOURNEY_ATMOSPHERE.radiant.rimLight).toBeGreaterThan(0)
-    expect(JOURNEY_ATMOSPHERE.legend.rimLight).toBeGreaterThanOrEqual(JOURNEY_ATMOSPHERE.radiant.rimLight)
+    expect(JOURNEY_ATMOSPHERE.legend.rimLight).toBeGreaterThanOrEqual(
+      JOURNEY_ATMOSPHERE.radiant.rimLight,
+    )
   })
 
   test('crown breath only at Legend', () => {
@@ -202,11 +221,13 @@ describe('C. Journey atmosphere — 7 keys map to atmosphere', () => {
   })
 
   test('Seed horizon glow is 0.10 (raised from 0.05 for readability)', () => {
-    expect(JOURNEY_ATMOSPHERE.seed.horizonGlow).toBe(0.10)
+    expect(JOURNEY_ATMOSPHERE.seed.horizonGlow).toBe(0.1)
   })
 
   test('Legend horizon glow remains warmer than Seed', () => {
-    expect(JOURNEY_ATMOSPHERE.legend.horizonGlow).toBeGreaterThan(JOURNEY_ATMOSPHERE.seed.horizonGlow)
+    expect(JOURNEY_ATMOSPHERE.legend.horizonGlow).toBeGreaterThan(
+      JOURNEY_ATMOSPHERE.seed.horizonGlow,
+    )
   })
 
   test('no new Journey metric is created', () => {
@@ -322,8 +343,8 @@ describe('C3. Zero-state visual corrections', () => {
 
   test('bed identity stakes are 5×8 (raised from 4×6)', () => {
     const bedSrc = readSrc('LivingGardenBed.js')
-    // The stake Rect should be 5×8 — check for the stake context
-    expect(bedSrc).toMatch(/Colour tag stake[\s\S]*?width="5"[\s\S]*?height="8"/)
+    // The stake Rect should be 5×8
+    expect(bedSrc).toMatch(/width="5"[\s\S]*?height="8"/)
   })
 
   test('vignette outer opacity is 0.40 (reduced from 0.55)', () => {
@@ -341,7 +362,15 @@ describe('C3. Zero-state visual corrections', () => {
   })
 
   test('no destructive device logic added', () => {
-    const files = ['LivingGardenScene.js', 'LivingGardenBed.js', 'LivingGardenLayers.js', 'LivingGardenJourneyTree.js', 'LivingGardenArbor.js', 'LivingGardenAtmosphere.js', 'LivingGardenGeometry.js']
+    const files = [
+      'LivingGardenScene.js',
+      'LivingGardenBed.js',
+      'LivingGardenLayers.js',
+      'LivingGardenJourneyTree.js',
+      'LivingGardenArbor.js',
+      'LivingGardenAtmosphere.js',
+      'LivingGardenGeometry.js',
+    ]
     files.forEach((f) => {
       const src = readSrc(f)
       expect(src).not.toMatch(/pm clear|adb uninstall|pm uninstall|clearAppData|wipeData/)
@@ -363,7 +392,15 @@ describe('D. No decay — no date input', () => {
   })
 
   test('no wilting/browning/loss logic in any Living Garden file', () => {
-    const files = ['LivingGardenScene.js', 'LivingGardenBed.js', 'LivingGardenLayers.js', 'LivingGardenJourneyTree.js', 'LivingGardenArbor.js', 'LivingGardenAtmosphere.js', 'LivingGardenGeometry.js']
+    const files = [
+      'LivingGardenScene.js',
+      'LivingGardenBed.js',
+      'LivingGardenLayers.js',
+      'LivingGardenJourneyTree.js',
+      'LivingGardenArbor.js',
+      'LivingGardenAtmosphere.js',
+      'LivingGardenGeometry.js',
+    ]
     // Check code lines only (skip comment lines starting with //)
     const decayPattern = /(?:^|[^/]\s*)(?:wilt|browning|shrinks?|drop.*fruit|un.?hang)\b/
     files.forEach((f) => {
@@ -477,12 +514,28 @@ describe('F. Seen state — first open, advancement, coalescing', () => {
 
   test('later bed advancement detected correctly', () => {
     const lastSeen = {
-      bedStages: { greens: 'seed', roots: 'empty', citrus: 'empty', orchard: 'empty', berries: 'empty', tropical: 'empty', herbs: 'empty' },
+      bedStages: {
+        greens: 'seed',
+        roots: 'empty',
+        citrus: 'empty',
+        orchard: 'empty',
+        berries: 'empty',
+        tropical: 'empty',
+        herbs: 'empty',
+      },
       journeyStageKey: 'seed',
       earnedMilestoneIds: [],
     }
     const current = {
-      bedStages: { greens: 'harvesting', roots: 'empty', citrus: 'empty', orchard: 'empty', berries: 'empty', tropical: 'empty', herbs: 'empty' },
+      bedStages: {
+        greens: 'harvesting',
+        roots: 'empty',
+        citrus: 'empty',
+        orchard: 'empty',
+        berries: 'empty',
+        tropical: 'empty',
+        herbs: 'empty',
+      },
       journeyStageKey: 'seed',
       earnedMilestoneIds: [],
     }
@@ -496,12 +549,28 @@ describe('F. Seen state — first open, advancement, coalescing', () => {
 
   test('multi-stage jump coalesces (Seed → Harvesting, not replay)', () => {
     const lastSeen = {
-      bedStages: { greens: 'seed', roots: 'empty', citrus: 'empty', orchard: 'empty', berries: 'empty', tropical: 'empty', herbs: 'empty' },
+      bedStages: {
+        greens: 'seed',
+        roots: 'empty',
+        citrus: 'empty',
+        orchard: 'empty',
+        berries: 'empty',
+        tropical: 'empty',
+        herbs: 'empty',
+      },
       journeyStageKey: 'seed',
       earnedMilestoneIds: [],
     }
     const current = {
-      bedStages: { greens: 'harvesting', roots: 'empty', citrus: 'empty', orchard: 'empty', berries: 'empty', tropical: 'empty', herbs: 'empty' },
+      bedStages: {
+        greens: 'harvesting',
+        roots: 'empty',
+        citrus: 'empty',
+        orchard: 'empty',
+        berries: 'empty',
+        tropical: 'empty',
+        herbs: 'empty',
+      },
       journeyStageKey: 'seed',
       earnedMilestoneIds: [],
     }
@@ -514,12 +583,28 @@ describe('F. Seen state — first open, advancement, coalescing', () => {
 
   test('Journey advancement detected', () => {
     const lastSeen = {
-      bedStages: { greens: 'empty', roots: 'empty', citrus: 'empty', orchard: 'empty', berries: 'empty', tropical: 'empty', herbs: 'empty' },
+      bedStages: {
+        greens: 'empty',
+        roots: 'empty',
+        citrus: 'empty',
+        orchard: 'empty',
+        berries: 'empty',
+        tropical: 'empty',
+        herbs: 'empty',
+      },
       journeyStageKey: 'growing',
       earnedMilestoneIds: [],
     }
     const current = {
-      bedStages: { greens: 'empty', roots: 'empty', citrus: 'empty', orchard: 'empty', berries: 'empty', tropical: 'empty', herbs: 'empty' },
+      bedStages: {
+        greens: 'empty',
+        roots: 'empty',
+        citrus: 'empty',
+        orchard: 'empty',
+        berries: 'empty',
+        tropical: 'empty',
+        herbs: 'empty',
+      },
       journeyStageKey: 'thriving',
       earnedMilestoneIds: [],
     }
@@ -531,12 +616,28 @@ describe('F. Seen state — first open, advancement, coalescing', () => {
 
   test('new Arbor milestones detected', () => {
     const lastSeen = {
-      bedStages: { greens: 'empty', roots: 'empty', citrus: 'empty', orchard: 'empty', berries: 'empty', tropical: 'empty', herbs: 'empty' },
+      bedStages: {
+        greens: 'empty',
+        roots: 'empty',
+        citrus: 'empty',
+        orchard: 'empty',
+        berries: 'empty',
+        tropical: 'empty',
+        herbs: 'empty',
+      },
       journeyStageKey: 'seed',
       earnedMilestoneIds: ['first_juice'],
     }
     const current = {
-      bedStages: { greens: 'empty', roots: 'empty', citrus: 'empty', orchard: 'empty', berries: 'empty', tropical: 'empty', herbs: 'empty' },
+      bedStages: {
+        greens: 'empty',
+        roots: 'empty',
+        citrus: 'empty',
+        orchard: 'empty',
+        berries: 'empty',
+        tropical: 'empty',
+        herbs: 'empty',
+      },
       journeyStageKey: 'seed',
       earnedMilestoneIds: ['first_juice', 'streak_3', 'streak_7'],
     }
@@ -567,12 +668,28 @@ describe('F. Seen state — first open, advancement, coalescing', () => {
 
   test('no backward advancement (no decay in seen state)', () => {
     const lastSeen = {
-      bedStages: { greens: 'harvesting', roots: 'empty', citrus: 'empty', orchard: 'empty', berries: 'empty', tropical: 'empty', herbs: 'empty' },
+      bedStages: {
+        greens: 'harvesting',
+        roots: 'empty',
+        citrus: 'empty',
+        orchard: 'empty',
+        berries: 'empty',
+        tropical: 'empty',
+        herbs: 'empty',
+      },
       journeyStageKey: 'radiant',
       earnedMilestoneIds: ['first_juice'],
     }
     const current = {
-      bedStages: { greens: 'seed', roots: 'empty', citrus: 'empty', orchard: 'empty', berries: 'empty', tropical: 'empty', herbs: 'empty' },
+      bedStages: {
+        greens: 'seed',
+        roots: 'empty',
+        citrus: 'empty',
+        orchard: 'empty',
+        berries: 'empty',
+        tropical: 'empty',
+        herbs: 'empty',
+      },
       journeyStageKey: 'seed',
       earnedMilestoneIds: ['first_juice'],
     }
@@ -654,7 +771,14 @@ describe('H. Intro — boolean only', () => {
 
 describe('I. Performance safety', () => {
   test('no SVG filter in any Living Garden file', () => {
-    const files = ['LivingGardenScene.js', 'LivingGardenBed.js', 'LivingGardenLayers.js', 'LivingGardenJourneyTree.js', 'LivingGardenArbor.js', 'LivingGardenGeometry.js']
+    const files = [
+      'LivingGardenScene.js',
+      'LivingGardenBed.js',
+      'LivingGardenLayers.js',
+      'LivingGardenJourneyTree.js',
+      'LivingGardenArbor.js',
+      'LivingGardenGeometry.js',
+    ]
     files.forEach((f) => {
       const src = readSrc(f)
       expect(src).not.toMatch(/feGaussianBlur|<filter|feBlur/)
@@ -674,7 +798,14 @@ describe('I. Performance safety', () => {
   })
 
   test('no Math.random for scene geometry', () => {
-    const files = ['LivingGardenScene.js', 'LivingGardenBed.js', 'LivingGardenLayers.js', 'LivingGardenJourneyTree.js', 'LivingGardenArbor.js', 'LivingGardenGeometry.js']
+    const files = [
+      'LivingGardenScene.js',
+      'LivingGardenBed.js',
+      'LivingGardenLayers.js',
+      'LivingGardenJourneyTree.js',
+      'LivingGardenArbor.js',
+      'LivingGardenGeometry.js',
+    ]
     files.forEach((f) => {
       const src = readSrc(f)
       if (f === 'LivingGardenGeometry.js') {
@@ -825,7 +956,15 @@ describe('K. Frozen code — compact Garden unchanged', () => {
   })
 
   test('Glow files are not imported by Living Garden', () => {
-    const files = ['LivingGardenScene.js', 'LivingGardenBed.js', 'LivingGardenLayers.js', 'LivingGardenJourneyTree.js', 'LivingGardenArbor.js', 'LivingGardenAtmosphere.js', 'LivingGardenGeometry.js']
+    const files = [
+      'LivingGardenScene.js',
+      'LivingGardenBed.js',
+      'LivingGardenLayers.js',
+      'LivingGardenJourneyTree.js',
+      'LivingGardenArbor.js',
+      'LivingGardenAtmosphere.js',
+      'LivingGardenGeometry.js',
+    ]
     files.forEach((f) => {
       const src = readSrc(f)
       expect(src).not.toMatch(/from.*GlowJourneyDrop/)

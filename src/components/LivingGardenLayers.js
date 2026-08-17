@@ -304,12 +304,12 @@ function AnimatedMote({ mote, baseOpacity, color }) {
         Animated.timing(opacity, {
           toValue: baseOpacity,
           duration: mote.duration * 500,
-          useNativeDriver: true,
+          useNativeDriver: false,
         }),
         Animated.timing(translateY, {
           toValue: mote.driftY,
           duration: mote.duration * 1000,
-          useNativeDriver: true,
+          useNativeDriver: false,
         }),
       ]),
     )

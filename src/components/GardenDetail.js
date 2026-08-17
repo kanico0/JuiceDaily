@@ -89,7 +89,14 @@ function GardenDetail({
 
   // ── Living Garden seen-state + intro ────────────────────────
   const [showIntro, setShowIntro] = useState(false)
+  const [advancements, setAdvancements] = useState(null)
   const seenStateLoaded = useRef(false)
+  const prevVisibleRef = useRef(false)
+  // Ref mirror of currentSeenState so the open effect can depend on
+  // [visible] only. This prevents a race where currentSeenState changes
+  // while the async detection IIFE is running, which would cancel the
+  // effect (cancelled=true) and prevent setAdvancements from being called.
+  const currentSeenStateRef = useRef(null)
 
   // Current state for seen-state comparison
   const currentSeenState = useMemo(() => buildCurrentSeenState({
@@ -98,22 +105,32 @@ function GardenDetail({
     earnedMilestoneIds: unlockedAchievementIds,
   }), [bedStages, journeyStageKey, unlockedAchievementIds])
 
-  // On first visible: initialize seen-state if absent, check intro
+  // Keep ref in sync with memo
+  useEffect(() => {
+    currentSeenStateRef.current = currentSeenState
+  }, [currentSeenState])
+
+  // On each open: initialize seen-state if absent, detect advancements.
+  // Depends on [visible] only — uses ref for currentSeenState to avoid
+  // the race where currentSeenState changes mid-detection cancels the
+  // async IIFE before setAdvancements is called.
   useEffect(() => {
     if (!visible || seenStateLoaded.current) return
     seenStateLoaded.current = true
     let cancelled = false
     ;(async () => {
-      const wasFirstOpen = await initializeIfAbsent(currentSeenState)
+      const currentState = currentSeenStateRef.current
+      const wasFirstOpen = await initializeIfAbsent(currentState)
       if (cancelled) return
       if (!wasFirstOpen) {
-        // Check for missed advancements (for future visual transitions)
-        // For v1, we detect but the wake animation handles presentation
+        // Detect missed advancements for the Living Garden motion
+        // orchestration. ONE coalesced previous-seen → current
+        // transition is animated (no historical replay).
         const lastSeen = await getLastSeenState()
+        if (cancelled) return
         if (lastSeen) {
-          detectAdvancements(lastSeen, currentSeenState)
-          // Advancements are detected; the scene's wake animation
-          // provides the visual transition. Snapshot is updated below.
+          const adv = detectAdvancements(lastSeen, currentState)
+          if (!cancelled) setAdvancements(adv)
         }
       }
       // Show intro callouts if not yet seen
@@ -124,14 +141,21 @@ function GardenDetail({
       }
     })()
     return () => { cancelled = true }
-  }, [visible, currentSeenState])
+  }, [visible]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Update seen-state AFTER user has seen the Garden (on close)
+  // Save seen-state ONLY when Garden closes (visible true→false).
+  // Reset seenStateLoaded so advancement detection runs on next open.
+  // CRITICAL: Only save on the visible transition, NOT on every
+  // currentSeenState change while invisible — otherwise a progression
+  // change while the Garden is closed would prematurely overwrite the
+  // last-seen baseline before the user reopens and sees the advancement.
   useEffect(() => {
-    if (!visible && seenStateLoaded.current) {
-      saveLastSeenState(currentSeenState)
+    if (!visible && prevVisibleRef.current) {
+      saveLastSeenState(currentSeenStateRef.current)
+      seenStateLoaded.current = false
     }
-  }, [visible, currentSeenState])
+    prevVisibleRef.current = visible
+  }, [visible]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleDismissIntro = useCallback(() => {
     setShowIntro(false)
@@ -160,6 +184,16 @@ function GardenDetail({
         stage: bedStages[selectedBed],
       }
     : null
+
+  // ── Presentation-ready gate ────────────────────────────────
+  // Production advancement presentation (Spotlight, Tree, Arbor)
+  // must NOT start while the first-time intro overlay is visible.
+  // The advancement is retained in `advancements` state; only the
+  // prop passed to the Scene is gated. When the user dismisses the
+  // intro (tap "Got it"), the same advancement object becomes
+  // presentation-eligible and the Scene's useMemo queue activates.
+  const presentationReady = !showIntro
+  const sceneAdvancements = presentationReady ? advancements : null
 
   return (
     <Modal
@@ -200,6 +234,7 @@ function GardenDetail({
               onTreePress={handleTreePress}
               onArborPress={handleArborPress}
               sceneId="garden-detail"
+              advancements={sceneAdvancements}
             />
           </View>
 

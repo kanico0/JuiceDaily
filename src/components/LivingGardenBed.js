@@ -18,8 +18,9 @@
 // own stage changes (spec §22).
 // ─────────────────────────────────────────────────────────────
 
-import React, { memo } from 'react'
-import { G, Path, Ellipse, Circle, Rect, Line, Defs, RadialGradient, Stop } from 'react-native-svg'
+import React, { memo, useState, useEffect, useMemo } from 'react'
+import { Animated } from 'react-native'
+import { G, Path, Ellipse, Circle, Rect, Line } from 'react-native-svg'
 import {
   BED_PLACEMENT,
   BED_BLOBS,
@@ -27,8 +28,16 @@ import {
   PRODUCE_COLORS,
   SCENE_PALETTE,
 } from './LivingGardenGeometry'
+import { TIER_3_BEDS, TIER3_GROUP_OFFSETS, TIER3_GROUP_START_FRACTIONS } from './LivingGardenMotion'
 
 // ── Stage keys (mirror existing gardenService) ────────────────
+// SVG transform strings (NOT animated G wrapper — react-native-svg
+// crashes with "Underflow in restore" when an animated G wrapper
+// receives RN transform arrays). Animated.Value objects from
+// useGardenMotion are consumed via listeners that update state with
+// SVG transform strings. This is a DOCUMENTED EXCEPTION (same pattern
+// as colorProgress and produceReveal).
+
 const STAGE_EMPTY = 'empty'
 const STAGE_SEED = 'seed'
 const STAGE_SPROUT = 'sprout'
@@ -175,6 +184,110 @@ function canopyBlend(leaf, produce, stageKey) {
   return leaf
 }
 
+// ── Tier 3 color-group mapping (Phase 1B Earned Color) ───────
+// Maps each palette token to a logical color group for sequencing.
+// trunk group has no tokens (bark is constant from SCENE_PALETTE).
+const TIER3_TOKEN_GROUPS = {
+  citrus: {
+    canopy: ['leaf', 'deep'],
+    fruit: ['produce', 'accent', 'alt', 'bloom'],
+  },
+  orchard: {
+    canopy: ['leaf', 'deep'],
+    fruit: ['produce', 'accent', 'alt', 'bloom'],
+  },
+  berries: {
+    mounds: ['leaf', 'deep'],
+    berries: ['produce', 'accent', 'alt', 'bloom'],
+  },
+  tropical: {
+    leaves: ['leaf', 'deep'],
+    pineapple: ['produce', 'accent', 'alt', 'bloom'],
+  },
+}
+
+// ── Compute interpolated gated palette (Earned Color phase) ───
+// For Tier 4: all tokens interpolate together at colorProgress.
+// For Tier 3: tokens in each group interpolate at their group's
+//   effective progress (offset within the color phase).
+// At colorProgress=1: result equals gatedPalette(bedKey, toStage).
+// At colorProgress=0: result equals gatedPalette(bedKey, fromStage).
+function computeInterpolatedGated(bedKey, fromStage, toStage, colorProgress) {
+  const fromGated = gatedPalette(bedKey, fromStage)
+  const toGated = gatedPalette(bedKey, toStage)
+  if (!fromGated || !toGated) return toGated
+  if (colorProgress >= 1) return toGated
+  if (colorProgress <= 0) return fromGated
+
+  const isTier3 = TIER_3_BEDS.includes(bedKey)
+  if (!isTier3) {
+    // Tier 4: whole-bed interpolation
+    const result = {}
+    Object.keys(toGated).forEach((key) => {
+      result[key] = mixColor(fromGated[key], toGated[key], colorProgress)
+    })
+    return result
+  }
+
+  // Tier 3: group-sequenced interpolation
+  const groupMap = TIER3_TOKEN_GROUPS[bedKey]
+  const groupOrder = TIER3_GROUP_OFFSETS[bedKey] || []
+  const result = {}
+  Object.keys(toGated).forEach((key) => {
+    // Find which group this token belongs to
+    let groupName = null
+    for (const [gName, tokens] of Object.entries(groupMap)) {
+      if (tokens.includes(key)) {
+        groupName = gName
+        break
+      }
+    }
+    if (!groupName) {
+      // Token not in any group — interpolate at full progress
+      result[key] = mixColor(fromGated[key], toGated[key], colorProgress)
+      return
+    }
+    // Find the earliest start fraction for this group
+    let startFraction = 1
+    for (let i = 0; i < groupOrder.length; i++) {
+      if (groupOrder[i] === groupName) {
+        startFraction = Math.min(startFraction, TIER3_GROUP_START_FRACTIONS[i])
+      }
+    }
+    const windowSize = 1 / 3
+    const groupProgress = Math.max(0, Math.min(1, (colorProgress - startFraction) / windowSize))
+    result[key] = mixColor(fromGated[key], toGated[key], groupProgress)
+  })
+  return result
+}
+
+// ── Compute interpolated canopyColor (for tree-form beds) ─────
+// canopyColor is derived from palette.leaf + palette.produce via
+// canopyBlend, then gated. During Earned Color, interpolate from
+// the from-stage canopyColor to the to-stage canopyColor.
+function computeInterpolatedCanopy(bedKey, fromStage, toStage, colorProgress) {
+  const palette = BED_PALETTES[bedKey]
+  if (!palette) return null
+  const fromCanopy = gateColor(canopyBlend(palette.leaf, palette.produce, fromStage), fromStage)
+  const toCanopy = gateColor(canopyBlend(palette.leaf, palette.produce, toStage), toStage)
+  if (colorProgress >= 1) return toCanopy
+  if (colorProgress <= 0) return fromCanopy
+  // Canopy belongs to the 'canopy' group in Tier 3
+  if (TIER_3_BEDS.includes(bedKey)) {
+    const groupOrder = TIER3_GROUP_OFFSETS[bedKey] || []
+    let startFraction = 1
+    for (let i = 0; i < groupOrder.length; i++) {
+      if (groupOrder[i] === 'canopy') {
+        startFraction = Math.min(startFraction, TIER3_GROUP_START_FRACTIONS[i])
+      }
+    }
+    const windowSize = 1 / 3
+    const groupProgress = Math.max(0, Math.min(1, (colorProgress - startFraction) / windowSize))
+    return mixColor(fromCanopy, toCanopy, groupProgress)
+  }
+  return mixColor(fromCanopy, toCanopy, colorProgress)
+}
+
 // ── Soil bed (shared by all stages) ───────────────────────────
 // Warm soil rim applied at Harvesting+ (spec §6.2)
 function SoilBed({ bedKey, sceneId, stageKey }) {
@@ -214,19 +327,23 @@ function SoilBed({ bedKey, sceneId, stageKey }) {
 }
 
 // ── Ghost silhouette (11% of Sprout art) — FROZEN, zero-state ─
+// NOTE: opacity on individual elements, NOT on G — react-native-svg
+// 15.x crashes with "Underflow in restore" when G with opacity != 1
+// is rapidly re-rendered.
 function GhostSilhouette({ bedKey, sceneId }) {
   const placement = BED_PLACEMENT[bedKey]
   const color = PRODUCE_COLORS[bedKey]
   const cx = placement.cx
   const cy = placement.cy - 2
   return (
-    <G opacity="0.18">
+    <G>
       <Ellipse
         cx={cx - 3}
         cy={cy - 4}
         rx="3"
         ry="2"
         fill={color}
+        opacity="0.18"
         transform={`rotate(-20 ${cx - 3} ${cy - 4})`}
       />
       <Ellipse
@@ -235,9 +352,10 @@ function GhostSilhouette({ bedKey, sceneId }) {
         rx="3"
         ry="2"
         fill={color}
+        opacity="0.18"
         transform={`rotate(20 ${cx + 3} ${cy - 4})`}
       />
-      <Line x1={cx} y1={cy} x2={cx} y2={cy - 5} stroke={color} strokeWidth="0.8" />
+      <Line x1={cx} y1={cy} x2={cx} y2={cy - 5} stroke={color} strokeWidth="0.8" opacity="0.18" />
     </G>
   )
 }
@@ -276,7 +394,13 @@ function SeedMarker({ cx, cy, gated }) {
 // ── Greens: upright rosettes of ruffled strap leaves ──────────
 // Spec §3.1: 1 → 2 → 4 → 6 rosettes.
 // Flourishing: deep emerald base, fresh leaf mid, lime rim, mint highlight.
-function GreensArt({ stageKey, placement, gated, palette, alpha }) {
+//
+// DELTA REVEAL (Rev B monotonic progression):
+// For Harvesting→Flourishing, source plants (0-3) stay canonical.
+// Destination-only plants (4-5) and Flourishing-only detail (Line+Circle)
+// reveal progressively via deltaReveal 0→1.
+// deltaReveal=1 at canonical rest (no visual change when not animating).
+function GreensArt({ stageKey, placement, gated, palette, alpha, deltaReveal }) {
   const cx = placement.cx
   const cy = placement.cy
   if (stageKey === STAGE_SEED) return <SeedMarker cx={cx} cy={cy} gated={gated} />
@@ -291,6 +415,13 @@ function GreensArt({ stageKey, placement, gated, palette, alpha }) {
           ? 4
           : 6
 
+  // Source plant count = plants present at the previous earned stage.
+  // For Flourishing: source = 4 (Harvesting). For others: source = 0.
+  const sourcePlantCount = stageKey === STAGE_FLOURISHING ? 4 : 0
+  const deltaOpacity = deltaReveal != null ? deltaReveal : 1
+  // Detail (Line+Circle) appears slightly after new foliage
+  const detailOpacity = deltaReveal != null ? Math.max(0, (deltaReveal - 0.3) / 0.7) : 1
+
   const plants = []
   for (let i = 0; i < plantCount; i++) {
     const offset = (i - (plantCount - 1) / 2) * 12
@@ -303,8 +434,11 @@ function GreensArt({ stageKey, placement, gated, palette, alpha }) {
       stageKey === STAGE_FLOURISHING
         ? [gated.deep, gated.leaf, gated.produce, gated.accent][tokenIdx]
         : gated.leaf
+    // Delta plants (i >= sourcePlantCount) use deltaOpacity
+    const isDeltaPlant = i >= sourcePlantCount && sourcePlantCount > 0
+    const plantOpacity = isDeltaPlant ? deltaOpacity : 1
     plants.push(
-      <G key={`greens-plant-${i}`}>
+      <G key={`greens-plant-${i}`} opacity={plantOpacity}>
         <Path
           d={`M ${px} ${py} Q ${px - 6} ${py - h * 0.6} ${px - 4} ${py - h}`}
           stroke={color}
@@ -338,7 +472,7 @@ function GreensArt({ stageKey, placement, gated, palette, alpha }) {
           strokeLinecap="round"
         />
         {stageKey === STAGE_FLOURISHING && (
-          <G>
+          <G opacity={detailOpacity}>
             <Line
               x1={px}
               y1={py}
@@ -361,7 +495,8 @@ function GreensArt({ stageKey, placement, gated, palette, alpha }) {
 // Spec §3.2: fronds 1 → 2 → 3 → 5.
 // Carrot shoulders emerge at Harvesting. Frond color → Accent at Harvesting+.
 // Beet/radish (Alt) only at Flourishing, as two small forms at bed edges.
-function RootsArt({ stageKey, placement, gated, palette, alpha }) {
+// produceReveal (optional): 0→1 opacity gate for produce subgroup (carrot shoulders, beet/radish).
+function RootsArt({ stageKey, placement, gated, palette, alpha, produceReveal }) {
   const cx = placement.cx
   const cy = placement.cy
   if (stageKey === STAGE_SEED) return <SeedMarker cx={cx} cy={cy} gated={gated} />
@@ -378,6 +513,7 @@ function RootsArt({ stageKey, placement, gated, palette, alpha }) {
   // Frond color switches from Leaf to Accent at Harvesting (spec §3.2)
   const frondColor =
     stageKey === STAGE_HARVESTING || stageKey === STAGE_FLOURISHING ? gated.accent : gated.leaf
+  const produceOpacity = produceReveal != null ? produceReveal : 1
 
   const tufts = []
   for (let i = 0; i < tuftCount; i++) {
@@ -424,7 +560,14 @@ function RootsArt({ stageKey, placement, gated, palette, alpha }) {
         />
         {/* Carrot shoulders emerge at Harvesting+ */}
         {(stageKey === STAGE_HARVESTING || stageKey === STAGE_FLOURISHING) && (
-          <Ellipse cx={px} cy={py - 1} rx="2.5" ry="1.5" fill={gated.produce} opacity="0.85" />
+          <Ellipse
+            cx={px}
+            cy={py - 1}
+            rx="2.5"
+            ry="1.5"
+            fill={gated.produce}
+            opacity={0.85 * produceOpacity}
+          />
         )}
       </G>,
     )
@@ -432,7 +575,7 @@ function RootsArt({ stageKey, placement, gated, palette, alpha }) {
   // Beet/radish (Alt) only at Flourishing — two small forms at bed edges
   if (stageKey === STAGE_FLOURISHING) {
     tufts.push(
-      <G key="roots-beet-left">
+      <G key="roots-beet-left" opacity={produceOpacity}>
         <Ellipse
           cx={cx - placement.rx * 0.7}
           cy={cy - 2}
@@ -444,7 +587,7 @@ function RootsArt({ stageKey, placement, gated, palette, alpha }) {
       </G>,
     )
     tufts.push(
-      <G key="roots-beet-right">
+      <G key="roots-beet-right" opacity={produceOpacity}>
         <Ellipse
           cx={cx + placement.rx * 0.7}
           cy={cy - 2}
@@ -462,7 +605,21 @@ function RootsArt({ stageKey, placement, gated, palette, alpha }) {
 // ── Citrus: small standard tree, round dense crown ────────────
 // Spec §3.3: canopy blend, radius 0.16 → 0.34 → 0.52 → 0.66 × rx.
 // Fruit dots: 0 → 3 → 6 in Accent. Flourishing: 3 blossoms + rim arc.
-function CitrusArt({ stageKey, placement, gated, palette, alpha }) {
+// canopyColorOverride (optional): interpolated canopy color from
+// the Earned Color phase. When provided, used instead of computing
+// from palette + stageKey. At rest, not provided → canonical.
+// produceReveal (optional): 0→1 opacity gate for produce subgroup (fruit).
+//   At rest (produceReveal=1): fruit visible (canonical).
+//   During early growth (produceReveal=0): fruit hidden.
+function CitrusArt({
+  stageKey,
+  placement,
+  gated,
+  palette,
+  alpha,
+  canopyColorOverride,
+  produceReveal,
+}) {
   const cx = placement.cx
   const cy = placement.cy
   if (stageKey === STAGE_SEED) return <SeedMarker cx={cx} cy={cy} gated={gated} />
@@ -476,16 +633,27 @@ function CitrusArt({ stageKey, placement, gated, palette, alpha }) {
         : stageKey === STAGE_HARVESTING
           ? placement.rx * 0.52
           : placement.rx * 0.66
-  const canopyColor = gateColor(canopyBlend(palette.leaf, palette.produce, stageKey), stageKey)
+  const canopyColor =
+    canopyColorOverride || gateColor(canopyBlend(palette.leaf, palette.produce, stageKey), stageKey)
   const trunkTopY = cy - trunkH
   const fruitCount = stageKey === STAGE_HARVESTING ? 3 : stageKey === STAGE_FLOURISHING ? 6 : 0
+  const fruitOpacity = produceReveal != null ? produceReveal : 1
 
   const fruitDots = []
   for (let i = 0; i < fruitCount; i++) {
     const angle = (i / fruitCount) * Math.PI * 2
     const fx = cx + Math.cos(angle) * crownR * 0.5
     const fy = trunkTopY - crownR * 0.5 + Math.sin(angle) * crownR * 0.4
-    fruitDots.push(<Circle key={`citrus-fruit-${i}`} cx={fx} cy={fy} r="2" fill={gated.accent} />)
+    fruitDots.push(
+      <Circle
+        key={`citrus-fruit-${i}`}
+        cx={fx}
+        cy={fy}
+        r="2"
+        fill={gated.accent}
+        opacity={fruitOpacity}
+      />,
+    )
   }
 
   return (
@@ -557,7 +725,18 @@ function CitrusArt({ stageKey, placement, gated, palette, alpha }) {
 // ── Orchard: larger tree, irregular lobed crown, forked trunk ─
 // Spec §3.4: same canopy blend. Fruit uses Alt (#E85C4A) not Accent.
 // Gold #E8B84B reserved for Flourishing under-canopy shadow lift only.
-function OrchardArt({ stageKey, placement, gated, palette, alpha }) {
+// canopyColorOverride (optional): interpolated canopy color from
+// the Earned Color phase. At rest, not provided → canonical.
+// produceReveal (optional): 0→1 opacity gate for produce subgroup (fruit).
+function OrchardArt({
+  stageKey,
+  placement,
+  gated,
+  palette,
+  alpha,
+  canopyColorOverride,
+  produceReveal,
+}) {
   const cx = placement.cx
   const cy = placement.cy
   if (stageKey === STAGE_SEED) return <SeedMarker cx={cx} cy={cy} gated={gated} />
@@ -571,9 +750,11 @@ function OrchardArt({ stageKey, placement, gated, palette, alpha }) {
         : stageKey === STAGE_HARVESTING
           ? placement.rx * 0.52
           : placement.rx * 0.66
-  const canopyColor = gateColor(canopyBlend(palette.leaf, palette.produce, stageKey), stageKey)
+  const canopyColor =
+    canopyColorOverride || gateColor(canopyBlend(palette.leaf, palette.produce, stageKey), stageKey)
   const trunkTopY = cy - trunkH
   const fruitCount = stageKey === STAGE_HARVESTING ? 3 : stageKey === STAGE_FLOURISHING ? 6 : 0
+  const fruitOpacity = produceReveal != null ? produceReveal : 1
 
   const fruitDots = []
   for (let i = 0; i < fruitCount; i++) {
@@ -581,7 +762,16 @@ function OrchardArt({ stageKey, placement, gated, palette, alpha }) {
     const fx = cx + Math.cos(angle) * crownR * 0.5
     const fy = trunkTopY - crownR * 0.4 + Math.sin(angle) * crownR * 0.35
     // Orchard fruit uses Alt (#E85C4A) not Accent (spec §3.4)
-    fruitDots.push(<Circle key={`orchard-fruit-${i}`} cx={fx} cy={fy} r="2.2" fill={gated.alt} />)
+    fruitDots.push(
+      <Circle
+        key={`orchard-fruit-${i}`}
+        cx={fx}
+        cy={fy}
+        r="2.2"
+        fill={gated.alt}
+        opacity={fruitOpacity}
+      />,
+    )
   }
 
   return (
@@ -663,7 +853,8 @@ function OrchardArt({ stageKey, placement, gated, palette, alpha }) {
 // Purple stays below 15% of colored area.
 // CRITICAL: berry fruit CIRCLES must be visually dominant over green mounds
 // at Harvesting/Flourishing. Mounds are foliage support, not the main visual.
-function BerriesArt({ stageKey, placement, gated, palette, alpha }) {
+// produceReveal (optional): 0→1 opacity gate for produce subgroup (berries).
+function BerriesArt({ stageKey, placement, gated, palette, alpha, produceReveal }) {
   const cx = placement.cx
   const cy = placement.cy
   if (stageKey === STAGE_SEED) return <SeedMarker cx={cx} cy={cy} gated={gated} />
@@ -685,6 +876,7 @@ function BerriesArt({ stageKey, placement, gated, palette, alpha }) {
         : stageKey === STAGE_FLOURISHING
           ? 7
           : 0
+  const berryOpacity = produceReveal != null ? produceReveal : 1
 
   // Berry color cycling: Produce / mix(Produce, Alt, 0.35) / Accent
   const berryColors = [
@@ -715,7 +907,14 @@ function BerriesArt({ stageKey, placement, gated, palette, alpha }) {
     const h = 10 * heightScale
     mounds.push(
       <G key={`berries-mound-${i}`}>
-        <Ellipse cx={px} cy={py - h * 0.3} rx={moundRx} ry={moundRy} fill={gated.leaf} opacity="0.55" />
+        <Ellipse
+          cx={px}
+          cy={py - h * 0.3}
+          rx={moundRx}
+          ry={moundRy}
+          fill={gated.leaf}
+          opacity="0.55"
+        />
         <Ellipse cx={px - 3} cy={py - h * 0.4} rx="1.8" ry="1.2" fill={gated.leaf} opacity="0.5" />
         <Ellipse cx={px + 3} cy={py - h * 0.4} rx="1.8" ry="1.2" fill={gated.leaf} opacity="0.5" />
       </G>,
@@ -734,7 +933,7 @@ function BerriesArt({ stageKey, placement, gated, palette, alpha }) {
     // Berry sits above mound, clearly visible
     const berryCy = py - h * 0.55
     berries.push(
-      <G key={`berry-${i}`}>
+      <G key={`berry-${i}`} opacity={berryOpacity}>
         <Circle cx={px} cy={berryCy} r={berryR} fill={berryColor} opacity="0.92" />
         {/* Specular dot from Harvesting+ */}
         {(stageKey === STAGE_HARVESTING || stageKey === STAGE_FLOURISHING) && (
@@ -781,7 +980,8 @@ function BerriesArt({ stageKey, placement, gated, palette, alpha }) {
 // ── Tropical: radial sword-leaf rosettes, pineapples ──────────
 // Spec §3.6: most yellow-shifted leaf green. Mango orange at Harvesting+.
 // Pineapple gold dominates at Flourishing.
-function TropicalArt({ stageKey, placement, gated, palette, alpha }) {
+// produceReveal (optional): 0→1 opacity gate for produce subgroup (pineapple).
+function TropicalArt({ stageKey, placement, gated, palette, alpha, produceReveal }) {
   const cx = placement.cx
   const cy = placement.cy
   if (stageKey === STAGE_SEED) return <SeedMarker cx={cx} cy={cy} gated={gated} />
@@ -795,6 +995,7 @@ function TropicalArt({ stageKey, placement, gated, palette, alpha }) {
         : stageKey === STAGE_HARVESTING
           ? 3
           : 4
+  const pineappleOpacity = produceReveal != null ? produceReveal : 1
 
   const rosettes = []
   for (let i = 0; i < rosetteCount; i++) {
@@ -841,7 +1042,7 @@ function TropicalArt({ stageKey, placement, gated, palette, alpha }) {
         />
         {/* Pineapple at Harvesting+ — mango orange enters, gold dominates at Flourishing */}
         {(stageKey === STAGE_HARVESTING || stageKey === STAGE_FLOURISHING) && (
-          <G>
+          <G opacity={pineappleOpacity}>
             <Ellipse cx={px} cy={py - h * 0.6} rx="2.5" ry="4" fill={gated.produce} opacity="0.9" />
             <Path
               d={`M ${px - 1} ${py - h * 0.9} L ${px - 1} ${py - h * 1.1}`}
@@ -869,7 +1070,8 @@ function TropicalArt({ stageKey, placement, gated, palette, alpha }) {
 // ── Herbs: dense cushion of paired round leaves ───────────────
 // Spec §3.7: tufts 1 → 2 → 4 → 6. Cool mint family.
 // Accent flower head from Harvesting. Pale lilac (Alt) flowers at Flourishing only.
-function HerbsArt({ stageKey, placement, gated, palette, alpha }) {
+// produceReveal (optional): 0→1 opacity gate for produce subgroup (flowers).
+function HerbsArt({ stageKey, placement, gated, palette, alpha, produceReveal }) {
   const cx = placement.cx
   const cy = placement.cy
   if (stageKey === STAGE_SEED) return <SeedMarker cx={cx} cy={cy} gated={gated} />
@@ -883,6 +1085,7 @@ function HerbsArt({ stageKey, placement, gated, palette, alpha }) {
         : stageKey === STAGE_HARVESTING
           ? 4
           : 6
+  const flowerOpacity = produceReveal != null ? produceReveal : 1
 
   const leaves = []
   for (let i = 0; i < cushionCount; i++) {
@@ -907,7 +1110,7 @@ function HerbsArt({ stageKey, placement, gated, palette, alpha }) {
   // Accent flower head from Harvesting+
   if (stageKey === STAGE_HARVESTING || stageKey === STAGE_FLOURISHING) {
     leaves.push(
-      <G key="herbs-flower">
+      <G key="herbs-flower" opacity={flowerOpacity}>
         <Line
           x1={cx}
           y1={cy - 4}
@@ -924,7 +1127,7 @@ function HerbsArt({ stageKey, placement, gated, palette, alpha }) {
   // Pale lilac (Alt) flowers only at Flourishing
   if (stageKey === STAGE_FLOURISHING) {
     leaves.push(
-      <G key="herbs-lilac">
+      <G key="herbs-lilac" opacity={flowerOpacity}>
         <Circle cx={cx - 6} cy={cy - 10 * heightScale} r="1.5" fill={gated.alt} opacity="0.75" />
         <Circle cx={cx + 6} cy={cy - 10 * heightScale} r="1.5" fill={gated.alt} opacity="0.75" />
       </G>,
@@ -944,46 +1147,223 @@ const BED_RENDERERS = {
   herbs: HerbsArt,
 }
 
+// ── Memoized Plant Artwork ────────────────────────────────────
+// Extracted to prevent re-rendering during motion state updates.
+// react-native-svg 15.x bug: G elements with opacity != 1 that are
+// rapidly re-rendered cause "Underflow in restore" canvas crash.
+// By memoizing the Renderer (which contains G elements with opacity),
+// we prevent those G elements from being re-rendered when only the
+// motion transform changes.
+const PlantArtwork = memo(
+  function PlantArtwork({
+    bedKey,
+    stageKey,
+    placement,
+    gated,
+    palette,
+    alpha,
+    canopyColorOverride,
+    produceReveal,
+    deltaReveal,
+  }) {
+    const Renderer = BED_RENDERERS[bedKey]
+    if (!Renderer) return null
+    return (
+      <Renderer
+        stageKey={stageKey}
+        placement={placement}
+        gated={gated}
+        palette={palette}
+        alpha={alpha}
+        canopyColorOverride={canopyColorOverride}
+        produceReveal={produceReveal}
+        deltaReveal={deltaReveal}
+      />
+    )
+  },
+  (prev, next) =>
+    prev.bedKey === next.bedKey &&
+    prev.stageKey === next.stageKey &&
+    prev.placement === next.placement &&
+    prev.gated === next.gated &&
+    prev.palette === next.palette &&
+    prev.alpha === next.alpha &&
+    prev.canopyColorOverride === next.canopyColorOverride &&
+    prev.produceReveal === next.produceReveal &&
+    prev.deltaReveal === next.deltaReveal,
+)
+
 // ── Main Bed component ────────────────────────────────────────
 // Memoised on stageKey alone (spec §22).
-function LivingGardenBedComponent({ bedKey, stageKey, sceneId }) {
+//
+// bedMotion (optional): motion values from useGardenMotion.
+//   Phase 1C architecture:
+//     - animValues: { scaleY, translateY, opacity } — Animated.Value
+//       objects consumed via listeners (DOCUMENTED EXCEPTION: SVG
+//       transform strings, not AnimatedG, to avoid canvas restore crash)
+//     - soilScale: Animated.Value for Soil Answer (listener-based)
+//     - colorProgress: plain number (state-bridged exception, SVG fills)
+//     - produceReveal: plain number (state-bridged exception, SVG opacity)
+//     - fromStage, toStage: plain strings for color interpolation
+//   At rest, all values are canonical (scaleY=1, opacity=1, etc.).
+//   No masks, no clipPaths, no soil duplication, no z-order changes.
+function LivingGardenBedComponent({ bedKey, stageKey, sceneId, bedMotion }) {
   const placement = BED_PLACEMENT[bedKey]
+
+  // ── Motion values (Phase 1C architecture) ────────────────
+  const motion = bedMotion || {}
+  const animValues = motion.animValues // { scaleY, translateY, opacity } — Animated.Value
+  const soilScaleValue = motion.soilScale // Animated.Value for Soil Answer
+  const colorProgress = motion.colorProgress != null ? motion.colorProgress : 1
+  const produceReveal = motion.produceReveal != null ? motion.produceReveal : 1
+  const deltaReveal = motion.deltaReveal != null ? motion.deltaReveal : 1
+  const fromStage = motion.fromStage
+  const toStage = motion.toStage
+
+  // ── Listener-based transform state (DOCUMENTED EXCEPTION) ──
+  // Hooks must be called before any early return (Rules of Hooks).
+  const hasAnimValues = !!animValues
+  const hasSoilAnswer = !!soilScaleValue
+  const [plantTransform, setPlantTransform] = useState('')
+  const [plantOpacity, setPlantOpacity] = useState(1)
+  const [soilTransform, setSoilTransform] = useState('')
+
+  useEffect(() => {
+    if (!hasAnimValues || !placement) return
+    const updateTransform = () => {
+      const scaleY = animValues.scaleY.__getValue()
+      const translateY = animValues.translateY.__getValue()
+      const ty = (1 - scaleY) * placement.cy + translateY
+      setPlantTransform(`translate(0 ${ty}) scale(1 ${scaleY})`)
+      setPlantOpacity(animValues.opacity.__getValue())
+    }
+    updateTransform()
+    const l1 = animValues.scaleY.addListener(updateTransform)
+    const l2 = animValues.translateY.addListener(updateTransform)
+    const l3 = animValues.opacity.addListener(updateTransform)
+    return () => {
+      animValues.scaleY.removeListener(l1)
+      animValues.translateY.removeListener(l2)
+      animValues.opacity.removeListener(l3)
+    }
+  }, [hasAnimValues, animValues, placement])
+
+  useEffect(() => {
+    if (!hasSoilAnswer || !placement) return
+    const updateSoil = () => {
+      const scale = soilScaleValue.__getValue()
+      const ty = (1 - scale) * placement.cy
+      setSoilTransform(`translate(0 ${ty}) scale(1 ${scale})`)
+    }
+    updateSoil()
+    const listenerId = soilScaleValue.addListener(updateSoil)
+    return () => soilScaleValue.removeListener(listenerId)
+  }, [hasSoilAnswer, soilScaleValue, placement])
+
+  // ── Earned Color: compute interpolated gated palette ──────
+  // State-bridged exception: colorProgress drives SVG fill strings.
+  // Active only during the 600ms Earned Color phase.
+  // Memoized to prevent unnecessary re-renders of PlantArtwork
+  // (which contains G elements with opacity that trigger the
+  // react-native-svg canvas crash when rapidly re-rendered).
+  // Hooks must be called before any early return (Rules of Hooks).
+  const hasColorMotion = fromStage && toStage && colorProgress < 1
+  const gated = useMemo(
+    () =>
+      hasColorMotion
+        ? computeInterpolatedGated(bedKey, fromStage, toStage, colorProgress)
+        : gatedPalette(bedKey, stageKey),
+    [hasColorMotion, bedKey, fromStage, toStage, colorProgress, stageKey],
+  )
+
+  // Canopy color override for tree-form beds (Citrus, Orchard)
+  const canopyColorOverride = useMemo(
+    () =>
+      hasColorMotion && (bedKey === 'citrus' || bedKey === 'orchard')
+        ? computeInterpolatedCanopy(bedKey, fromStage, toStage, colorProgress)
+        : undefined,
+    [hasColorMotion, bedKey, fromStage, toStage, colorProgress],
+  )
+
+  // ── Early returns (after all hooks) ──────────────────────
   if (!placement) return null
 
   const Renderer = BED_RENDERERS[bedKey]
   if (!Renderer) return null
 
   const isEmpty = stageKey === STAGE_EMPTY
-  const gated = gatedPalette(bedKey, stageKey)
   const palette = BED_PALETTES[bedKey]
   const alpha = STAGE_ALPHA[stageKey] || 0
+
+  // ── Produce beat: gate produce subgroup opacity ──────────
+  // State-bridged exception: produceReveal drives SVG opacity.
+  // Active only during the Produce beat (400ms).
+  // At rest (produceReveal=1): all produce visible (canonical).
+  // During early growth (produceReveal=0): produce hidden.
+  // PRODUCE_SUBGROUPS[bedKey] is consulted by individual renderers below.
+
+  // ── Anchored growth transform (listener-based, DOCUMENTED EXCEPTION) ─
+  // Animated.Value objects are consumed via listeners that update state
+  // with SVG transform strings. This avoids the react-native-svg crash
+  // "Underflow in restore" caused by animated G wrapper with RN transform arrays.
+  // At rest (scaleY=1, translateY=0, opacity=1): identity/pixel-neutral.
 
   return (
     <G>
       {/* Ground bloom from Growing onward (rendered under soil) */}
       <GroundBloom bedKey={bedKey} placement={placement} stageKey={stageKey} />
-      {/* Soil bed + edging + fringe */}
-      <SoilBed bedKey={bedKey} sceneId={sceneId} stageKey={stageKey} />
+      {/* Soil bed + edging + fringe — wrapped for Soil Answer beat */}
+      {hasSoilAnswer ? (
+        <G transform={soilTransform}>
+          <SoilBed bedKey={bedKey} sceneId={sceneId} stageKey={stageKey} />
+        </G>
+      ) : (
+        <SoilBed bedKey={bedKey} sceneId={sceneId} stageKey={stageKey} />
+      )}
       {/* Ghost on Empty (11% of Sprout) — FROZEN zero-state */}
       {isEmpty && <GhostSilhouette bedKey={bedKey} sceneId={sceneId} />}
-      {/* Plant artwork (earned stages only) */}
-      {stageKey !== STAGE_EMPTY && (
-        <Renderer
-          stageKey={stageKey}
-          placement={placement}
-          gated={gated}
-          palette={palette}
-          alpha={alpha}
-        />
-      )}
+      {/* Plant artwork (earned stages only) — wrapped for anchored growth */}
+      {stageKey !== STAGE_EMPTY &&
+        (hasAnimValues ? (
+          <G transform={plantTransform}>
+            <PlantArtwork
+              bedKey={bedKey}
+              stageKey={stageKey}
+              placement={placement}
+              gated={gated}
+              palette={palette}
+              alpha={alpha}
+              canopyColorOverride={canopyColorOverride}
+              produceReveal={produceReveal}
+              deltaReveal={deltaReveal}
+            />
+          </G>
+        ) : (
+          <G>
+            <PlantArtwork
+              bedKey={bedKey}
+              stageKey={stageKey}
+              placement={placement}
+              gated={gated}
+              palette={palette}
+              alpha={alpha}
+              canopyColorOverride={canopyColorOverride}
+              produceReveal={produceReveal}
+              deltaReveal={deltaReveal}
+            />
+          </G>
+        ))}
     </G>
   )
 }
 
-// ── Custom comparator — re-render only on stageKey change ─────
+// ── Custom comparator — re-render on stageKey or motion change ──
 function bedComparator(prev, next) {
   return (
-    prev.bedKey === next.bedKey && prev.stageKey === next.stageKey && prev.sceneId === next.sceneId
+    prev.bedKey === next.bedKey &&
+    prev.stageKey === next.stageKey &&
+    prev.sceneId === next.sceneId &&
+    prev.bedMotion === next.bedMotion
   )
 }
 
@@ -1000,6 +1380,9 @@ export {
   gateColor,
   gatedPalette,
   canopyBlend,
+  computeInterpolatedGated,
+  computeInterpolatedCanopy,
+  TIER3_TOKEN_GROUPS,
 }
 
 export default LivingGardenBed

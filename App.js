@@ -58,9 +58,37 @@ import { JuiceLogProvider, useJuiceLog } from './src/services/JuiceLogStore'
 import { refreshNudges } from './src/services/NotificationNudges'
 import { hydrateDevClock } from './src/utils/DevClock'
 import { reconcileDormantReminders } from './src/services/DormantReminderService'
-import { markNotificationOpened, reconcileWithPresentedNotifications } from './src/services/NotificationHistoryService'
+import {
+  markNotificationOpened,
+  reconcileWithPresentedNotifications,
+} from './src/services/NotificationHistoryService'
 import NotificationDetailScreen from './src/screens/NotificationDetailScreen'
 import RecentNotificationsScreen from './src/screens/RecentNotificationsScreen'
+
+// TEMPORARY QA-ONLY: Garden visual preview harness (not for commit)
+// Gated by EXPO_PUBLIC_ENABLE_DEVELOPER_TOOLS build-time env var.
+// Production Google Play builds never enable this, so the import
+// and route are dead code in production.
+import { DEVELOPER_TOOLS_ENABLED } from './src/hooks/useDeveloperMode'
+let GardenPreviewScreen = null
+if (DEVELOPER_TOOLS_ENABLED) {
+  try {
+    GardenPreviewScreen = require('./src/screens/GardenPreviewScreen').default
+  } catch (e) {
+    /* preview unavailable */
+  }
+}
+
+// TEMPORARY QA-ONLY: Glow visual preview harness (not for commit)
+// Same gating as Garden preview.
+let GlowPreviewScreen = null
+if (DEVELOPER_TOOLS_ENABLED) {
+  try {
+    GlowPreviewScreen = require('./src/screens/GlowPreviewScreen').default
+  } catch (e) {
+    /* preview unavailable */
+  }
+}
 
 const RootStack = createNativeStackNavigator()
 const Tab = createBottomTabNavigator()
@@ -93,17 +121,39 @@ function addSharedScreens(StackNav) {
       <StackNav.Screen name="NoviceJourney" component={NoviceJourneyScreen} />
       <StackNav.Screen name="JuiceCalculator" component={JuiceCalculatorScreen} />
       <StackNav.Screen name="Dashboard" component={DashboardScreen} />
-      <StackNav.Screen name="ExplainFlow" component={ExplainFlowScreen} options={{ animation: 'fade' }} />
+      <StackNav.Screen
+        name="ExplainFlow"
+        component={ExplainFlowScreen}
+        options={{ animation: 'fade' }}
+      />
       <StackNav.Screen name="PerformanceDashboard" component={PerformanceDashboardScreen} />
-      <StackNav.Screen name="PerformanceOnboarding" component={PerformanceOnboardingScreen} options={{ animation: 'fade' }} />
-      <StackNav.Screen name="ScanSuccess" component={ScanSuccessScreen} options={{ animation: 'fade' }} />
+      <StackNav.Screen
+        name="PerformanceOnboarding"
+        component={PerformanceOnboardingScreen}
+        options={{ animation: 'fade' }}
+      />
+      <StackNav.Screen
+        name="ScanSuccess"
+        component={ScanSuccessScreen}
+        options={{ animation: 'fade' }}
+      />
       <StackNav.Screen name="HistoryScreen" component={HistoryScreen} />
-      <StackNav.Screen name="Paywall" component={PaywallScreen} options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
+      <StackNav.Screen
+        name="Paywall"
+        component={PaywallScreen}
+        options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
+      />
       <StackNav.Screen name="JuicerGuide" component={JuicerGuideScreen} />
       <StackNav.Screen name="ProduceRecipeResults" component={ProduceRecipeResultsScreen} />
       <StackNav.Screen name="Lesson" component={LessonScreen} />
       <StackNav.Screen name="NotificationDetail" component={NotificationDetailScreen} />
       <StackNav.Screen name="RecentNotifications" component={RecentNotificationsScreen} />
+      {DEVELOPER_TOOLS_ENABLED && GardenPreviewScreen && (
+        <StackNav.Screen name="GardenPreview" component={GardenPreviewScreen} />
+      )}
+      {DEVELOPER_TOOLS_ENABLED && GlowPreviewScreen && (
+        <StackNav.Screen name="GlowPreview" component={GlowPreviewScreen} />
+      )}
     </>
   )
 }
@@ -124,7 +174,11 @@ const ScanFlowStack = createNativeStackNavigator()
 function ScanFlow() {
   return (
     <ScanFlowStack.Navigator screenOptions={STACK_OPTS}>
-      <ScanFlowStack.Screen name="ScanHome" component={JuiceSnapScreen} options={{ animation: 'none' }} />
+      <ScanFlowStack.Screen
+        name="ScanHome"
+        component={JuiceSnapScreen}
+        options={{ animation: 'none' }}
+      />
       {addSharedScreens(ScanFlowStack)}
     </ScanFlowStack.Navigator>
   )
@@ -169,7 +223,12 @@ function MainTabs() {
 // ── Root Navigator (hydration-aware intro gate) ─────────────
 
 function RootNavigator() {
-  const { activation, isHydrated: activationReady, recordIntroDismissed, setExperienceLevel } = useActivation()
+  const {
+    activation,
+    isHydrated: activationReady,
+    recordIntroDismissed,
+    setExperienceLevel,
+  } = useActivation()
   const { isHydrated: logReady, totalLogCount } = useJuiceLog()
   const appStateRef = useRef(AppState.currentState)
 
@@ -194,9 +253,8 @@ function RootNavigator() {
       if (!response) return
 
       // Dedupe: don't handle the same response twice
-      const responseId = response?.notification?.request?.identifier
-        || response?.notification?.date
-        || Date.now()
+      const responseId =
+        response?.notification?.request?.identifier || response?.notification?.date || Date.now()
       if (lastHandledResponseId === responseId) return
       lastHandledResponseId = responseId
 
@@ -217,7 +275,8 @@ function RootNavigator() {
       }
 
       // Mark as opened in the archive
-      const scheduleIdentifier = data?.notificationId || response?.notification?.request?.identifier || ''
+      const scheduleIdentifier =
+        data?.notificationId || response?.notification?.request?.identifier || ''
       const fullText = data?.fullText || body || ''
       const notificationType = data?.notificationType || data?.type || 'unknown'
       const scheduledFor = typeof data?.scheduledFor === 'number' ? data.scheduledFor : null
@@ -280,9 +339,21 @@ function RootNavigator() {
 
   // Wait for both stores to hydrate before deciding
   if (!activationReady || !logReady) {
-    console.log('[RootNavigator] waiting for hydration — activationReady:', activationReady, 'logReady:', logReady)
+    console.log(
+      '[RootNavigator] waiting for hydration — activationReady:',
+      activationReady,
+      'logReady:',
+      logReady,
+    )
     return (
-      <View style={{ flex: 1, backgroundColor: '#060D0A', justifyContent: 'center', alignItems: 'center' }}>
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: '#060D0A',
+          justifyContent: 'center',
+          alignItems: 'center',
+        }}
+      >
         <Text style={{ color: '#484F58', fontSize: 14 }}>Loading…</Text>
       </View>
     )
@@ -291,7 +362,16 @@ function RootNavigator() {
   // Skip intro for returning users (have logs) or if intro was explicitly dismissed
   const skipIntro = activation.introDismissed || activation.totalLogsCount > 0 || totalLogCount > 0
   const initialRoute = skipIntro ? 'Main' : 'JuicingExperience'
-  console.log('[RootNavigator] hydrated — introDismissed:', activation.introDismissed, 'activationLogs:', activation.totalLogsCount, 'juiceLogs:', totalLogCount, '→ route:', initialRoute)
+  console.log(
+    '[RootNavigator] hydrated — introDismissed:',
+    activation.introDismissed,
+    'activationLogs:',
+    activation.totalLogsCount,
+    'juiceLogs:',
+    totalLogCount,
+    '→ route:',
+    initialRoute,
+  )
 
   return (
     <RootStack.Navigator
@@ -307,7 +387,7 @@ function RootNavigator() {
                 CommonActions.reset({
                   index: 1,
                   routes: [{ name: 'Main' }, { name: 'ScanFlow' }],
-                })
+                }),
               )
             }}
             onSeeHow={() => {
@@ -320,7 +400,7 @@ function RootNavigator() {
                 CommonActions.reset({
                   index: 0,
                   routes: [{ name: 'Main', state: { routes: [{ name: 'ExploreTab' }] } }],
-                })
+                }),
               )
             }}
           />
@@ -333,7 +413,8 @@ function RootNavigator() {
             navigation={navigation}
             onSelect={(value) => {
               setExperienceLevel(value)
-              const isReturning = activation.introDismissed || activation.totalLogsCount > 0 || totalLogCount > 0
+              const isReturning =
+                activation.introDismissed || activation.totalLogsCount > 0 || totalLogCount > 0
               if (isReturning) {
                 // Returning user from Today — show the lesson they selected
                 navigation.navigate('Lesson', { level: value, isReplay: true })
@@ -363,40 +444,40 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <WeightUnitProvider>
-      <OrganicPrefProvider>
-      <FlagProvider>
-      <ActivationProvider>
-      <PantryProvider>
-      <TemplateProvider>
-      <StreakProvider>
-      <SocialChallengeProvider>
-      <ProProvider>
-      <SubscriptionProvider>
-      <QuotaProvider>
-      <EducationProvider>
-      <UserProfileProvider>
-      <ChallengeProvider>
-      <NutritionScoreProvider>
-      <JuiceLogProvider>
-        <NavigationContainer ref={navigationRef}>
-          <StatusBar style="light" />
-          <RootNavigator />
-        </NavigationContainer>
-      </JuiceLogProvider>
-      </NutritionScoreProvider>
-      </ChallengeProvider>
-      </UserProfileProvider>
-      </EducationProvider>
-      </QuotaProvider>
-      </SubscriptionProvider>
-      </ProProvider>
-      </SocialChallengeProvider>
-      </StreakProvider>
-      </TemplateProvider>
-      </PantryProvider>
-      </ActivationProvider>
-      </FlagProvider>
-      </OrganicPrefProvider>
+        <OrganicPrefProvider>
+          <FlagProvider>
+            <ActivationProvider>
+              <PantryProvider>
+                <TemplateProvider>
+                  <StreakProvider>
+                    <SocialChallengeProvider>
+                      <ProProvider>
+                        <SubscriptionProvider>
+                          <QuotaProvider>
+                            <EducationProvider>
+                              <UserProfileProvider>
+                                <ChallengeProvider>
+                                  <NutritionScoreProvider>
+                                    <JuiceLogProvider>
+                                      <NavigationContainer ref={navigationRef}>
+                                        <StatusBar style="light" />
+                                        <RootNavigator />
+                                      </NavigationContainer>
+                                    </JuiceLogProvider>
+                                  </NutritionScoreProvider>
+                                </ChallengeProvider>
+                              </UserProfileProvider>
+                            </EducationProvider>
+                          </QuotaProvider>
+                        </SubscriptionProvider>
+                      </ProProvider>
+                    </SocialChallengeProvider>
+                  </StreakProvider>
+                </TemplateProvider>
+              </PantryProvider>
+            </ActivationProvider>
+          </FlagProvider>
+        </OrganicPrefProvider>
       </WeightUnitProvider>
     </SafeAreaProvider>
   )

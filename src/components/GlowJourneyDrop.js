@@ -52,10 +52,13 @@ import {
 import GlowJourneyDropArtwork from './GlowJourneyDropArtwork'
 import GlowJourneyStageIcon from './GlowJourneyStageIcon'
 
-// Hero sizing (spec §4): 0.64 × content width, range 0.56–0.68
-const HERO_WIDTH_FACTOR = 0.64
-const HERO_WIDTH_MIN = 150
-const HERO_WIDTH_MAX = 220
+// Hero sizing — reduced to match RawLife Garden graphic footprint.
+// Garden card artwork max is 140px (Math.min(cardWidth * 0.38, 140)).
+// Glow hero is vertically elongated (200×260), so it must be narrower
+// than the Garden artwork to have equivalent perceived visual weight.
+const HERO_WIDTH_FACTOR = 0.35
+const HERO_WIDTH_MIN = 105
+const HERO_WIDTH_MAX = 120
 
 // Card padding (spec §4)
 const CARD_PADDING_TOP = 20
@@ -122,7 +125,7 @@ function GlowJourneyDrop({
     const w = contentWidth * HERO_WIDTH_FACTOR
     return Math.max(HERO_WIDTH_MIN, Math.min(w, HERO_WIDTH_MAX))
   }, [contentWidth])
-  const vineWidth = contentWidth
+  const vineWidth = heroWidth
 
   const visualState = useMemo(
     () =>

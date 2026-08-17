@@ -63,8 +63,17 @@ import {
   selectQuotaLabel,
   selectNextRefreshLabel,
 } from '../services/subscriptions/subscriptionSelectors'
-import { MONETIZATION_ENABLED, SUPABASE_CONFIGURED, TERMS_URL, PRIVACY_URL } from '../services/subscriptions/subscriptionConfig'
-import { fetchEffectiveBlendAllowance, FREE_ADVANCED_BLEND_ALLOWANCE, getAdvancedBlendRemaining } from '../services/quota/blendAllowanceService'
+import {
+  MONETIZATION_ENABLED,
+  SUPABASE_CONFIGURED,
+  TERMS_URL,
+  PRIVACY_URL,
+} from '../services/subscriptions/subscriptionConfig'
+import {
+  fetchEffectiveBlendAllowance,
+  FREE_ADVANCED_BLEND_ALLOWANCE,
+  getAdvancedBlendRemaining,
+} from '../services/quota/blendAllowanceService'
 import { getAccountStatus, signOutAccount } from '../services/supabase/accountLink'
 import AccountGateModal from '../components/AccountGateModal'
 import { advanceDevDay, getDevDayOffset, resetDevClock, getDevNow } from '../utils/DevClock'
@@ -76,7 +85,11 @@ import { BUILD_TARGET } from '../utils/buildTarget'
 import { APP_VERSION, APP_VERSION_CODE } from '../utils/appVersion'
 import { useDeveloperMode } from '../hooks/useDeveloperMode'
 import { clearState } from '../services/storage'
-import { getNudgeSettings, setNudgeSettings, resetNudgeSettings } from '../services/NudgeSettingsStore'
+import {
+  getNudgeSettings,
+  setNudgeSettings,
+  resetNudgeSettings,
+} from '../services/NudgeSettingsStore'
 import {
   ensurePermissions,
   refreshNudges,
@@ -85,7 +98,10 @@ import {
   sendThreeDayTestNudges,
   setAndroidNotificationChannel,
 } from '../services/NotificationNudges'
-import { WellnessSettingsDisclaimer, resetWellnessDisclaimer } from '../components/WellnessDisclaimer'
+import {
+  WellnessSettingsDisclaimer,
+  resetWellnessDisclaimer,
+} from '../components/WellnessDisclaimer'
 import {
   getPreferredPortionEntryMode,
   setPreferredPortionEntryMode,
@@ -155,9 +171,27 @@ function TimePicker({ label, hour, minute, onChange }) {
 // ── Nudge Time Picker (HH:MM string) ─────────────────────────
 
 const COMMON_TIMES = [
-  '06:00', '06:30', '07:00', '07:30', '08:00', '08:30', '09:00', '09:30',
-  '10:00', '12:00', '14:00', '16:00', '17:00', '17:30',
-  '18:00', '18:30', '19:00', '19:30', '20:00', '20:30', '21:00',
+  '06:00',
+  '06:30',
+  '07:00',
+  '07:30',
+  '08:00',
+  '08:30',
+  '09:00',
+  '09:30',
+  '10:00',
+  '12:00',
+  '14:00',
+  '16:00',
+  '17:00',
+  '17:30',
+  '18:00',
+  '18:30',
+  '19:00',
+  '19:30',
+  '20:00',
+  '20:30',
+  '21:00',
 ]
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -221,7 +255,8 @@ function SmartSetupTooltip({ visible, onDismiss }) {
       <View style={styles.tooltipContent}>
         <Text style={styles.tooltipTitle}>Architect's Tip</Text>
         <Text style={styles.tooltipText}>
-          We recommend 'Balanced' intensity to help you cement your 7-day habit. You can always change this later!
+          We recommend 'Balanced' intensity to help you cement your 7-day habit. You can always
+          change this later!
         </Text>
       </View>
       <TouchableOpacity onPress={onDismiss} style={styles.tooltipClose}>
@@ -282,7 +317,7 @@ function AccountSection() {
             await loadAccount()
           },
         },
-      ]
+      ],
     )
   }
 
@@ -311,7 +346,9 @@ function AccountSection() {
             >
               <View style={styles.helpInfo}>
                 <Text style={styles.helpLabel}>Sign Out</Text>
-                <Text style={styles.helpDesc}>Your history and plan stay safe — sign back in anytime</Text>
+                <Text style={styles.helpDesc}>
+                  Your history and plan stay safe — sign back in anytime
+                </Text>
               </View>
             </TouchableOpacity>
           </>
@@ -326,7 +363,9 @@ function AccountSection() {
             >
               <View style={styles.helpInfo}>
                 <Text style={styles.helpLabel}>Protect Your Account</Text>
-                <Text style={styles.helpDesc}>Add your email to save scan history and keep your monthly allowance</Text>
+                <Text style={styles.helpDesc}>
+                  Add your email to save scan history and keep your monthly allowance
+                </Text>
               </View>
               <Text style={styles.helpArrow}>→</Text>
             </TouchableOpacity>
@@ -339,7 +378,9 @@ function AccountSection() {
             >
               <View style={styles.helpInfo}>
                 <Text style={styles.helpLabel}>Sign In</Text>
-                <Text style={styles.helpDesc}>Already have an account? Restore your history and plan</Text>
+                <Text style={styles.helpDesc}>
+                  Already have an account? Restore your history and plan
+                </Text>
               </View>
               <Text style={styles.helpArrow}>→</Text>
             </TouchableOpacity>
@@ -386,16 +427,19 @@ function SubscriptionSection({ navigation }) {
       if (snapshot) {
         // Compute effective used from effective remaining so the
         // install guard is reflected in the displayed count.
-        const effectiveRemaining = typeof snapshot.remaining === 'number'
-          ? snapshot.remaining
-          : FREE_ADVANCED_BLEND_ALLOWANCE
+        const effectiveRemaining =
+          typeof snapshot.remaining === 'number'
+            ? snapshot.remaining
+            : FREE_ADVANCED_BLEND_ALLOWANCE
         const effectiveUsed = Math.max(0, FREE_ADVANCED_BLEND_ALLOWANCE - effectiveRemaining)
         setBlendUsedCount(effectiveUsed)
         setBlendVerified(true)
       }
     }
     load()
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
   }, [isPro])
 
   const handleRestore = async () => {
@@ -406,7 +450,10 @@ function SubscriptionSection({ navigation }) {
         await refreshQuota()
         Alert.alert('Purchases Restored', 'Your Pro subscription is active again.')
       } else if (outcome.status === 'no_purchases') {
-        Alert.alert('No Purchases Found', 'We could not find a previous subscription for this account.')
+        Alert.alert(
+          'No Purchases Found',
+          'We could not find a previous subscription for this account.',
+        )
       } else {
         Alert.alert('Restore Failed', 'Please try again later.')
       }
@@ -433,7 +480,9 @@ function SubscriptionSection({ navigation }) {
             {renewalLabel ? <Text style={styles.helpDesc}>{renewalLabel}</Text> : null}
             {storeLabel ? <Text style={styles.helpDesc}>{storeLabel}</Text> : null}
             {quotaLabel ? <Text style={styles.helpDesc}>{quotaLabel}</Text> : null}
-            {refreshLabel ? <Text style={styles.helpDesc}>Scans refresh on {refreshLabel}</Text> : null}
+            {refreshLabel ? (
+              <Text style={styles.helpDesc}>Scans refresh on {refreshLabel}</Text>
+            ) : null}
             <Text style={styles.helpDesc}>
               {isPro
                 ? 'Unlimited Expanded Ingredient Analysis with Pro'
@@ -518,9 +567,7 @@ function SettingRow({ label, description, value, onValueChange, emergency, disab
     <View style={[styles.settingRow, disabled && styles.settingRowDisabled]}>
       <View style={styles.settingInfo}>
         <Text style={[styles.settingLabel, disabled && styles.settingLabelDisabled]}>{label}</Text>
-        {description && (
-          <Text style={styles.settingDesc}>{description}</Text>
-        )}
+        {description && <Text style={styles.settingDesc}>{description}</Text>}
         {emergency && (
           <View style={styles.emergencyTag}>
             <Snowflake size={10} color="#90CAF9" />
@@ -643,12 +690,16 @@ export default function SettingsScreen({ navigation }) {
       setIsLoading(false)
     })
     getNudgeSettings().then(setNudgeSettingsLocal)
-    AsyncStorage.getItem(JUICE_METHOD_STORAGE_KEY).then((val) => {
-      if (val === 'cold_pressed' || val === 'centrifugal') setJuicerType(val)
-    }).catch(() => {})
-    getPreferredPortionEntryMode().then((mode) => {
-      setPortionEntryMode(mode)
-    }).catch(() => {})
+    AsyncStorage.getItem(JUICE_METHOD_STORAGE_KEY)
+      .then((val) => {
+        if (val === 'cold_pressed' || val === 'centrifugal') setJuicerType(val)
+      })
+      .catch(() => {})
+    getPreferredPortionEntryMode()
+      .then((mode) => {
+        setPortionEntryMode(mode)
+      })
+      .catch(() => {})
   }, [])
 
   const handleSetJuicerType = useCallback((key) => {
@@ -671,21 +722,24 @@ export default function SettingsScreen({ navigation }) {
     }
   }, [])
 
-  const handleNudgeMasterToggle = useCallback(async (enabled) => {
-    if (enabled) {
-      const granted = await ensurePermissions()
-      if (!granted) {
-        setNudgePermDenied(true)
-        return
+  const handleNudgeMasterToggle = useCallback(
+    async (enabled) => {
+      if (enabled) {
+        const granted = await ensurePermissions()
+        if (!granted) {
+          setNudgePermDenied(true)
+          return
+        }
+        setNudgePermDenied(false)
+        await setAndroidNotificationChannel()
+        await updateNudgeSetting({ nudges_enabled: true })
+      } else {
+        await cancelAllNudges()
+        await updateNudgeSetting({ nudges_enabled: false })
       }
-      setNudgePermDenied(false)
-      await setAndroidNotificationChannel()
-      await updateNudgeSetting({ nudges_enabled: true })
-    } else {
-      await cancelAllNudges()
-      await updateNudgeSetting({ nudges_enabled: false })
-    }
-  }, [updateNudgeSetting])
+    },
+    [updateNudgeSetting],
+  )
 
   // Check first visit
   useEffect(() => {
@@ -698,7 +752,9 @@ export default function SettingsScreen({ navigation }) {
           setShowTooltip(true)
           await AsyncStorage.setItem('@settings_visited', 'true')
         }
-      } catch (e) { /* ignore */ }
+      } catch (e) {
+        /* ignore */
+      }
     }
     checkFirstVisit()
   }, [])
@@ -738,944 +794,1018 @@ export default function SettingsScreen({ navigation }) {
 
   return (
     <View style={styles.rootWrap}>
-    <MeshGradientBg />
-    <SafeAreaView style={styles.safe} edges={['top']}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <ArrowLeft size={22} color="#FFFFFF" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Preferences & Privacy</Text>
-        <View style={{ width: 36 }} />
-      </View>
-
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* ═══ ONBOARDING TOOLTIP ═══════════════════════════ */}
-        <SmartSetupTooltip visible={showTooltip} onDismiss={handleTooltipDismiss} />
-
-        {/* ═══ WEIGHT DISPLAY UNITS ═════════════════════════ */}
-        <View style={styles.intensityCard}>
-          <Text style={styles.intensityTitle}>Weight Display</Text>
-          <View style={styles.intensityRow}>
-            {WEIGHT_MODES.map((wm) => {
-              const isActive = weightMode === wm.key
-              const color = '#81C784'
-              return (
-                <TouchableOpacity
-                  key={wm.key}
-                  style={[
-                    styles.intensityStop,
-                    isActive && { borderColor: color, backgroundColor: `${color}15` },
-                  ]}
-                  onPress={() => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-                    setWeightMode(wm.key)
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[
-                    styles.intensityLabel,
-                    isActive && { color },
-                  ]}>
-                    {wm.label}
-                  </Text>
-                </TouchableOpacity>
-              )
-            })}
-          </View>
+      <MeshGradientBg />
+      <SafeAreaView style={styles.safe} edges={['top']}>
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+            <ArrowLeft size={22} color="#FFFFFF" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Preferences & Privacy</Text>
+          <View style={{ width: 36 }} />
         </View>
 
-        {/* ═══ ORGANIC PREFERENCE ═══════════════════════════ */}
-        <View style={styles.intensityCard}>
-          <Text style={styles.intensityTitle}>Organic Default</Text>
-          <View style={styles.intensityRow}>
-            {ORGANIC_MODES.map((om) => {
-              const isActive = organicMode === om.key
-              const color = '#81C784'
-              return (
-                <TouchableOpacity
-                  key={om.key}
-                  style={[
-                    styles.intensityStop,
-                    isActive && { borderColor: color, backgroundColor: `${color}15` },
-                  ]}
-                  onPress={() => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-                    setOrganicMode(om.key)
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[
-                    styles.intensityLabel,
-                    isActive && { color },
-                  ]}>
-                    {om.label}
-                  </Text>
-                </TouchableOpacity>
-              )
-            })}
-          </View>
-        </View>
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.content}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* ═══ ONBOARDING TOOLTIP ═══════════════════════════ */}
+          <SmartSetupTooltip visible={showTooltip} onDismiss={handleTooltipDismiss} />
 
-        {/* ═══ PREFERRED PORTION ENTRY ═════════════════════ */}
-        <View style={styles.intensityCard}>
-          <Text style={styles.intensityTitle}>Preferred Portion Entry</Text>
-          <PortionEntryModeToggle
-            mode={portionEntryMode}
-            onModeChange={handleSetPortionEntryMode}
-            accessibilityLabelPrefix="Preferred portion entry"
-          />
-          <Text style={styles.intensityHint}>
-            Choose how new ingredients are entered. You can change the method for any individual ingredient.
-          </Text>
-        </View>
-
-        {/* ═══ MY JUICER TYPE ═══════════════════════════════ */}
-        <View style={styles.intensityCard}>
-          <Text style={styles.intensityTitle}>My Juicer Type</Text>
-          <View style={styles.intensityRow}>
-            {JUICER_TYPE_OPTIONS.map((jt) => {
-              const isActive = juicerType === jt.key
-              const color = jt.key === 'cold_pressed' ? '#81C784' : '#FFB74D'
-              return (
-                <TouchableOpacity
-                  key={jt.key}
-                  style={[
-                    styles.intensityStop,
-                    isActive && { borderColor: color, backgroundColor: `${color}15` },
-                  ]}
-                  onPress={() => handleSetJuicerType(jt.key)}
-                  activeOpacity={0.7}
-                >
-                  <Cog size={14} color={isActive ? color : '#90A4AE'} />
-                  <Text style={[
-                    styles.intensityLabel,
-                    isActive && { color },
-                  ]}>
-                    {jt.label}
-                  </Text>
-                </TouchableOpacity>
-              )
-            })}
-          </View>
-          <Text style={styles.intensityHint}>
-            Affects nutrient retention math in Juice Snap — centrifugal juicers lose more heat-sensitive vitamins.
-          </Text>
-        </View>
-
-        {/* ═══ NOTIFICATION INTENSITY ═══════════════════════ */}
-        <View style={styles.intensityCard}>
-          <Text style={styles.intensityTitle}>Notification Intensity</Text>
-          <View style={styles.intensityRow}>
-            {INTENSITY_STOPS.map((stop) => {
-              const isActive = settings.intensity === stop.key
-              return (
-                <TouchableOpacity
-                  key={stop.key}
-                  style={[
-                    styles.intensityStop,
-                    isActive && { borderColor: stop.color, backgroundColor: `${stop.color}15` },
-                  ]}
-                  onPress={() => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
-                    updateSetting('intensity', stop.key)
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[
-                    styles.intensityLabel,
-                    isActive && { color: stop.color, fontWeight: '900' },
-                  ]}>
-                    {stop.label}
-                  </Text>
-                  <Text style={[
-                    styles.intensityDesc,
-                    isActive && { color: stop.color },
-                  ]}>
-                    {stop.desc}
-                  </Text>
-                </TouchableOpacity>
-              )
-            })}
-          </View>
-        </View>
-
-        {/* ═══ A. THE "PULSE" (Engagement) ═════════════════ */}
-        <SectionHeader
-          icon={<Bell size={18} color="#FFB74D" />}
-          title="The Pulse"
-          subtitle="Mindset & Progress"
-        />
-
-        <View style={styles.settingsGroup}>
-          <SettingRow
-            label="Daily Affirmations"
-            description="Morning 'Wellness Architect' identity quotes"
-            value={settings.affirmations}
-            onValueChange={(v) => updateSetting('affirmations', v)}
-          />
-          <SettingRow
-            label="Vitality Reminders"
-            description="Alerts when rings are empty late in the day"
-            value={settings.vitalityReminders}
-            onValueChange={(v) => updateSetting('vitalityReminders', v)}
-          />
-        </View>
-
-        {/* ═══ QUIET HOURS ═════════════════════════════════ */}
-        <SectionHeader
-          icon={<Moon size={18} color="#90CAF9" />}
-          title="My Resting Hours"
-          subtitle="Do Not Disturb"
-        />
-
-        <View style={styles.quietCard}>
-          <View style={styles.quietRow}>
-            <TimePicker
-              label="Sleep"
-              hour={settings.quietStart.hour}
-              minute={settings.quietStart.minute}
-              onChange={(t) => updateSetting('quietStart', t)}
-            />
-            <View style={styles.quietDivider}>
-              <Moon size={14} color="#90A4AE" />
+          {/* ═══ WEIGHT DISPLAY UNITS ═════════════════════════ */}
+          <View style={styles.intensityCard}>
+            <Text style={styles.intensityTitle}>Weight Display</Text>
+            <View style={styles.intensityRow}>
+              {WEIGHT_MODES.map((wm) => {
+                const isActive = weightMode === wm.key
+                const color = '#81C784'
+                return (
+                  <TouchableOpacity
+                    key={wm.key}
+                    style={[
+                      styles.intensityStop,
+                      isActive && { borderColor: color, backgroundColor: `${color}15` },
+                    ]}
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+                      setWeightMode(wm.key)
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[styles.intensityLabel, isActive && { color }]}>{wm.label}</Text>
+                  </TouchableOpacity>
+                )
+              })}
             </View>
-            <TimePicker
-              label="Wake"
-              hour={settings.quietEnd.hour}
-              minute={settings.quietEnd.minute}
-              onChange={(t) => updateSetting('quietEnd', t)}
-            />
           </View>
-          <View style={styles.quietNote}>
-            <Shield size={12} color="#90CAF9" />
-            <Text style={styles.quietNoteText}>
-              All notifications are silenced during this window.
-            </Text>
-          </View>
-        </View>
 
-        {/* ═══ MASTER SWITCH ═══════════════════════════════ */}
-        <View style={styles.masterCard}>
-          <View style={styles.masterInfo}>
-            <Text style={styles.masterLabel}>All Notifications</Text>
-            <Text style={styles.masterDesc}>
-              Master switch for all push notifications
+          {/* ═══ ORGANIC PREFERENCE ═══════════════════════════ */}
+          <View style={styles.intensityCard}>
+            <Text style={styles.intensityTitle}>Organic Default</Text>
+            <View style={styles.intensityRow}>
+              {ORGANIC_MODES.map((om) => {
+                const isActive = organicMode === om.key
+                const color = '#81C784'
+                return (
+                  <TouchableOpacity
+                    key={om.key}
+                    style={[
+                      styles.intensityStop,
+                      isActive && { borderColor: color, backgroundColor: `${color}15` },
+                    ]}
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+                      setOrganicMode(om.key)
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[styles.intensityLabel, isActive && { color }]}>{om.label}</Text>
+                  </TouchableOpacity>
+                )
+              })}
+            </View>
+          </View>
+
+          {/* ═══ PREFERRED PORTION ENTRY ═════════════════════ */}
+          <View style={styles.intensityCard}>
+            <Text style={styles.intensityTitle}>Preferred Portion Entry</Text>
+            <PortionEntryModeToggle
+              mode={portionEntryMode}
+              onModeChange={handleSetPortionEntryMode}
+              accessibilityLabelPrefix="Preferred portion entry"
+            />
+            <Text style={styles.intensityHint}>
+              Choose how new ingredients are entered. You can change the method for any individual
+              ingredient.
             </Text>
           </View>
-          <EmeraldSwitch
-            value={settings.enabled}
-            onValueChange={(v) => updateSetting('enabled', v)}
+
+          {/* ═══ MY JUICER TYPE ═══════════════════════════════ */}
+          <View style={styles.intensityCard}>
+            <Text style={styles.intensityTitle}>My Juicer Type</Text>
+            <View style={styles.intensityRow}>
+              {JUICER_TYPE_OPTIONS.map((jt) => {
+                const isActive = juicerType === jt.key
+                const color = jt.key === 'cold_pressed' ? '#81C784' : '#FFB74D'
+                return (
+                  <TouchableOpacity
+                    key={jt.key}
+                    style={[
+                      styles.intensityStop,
+                      isActive && { borderColor: color, backgroundColor: `${color}15` },
+                    ]}
+                    onPress={() => handleSetJuicerType(jt.key)}
+                    activeOpacity={0.7}
+                  >
+                    <Cog size={14} color={isActive ? color : '#90A4AE'} />
+                    <Text style={[styles.intensityLabel, isActive && { color }]}>{jt.label}</Text>
+                  </TouchableOpacity>
+                )
+              })}
+            </View>
+            <Text style={styles.intensityHint}>
+              Affects nutrient retention math in Juice Snap — centrifugal juicers lose more
+              heat-sensitive vitamins.
+            </Text>
+          </View>
+
+          {/* ═══ NOTIFICATION INTENSITY ═══════════════════════ */}
+          <View style={styles.intensityCard}>
+            <Text style={styles.intensityTitle}>Notification Intensity</Text>
+            <View style={styles.intensityRow}>
+              {INTENSITY_STOPS.map((stop) => {
+                const isActive = settings.intensity === stop.key
+                return (
+                  <TouchableOpacity
+                    key={stop.key}
+                    style={[
+                      styles.intensityStop,
+                      isActive && { borderColor: stop.color, backgroundColor: `${stop.color}15` },
+                    ]}
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+                      updateSetting('intensity', stop.key)
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Text
+                      style={[
+                        styles.intensityLabel,
+                        isActive && { color: stop.color, fontWeight: '900' },
+                      ]}
+                    >
+                      {stop.label}
+                    </Text>
+                    <Text style={[styles.intensityDesc, isActive && { color: stop.color }]}>
+                      {stop.desc}
+                    </Text>
+                  </TouchableOpacity>
+                )
+              })}
+            </View>
+          </View>
+
+          {/* ═══ A. THE "PULSE" (Engagement) ═════════════════ */}
+          <SectionHeader
+            icon={<Bell size={18} color="#FFB74D" />}
+            title="The Pulse"
+            subtitle="Mindset & Progress"
           />
-        </View>
 
-        {/* ═══ MOTIVATION REMINDERS ═══════════════════════════ */}
-        {nudgeSettings && (
-          <>
-            <SectionHeader
-              icon={<Sparkles size={18} color="#81C784" />}
-              title="Motivation Reminders"
-              subtitle="Gentle nudges to keep your glow"
+          <View style={styles.settingsGroup}>
+            <SettingRow
+              label="Daily Affirmations"
+              description="Morning 'Wellness Architect' identity quotes"
+              value={settings.affirmations}
+              onValueChange={(v) => updateSetting('affirmations', v)}
             />
+            <SettingRow
+              label="Vitality Reminders"
+              description="Alerts when rings are empty late in the day"
+              value={settings.vitalityReminders}
+              onValueChange={(v) => updateSetting('vitalityReminders', v)}
+            />
+          </View>
 
-            <View style={styles.settingsGroup}>
-              {/* Master toggle */}
-              <View style={styles.settingRow}>
-                <View style={styles.settingInfo}>
-                  <Text style={styles.settingLabel}>Motivation reminders</Text>
-                  <Text style={styles.settingDesc}>
-                    Daily, streak, and weekly nudges — never spammy
-                  </Text>
-                </View>
-                <EmeraldSwitch
-                  value={nudgeSettings.nudges_enabled}
-                  onValueChange={handleNudgeMasterToggle}
-                />
+          {/* ═══ QUIET HOURS ═════════════════════════════════ */}
+          <SectionHeader
+            icon={<Moon size={18} color="#90CAF9" />}
+            title="My Resting Hours"
+            subtitle="Do Not Disturb"
+          />
+
+          <View style={styles.quietCard}>
+            <View style={styles.quietRow}>
+              <TimePicker
+                label="Sleep"
+                hour={settings.quietStart.hour}
+                minute={settings.quietStart.minute}
+                onChange={(t) => updateSetting('quietStart', t)}
+              />
+              <View style={styles.quietDivider}>
+                <Moon size={14} color="#90A4AE" />
               </View>
+              <TimePicker
+                label="Wake"
+                hour={settings.quietEnd.hour}
+                minute={settings.quietEnd.minute}
+                onChange={(t) => updateSetting('quietEnd', t)}
+              />
+            </View>
+            <View style={styles.quietNote}>
+              <Shield size={12} color="#90CAF9" />
+              <Text style={styles.quietNoteText}>
+                All notifications are silenced during this window.
+              </Text>
+            </View>
+          </View>
 
-              {/* Permission denied message */}
-              {nudgePermDenied && (
-                <View style={nudgeStyles.permDenied}>
-                  <Text style={nudgeStyles.permDeniedText}>
-                    Notifications are blocked. Please enable them in your device's Settings → Apps → RawLifeFlow: Juicing Daily → Notifications.
-                  </Text>
+          {/* ═══ MASTER SWITCH ═══════════════════════════════ */}
+          <View style={styles.masterCard}>
+            <View style={styles.masterInfo}>
+              <Text style={styles.masterLabel}>All Notifications</Text>
+              <Text style={styles.masterDesc}>Master switch for all push notifications</Text>
+            </View>
+            <EmeraldSwitch
+              value={settings.enabled}
+              onValueChange={(v) => updateSetting('enabled', v)}
+            />
+          </View>
+
+          {/* ═══ MOTIVATION REMINDERS ═══════════════════════════ */}
+          {nudgeSettings && (
+            <>
+              <SectionHeader
+                icon={<Sparkles size={18} color="#81C784" />}
+                title="Motivation Reminders"
+                subtitle="Gentle nudges to keep your glow"
+              />
+
+              <View style={styles.settingsGroup}>
+                {/* Master toggle */}
+                <View style={styles.settingRow}>
+                  <View style={styles.settingInfo}>
+                    <Text style={styles.settingLabel}>Motivation reminders</Text>
+                    <Text style={styles.settingDesc}>
+                      Daily, streak, and weekly nudges — never spammy
+                    </Text>
+                  </View>
+                  <EmeraldSwitch
+                    value={nudgeSettings.nudges_enabled}
+                    onValueChange={handleNudgeMasterToggle}
+                  />
                 </View>
-              )}
 
-              {/* Sub-toggles (visible when master ON) */}
-              {nudgeSettings.nudges_enabled && (
-                <>
-                  {/* Daily Glow Reminder */}
-                  <View style={styles.settingRow}>
-                    <View style={styles.settingInfo}>
-                      <Text style={styles.settingLabel}>Daily Glow Reminder</Text>
-                      <Text style={styles.settingDesc}>
-                        A gentle daily nudge to keep your glow going
-                      </Text>
-                    </View>
-                    <EmeraldSwitch
-                      value={nudgeSettings.nudges_daily_enabled}
-                      onValueChange={(v) => updateNudgeSetting({ nudges_daily_enabled: v })}
-                    />
+                {/* Permission denied message */}
+                {nudgePermDenied && (
+                  <View style={nudgeStyles.permDenied}>
+                    <Text style={nudgeStyles.permDeniedText}>
+                      Notifications are blocked. Please enable them in your device's Settings → Apps
+                      → RawLifeFlow: Juicing Daily → Notifications.
+                    </Text>
                   </View>
-                  {nudgeSettings.nudges_daily_enabled && (
-                    <View style={nudgeStyles.timeRow}>
-                      <Text style={nudgeStyles.timeLabel}>Time</Text>
-                      <NudgeTimePicker
-                        value={nudgeSettings.nudges_daily_time}
-                        onChange={(t) => updateNudgeSetting({ nudges_daily_time: t })}
-                      />
-                    </View>
-                  )}
+                )}
 
-                  {/* Streak Protector */}
-                  <View style={styles.settingRow}>
-                    <View style={styles.settingInfo}>
-                      <Text style={styles.settingLabel}>Streak Protector</Text>
-                      <Text style={styles.settingDesc}>
-                        If you haven't checked in by evening, we'll remind you
-                      </Text>
-                    </View>
-                    <EmeraldSwitch
-                      value={nudgeSettings.nudges_streakRisk_enabled}
-                      onValueChange={(v) => updateNudgeSetting({ nudges_streakRisk_enabled: v })}
-                    />
-                  </View>
-                  {nudgeSettings.nudges_streakRisk_enabled && (
-                    <View style={nudgeStyles.timeRow}>
-                      <Text style={nudgeStyles.timeLabel}>Remind at</Text>
-                      <NudgeTimePicker
-                        value={nudgeSettings.nudges_streakRisk_time}
-                        onChange={(t) => updateNudgeSetting({ nudges_streakRisk_time: t })}
-                      />
-                    </View>
-                  )}
-
-                  {/* Weekly Glow Summary */}
-                  <View style={styles.settingRow}>
-                    <View style={styles.settingInfo}>
-                      <Text style={styles.settingLabel}>Weekly Glow Summary</Text>
-                      <Text style={styles.settingDesc}>
-                        A weekly recap of your progress
-                      </Text>
-                    </View>
-                    <EmeraldSwitch
-                      value={nudgeSettings.nudges_weekly_enabled}
-                      onValueChange={(v) => updateNudgeSetting({ nudges_weekly_enabled: v })}
-                    />
-                  </View>
-                  {nudgeSettings.nudges_weekly_enabled && (
-                    <>
-                      <View style={nudgeStyles.timeRow}>
-                        <Text style={nudgeStyles.timeLabel}>Day</Text>
-                        <View style={nudgeStyles.dayRow}>
-                          {DAY_NAMES.map((name, i) => {
-                            const isActive = nudgeSettings.nudges_weekly_day === i
-                            return (
-                              <TouchableOpacity
-                                key={name}
-                                style={[nudgeStyles.dayBtn, isActive && nudgeStyles.dayBtnActive]}
-                                onPress={() => {
-                                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-                                  updateNudgeSetting({ nudges_weekly_day: i })
-                                }}
-                                hitSlop={4}
-                                activeOpacity={0.7}
-                              >
-                                <Text style={[nudgeStyles.dayText, isActive && nudgeStyles.dayTextActive]}>
-                                  {name}
-                                </Text>
-                              </TouchableOpacity>
-                            )
-                          })}
-                        </View>
+                {/* Sub-toggles (visible when master ON) */}
+                {nudgeSettings.nudges_enabled && (
+                  <>
+                    {/* Daily Glow Reminder */}
+                    <View style={styles.settingRow}>
+                      <View style={styles.settingInfo}>
+                        <Text style={styles.settingLabel}>Daily Glow Reminder</Text>
+                        <Text style={styles.settingDesc}>
+                          A gentle daily nudge to keep your glow going
+                        </Text>
                       </View>
+                      <EmeraldSwitch
+                        value={nudgeSettings.nudges_daily_enabled}
+                        onValueChange={(v) => updateNudgeSetting({ nudges_daily_enabled: v })}
+                      />
+                    </View>
+                    {nudgeSettings.nudges_daily_enabled && (
                       <View style={nudgeStyles.timeRow}>
                         <Text style={nudgeStyles.timeLabel}>Time</Text>
                         <NudgeTimePicker
-                          value={nudgeSettings.nudges_weekly_time}
-                          onChange={(t) => updateNudgeSetting({ nudges_weekly_time: t })}
+                          value={nudgeSettings.nudges_daily_time}
+                          onChange={(t) => updateNudgeSetting({ nudges_daily_time: t })}
                         />
                       </View>
-                    </>
-                  )}
+                    )}
 
-                  {/* Test notification button */}
-                  <TouchableOpacity
-                    style={nudgeStyles.testBtn}
-                    onPress={async () => {
-                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
-                      const sent = await sendTestNudge()
-                      Alert.alert(
-                        sent ? 'Test Sent' : 'Failed',
-                        sent ? 'You should see a notification in ~5 seconds.' : 'Could not schedule test notification.',
-                      )
-                    }}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={nudgeStyles.testBtnText}>Send test notification</Text>
-                  </TouchableOpacity>
-                </>
-              )}
-            </View>
-          </>
-        )}
-
-        {/* ═══ RECENT NOTIFICATIONS ═══════════════════════════ */}
-        <SectionHeader
-          icon={<Bell size={18} color="#8B949E" />}
-          title="Recent Notifications"
-          subtitle="Review your latest RawLifeFlow notifications"
-        />
-        <View style={styles.settingsGroup}>
-          <TouchableOpacity
-            style={styles.helpRow}
-            onPress={() => navigation.navigate('RecentNotifications')}
-            activeOpacity={0.7}
-          >
-            <View style={styles.helpRowLeft}>
-              <Text style={styles.helpLabel}>Recent Notifications</Text>
-              <Text style={styles.helpDesc}>View the full text of recent notifications</Text>
-            </View>
-            <Text style={styles.helpArrow}>›</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* ═══ HELP & SUPPORT ═════════════════════════════════ */}
-        {SUPABASE_CONFIGURED && <AccountSection />}
-
-        {MONETIZATION_ENABLED && (
-          <SubscriptionSection navigation={navigation} />
-        )}
-
-        <SectionHeader
-          icon={<HelpCircle size={18} color="#8B949E" />}
-          title="Help & Support"
-          subtitle="Learn the basics"
-        />
-
-        <View style={styles.settingsGroup}>
-          <TouchableOpacity
-            style={styles.helpRow}
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-              navigation.navigate('NoviceJourney')
-            }}
-            activeOpacity={0.7}
-          >
-            <BookOpen size={16} color="#81C784" />
-            <View style={styles.helpInfo}>
-              <Text style={styles.helpLabel}>How to Juice</Text>
-              <Text style={styles.helpDesc}>A beginner's guide to cold-pressed juicing</Text>
-            </View>
-            <Text style={styles.helpArrow}>→</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.helpRow}
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-              navigation.navigate('JuicerGuide')
-            }}
-            activeOpacity={0.7}
-          >
-            <ShoppingCart size={16} color="#FFB74D" />
-            <View style={styles.helpInfo}>
-              <Text style={styles.helpLabel}>Juicer Buyer's Guide</Text>
-              <Text style={styles.helpDesc}>Top-rated cold-press & centrifugal models</Text>
-            </View>
-            <Text style={styles.helpArrow}>→</Text>
-          </TouchableOpacity>
-        </View>
-
-        <WellnessSettingsDisclaimer />
-
-        {/* ═══ APP VERSION (hidden developer mode unlock gesture) ═══ */}
-        <View style={devStyles.versionRow}>
-          <TouchableOpacity
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-              handleVersionTap()
-            }}
-            activeOpacity={0.7}
-            style={devStyles.versionTapArea}
-          >
-            <Text style={devStyles.versionText}>
-              RawLifeFlow v{APP_VERSION} ({APP_VERSION_CODE})
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* ═══ DEVELOPER PASSCODE PROMPT ═════════════════════ */}
-        {showPasscodePrompt && (
-          <View style={devStyles.passcodeOverlay}>
-            <View style={devStyles.passcodeCard}>
-              <Text style={devStyles.passcodeTitle}>Developer Access</Text>
-              <Text style={devStyles.passcodeHint}>Enter passcode</Text>
-              <TextInput
-                style={devStyles.passcodeInput}
-                value={passcodeInput}
-                onChangeText={setPasscodeInput}
-                placeholder="••••"
-                placeholderTextColor="#5A6B5A"
-                keyboardType="numeric"
-                secureTextEntry
-                maxLength={4}
-                autoFocus
-              />
-              {passcodeError && (
-                <Text style={devStyles.passcodeError}>Incorrect passcode</Text>
-              )}
-              <View style={devStyles.passcodeBtnRow}>
-                <TouchableOpacity
-                  style={devStyles.passcodeCancelBtn}
-                  onPress={() => {
-                    cancelPasscode()
-                    setPasscodeInput('')
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <Text style={devStyles.passcodeCancelText}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={devStyles.passcodeSubmitBtn}
-                  onPress={async () => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
-                    const ok = await submitPasscode(passcodeInput)
-                    if (!ok) {
-                      setPasscodeInput('')
-                    }
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <Text style={devStyles.passcodeSubmitText}>Unlock</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        )}
-
-        {/* ═══ DEVELOPER FLAGS (gated by hidden unlock) ═════════════════ */}
-        {devModeUnlocked && (
-          <>
-            <SectionHeader
-              icon={<FlaskConical size={18} color="#FFD54F" />}
-              title="Developer Flags"
-              subtitle="Toggle new features for testing"
-            />
-
-            <View style={styles.settingsGroup}>
-              {/* Disable Developer Mode */}
-              <TouchableOpacity
-                style={[styles.settingRow, devStyles.disableDevBtn]}
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
-                  disableDeveloperMode()
-                  setShowDevFlags(false)
-                }}
-                activeOpacity={0.7}
-              >
-                <View style={styles.settingInfo}>
-                  <Text style={devStyles.disableDevText}>Disable Developer Mode</Text>
-                  <Text style={styles.settingDesc}>Hide developer controls</Text>
-                </View>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.settingRow}
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-                  setShowDevFlags((v) => !v)
-                }}
-                activeOpacity={0.7}
-          >
-            <View style={styles.settingInfo}>
-              <Text style={styles.settingLabel}>
-                {showDevFlags ? 'Hide' : 'Show'} Feature Flags
-              </Text>
-              <Text style={styles.settingDesc}>
-                {Object.values(flags).filter(Boolean).length} of {Object.keys(DEFAULT_FLAGS).length} enabled
-              </Text>
-            </View>
-            <Text style={{ fontSize: 16, color: '#90A4AE' }}>{showDevFlags ? '▲' : '▼'}</Text>
-          </TouchableOpacity>
-
-          {showDevFlags && (
-            <>
-              {/* Build Target Label */}
-              <View style={devStyles.buildTargetRow}>
-                <Text style={devStyles.buildTargetLabel}>Build target:</Text>
-                <View style={[devStyles.buildTargetBadge, BUILD_TARGET === 'beta' && devStyles.buildTargetBadgeBeta]}>
-                  <Text style={devStyles.buildTargetText}>{BUILD_TARGET.toUpperCase()}</Text>
-                </View>
-              </View>
-
-              {/* Enable All / Reset All */}
-              <View style={devStyles.bulkRow}>
-                <TouchableOpacity
-                  style={devStyles.bulkBtn}
-                  onPress={() => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
-                    Object.keys(DEFAULT_FLAGS).forEach((k) => setFlag(k, true))
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <Text style={devStyles.bulkBtnText}>Enable All</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[devStyles.bulkBtn, devStyles.bulkBtnReset]}
-                  onPress={() => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
-                    resetAll()
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[devStyles.bulkBtnText, devStyles.bulkBtnResetText]}>Reset All</Text>
-                </TouchableOpacity>
-              </View>
-
-              {/* Reset First Launch */}
-              <TouchableOpacity
-                style={devStyles.resetLaunchBtn}
-                onPress={async () => {
-                  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
-                  await resetFirstLaunch()
-                }}
-                activeOpacity={0.7}
-              >
-                <Text style={devStyles.resetLaunchText}>Reset First Launch Flow</Text>
-                <Text style={devStyles.resetLaunchHint}>Clears saved state — reopen app to see launcher</Text>
-              </TouchableOpacity>
-
-              {/* Reset Intro + Activation */}
-              <TouchableOpacity
-                style={devStyles.resetLaunchBtn}
-                onPress={async () => {
-                  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
-                  await clearActivationStorage()
-                  resetActivation()
-                  Alert.alert('Intro Reset', 'introDismissed + onboarding cleared.\nFully close + reopen the app to see IntroLaunch.')
-                }}
-                activeOpacity={0.7}
-              >
-                <Text style={devStyles.resetLaunchText}>Reset Intro + Onboarding</Text>
-                <Text style={devStyles.resetLaunchHint}>
-                  intro: {activation.introDismissed ? '✓ dismissed' : '✗ not seen'} · onboarding: {activation.onboardingComplete ? '✓ done' : '✗ pending'}
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={devStyles.resetLaunchBtn}
-                onPress={async () => {
-                  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
-                  await clearState('@juicing_log_entries_v1')
-                  resetLog()
-                  Alert.alert('History Reset', 'Cleared juice log entries.\nFully close + reopen the app to see IntroLaunch.')
-                }}
-                activeOpacity={0.7}
-              >
-                <Text style={devStyles.resetLaunchText}>Reset Juice Log History</Text>
-                <Text style={devStyles.resetLaunchHint}>entries: {totalLogCount}</Text>
-              </TouchableOpacity>
-
-              {/* Toggle Pro Mode */}
-              <TouchableOpacity
-                style={[devStyles.resetLaunchBtn, isPro && devStyles.devProActiveBtn]}
-                onPress={() => {
-                  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
-                  toggleDevPro()
-                }}
-                activeOpacity={0.7}
-              >
-                <Text style={devStyles.resetLaunchText}>
-                  {isPro ? 'QA Pro Simulation: ON' : 'Toggle QA Pro Simulation'}
-                </Text>
-                <Text style={devStyles.resetLaunchHint}>
-                  {isPro
-                    ? 'Simulates Pro features and client allowances. Tap to switch back to Free.'
-                    : 'Simulates Pro features and client allowances for QA testing.'}
-                </Text>
-              </TouchableOpacity>
-              {isPro && (
-                <Text style={devStyles.devProWarningText}>
-                  QA Pro Simulation: ON — Simulates Pro features and client allowances. Remote AI services require this test account to be recognized as Pro by the server.
-                </Text>
-              )}
-
-              {/* Reset QA Pro Snap Usage */}
-              {isPro && (
-                <TouchableOpacity
-                  style={devStyles.resetLaunchBtn}
-                  onPress={async () => {
-                    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
-                    const { resetQaProSnapUsage } = await import('../services/quota/qaSnapCounter')
-                    await resetQaProSnapUsage()
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <Text style={devStyles.resetLaunchText}>
-                    Reset QA Pro Snap Usage
-                  </Text>
-                  <Text style={devStyles.resetLaunchHint}>
-                    Resets the QA-only simulated Pro snap counter to 0 of 12.
-                  </Text>
-                </TouchableOpacity>
-              )}
-
-              {/* Advance Day Count */}
-              <TouchableOpacity
-                style={devStyles.resetLaunchBtn}
-                onPress={async () => {
-                  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
-                  devAdvanceDay()
-                  if (streakCtx && streakCtx.devAdvanceDay) streakCtx.devAdvanceDay()
-                  await advanceDevDay(1)
-                  setDevClockOffset(getDevDayOffset())
-                  await refreshNudges()
-                }}
-                activeOpacity={0.7}
-              >
-                <Text style={devStyles.resetLaunchText}>
-                  Advance Day (+1)
-                </Text>
-                <Text style={devStyles.resetLaunchHint}>
-                  Day {challenge.currentDay} · Streak {streakCtx?.currentStreak || 0} · Clock +{devClockOffset}d
-                </Text>
-                <Text style={devStyles.resetLaunchHint}>
-                  Perceived: {getDevNow().toISOString().slice(0, 10)}
-                </Text>
-              </TouchableOpacity>
-
-              {/* Reset Dev Clock */}
-              {devClockOffset > 0 && (
-                <TouchableOpacity
-                  style={devStyles.resetLaunchBtn}
-                  onPress={async () => {
-                    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
-                    await resetDevClock()
-                    setDevClockOffset(0)
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <Text style={devStyles.resetLaunchText}>Reset Dev Clock</Text>
-                  <Text style={devStyles.resetLaunchHint}>Return to real time</Text>
-                </TouchableOpacity>
-              )}
-
-              {/* Reset Glow Streak */}
-              <TouchableOpacity
-                style={devStyles.resetLaunchBtn}
-                onPress={async () => {
-                  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
-                  await resetGlowStreak()
-                  Alert.alert('Glow Streak Reset', 'Streak count, check-in date, and grace date cleared.')
-                }}
-                activeOpacity={0.7}
-              >
-                <Text style={devStyles.resetLaunchText}>Reset Glow Streak (dev)</Text>
-                <Text style={devStyles.resetLaunchHint}>Clears streak count + check-in state</Text>
-              </TouchableOpacity>
-
-              {/* Reset Focus Nutrient */}
-              <TouchableOpacity
-                style={devStyles.resetLaunchBtn}
-                onPress={async () => {
-                  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
-                  await resetFocusForToday()
-                  Alert.alert('Focus Nutrient Reset', 'Today\'s focus nutrient and swap state cleared.')
-                }}
-                activeOpacity={0.7}
-              >
-                <Text style={devStyles.resetLaunchText}>Reset Focus Nutrient (dev)</Text>
-                <Text style={devStyles.resetLaunchHint}>Clears today's pick + swap state</Text>
-              </TouchableOpacity>
-
-              {/* Reset Achievements */}
-              <TouchableOpacity
-                style={devStyles.resetLaunchBtn}
-                onPress={async () => {
-                  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
-                  await resetAchievements()
-                  Alert.alert('Achievements Reset', 'All unlocked achievements cleared.')
-                }}
-                activeOpacity={0.7}
-              >
-                <Text style={devStyles.resetLaunchText}>Reset Achievements (dev)</Text>
-                <Text style={devStyles.resetLaunchHint}>Clears all unlocked achievements</Text>
-              </TouchableOpacity>
-
-              {/* Reset Weekly Summary */}
-              <TouchableOpacity
-                style={devStyles.resetLaunchBtn}
-                onPress={async () => {
-                  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
-                  await resetWeeklySummary()
-                  Alert.alert('Weekly Summary Reset', 'Cycle start and last-shown dates cleared.')
-                }}
-                activeOpacity={0.7}
-              >
-                <Text style={devStyles.resetLaunchText}>Reset Weekly Summary (dev)</Text>
-                <Text style={devStyles.resetLaunchHint}>Clears 7-day cycle + shown state</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={devStyles.resetLaunchBtn}
-                onPress={async () => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
-                  const sent = await sendThreeDayTestNudges()
-                  Alert.alert(
-                    sent ? '3-Day Test Scheduled' : 'Test Failed',
-                    sent
-                      ? 'Day 1, Day 2, and Day 3 sample nudges will arrive at 5, 10, and 15 seconds.'
-                      : 'Could not schedule the test nudges. Check notification permission.',
-                  )
-                }}
-                activeOpacity={0.7}
-              >
-                <Text style={devStyles.resetLaunchText}>Test 3-Day Nudge Sequence</Text>
-                <Text style={devStyles.resetLaunchHint}>Sends Day 1, 2, and 3 samples at 5-second intervals</Text>
-              </TouchableOpacity>
-
-              {/* Reset Nudge Settings */}
-              <TouchableOpacity
-                style={devStyles.resetLaunchBtn}
-                onPress={async () => {
-                  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
-                  await cancelAllNudges()
-                  await resetNudgeSettings()
-                  setNudgeSettingsLocal(await getNudgeSettings())
-                  Alert.alert('Nudge Settings Reset', 'All motivation reminders canceled and settings cleared.')
-                }}
-                activeOpacity={0.7}
-              >
-                <Text style={devStyles.resetLaunchText}>Reset Nudge Settings (dev)</Text>
-                <Text style={devStyles.resetLaunchHint}>Cancels all scheduled nudges + resets preferences</Text>
-              </TouchableOpacity>
-
-              {/* Beta Tester Name */}
-              <View style={devStyles.nameInputWrap}>
-                <Text style={devStyles.nameInputLabel}>Beta Tester Name</Text>
-                <Text style={devStyles.resetLaunchHint}>
-                  {profile.name ? `Current: ${profile.name}` : 'Not set — greeting will be generic'}
-                </Text>
-                <View style={devStyles.nameInputRow}>
-                  <TextInput
-                    style={devStyles.nameInput}
-                    placeholder="Enter your name"
-                    placeholderTextColor="#90A4AE"
-                    value={profileNameInput}
-                    onChangeText={setProfileNameInput}
-                    autoCapitalize="words"
-                    returnKeyType="done"
-                    onSubmitEditing={() => {
-                      if (profileNameInput.trim()) {
-                        setProfileName(profileNameInput.trim())
-                        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
-                      }
-                    }}
-                  />
-                  <TouchableOpacity
-                    style={devStyles.nameSaveBtn}
-                    onPress={() => {
-                      if (profileNameInput.trim()) {
-                        setProfileName(profileNameInput.trim())
-                        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
-                      }
-                    }}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={devStyles.nameSaveBtnText}>Save</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-
-              {/* Reset Challenge + Streak */}
-              <TouchableOpacity
-                style={[devStyles.resetLaunchBtn, { borderColor: 'rgba(233,30,99,0.3)' }]}
-                onPress={() => {
-                  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning)
-                  resetChallenge()
-                  if (streakCtx && streakCtx.resetStreak) streakCtx.resetStreak()
-                }}
-                activeOpacity={0.7}
-              >
-                <Text style={[devStyles.resetLaunchText, { color: '#E91E63' }]}>
-                  Reset Challenge + Streak
-                </Text>
-                <Text style={devStyles.resetLaunchHint}>
-                  Resets day count to 1, clears all juice logs and streak data
-                </Text>
-              </TouchableOpacity>
-
-              {/* ═══ NUCLEAR RESET — Reset User ═══════════════════ */}
-              <TouchableOpacity
-                style={[devStyles.resetLaunchBtn, { borderColor: 'rgba(244,67,54,0.5)', backgroundColor: 'rgba(244,67,54,0.06)' }]}
-                onPress={() => {
-                  Alert.alert(
-                    'Reset All User Data',
-                    'This will clear ALL app data — profile, challenge, streak, pantry, templates, preferences, and feature flags. The app will restart as if it were a fresh install.\n\nThis cannot be undone.',
-                    [
-                      { text: 'Cancel', style: 'cancel' },
-                      {
-                        text: 'Reset Everything',
-                        style: 'destructive',
-                        onPress: async () => {
-                          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error)
-                          await resetAllUserData()
-                          resetProfile()
-                          resetChallenge()
-                          resetScore()
-                          resetWellnessDisclaimer()
-                          if (streakCtx && streakCtx.resetStreak) streakCtx.resetStreak()
-                          resetAll()
-                          Alert.alert('Done', 'All data cleared. Please restart the app for a clean state.')
-                        },
-                      },
-                    ]
-                  )
-                }}
-                activeOpacity={0.7}
-              >
-                <Text style={[devStyles.resetLaunchText, { color: '#F44336' }]}>
-                  ☢️ Reset User (Nuclear)
-                </Text>
-                <Text style={devStyles.resetLaunchHint}>
-                  Clears ALL data — profile, challenge, streak, pantry, templates, flags, preferences. Makes you a brand new user.
-                </Text>
-              </TouchableOpacity>
-
-              {/* Individual flag toggles */}
-              {Object.keys(DEFAULT_FLAGS).map((key) => {
-                const meta = FLAG_LABELS[key] || { label: key, phase: 'Unknown' }
-                const phaseColor = PHASE_COLORS[meta.phase] || '#8B949E'
-                return (
-                  <View key={key} style={styles.settingRow}>
-                    <View style={styles.settingInfo}>
-                      <Text style={styles.settingLabel}>{meta.label}</Text>
-                      <View style={devStyles.phaseTag}>
-                        <View style={[devStyles.phaseDot, { backgroundColor: phaseColor }]} />
-                        <Text style={[devStyles.phaseText, { color: phaseColor }]}>{meta.phase}</Text>
+                    {/* Streak Protector */}
+                    <View style={styles.settingRow}>
+                      <View style={styles.settingInfo}>
+                        <Text style={styles.settingLabel}>Streak Protector</Text>
+                        <Text style={styles.settingDesc}>
+                          If you haven't checked in by evening, we'll remind you
+                        </Text>
                       </View>
+                      <EmeraldSwitch
+                        value={nudgeSettings.nudges_streakRisk_enabled}
+                        onValueChange={(v) => updateNudgeSetting({ nudges_streakRisk_enabled: v })}
+                      />
                     </View>
-                    <EmeraldSwitch
-                      value={!!flags[key]}
-                      onValueChange={(v) => setFlag(key, v)}
-                    />
-                  </View>
-                )
-              })}
+                    {nudgeSettings.nudges_streakRisk_enabled && (
+                      <View style={nudgeStyles.timeRow}>
+                        <Text style={nudgeStyles.timeLabel}>Remind at</Text>
+                        <NudgeTimePicker
+                          value={nudgeSettings.nudges_streakRisk_time}
+                          onChange={(t) => updateNudgeSetting({ nudges_streakRisk_time: t })}
+                        />
+                      </View>
+                    )}
+
+                    {/* Weekly Glow Summary */}
+                    <View style={styles.settingRow}>
+                      <View style={styles.settingInfo}>
+                        <Text style={styles.settingLabel}>Weekly Glow Summary</Text>
+                        <Text style={styles.settingDesc}>A weekly recap of your progress</Text>
+                      </View>
+                      <EmeraldSwitch
+                        value={nudgeSettings.nudges_weekly_enabled}
+                        onValueChange={(v) => updateNudgeSetting({ nudges_weekly_enabled: v })}
+                      />
+                    </View>
+                    {nudgeSettings.nudges_weekly_enabled && (
+                      <>
+                        <View style={nudgeStyles.timeRow}>
+                          <Text style={nudgeStyles.timeLabel}>Day</Text>
+                          <View style={nudgeStyles.dayRow}>
+                            {DAY_NAMES.map((name, i) => {
+                              const isActive = nudgeSettings.nudges_weekly_day === i
+                              return (
+                                <TouchableOpacity
+                                  key={name}
+                                  style={[nudgeStyles.dayBtn, isActive && nudgeStyles.dayBtnActive]}
+                                  onPress={() => {
+                                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+                                    updateNudgeSetting({ nudges_weekly_day: i })
+                                  }}
+                                  hitSlop={4}
+                                  activeOpacity={0.7}
+                                >
+                                  <Text
+                                    style={[
+                                      nudgeStyles.dayText,
+                                      isActive && nudgeStyles.dayTextActive,
+                                    ]}
+                                  >
+                                    {name}
+                                  </Text>
+                                </TouchableOpacity>
+                              )
+                            })}
+                          </View>
+                        </View>
+                        <View style={nudgeStyles.timeRow}>
+                          <Text style={nudgeStyles.timeLabel}>Time</Text>
+                          <NudgeTimePicker
+                            value={nudgeSettings.nudges_weekly_time}
+                            onChange={(t) => updateNudgeSetting({ nudges_weekly_time: t })}
+                          />
+                        </View>
+                      </>
+                    )}
+
+                    {/* Test notification button */}
+                    <TouchableOpacity
+                      style={nudgeStyles.testBtn}
+                      onPress={async () => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+                        const sent = await sendTestNudge()
+                        Alert.alert(
+                          sent ? 'Test Sent' : 'Failed',
+                          sent
+                            ? 'You should see a notification in ~5 seconds.'
+                            : 'Could not schedule test notification.',
+                        )
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={nudgeStyles.testBtnText}>Send test notification</Text>
+                    </TouchableOpacity>
+                  </>
+                )}
+              </View>
             </>
           )}
-        </View>
-          </>
-        )}
 
-        <View style={{ height: 40 }} />
-      </ScrollView>
-    </SafeAreaView>
+          {/* ═══ RECENT NOTIFICATIONS ═══════════════════════════ */}
+          <SectionHeader
+            icon={<Bell size={18} color="#8B949E" />}
+            title="Recent Notifications"
+            subtitle="Review your latest RawLifeFlow notifications"
+          />
+          <View style={styles.settingsGroup}>
+            <TouchableOpacity
+              style={styles.helpRow}
+              onPress={() => navigation.navigate('RecentNotifications')}
+              activeOpacity={0.7}
+            >
+              <View style={styles.helpRowLeft}>
+                <Text style={styles.helpLabel}>Recent Notifications</Text>
+                <Text style={styles.helpDesc}>View the full text of recent notifications</Text>
+              </View>
+              <Text style={styles.helpArrow}>›</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* ═══ HELP & SUPPORT ═════════════════════════════════ */}
+          {SUPABASE_CONFIGURED && <AccountSection />}
+
+          {MONETIZATION_ENABLED && <SubscriptionSection navigation={navigation} />}
+
+          <SectionHeader
+            icon={<HelpCircle size={18} color="#8B949E" />}
+            title="Help & Support"
+            subtitle="Learn the basics"
+          />
+
+          <View style={styles.settingsGroup}>
+            <TouchableOpacity
+              style={styles.helpRow}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+                navigation.navigate('NoviceJourney')
+              }}
+              activeOpacity={0.7}
+            >
+              <BookOpen size={16} color="#81C784" />
+              <View style={styles.helpInfo}>
+                <Text style={styles.helpLabel}>How to Juice</Text>
+                <Text style={styles.helpDesc}>A beginner's guide to cold-pressed juicing</Text>
+              </View>
+              <Text style={styles.helpArrow}>→</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.helpRow}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+                navigation.navigate('JuicerGuide')
+              }}
+              activeOpacity={0.7}
+            >
+              <ShoppingCart size={16} color="#FFB74D" />
+              <View style={styles.helpInfo}>
+                <Text style={styles.helpLabel}>Juicer Buyer's Guide</Text>
+                <Text style={styles.helpDesc}>Top-rated cold-press & centrifugal models</Text>
+              </View>
+              <Text style={styles.helpArrow}>→</Text>
+            </TouchableOpacity>
+          </View>
+
+          <WellnessSettingsDisclaimer />
+
+          {/* ═══ APP VERSION (hidden developer mode unlock gesture) ═══ */}
+          <View style={devStyles.versionRow}>
+            <TouchableOpacity
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+                handleVersionTap()
+              }}
+              activeOpacity={0.7}
+              style={devStyles.versionTapArea}
+            >
+              <Text style={devStyles.versionText}>
+                RawLifeFlow v{APP_VERSION} ({APP_VERSION_CODE})
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* ═══ DEVELOPER PASSCODE PROMPT ═════════════════════ */}
+          {showPasscodePrompt && (
+            <View style={devStyles.passcodeOverlay}>
+              <View style={devStyles.passcodeCard}>
+                <Text style={devStyles.passcodeTitle}>Developer Access</Text>
+                <Text style={devStyles.passcodeHint}>Enter passcode</Text>
+                <TextInput
+                  style={devStyles.passcodeInput}
+                  value={passcodeInput}
+                  onChangeText={setPasscodeInput}
+                  placeholder="••••"
+                  placeholderTextColor="#5A6B5A"
+                  keyboardType="numeric"
+                  secureTextEntry
+                  maxLength={4}
+                  autoFocus
+                />
+                {passcodeError && <Text style={devStyles.passcodeError}>Incorrect passcode</Text>}
+                <View style={devStyles.passcodeBtnRow}>
+                  <TouchableOpacity
+                    style={devStyles.passcodeCancelBtn}
+                    onPress={() => {
+                      cancelPasscode()
+                      setPasscodeInput('')
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={devStyles.passcodeCancelText}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={devStyles.passcodeSubmitBtn}
+                    onPress={async () => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+                      const ok = await submitPasscode(passcodeInput)
+                      if (!ok) {
+                        setPasscodeInput('')
+                      }
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={devStyles.passcodeSubmitText}>Unlock</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+          )}
+
+          {/* ═══ DEVELOPER FLAGS (gated by hidden unlock) ═════════════════ */}
+          {devModeUnlocked && (
+            <>
+              <SectionHeader
+                icon={<FlaskConical size={18} color="#FFD54F" />}
+                title="Developer Flags"
+                subtitle="Toggle new features for testing"
+              />
+
+              <View style={styles.settingsGroup}>
+                {/* Disable Developer Mode */}
+                <TouchableOpacity
+                  style={[styles.settingRow, devStyles.disableDevBtn]}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+                    disableDeveloperMode()
+                    setShowDevFlags(false)
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.settingInfo}>
+                    <Text style={devStyles.disableDevText}>Disable Developer Mode</Text>
+                    <Text style={styles.settingDesc}>Hide developer controls</Text>
+                  </View>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.settingRow}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+                    setShowDevFlags((v) => !v)
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.settingInfo}>
+                    <Text style={styles.settingLabel}>
+                      {showDevFlags ? 'Hide' : 'Show'} Feature Flags
+                    </Text>
+                    <Text style={styles.settingDesc}>
+                      {Object.values(flags).filter(Boolean).length} of{' '}
+                      {Object.keys(DEFAULT_FLAGS).length} enabled
+                    </Text>
+                  </View>
+                  <Text style={{ fontSize: 16, color: '#90A4AE' }}>{showDevFlags ? '▲' : '▼'}</Text>
+                </TouchableOpacity>
+
+                {showDevFlags && (
+                  <>
+                    {/* Build Target Label */}
+                    <View style={devStyles.buildTargetRow}>
+                      <Text style={devStyles.buildTargetLabel}>Build target:</Text>
+                      <View
+                        style={[
+                          devStyles.buildTargetBadge,
+                          BUILD_TARGET === 'beta' && devStyles.buildTargetBadgeBeta,
+                        ]}
+                      >
+                        <Text style={devStyles.buildTargetText}>{BUILD_TARGET.toUpperCase()}</Text>
+                      </View>
+                    </View>
+
+                    {/* Enable All / Reset All */}
+                    <View style={devStyles.bulkRow}>
+                      <TouchableOpacity
+                        style={devStyles.bulkBtn}
+                        onPress={() => {
+                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+                          Object.keys(DEFAULT_FLAGS).forEach((k) => setFlag(k, true))
+                        }}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={devStyles.bulkBtnText}>Enable All</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[devStyles.bulkBtn, devStyles.bulkBtnReset]}
+                        onPress={() => {
+                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+                          resetAll()
+                        }}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={[devStyles.bulkBtnText, devStyles.bulkBtnResetText]}>
+                          Reset All
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+
+                    {/* Reset First Launch */}
+                    <TouchableOpacity
+                      style={devStyles.resetLaunchBtn}
+                      onPress={async () => {
+                        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+                        await resetFirstLaunch()
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={devStyles.resetLaunchText}>Reset First Launch Flow</Text>
+                      <Text style={devStyles.resetLaunchHint}>
+                        Clears saved state — reopen app to see launcher
+                      </Text>
+                    </TouchableOpacity>
+
+                    {/* Reset Intro + Activation */}
+                    <TouchableOpacity
+                      style={devStyles.resetLaunchBtn}
+                      onPress={async () => {
+                        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+                        await clearActivationStorage()
+                        resetActivation()
+                        Alert.alert(
+                          'Intro Reset',
+                          'introDismissed + onboarding cleared.\nFully close + reopen the app to see IntroLaunch.',
+                        )
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={devStyles.resetLaunchText}>Reset Intro + Onboarding</Text>
+                      <Text style={devStyles.resetLaunchHint}>
+                        intro: {activation.introDismissed ? '✓ dismissed' : '✗ not seen'} ·
+                        onboarding: {activation.onboardingComplete ? '✓ done' : '✗ pending'}
+                      </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={devStyles.resetLaunchBtn}
+                      onPress={async () => {
+                        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+                        await clearState('@juicing_log_entries_v1')
+                        resetLog()
+                        Alert.alert(
+                          'History Reset',
+                          'Cleared juice log entries.\nFully close + reopen the app to see IntroLaunch.',
+                        )
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={devStyles.resetLaunchText}>Reset Juice Log History</Text>
+                      <Text style={devStyles.resetLaunchHint}>entries: {totalLogCount}</Text>
+                    </TouchableOpacity>
+
+                    {/* Toggle Pro Mode */}
+                    <TouchableOpacity
+                      style={[devStyles.resetLaunchBtn, isPro && devStyles.devProActiveBtn]}
+                      onPress={() => {
+                        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+                        toggleDevPro()
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={devStyles.resetLaunchText}>
+                        {isPro ? 'QA Pro Simulation: ON' : 'Toggle QA Pro Simulation'}
+                      </Text>
+                      <Text style={devStyles.resetLaunchHint}>
+                        {isPro
+                          ? 'Simulates Pro features and client allowances. Tap to switch back to Free.'
+                          : 'Simulates Pro features and client allowances for QA testing.'}
+                      </Text>
+                    </TouchableOpacity>
+                    {isPro && (
+                      <Text style={devStyles.devProWarningText}>
+                        QA Pro Simulation: ON — Simulates Pro features and client allowances. Remote
+                        AI services require this test account to be recognized as Pro by the server.
+                      </Text>
+                    )}
+
+                    {/* Reset QA Pro Snap Usage */}
+                    {isPro && (
+                      <TouchableOpacity
+                        style={devStyles.resetLaunchBtn}
+                        onPress={async () => {
+                          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+                          const { resetQaProSnapUsage } =
+                            await import('../services/quota/qaSnapCounter')
+                          await resetQaProSnapUsage()
+                        }}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={devStyles.resetLaunchText}>Reset QA Pro Snap Usage</Text>
+                        <Text style={devStyles.resetLaunchHint}>
+                          Resets the QA-only simulated Pro snap counter to 0 of 12.
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+
+                    {/* Advance Day Count */}
+                    <TouchableOpacity
+                      style={devStyles.resetLaunchBtn}
+                      onPress={async () => {
+                        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+                        devAdvanceDay()
+                        if (streakCtx && streakCtx.devAdvanceDay) streakCtx.devAdvanceDay()
+                        await advanceDevDay(1)
+                        setDevClockOffset(getDevDayOffset())
+                        await refreshNudges()
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={devStyles.resetLaunchText}>Advance Day (+1)</Text>
+                      <Text style={devStyles.resetLaunchHint}>
+                        Day {challenge.currentDay} · Streak {streakCtx?.currentStreak || 0} · Clock
+                        +{devClockOffset}d
+                      </Text>
+                      <Text style={devStyles.resetLaunchHint}>
+                        Perceived: {getDevNow().toISOString().slice(0, 10)}
+                      </Text>
+                    </TouchableOpacity>
+
+                    {/* Reset Dev Clock */}
+                    {devClockOffset > 0 && (
+                      <TouchableOpacity
+                        style={devStyles.resetLaunchBtn}
+                        onPress={async () => {
+                          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+                          await resetDevClock()
+                          setDevClockOffset(0)
+                        }}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={devStyles.resetLaunchText}>Reset Dev Clock</Text>
+                        <Text style={devStyles.resetLaunchHint}>Return to real time</Text>
+                      </TouchableOpacity>
+                    )}
+
+                    {/* Reset Glow Streak */}
+                    <TouchableOpacity
+                      style={devStyles.resetLaunchBtn}
+                      onPress={async () => {
+                        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+                        await resetGlowStreak()
+                        Alert.alert(
+                          'Glow Streak Reset',
+                          'Streak count, check-in date, and grace date cleared.',
+                        )
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={devStyles.resetLaunchText}>Reset Glow Streak (dev)</Text>
+                      <Text style={devStyles.resetLaunchHint}>
+                        Clears streak count + check-in state
+                      </Text>
+                    </TouchableOpacity>
+
+                    {/* Reset Focus Nutrient */}
+                    <TouchableOpacity
+                      style={devStyles.resetLaunchBtn}
+                      onPress={async () => {
+                        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+                        await resetFocusForToday()
+                        Alert.alert(
+                          'Focus Nutrient Reset',
+                          "Today's focus nutrient and swap state cleared.",
+                        )
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={devStyles.resetLaunchText}>Reset Focus Nutrient (dev)</Text>
+                      <Text style={devStyles.resetLaunchHint}>
+                        Clears today's pick + swap state
+                      </Text>
+                    </TouchableOpacity>
+
+                    {/* Reset Achievements */}
+                    <TouchableOpacity
+                      style={devStyles.resetLaunchBtn}
+                      onPress={async () => {
+                        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+                        await resetAchievements()
+                        Alert.alert('Achievements Reset', 'All unlocked achievements cleared.')
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={devStyles.resetLaunchText}>Reset Achievements (dev)</Text>
+                      <Text style={devStyles.resetLaunchHint}>
+                        Clears all unlocked achievements
+                      </Text>
+                    </TouchableOpacity>
+
+                    {/* Reset Weekly Summary */}
+                    <TouchableOpacity
+                      style={devStyles.resetLaunchBtn}
+                      onPress={async () => {
+                        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+                        await resetWeeklySummary()
+                        Alert.alert(
+                          'Weekly Summary Reset',
+                          'Cycle start and last-shown dates cleared.',
+                        )
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={devStyles.resetLaunchText}>Reset Weekly Summary (dev)</Text>
+                      <Text style={devStyles.resetLaunchHint}>
+                        Clears 7-day cycle + shown state
+                      </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={devStyles.resetLaunchBtn}
+                      onPress={async () => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+                        const sent = await sendThreeDayTestNudges()
+                        Alert.alert(
+                          sent ? '3-Day Test Scheduled' : 'Test Failed',
+                          sent
+                            ? 'Day 1, Day 2, and Day 3 sample nudges will arrive at 5, 10, and 15 seconds.'
+                            : 'Could not schedule the test nudges. Check notification permission.',
+                        )
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={devStyles.resetLaunchText}>Test 3-Day Nudge Sequence</Text>
+                      <Text style={devStyles.resetLaunchHint}>
+                        Sends Day 1, 2, and 3 samples at 5-second intervals
+                      </Text>
+                    </TouchableOpacity>
+
+                    {/* Reset Nudge Settings */}
+                    <TouchableOpacity
+                      style={devStyles.resetLaunchBtn}
+                      onPress={async () => {
+                        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+                        await cancelAllNudges()
+                        await resetNudgeSettings()
+                        setNudgeSettingsLocal(await getNudgeSettings())
+                        Alert.alert(
+                          'Nudge Settings Reset',
+                          'All motivation reminders canceled and settings cleared.',
+                        )
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={devStyles.resetLaunchText}>Reset Nudge Settings (dev)</Text>
+                      <Text style={devStyles.resetLaunchHint}>
+                        Cancels all scheduled nudges + resets preferences
+                      </Text>
+                    </TouchableOpacity>
+
+                    {/* Beta Tester Name */}
+                    <View style={devStyles.nameInputWrap}>
+                      <Text style={devStyles.nameInputLabel}>Beta Tester Name</Text>
+                      <Text style={devStyles.resetLaunchHint}>
+                        {profile.name
+                          ? `Current: ${profile.name}`
+                          : 'Not set — greeting will be generic'}
+                      </Text>
+                      <View style={devStyles.nameInputRow}>
+                        <TextInput
+                          style={devStyles.nameInput}
+                          placeholder="Enter your name"
+                          placeholderTextColor="#90A4AE"
+                          value={profileNameInput}
+                          onChangeText={setProfileNameInput}
+                          autoCapitalize="words"
+                          returnKeyType="done"
+                          onSubmitEditing={() => {
+                            if (profileNameInput.trim()) {
+                              setProfileName(profileNameInput.trim())
+                              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+                            }
+                          }}
+                        />
+                        <TouchableOpacity
+                          style={devStyles.nameSaveBtn}
+                          onPress={() => {
+                            if (profileNameInput.trim()) {
+                              setProfileName(profileNameInput.trim())
+                              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+                            }
+                          }}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={devStyles.nameSaveBtnText}>Save</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+
+                    {/* Reset Challenge + Streak */}
+                    <TouchableOpacity
+                      style={[devStyles.resetLaunchBtn, { borderColor: 'rgba(233,30,99,0.3)' }]}
+                      onPress={() => {
+                        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning)
+                        resetChallenge()
+                        if (streakCtx && streakCtx.resetStreak) streakCtx.resetStreak()
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[devStyles.resetLaunchText, { color: '#E91E63' }]}>
+                        Reset Challenge + Streak
+                      </Text>
+                      <Text style={devStyles.resetLaunchHint}>
+                        Resets day count to 1, clears all juice logs and streak data
+                      </Text>
+                    </TouchableOpacity>
+
+                    {/* ═══ GARDEN VISUAL PREVIEW (QA-only) ═════════════════ */}
+                    <TouchableOpacity
+                      style={[devStyles.resetLaunchBtn, { borderColor: 'rgba(217, 164, 65, 0.4)' }]}
+                      onPress={() => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+                        navigation.navigate('GardenPreview')
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[devStyles.resetLaunchText, { color: '#D9A441' }]}>
+                        Garden Visual Preview
+                      </Text>
+                      <Text style={devStyles.resetLaunchHint}>
+                        QA-only — renders representative Garden states without writing data
+                      </Text>
+                    </TouchableOpacity>
+
+                    {/* ═══ GLOW VISUAL PREVIEW (QA-only) ══════════════════ */}
+                    <TouchableOpacity
+                      style={[devStyles.resetLaunchBtn, { borderColor: 'rgba(217, 164, 65, 0.4)' }]}
+                      onPress={() => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+                        navigation.navigate('GlowPreview')
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[devStyles.resetLaunchText, { color: '#D9A441' }]}>
+                        Glow Visual Preview
+                      </Text>
+                      <Text style={devStyles.resetLaunchHint}>
+                        QA-only — renders representative Glow states without writing data
+                      </Text>
+                    </TouchableOpacity>
+
+                    {/* ═══ NUCLEAR RESET — Reset User ═══════════════════ */}
+                    <TouchableOpacity
+                      style={[
+                        devStyles.resetLaunchBtn,
+                        {
+                          borderColor: 'rgba(244,67,54,0.5)',
+                          backgroundColor: 'rgba(244,67,54,0.06)',
+                        },
+                      ]}
+                      onPress={() => {
+                        Alert.alert(
+                          'Reset All User Data',
+                          'This will clear ALL app data — profile, challenge, streak, pantry, templates, preferences, and feature flags. The app will restart as if it were a fresh install.\n\nThis cannot be undone.',
+                          [
+                            { text: 'Cancel', style: 'cancel' },
+                            {
+                              text: 'Reset Everything',
+                              style: 'destructive',
+                              onPress: async () => {
+                                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error)
+                                await resetAllUserData()
+                                resetProfile()
+                                resetChallenge()
+                                resetScore()
+                                resetWellnessDisclaimer()
+                                if (streakCtx && streakCtx.resetStreak) streakCtx.resetStreak()
+                                resetAll()
+                                Alert.alert(
+                                  'Done',
+                                  'All data cleared. Please restart the app for a clean state.',
+                                )
+                              },
+                            },
+                          ],
+                        )
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[devStyles.resetLaunchText, { color: '#F44336' }]}>
+                        ☢️ Reset User (Nuclear)
+                      </Text>
+                      <Text style={devStyles.resetLaunchHint}>
+                        Clears ALL data — profile, challenge, streak, pantry, templates, flags,
+                        preferences. Makes you a brand new user.
+                      </Text>
+                    </TouchableOpacity>
+
+                    {/* Individual flag toggles */}
+                    {Object.keys(DEFAULT_FLAGS).map((key) => {
+                      const meta = FLAG_LABELS[key] || { label: key, phase: 'Unknown' }
+                      const phaseColor = PHASE_COLORS[meta.phase] || '#8B949E'
+                      return (
+                        <View key={key} style={styles.settingRow}>
+                          <View style={styles.settingInfo}>
+                            <Text style={styles.settingLabel}>{meta.label}</Text>
+                            <View style={devStyles.phaseTag}>
+                              <View style={[devStyles.phaseDot, { backgroundColor: phaseColor }]} />
+                              <Text style={[devStyles.phaseText, { color: phaseColor }]}>
+                                {meta.phase}
+                              </Text>
+                            </View>
+                          </View>
+                          <EmeraldSwitch
+                            value={!!flags[key]}
+                            onValueChange={(v) => setFlag(key, v)}
+                          />
+                        </View>
+                      )
+                    })}
+                  </>
+                )}
+              </View>
+            </>
+          )}
+
+          <View style={{ height: 40 }} />
+        </ScrollView>
+      </SafeAreaView>
     </View>
   )
 }
@@ -1686,15 +1816,21 @@ const styles = StyleSheet.create({
   rootWrap: { flex: 1, backgroundColor: '#060D0A' },
   safe: { flex: 1 },
   header: {
-    flexDirection: 'row', alignItems: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16, paddingVertical: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
   },
   backBtn: {
-    width: 38, height: 38, borderRadius: 19,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     backgroundColor: 'rgba(255,255,255,0.06)',
-    justifyContent: 'center', alignItems: 'center',
-    borderWidth: 0.5, borderColor: 'rgba(255,255,255,0.08)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 0.5,
+    borderColor: 'rgba(255,255,255,0.08)',
   },
   headerTitle: { fontSize: 18, fontWeight: '800', color: '#FFFFFF' },
   scroll: { flex: 1 },
@@ -1705,42 +1841,66 @@ const styles = StyleSheet.create({
   // Tooltip
   tooltip: {
     backgroundColor: 'rgba(255,213,79,0.06)',
-    borderRadius: 24, padding: 18, marginBottom: 20,
-    borderWidth: 0.5, borderColor: 'rgba(255,213,79,0.15)',
-    flexDirection: 'row', alignItems: 'flex-start', gap: 12,
+    borderRadius: 24,
+    padding: 18,
+    marginBottom: 20,
+    borderWidth: 0.5,
+    borderColor: 'rgba(255,213,79,0.15)',
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
   },
   tooltipIcon: {
-    width: 32, height: 32, borderRadius: 16,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: 'rgba(255,213,79,0.12)',
-    justifyContent: 'center', alignItems: 'center',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   tooltipContent: { flex: 1 },
   tooltipTitle: {
-    fontSize: 13, fontWeight: '800', color: '#FFD54F',
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#FFD54F',
     marginBottom: 4,
   },
   tooltipText: { fontSize: 13, color: '#C9D1D9', lineHeight: 18 },
   tooltipClose: {
-    paddingHorizontal: 12, paddingVertical: 7,
-    borderRadius: 24, backgroundColor: 'rgba(255,213,79,0.1)',
-    borderWidth: 0.5, borderColor: 'rgba(255,213,79,0.15)',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255,213,79,0.1)',
+    borderWidth: 0.5,
+    borderColor: 'rgba(255,213,79,0.15)',
   },
   tooltipCloseText: { fontSize: 12, fontWeight: '700', color: '#FFD54F' },
 
   // Intensity
   intensityCard: {
     backgroundColor: 'rgba(255,255,255,0.04)',
-    borderRadius: 24, padding: 18, marginBottom: 24,
-    borderWidth: 0.5, borderColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 24,
+    padding: 18,
+    marginBottom: 24,
+    borderWidth: 0.5,
+    borderColor: 'rgba(255,255,255,0.08)',
   },
   intensityTitle: {
-    fontSize: 13, fontWeight: '800', color: '#90A4AE',
-    textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12,
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#90A4AE',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: 12,
   },
   intensityRow: { flexDirection: 'row', gap: 8 },
   intensityStop: {
-    flex: 1, paddingVertical: 14, paddingHorizontal: 8,
-    borderRadius: 24, borderWidth: 0.5, borderColor: 'rgba(255,255,255,0.06)',
+    flex: 1,
+    paddingVertical: 14,
+    paddingHorizontal: 8,
+    borderRadius: 24,
+    borderWidth: 0.5,
+    borderColor: 'rgba(255,255,255,0.06)',
     alignItems: 'center',
     backgroundColor: 'rgba(255,255,255,0.02)',
   },
@@ -1750,14 +1910,21 @@ const styles = StyleSheet.create({
 
   // Section Header
   sectionHeader: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    marginBottom: 12, marginTop: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 12,
+    marginTop: 4,
   },
   sectionIconWrap: {
-    width: 34, height: 34, borderRadius: 17,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     backgroundColor: 'rgba(255,255,255,0.04)',
-    justifyContent: 'center', alignItems: 'center',
-    borderWidth: 0.5, borderColor: 'rgba(255,255,255,0.08)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 0.5,
+    borderColor: 'rgba(255,255,255,0.08)',
   },
   sectionTitleWrap: { flex: 1 },
   sectionTitle: { fontSize: 15, fontWeight: '800', color: '#FFFFFF' },
@@ -1766,13 +1933,19 @@ const styles = StyleSheet.create({
   // Settings Group
   settingsGroup: {
     backgroundColor: 'rgba(255,255,255,0.04)',
-    borderRadius: 24, marginBottom: 24, overflow: 'hidden',
-    borderWidth: 0.5, borderColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 24,
+    marginBottom: 24,
+    overflow: 'hidden',
+    borderWidth: 0.5,
+    borderColor: 'rgba(255,255,255,0.08)',
   },
   settingRow: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 16, paddingVertical: 14,
-    borderBottomWidth: 0.5, borderBottomColor: 'rgba(255,255,255,0.06)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: 0.5,
+    borderBottomColor: 'rgba(255,255,255,0.06)',
   },
   settingRowDisabled: { opacity: 0.4 },
   settingInfo: { flex: 1, marginRight: 12 },
@@ -1780,59 +1953,95 @@ const styles = StyleSheet.create({
   settingLabelDisabled: { color: '#90A4AE' },
   settingDesc: { fontSize: 12, color: '#90A4AE', marginTop: 2, lineHeight: 16 },
   emergencyTag: {
-    flexDirection: 'row', alignItems: 'center', gap: 4,
-    marginTop: 6, backgroundColor: 'rgba(100,181,246,0.06)',
-    paddingHorizontal: 10, paddingVertical: 5, borderRadius: 24,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 6,
+    backgroundColor: 'rgba(100,181,246,0.06)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 24,
     alignSelf: 'flex-start',
-    borderWidth: 0.5, borderColor: 'rgba(100,181,246,0.1)',
+    borderWidth: 0.5,
+    borderColor: 'rgba(100,181,246,0.1)',
   },
   emergencyText: { fontSize: 10, color: '#90CAF9', fontWeight: '600' },
 
   // Quiet Hours
   quietCard: {
     backgroundColor: 'rgba(255,255,255,0.04)',
-    borderRadius: 24, padding: 18, marginBottom: 24,
-    borderWidth: 0.5, borderColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 24,
+    padding: 18,
+    marginBottom: 24,
+    borderWidth: 0.5,
+    borderColor: 'rgba(255,255,255,0.08)',
   },
   quietRow: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   quietDivider: {
-    width: 34, height: 34, borderRadius: 17,
-    backgroundColor: 'rgba(255,255,255,0.04)', justifyContent: 'center', alignItems: 'center',
-    borderWidth: 0.5, borderColor: 'rgba(255,255,255,0.06)',
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 0.5,
+    borderColor: 'rgba(255,255,255,0.06)',
   },
   quietNote: {
-    flexDirection: 'row', alignItems: 'flex-start', gap: 8,
-    marginTop: 14, paddingTop: 14,
-    borderTopWidth: 0.5, borderTopColor: 'rgba(255,255,255,0.06)',
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    marginTop: 14,
+    paddingTop: 14,
+    borderTopWidth: 0.5,
+    borderTopColor: 'rgba(255,255,255,0.06)',
   },
   quietNoteText: { flex: 1, fontSize: 11, color: '#90A4AE', lineHeight: 16 },
 
   // Time Picker
   timePicker: { alignItems: 'center' },
   timeLabel: {
-    fontSize: 11, fontWeight: '700', color: '#90A4AE',
-    textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8,
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#90A4AE',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: 8,
   },
   timeControls: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   timeBtn: {
-    width: 34, height: 34, borderRadius: 17,
-    backgroundColor: 'rgba(255,255,255,0.06)', justifyContent: 'center', alignItems: 'center',
-    borderWidth: 0.5, borderColor: 'rgba(255,255,255,0.06)',
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 0.5,
+    borderColor: 'rgba(255,255,255,0.06)',
   },
   timeBtnText: { fontSize: 18, fontWeight: '700', color: '#8B949E' },
   timeValue: {
-    fontSize: 20, fontWeight: '900', color: '#FFFFFF',
-    fontVariant: ['tabular-nums'], minWidth: 60, textAlign: 'center',
+    fontSize: 20,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    fontVariant: ['tabular-nums'],
+    minWidth: 60,
+    textAlign: 'center',
   },
 
   // Master Switch
   masterCard: {
-    flexDirection: 'row', alignItems: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: 'rgba(255,255,255,0.04)',
-    borderRadius: 24, padding: 18,
-    borderWidth: 0.5, borderColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 24,
+    padding: 18,
+    borderWidth: 0.5,
+    borderColor: 'rgba(255,255,255,0.08)',
   },
   masterInfo: { flex: 1, marginRight: 12 },
   masterLabel: { fontSize: 15, fontWeight: '800', color: '#FFFFFF' },
@@ -1840,9 +2049,12 @@ const styles = StyleSheet.create({
 
   // Help rows
   helpRow: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 16, paddingVertical: 14,
-    borderBottomWidth: 0.5, borderBottomColor: 'rgba(255,255,255,0.06)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: 0.5,
+    borderBottomColor: 'rgba(255,255,255,0.06)',
     gap: 12,
   },
   helpInfo: { flex: 1 },
@@ -1853,34 +2065,52 @@ const styles = StyleSheet.create({
 
 const devStyles = StyleSheet.create({
   buildTargetRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    paddingHorizontal: 16, paddingVertical: 10,
-    borderBottomWidth: 0.5, borderBottomColor: 'rgba(255,255,255,0.06)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderBottomWidth: 0.5,
+    borderBottomColor: 'rgba(255,255,255,0.06)',
   },
   buildTargetLabel: {
-    fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.5)',
+    fontSize: 13,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.5)',
   },
   buildTargetBadge: {
-    paddingHorizontal: 10, paddingVertical: 3, borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 8,
     backgroundColor: 'rgba(100,181,246,0.15)',
-    borderWidth: 0.5, borderColor: 'rgba(100,181,246,0.3)',
+    borderWidth: 0.5,
+    borderColor: 'rgba(100,181,246,0.3)',
   },
   buildTargetBadgeBeta: {
     backgroundColor: 'rgba(129,199,132,0.15)',
     borderColor: 'rgba(129,199,132,0.3)',
   },
   buildTargetText: {
-    fontSize: 12, fontWeight: '800', color: '#81C784', letterSpacing: 1,
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#81C784',
+    letterSpacing: 1,
   },
   bulkRow: {
-    flexDirection: 'row', gap: 8,
-    paddingHorizontal: 16, paddingVertical: 10,
-    borderBottomWidth: 0.5, borderBottomColor: 'rgba(255,255,255,0.06)',
+    flexDirection: 'row',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderBottomWidth: 0.5,
+    borderBottomColor: 'rgba(255,255,255,0.06)',
   },
   bulkBtn: {
-    flex: 1, paddingVertical: 10, borderRadius: 20,
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 20,
     backgroundColor: 'rgba(129,199,132,0.1)',
-    borderWidth: 0.5, borderColor: 'rgba(129,199,132,0.2)',
+    borderWidth: 0.5,
+    borderColor: 'rgba(129,199,132,0.2)',
     alignItems: 'center',
   },
   bulkBtnText: { fontSize: 13, fontWeight: '700', color: '#81C784' },
@@ -1890,7 +2120,10 @@ const devStyles = StyleSheet.create({
   },
   bulkBtnResetText: { color: '#EF5350' },
   phaseTag: {
-    flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 3,
   },
   phaseDot: { width: 6, height: 6, borderRadius: 3 },
   phaseText: { fontSize: 11, fontWeight: '600' },
@@ -1991,7 +2224,10 @@ const devStyles = StyleSheet.create({
   // ── Passcode prompt ──
   passcodeOverlay: {
     position: 'absolute',
-    top: 0, left: 0, right: 0, bottom: 0,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     backgroundColor: 'rgba(0,0,0,0.7)',
     justifyContent: 'center',
     alignItems: 'center',
@@ -2081,47 +2317,68 @@ const devStyles = StyleSheet.create({
 
 const nudgeStyles = StyleSheet.create({
   permDenied: {
-    paddingHorizontal: 16, paddingVertical: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
     backgroundColor: 'rgba(255,183,77,0.06)',
-    borderBottomWidth: 0.5, borderBottomColor: 'rgba(255,255,255,0.06)',
+    borderBottomWidth: 0.5,
+    borderBottomColor: 'rgba(255,255,255,0.06)',
   },
   permDeniedText: {
-    fontSize: 12, color: '#FFB74D', lineHeight: 16,
+    fontSize: 12,
+    color: '#FFB74D',
+    lineHeight: 16,
   },
   timeRow: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, paddingVertical: 10,
-    borderBottomWidth: 0.5, borderBottomColor: 'rgba(255,255,255,0.06)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderBottomWidth: 0.5,
+    borderBottomColor: 'rgba(255,255,255,0.06)',
   },
   timeLabel: {
-    fontSize: 13, fontWeight: '600', color: '#90A4AE',
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#90A4AE',
   },
   dayRow: {
-    flexDirection: 'row', gap: 4,
+    flexDirection: 'row',
+    gap: 4,
   },
   dayBtn: {
-    paddingHorizontal: 8, paddingVertical: 5, borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 12,
     backgroundColor: 'rgba(255,255,255,0.04)',
-    borderWidth: 0.5, borderColor: 'rgba(255,255,255,0.06)',
+    borderWidth: 0.5,
+    borderColor: 'rgba(255,255,255,0.06)',
   },
   dayBtnActive: {
     backgroundColor: 'rgba(129,199,132,0.15)',
     borderColor: 'rgba(129,199,132,0.3)',
   },
   dayText: {
-    fontSize: 11, fontWeight: '700', color: '#90A4AE',
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#90A4AE',
   },
   dayTextActive: {
     color: '#81C784',
   },
   testBtn: {
-    marginHorizontal: 16, marginVertical: 12,
-    paddingVertical: 10, borderRadius: 20,
+    marginHorizontal: 16,
+    marginVertical: 12,
+    paddingVertical: 10,
+    borderRadius: 20,
     backgroundColor: 'rgba(129,199,132,0.08)',
-    borderWidth: 0.5, borderColor: 'rgba(129,199,132,0.15)',
+    borderWidth: 0.5,
+    borderColor: 'rgba(129,199,132,0.15)',
     alignItems: 'center',
   },
   testBtnText: {
-    fontSize: 13, fontWeight: '700', color: '#81C784',
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#81C784',
   },
 })

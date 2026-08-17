@@ -2796,6 +2796,7 @@ export default function ScanScreen({ navigation, route }) {
         onClose={() => glowJourney.setShowGlowJourneyDetail(false)}
         streakCount={glowJourney.glowStreak.count}
         weeklyQualifyingDays={glowJourney.weeklyQualifyingDays}
+        weeklyLeafStates={glowJourney.weeklyLeafStates}
         lifetimeDays={glowJourney.lifetimeQualifyingDays}
         unlockedAchievementIds={glowJourney.unlockedAchievementIds}
       />

@@ -33,7 +33,8 @@
 // capacity — not rendered for v1's 12 slots.
 // ─────────────────────────────────────────────────────────────
 
-import React, { useMemo, memo } from 'react'
+import React, { useMemo, useCallback, useState, useEffect, useRef, memo } from 'react'
+import { Animated } from 'react-native'
 import { G, Path, Ellipse, Circle, Line, Rect } from 'react-native-svg'
 import { ARBOR_CATALOG, getArborEarnedCount, ORNAMENT_TIERS } from './MilestoneArborArtwork'
 import { ARBOR, SCENE_PALETTE } from './LivingGardenGeometry'
@@ -80,7 +81,11 @@ function computePegPositions() {
 const PEG_POSITIONS = computePegPositions()
 
 // ── Ornament renderers ────────────────────────────────────────
-function LeafOrnament({ cx, cy, color }) {
+// Each renderer accepts an optional `opacity` prop (0–1).
+// react-native-svg 15.x bug: G with opacity prop does not reliably
+// suppress child rendering. Opacity MUST be applied to individual
+// SVG elements, NOT to a G wrapper.
+function LeafOrnament({ cx, cy, color, opacity = 1 }) {
   return (
     <G>
       {/* Cord from peg */}
@@ -88,79 +93,81 @@ function LeafOrnament({ cx, cy, color }) {
         d={`M ${cx} ${cy - 4} L ${cx} ${cy}`}
         stroke={SCENE_PALETTE.timberLight}
         strokeWidth="0.7"
-        opacity="0.8"
+        opacity={0.8 * opacity}
       />
       {/* Teardrop leaf with midrib */}
       <Path
         d={`M ${cx} ${cy} C ${cx + 4} ${cy + 1}, ${cx + 6} ${cy + 5}, ${cx} ${cy + 9} C ${cx - 6} ${cy + 5}, ${cx - 4} ${cy + 1}, ${cx} ${cy} Z`}
         fill={color}
+        opacity={opacity}
       />
       <Path
         d={`M ${cx} ${cy + 1} L ${cx} ${cy + 8}`}
         stroke={SCENE_PALETTE.goldPale}
         strokeWidth="0.5"
-        opacity="0.7"
+        opacity={0.7 * opacity}
       />
     </G>
   )
 }
 
-function BlossomOrnament({ cx, cy, color }) {
+function BlossomOrnament({ cx, cy, color, opacity = 1 }) {
   return (
     <G>
       <Path
         d={`M ${cx} ${cy - 4} L ${cx} ${cy}`}
         stroke={SCENE_PALETTE.timberLight}
         strokeWidth="0.7"
-        opacity="0.8"
+        opacity={0.8 * opacity}
       />
       {/* Five petals */}
       <G transform={`translate(${cx} ${cy + 5})`}>
-        <Ellipse cy="-3" rx="1.8" ry="2.8" fill="#F3E3D2" opacity="0.92" />
-        <Ellipse cy="-3" rx="1.8" ry="2.8" fill="#F3E3D2" opacity="0.92" transform="rotate(72)" />
-        <Ellipse cy="-3" rx="1.8" ry="2.8" fill="#F3E3D2" opacity="0.92" transform="rotate(144)" />
-        <Ellipse cy="-3" rx="1.8" ry="2.8" fill="#F3E3D2" opacity="0.92" transform="rotate(216)" />
-        <Ellipse cy="-3" rx="1.8" ry="2.8" fill="#F3E3D2" opacity="0.92" transform="rotate(288)" />
+        <Ellipse cy="-3" rx="1.8" ry="2.8" fill="#F3E3D2" opacity={0.92 * opacity} />
+        <Ellipse cy="-3" rx="1.8" ry="2.8" fill="#F3E3D2" opacity={0.92 * opacity} transform="rotate(72)" />
+        <Ellipse cy="-3" rx="1.8" ry="2.8" fill="#F3E3D2" opacity={0.92 * opacity} transform="rotate(144)" />
+        <Ellipse cy="-3" rx="1.8" ry="2.8" fill="#F3E3D2" opacity={0.92 * opacity} transform="rotate(216)" />
+        <Ellipse cy="-3" rx="1.8" ry="2.8" fill="#F3E3D2" opacity={0.92 * opacity} transform="rotate(288)" />
         {/* Gold centre */}
-        <Circle r="1.5" fill={SCENE_PALETTE.gold} />
+        <Circle r="1.5" fill={SCENE_PALETTE.gold} opacity={opacity} />
       </G>
     </G>
   )
 }
 
-function FruitOrnament({ cx, cy, color }) {
+function FruitOrnament({ cx, cy, color, opacity = 1 }) {
   return (
     <G>
       <Path
         d={`M ${cx} ${cy - 4} L ${cx} ${cy}`}
         stroke={SCENE_PALETTE.timberLight}
         strokeWidth="0.7"
-        opacity="0.8"
+        opacity={0.8 * opacity}
       />
       {/* Round fruit with highlight */}
-      <Circle cx={cx} cy={cy + 5} r="3" fill={color} />
-      <Circle cx={cx - 1} cy={cy + 4} r="1" fill={SCENE_PALETTE.goldPale} opacity="0.5" />
+      <Circle cx={cx} cy={cy + 5} r="3" fill={color} opacity={opacity} />
+      <Circle cx={cx - 1} cy={cy + 4} r="1" fill={SCENE_PALETTE.goldPale} opacity={0.5 * opacity} />
       {/* Stem */}
       <Path
         d={`M ${cx} ${cy + 2} L ${cx + 1} ${cy}`}
         stroke={SCENE_PALETTE.bark}
         strokeWidth="0.5"
+        opacity={opacity}
       />
     </G>
   )
 }
 
-function MedallionOrnament({ cx, cy, color }) {
+function MedallionOrnament({ cx, cy, color, opacity = 1 }) {
   return (
     <G>
       <Path
         d={`M ${cx} ${cy - 4} L ${cx} ${cy}`}
         stroke={SCENE_PALETTE.timberLight}
         strokeWidth="0.7"
-        opacity="0.8"
+        opacity={0.8 * opacity}
       />
       {/* Gold disc with inner ring and highlight */}
-      <Circle cx={cx} cy={cy + 5} r="3.5" fill={SCENE_PALETTE.gold} />
+      <Circle cx={cx} cy={cy + 5} r="3.5" fill={SCENE_PALETTE.gold} opacity={opacity} />
       <Circle
         cx={cx}
         cy={cy + 5}
@@ -168,9 +175,9 @@ function MedallionOrnament({ cx, cy, color }) {
         fill="none"
         stroke={SCENE_PALETTE.goldPale}
         strokeWidth="0.5"
-        opacity="0.8"
+        opacity={0.8 * opacity}
       />
-      <Circle cx={cx - 1} cy={cy + 4} r="1" fill={SCENE_PALETTE.goldPale} opacity="0.6" />
+      <Circle cx={cx - 1} cy={cy + 4} r="1" fill={SCENE_PALETTE.goldPale} opacity={0.6 * opacity} />
     </G>
   )
 }
@@ -357,7 +364,29 @@ function GoldThreadArc({ earnedCount, postLeftX, postRightX, springlineY, apexY 
 }
 
 // ── Main Arbor component ──────────────────────────────────────
-function LivingGardenArborComponent({ ctx, sceneId }) {
+// newlyEarnedIds (optional): IDs of ornaments earned since last seen.
+// arborReveal (optional): 0 → 1 progress for newly-earned ornament reveal.
+// When provided, newly-earned ornaments receive temporary restrained
+// scale + transient highlight/halo treatment with deterministic stagger.
+// At rest (arborReveal=1), all ornaments are canonical/static.
+//
+// Phase 1B corrections:
+//   - Single ornament reveal ~1100ms (driven externally)
+//   - Restrained scale delta (start 0.88, not 0.4)
+//   - Transient highlight/halo resolving to zero
+//   - 130ms stagger for 2–4 ornaments, 90ms for 5+
+//   - Phase cap ~1600ms
+//   - Ornaments categorically static after reveal
+function LivingGardenArborComponent({
+  ctx,
+  sceneId,
+  newlyEarnedIds,
+  arborReveal,
+  advancementMilestoneIds = null,
+  advancementId = null,
+  isReduced = false,
+  onDebugValues = null,
+}) {
   const { postLeftX, postRightX, footingY, springlineY, apexY, headRailUpperY, headRailLowerY } =
     ARBOR
 
@@ -377,6 +406,212 @@ function LivingGardenArborComponent({ ctx, sceneId }) {
 
   // Earned-color ramp (spec §5)
   const ramp = useMemo(() => arborRamp(earnedCount), [earnedCount])
+
+  // ── Newly-earned ornament reveal (Phase 1B corrected) ─────
+  // Phase 1D: newEarnedSet uses effectiveNewIds which includes
+  // advancementMilestoneIds during UNPREPARED guard phase.
+  // NOTE: newEarnedSet is computed AFTER effectiveNewIds is declared
+  // (below) to avoid TDZ violation. It is a cheap Set creation that
+  // does not require useMemo.
+
+  // ── Phase 1D pre-paint Arbor reveal guard (one-shot per generation) ──
+  // PROBLEM: When the parent changes arborCtx (new milestone IDs) AND passes
+  // advancements simultaneously, the Arbor re-renders with target ornaments
+  // BEFORE the motion hook's useEffect runs to set newlyEarnedIds and
+  // arborReveal=0. On the first target render:
+  //   - newlyEarnedIds is still [] (stale state)
+  //   - arborReveal is still 1 (canonical)
+  //   - All new ornaments paint at full appearance (flash)
+  //
+  // FIX: A one-shot guard with explicit lifecycle phases:
+  //   UNPREPARED → RUNNING → COMPLETE
+  //
+  // GENERATION-OWNED NEW-ID SET:
+  // eventNewIdsRef stores the new milestone IDs synchronously when a new
+  // advancement is detected. These IDs remain the authoritative new-ID set
+  // for the ENTIRE reveal lifecycle (UNPREPARED + RUNNING). They do NOT
+  // depend on the delayed newlyEarnedIds React state handoff.
+  //
+  // UNPREPARED: New advancement detected (advancementId changed). Store
+  //   advancementMilestoneIds in eventNewIdsRef. Force revealProgress=0.
+  // RUNNING: Motion hook has initialized (arborReveal < 1). Guard releases
+  //   progress forcing but STILL uses eventNewIdsRef for new-ID identity.
+  // COMPLETE: Animation finished (arborReveal back to 1). Guard never
+  //   reactivates for this generation. Ornaments canonical.
+  //
+  // Reduced Motion bypasses guard entirely — ornaments immediately canonical.
+  const prevAdvancementIdRef = useRef(null)
+  const arborGuardPhaseRef = useRef(0) // 0=IDLE, 1=UNPREPARED, 2=RUNNING, 3=COMPLETE
+  const eventNewIdsRef = useRef(null) // generation-owned new-ID set
+
+  const hasNewMilestones = advancementMilestoneIds && advancementMilestoneIds.length > 0
+
+  // Detect new advancement by object reference
+  if (hasNewMilestones && advancementId && advancementId !== prevAdvancementIdRef.current) {
+    prevAdvancementIdRef.current = advancementId
+    // Store generation-owned new IDs synchronously
+    eventNewIdsRef.current = advancementMilestoneIds
+    // Only arm guard if not Reduced Motion
+    arborGuardPhaseRef.current = isReduced ? 3 : 1 // UNPREPARED (or COMPLETE if reduced)
+  }
+  // If advancement ends, reset to IDLE
+  if (!hasNewMilestones && arborGuardPhaseRef.current !== 0) {
+    arborGuardPhaseRef.current = 0
+    prevAdvancementIdRef.current = null
+    eventNewIdsRef.current = null
+  }
+
+  // ── Arbor reveal (Phase 1C: Animated.Value bridge) ──────
+  // arborReveal is an Animated.Value from useGardenMotion.
+  // DOCUMENTED EXCEPTION: Per-ornament progress requires reading
+  // the value to compute staggered opacity/scale. A single listener
+  // bridges to state, active ONLY during the reveal phase (≤1600ms).
+  // At rest (arborReveal=1): no listener, no setState, canonical.
+  //
+  // Phase 1D: Also read synchronously via __getValue() for guard logic.
+  const isAnimValue = arborReveal instanceof Animated.Value
+  const readSyncReveal = isAnimValue ? arborReveal.__getValue() : (arborReveal != null ? arborReveal : 1)
+  const [revealProgress, setRevealProgress] = useState(
+    isAnimValue ? 1 : arborReveal != null ? arborReveal : 1,
+  )
+
+  useEffect(() => {
+    if (!isAnimValue) return
+    // If at rest AND no active guard, don't bridge (performance).
+    // CRITICAL: When guard is UNPREPARED or RUNNING, ALWAYS set up the
+    // listener — even if the current value is 1. The motion hook will
+    // call setValue(0) AFTER this effect runs (effects run child-first,
+    // and the motion hook's orchestration effect is in the Scene parent).
+    // If we skip the listener here, setValue(0) fires with no listener,
+    // no setRevealProgress, no re-render → Arbor stuck at UNPREPARED forever.
+    //
+    // ROOT-CAUSE FIX: The effect dependency array MUST include advancementId
+    // so the effect re-runs when a new advancement arrives. Without this,
+    // the effect only runs once on mount (when advancements is null, guard
+    // is IDLE, value is 1 → early return → no listener). When advancements
+    // arrives later, the guard arms but the effect never re-runs, so
+    // setValue(0) has no listener → guard stuck at UNPREPARED forever.
+    const guardActive = arborGuardPhaseRef.current === 1 || arborGuardPhaseRef.current === 2
+    if (arborReveal.__getValue() >= 1 && !guardActive) {
+      setRevealProgress(1)
+      return
+    }
+    // DOCUMENTED EXCEPTION: bridge during reveal phase only
+    const id = arborReveal.addListener(({ value }) => {
+      setRevealProgress(value)
+    })
+    return () => {
+      arborReveal.removeListener(id)
+    }
+  }, [isAnimValue, arborReveal, advancementId])
+
+  // ── Guard phase transitions (during render, synchronous) ──
+  if (arborGuardPhaseRef.current === 1) {
+    // UNPREPARED: check if motion hook has initialized
+    if (readSyncReveal < 1) {
+      // Motion hook has set arborReveal=0 → RUNNING
+      arborGuardPhaseRef.current = 2
+    }
+  } else if (arborGuardPhaseRef.current === 2) {
+    // RUNNING: check if animation completed (arborReveal back to 1)
+    if (readSyncReveal >= 1) {
+      arborGuardPhaseRef.current = 3
+    }
+  }
+
+  // ── Effective reveal progress and new ID set ──
+  // Generation-owned: eventNewIdsRef is the authoritative new-ID set for
+  // the ENTIRE reveal lifecycle (UNPREPARED + RUNNING). It does NOT depend
+  // on the delayed newlyEarnedIds React state, which may still be [] when
+  // the guard transitions to RUNNING.
+  //
+  // PROGRESS SOURCE FIX:
+  // UNPREPARED: force progress=0 (motion hook hasn't initialized yet)
+  // RUNNING: use readSyncReveal (synchronous Animated.Value __getValue())
+  //   NOT the bridged revealProgress React state, which can lag behind.
+  //   The React state is only needed to TRIGGER re-renders; the numerical
+  //   value during RUNNING must come from the live Animated.Value.
+  //   This is safe because useNativeDriver=false (JS-driven animation).
+  // COMPLETE: use readSyncReveal (will be 1, canonical)
+  let effectiveRevealProgress
+  let effectiveNewIds = eventNewIdsRef.current
+  if (arborGuardPhaseRef.current === 1) {
+    // UNPREPARED: force progress=0 before motion hook initializes
+    effectiveRevealProgress = 0
+    effectiveNewIds = eventNewIdsRef.current
+  } else if (arborGuardPhaseRef.current === 2) {
+    // RUNNING: use synchronous Animated.Value read (NOT stale React state)
+    effectiveRevealProgress = readSyncReveal
+    effectiveNewIds = eventNewIdsRef.current
+  } else {
+    // IDLE or COMPLETE: canonical (readSyncReveal will be 1)
+    effectiveRevealProgress = readSyncReveal
+  }
+
+  const hasRevealMotion = effectiveRevealProgress < 1
+
+  // ── newEarnedSet: computed AFTER effectiveNewIds declaration ──
+  // Cheap Set creation — no useMemo needed. This fixes the TDZ
+  // violation where effectiveNewIds was referenced before declaration.
+  const newEarnedSet = new Set(effectiveNewIds || [])
+
+  // Compute per-ornament stagger parameters
+  const newCount = effectiveNewIds ? effectiveNewIds.length : 0
+  const stagger = newCount >= 5 ? 90 : 130
+  const ornamentDuration = 1100
+  const totalRevealDuration = Math.min(ornamentDuration + Math.max(0, newCount - 1) * stagger, 1600)
+
+  // Compute per-ornament reveal progress based on stagger
+  const computeOrnamentProgress = useCallback(
+    (ornamentId) => {
+      if (!hasRevealMotion || !effectiveNewIds) return 1
+      const idx = effectiveNewIds.indexOf(ornamentId)
+      if (idx < 0) return 1 // not newly earned — fully visible
+      const ornamentDelay = idx * stagger
+      const elapsed = effectiveRevealProgress * totalRevealDuration - ornamentDelay
+      return Math.max(0, Math.min(1, elapsed / ornamentDuration))
+    },
+    [hasRevealMotion, effectiveNewIds, effectiveRevealProgress, stagger, totalRevealDuration],
+  )
+
+  // ── QA-only debug values (for Garden Preview diagnostic) ──
+  // Exposes the actual values consumed by the renderer for each new ID.
+  // No persistence. No production-visible UI. Only active when onDebugValues
+  // callback is supplied (preview only).
+  useEffect(() => {
+    if (!onDebugValues || !effectiveNewIds) return
+    const phaseNames = ['IDLE', 'UNPREPARED', 'RUNNING', 'COMPLETE']
+    // run: whether the Animated.Value has been initialized to 0 (motion started)
+    const run = readSyncReveal < 1 ? 1 : 0
+    // processed: whether the guard has transitioned past UNPREPARED
+    const processed = arborGuardPhaseRef.current >= 2 ? 1 : 0
+    const perId = {}
+    effectiveNewIds.forEach((id) => {
+      const idx = effectiveNewIds.indexOf(id)
+      const p = computeOrnamentProgress(id)
+      const isNew = hasRevealMotion && idx >= 0
+      // render: actual JSX branch decision (structural zero-progress gate)
+      const render = !(isNew && p <= 0) ? 1 : 0
+      perId[id] = {
+        index: idx,
+        individualProgress: p,
+        ornamentOpacity: isNew ? p : 1,
+        ornamentScale: isNew ? 0.88 + 0.12 * p : 1,
+        haloOpacity: isNew && p < 1 ? Math.sin(p * Math.PI) * 0.26 : 0,
+        render,
+      }
+    })
+    onDebugValues({
+      phase: phaseNames[arborGuardPhaseRef.current],
+      syncReveal: readSyncReveal,
+      stateReveal: revealProgress,
+      effectiveRevealProgress,
+      run,
+      processed,
+      effectiveNewIds,
+      perId,
+    })
+  }, [onDebugValues, effectiveNewIds, effectiveRevealProgress, hasRevealMotion, computeOrnamentProgress])
 
   return (
     <G>
@@ -468,17 +703,73 @@ function LivingGardenArborComponent({ ctx, sceneId }) {
         if (slot.earned && OrnamentRenderer) {
           // Hue-rotated color with saturation ramp
           const ornamentColor = getOrnamentHue(slot.pegIndex, ramp.saturation)
+          // ── Newly-earned ornament reveal (Phase 1B corrected) ──
+          // Restrained scale delta (0.88 → 1.0, not 0.4 → 1.0).
+          // Transient highlight/halo peaks at midpoint, resolves to 0.
+          // Per-ornament stagger based on index in eventNewIdsRef (generation-owned).
+          // At rest (individualProgress=1): scale=1, opacity=1, halo=0 (canonical).
+          const isNewlyEarned = hasRevealMotion && newEarnedSet.has(slot.id)
+          const individualProgress = isNewlyEarned ? computeOrnamentProgress(slot.id) : 1
+          const ornamentOpacity = isNewlyEarned ? individualProgress : 1
+          // Restrained scale: 0.88 → 1.0 (not 0.4 → 1.0)
+          const ornamentScale = isNewlyEarned ? 0.88 + 0.12 * individualProgress : 1
+          // Transient highlight/halo: peaks at 0.5 progress, resolves to 0
+          // Phase 1C: peak reduced to 0.26 (was 0.35)
+          const haloOpacity =
+            isNewlyEarned && individualProgress < 1
+              ? Math.sin(individualProgress * Math.PI) * 0.26
+              : 0
+          const ornamentTransform =
+            ornamentScale !== 1
+              ? `translate(${pos.cx} ${pos.cy}) scale(${ornamentScale}) translate(${-pos.cx} ${-pos.cy})`
+              : undefined
+          // ── STRUCTURAL ZERO-PROGRESS HARD GATE ──
+          // At progress exactly 0, do NOT render any earned ornament geometry.
+          // This is a structural gate (not opacity-based) to guarantee that
+          // newly-earned ornaments are invisible at their exact pre-start state.
+          // The peg/frame/background structure is NOT affected.
+          // At progress > 0, render the normal animated ornament path.
+          const shouldRenderOrnament = !(isNewlyEarned && individualProgress <= 0)
           return (
-            <G key={`arbor-peg-${slot.id}`}>
-              {/* Bloom halo (spec §5) — opacity <= 0.10 */}
-              <OrnamentBloom
-                cx={pos.cx}
-                cy={pos.cy}
-                radius={ramp.bloomRadius}
-                opacity={ramp.bloomOpacity}
-                hue={ornamentColor}
-              />
-              <OrnamentRenderer cx={pos.cx} cy={pos.cy} color={ornamentColor} />
+            <G
+              key={`arbor-peg-${slot.id}`}
+              transform={ornamentTransform}
+              // react-native-svg 15.x bug: G opacity prop does NOT reliably
+              // suppress child rendering. Opacity is applied to individual
+              // SVG elements inside each renderer instead.
+            >
+              {/* Transient highlight/halo (resolves to 0 at rest) */}
+              {shouldRenderOrnament && haloOpacity > 0 && (
+                <Circle
+                  cx={pos.cx}
+                  cy={pos.cy}
+                  r={ramp.bloomRadius * 1.4}
+                  fill={ornamentColor}
+                  opacity={haloOpacity}
+                />
+              )}
+              {/* Bloom halo (spec §5) — opacity <= 0.10, permanent */}
+              {/* Bloom fades with ornamentOpacity for newly-earned ornaments */}
+              {/* Zero-progress gate: no bloom for newly-earned at progress=0 */}
+              {shouldRenderOrnament && (
+                <OrnamentBloom
+                  cx={pos.cx}
+                  cy={pos.cy}
+                  radius={ramp.bloomRadius}
+                  opacity={ramp.bloomOpacity * ornamentOpacity}
+                  hue={ornamentColor}
+                />
+              )}
+              {/* Ornament renderer receives opacity prop (applied to individual elements) */}
+              {/* Zero-progress gate: no ornament geometry for newly-earned at progress=0 */}
+              {shouldRenderOrnament && (
+                <OrnamentRenderer
+                  cx={pos.cx}
+                  cy={pos.cy}
+                  color={ornamentColor}
+                  opacity={ornamentOpacity}
+                />
+              )}
             </G>
           )
         }
@@ -504,7 +795,16 @@ function LivingGardenArborComponent({ ctx, sceneId }) {
 }
 
 function arborComparator(prev, next) {
-  return prev.sceneId === next.sceneId && prev.ctx === next.ctx
+  return (
+    prev.sceneId === next.sceneId &&
+    prev.ctx === next.ctx &&
+    prev.newlyEarnedIds === next.newlyEarnedIds &&
+    prev.arborReveal === next.arborReveal &&
+    prev.advancementMilestoneIds === next.advancementMilestoneIds &&
+    prev.advancementId === next.advancementId &&
+    prev.isReduced === next.isReduced &&
+    prev.onDebugValues === next.onDebugValues
+  )
 }
 
 export const LivingGardenArbor = memo(LivingGardenArborComponent, arborComparator)

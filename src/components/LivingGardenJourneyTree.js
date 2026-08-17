@@ -22,7 +22,8 @@
 // Does NOT modify src/components/JourneyTreeArtwork.js (frozen).
 // ─────────────────────────────────────────────────────────────
 
-import React, { memo } from 'react'
+import React, { memo, useState, useEffect, useRef } from 'react'
+import { Animated } from 'react-native'
 import {
   G,
   Path,
@@ -35,6 +36,12 @@ import {
   Stop,
 } from 'react-native-svg'
 import { TREE_BASE, SCENE_PALETTE } from './LivingGardenGeometry'
+
+// ── SVG transform strings (NOT animated G wrapper — react-native-svg
+// crashes with "Underflow in restore" when an animated G wrapper
+// receives RN transform arrays). Animated.Value objects are consumed
+// via listeners that update state with SVG transform strings.
+// DOCUMENTED EXCEPTION (same pattern as Bed colorProgress/produceReveal).
 
 // ── Tree dimensions per stage (spec §10) ──────────────────────
 const TREE_DIMENSIONS = {
@@ -166,12 +173,12 @@ function MatureTreeDetail({ baseX, crownCenterY, crownR, isLegend }) {
 }
 
 // ── Tree renderer per stage ───────────────────────────────────
-function TreeSeed({ baseX, baseY, sceneId }) {
+function TreeSeed({ baseX, baseY, sceneId, treeOpacity = 1 }) {
   // A mound, a stone marker, one warm ember of light in the soil
   return (
     <G>
-      <Ellipse cx={baseX} cy={baseY} rx="8" ry="3" fill={SCENE_PALETTE.loam} opacity="0.8" />
-      <Circle cx={baseX} cy={baseY - 1} r="2" fill={SCENE_PALETTE.loamLit} opacity="0.6" />
+      <Ellipse cx={baseX} cy={baseY} rx="8" ry="3" fill={SCENE_PALETTE.loam} opacity={0.8 * treeOpacity} />
+      <Circle cx={baseX} cy={baseY - 1} r="2" fill={SCENE_PALETTE.loamLit} opacity={0.6 * treeOpacity} />
       {/* Stone marker */}
       <Ellipse
         cx={baseX}
@@ -179,15 +186,15 @@ function TreeSeed({ baseX, baseY, sceneId }) {
         rx="2"
         ry="3"
         fill={SCENE_PALETTE.timberDark}
-        opacity="0.7"
+        opacity={0.7 * treeOpacity}
       />
       {/* Warm ember */}
-      <Circle cx={baseX} cy={baseY - 1} r="1" fill={SCENE_PALETTE.gold} opacity="0.6" />
+      <Circle cx={baseX} cy={baseY - 1} r="1" fill={SCENE_PALETTE.gold} opacity={0.6 * treeOpacity} />
     </G>
   )
 }
 
-function TreeSprout({ baseX, baseY, sceneId }) {
+function TreeSprout({ baseX, baseY, sceneId, trunkOpacity = 1, canopyOpacity = 1 }) {
   // Two-leaf seedling inside a small ring of placed stones
   const topY = baseY - 40
   return (
@@ -226,7 +233,7 @@ function TreeSprout({ baseX, baseY, sceneId }) {
   )
 }
 
-function TreeGrowing({ baseX, baseY, sceneId }) {
+function TreeGrowing({ baseX, baseY, sceneId, trunkOpacity = 1, canopyOpacity = 1 }) {
   // Sapling with slim trunk and first real crown
   const trunkH = 60
   const crownR = 30
@@ -246,6 +253,7 @@ function TreeGrowing({ baseX, baseY, sceneId }) {
       <Path
         d={`M ${baseX - 2} ${baseY} L ${baseX - 1.5} ${trunkTopY} L ${baseX + 1.5} ${trunkTopY} L ${baseX + 2} ${baseY} Z`}
         fill={`url(#${sceneId}-bark-growing)`}
+        opacity={trunkOpacity}
       />
       {/* First branches */}
       <Path
@@ -254,6 +262,7 @@ function TreeGrowing({ baseX, baseY, sceneId }) {
         strokeWidth="1.5"
         fill="none"
         strokeLinecap="round"
+        opacity={trunkOpacity}
       />
       <Path
         d={`M ${baseX} ${trunkTopY + 10} L ${baseX + 12} ${trunkTopY + 2}`}
@@ -261,16 +270,17 @@ function TreeGrowing({ baseX, baseY, sceneId }) {
         strokeWidth="1.5"
         fill="none"
         strokeLinecap="round"
+        opacity={trunkOpacity}
       />
       {/* Crown — layered tones */}
-      <Ellipse cx={baseX} cy={crownCenterY} rx={crownR} ry={crownR * 0.8} fill={tones[0]} />
+      <Ellipse cx={baseX} cy={crownCenterY} rx={crownR} ry={crownR * 0.8} fill={tones[0]} opacity={canopyOpacity} />
       <Ellipse
         cx={baseX - crownR * 0.3}
         cy={crownCenterY + 4}
         rx={crownR * 0.7}
         ry={crownR * 0.6}
         fill={tones[1]}
-        opacity="0.85"
+        opacity={canopyOpacity * 0.85}
       />
       <Ellipse
         cx={baseX + crownR * 0.3}
@@ -278,15 +288,15 @@ function TreeGrowing({ baseX, baseY, sceneId }) {
         rx={crownR * 0.6}
         ry={crownR * 0.5}
         fill={tones[2]}
-        opacity="0.8"
+        opacity={canopyOpacity * 0.8}
       />
       {/* Cast shadow */}
-      <Ellipse cx={baseX} cy={baseY + 2} rx={crownR * 0.6} ry="3" fill="#000" opacity="0.2" />
+      <Ellipse cx={baseX} cy={baseY + 2} rx={crownR * 0.6} ry="3" fill="#000" opacity={0.2 * trunkOpacity} />
     </G>
   )
 }
 
-function TreeBlooming({ baseX, baseY, sceneId }) {
+function TreeBlooming({ baseX, baseY, sceneId, trunkOpacity = 1, canopyOpacity = 1, detailOpacity = 1 }) {
   // Young tree, blossom specks through the crown
   const trunkH = 90
   const crownR = 50
@@ -363,7 +373,7 @@ function TreeBlooming({ baseX, baseY, sceneId }) {
   )
 }
 
-function TreeThriving({ baseX, baseY, sceneId, atmosphere }) {
+function TreeThriving({ baseX, baseY, sceneId, atmosphere, trunkOpacity = 1, canopyOpacity = 1, detailOpacity = 1 }) {
   // Established tree: deeper cooler crown, warm rim, earned detail
   const trunkH = 120
   const crownR = 70
@@ -507,7 +517,7 @@ function TreeThriving({ baseX, baseY, sceneId, atmosphere }) {
   )
 }
 
-function TreeRadiant({ baseX, baseY, sceneId, atmosphere }) {
+function TreeRadiant({ baseX, baseY, sceneId, atmosphere, trunkOpacity = 1, canopyOpacity = 1, detailOpacity = 1 }) {
   // Backlit: gold rim light along upper-left crown edge
   const trunkH = 140
   const crownR = 85
@@ -642,7 +652,7 @@ function TreeRadiant({ baseX, baseY, sceneId, atmosphere }) {
   )
 }
 
-function TreeLegend({ baseX, baseY, sceneId, atmosphere, isReduced }) {
+function TreeLegend({ baseX, baseY, sceneId, atmosphere, isReduced, trunkOpacity = 1, canopyOpacity = 1, detailOpacity = 1 }) {
   // Ancient: deepest/coolest crown, widest, warm rim 0.22, earned detail
   const trunkH = 160
   const crownR = 100
@@ -828,7 +838,7 @@ function TreeLegend({ baseX, baseY, sceneId, atmosphere, isReduced }) {
 // a stone marker + ember). The glow is large enough to anchor
 // the scene's focal destination at zero history without drawing
 // a mature Tree or falsely awarding Seed.
-function TreeUnstarted({ baseX, baseY, sceneId, atmosphere }) {
+function TreeUnstarted({ baseX, baseY, sceneId, atmosphere, isReduced, trunkOpacity = 1, canopyOpacity = 1, detailOpacity = 1 }) {
   return (
     <G>
       <Defs>
@@ -932,34 +942,362 @@ const TREE_RENDERERS = {
 // null), renders the unstarted/prepared visual. This is NOT a Journey
 // stage — it is a visual-only placeholder that does not modify
 // getJourneyStage() or introduce a new threshold.
-function LivingGardenJourneyTreeComponent({ journeyStageKey, atmosphere, isReduced, sceneId }) {
+//
+// treeMotion (optional): animated motion values from useGardenMotion.
+//   { scaleY, opacity, canopyProgress, detailProgress, rimProgress, breathScale }
+// Multi-channel choreography (Phase 1B):
+//   - scaleY + opacity: trunk/base establishes (whole tree grows from base)
+//   - canopyProgress: branches/canopy arrive (subtle opacity modulation)
+//   - detailProgress: renderer-owned detail settles (subtle opacity modulation)
+//   - rimProgress: temporary rim/glow acknowledgement (resolves to 0)
+//   - breathScale: idle canopy breath (subtle, 1.0 at rest)
+// At rest, all wrappers are identity/pixel-neutral.
+//
+// Phase 1C: treeMotion is an object of Animated.Value objects.
+// Transforms/opacity are driven via listeners that update state with
+// SVG transform strings (DOCUMENTED EXCEPTION — not AnimatedG, which
+// crashes react-native-svg with "Underflow in restore").
+// Tree trunk/base remains completely static during idle.
+// Only canopy/detail receive breath motion.
+function LivingGardenJourneyTreeComponent({
+  journeyStageKey,
+  fromStage = null,
+  transitionId = null,
+  atmosphere,
+  isReduced,
+  sceneId,
+  treeMotion,
+}) {
   const { x: baseX, y: baseY } = TREE_BASE
+
+  // ── Tree motion channels (Phase 1C: Animated.Value objects) ─
+  // When treeMotion is provided, it contains Animated.Value objects.
+  // When not provided (rest), we use plain canonical values (no animation).
+  const hasAnimMotion = treeMotion && treeMotion.scaleY instanceof Animated.Value
+
+  // Idle canopy breath (subtle scale, ~1.004 amplitude)
+  // Tree trunk/base remains completely static.
+  const breathY = baseY - 80
+
+  // ── Phase 1D pre-paint transition guard (one-shot per generation) ──
+  // PROBLEM: When the parent switches journeyStageKey from source to
+  // destination AND passes advancements simultaneously, the Scene
+  // re-renders with the destination stage BEFORE the motion hook's
+  // useEffect runs runTreeGrowth() to set transition-start values.
+  // The Animated.Values still contain OLD CANONICAL values (trunk=1,
+  // canopy=1, detail=1, source=0). Even readSync(__getValue()) reads
+  // these stale values, causing a one-frame flash of the complete
+  // destination Tree.
+  //
+  // FIX: A one-shot first-target render guard with explicit lifecycle
+  // phases per transition generation:
+  //   UNPREPARED → RUNNING → COMPLETE
+  //
+  // UNPREPARED: New transition identity detected. Force transition-start
+  //   values (source=1, trunk=0, canopy=0, detail=0) on every render
+  //   until the motion hook initializes the Animated.Values.
+  // RUNNING: Motion hook has initialized (trunkOpacity moved below 1).
+  //   Guard releases. Normal Animated.Value reads take over.
+  // COMPLETE: Animation finished or cancelled. Values are canonical.
+  //   Guard NEVER reactivates for this generation, even though values
+  //   return to canonical (trunk=1, canopy=1). A later render must
+  //   continue showing the canonical Growing Tree.
+  //
+  // A NEW transition identity (new advancements object reference) creates
+  // a fresh generation starting at UNPREPARED.
+  //
+  // Reduced Motion bypasses the guard entirely — renders canonical
+  // destination immediately (source=0, trunk=1, canopy=1, detail=1).
+
+  // ── Generation identity ──
+  // Use a component-local monotonic counter incremented when a new
+  // transitionId object reference arrives. This avoids [object Object]
+  // string collision and provides deterministic unique identity per
+  // advancement event. No persistence — presentation lifecycle only.
+  const prevTransitionIdRef = useRef(null)
+  const generationRef = useRef(0)
+  // Guard phase: 0=IDLE, 1=UNPREPARED, 2=RUNNING, 3=COMPLETE
+  const guardPhaseRef = useRef(0)
+  // Track hook generation at time guard was armed
+  const guardArmedHookGenRef = useRef(0)
+
+  const isTransition = !!(fromStage && fromStage !== journeyStageKey)
+
+  // Detect new transition identity by object reference (not stringification)
+  if (isTransition && transitionId && transitionId !== prevTransitionIdRef.current) {
+    prevTransitionIdRef.current = transitionId
+    generationRef.current += 1
+    // Only arm guard if not Reduced Motion
+    guardPhaseRef.current = isReduced ? 3 : 1 // UNPREPARED (or COMPLETE if reduced)
+    // Record current hook generation so we can detect when hook processes this
+    guardArmedHookGenRef.current = hasAnimMotion && treeMotion.transitionGeneration != null
+      ? treeMotion.transitionGeneration
+      : 0
+  }
+  // If transition ends (fromStage cleared or matches destination), reset to IDLE
+  if (!isTransition && guardPhaseRef.current !== 0) {
+    guardPhaseRef.current = 0
+    prevTransitionIdRef.current = null
+  }
+
+  // ── Listener-based transform state (DOCUMENTED EXCEPTION) ──
+  // SVG transform strings updated via Animated.Value listeners.
+  // Avoids AnimatedG crash with react-native-svg.
+  //
+  // Phase 1D fix: State is initialized LAZILY from Animated.Value objects
+  // via useState(() => ...) so the VERY FIRST render after journeyStageKey
+  // switch already has the correct transition-start values (e.g. trunkOpacity=0,
+  // canopyOpacity=0). This prevents the one-frame flash where stale canonical
+  // defaults (opacity=1) would briefly show the complete destination Tree.
+  const readAnimValue = (v, fallback) => (v && v.__getValue ? v.__getValue() : fallback)
+  const [treeTransform, setTreeTransform] = useState(() => {
+    if (!hasAnimMotion) return ''
+    const scaleY = readAnimValue(treeMotion.scaleY, 1)
+    const ty = (1 - scaleY) * baseY
+    return `translate(0 ${ty}) scale(1 ${scaleY})`
+  })
+  const [treeOpacityState, setTreeOpacityState] = useState(() =>
+    hasAnimMotion ? readAnimValue(treeMotion.opacity, 1) : 1,
+  )
+  const [innerOpacityState, setInnerOpacityState] = useState(1)
+  const [rimOpacityState, setRimOpacityState] = useState(() =>
+    hasAnimMotion ? Math.max(0, Math.min(0.25, readAnimValue(treeMotion.rim, 0) * 0.25)) : 0,
+  )
+  const [breathTransform, setBreathTransform] = useState(() => {
+    if (!hasAnimMotion) return ''
+    const breath = readAnimValue(treeMotion.breath, 1)
+    const bty = (1 - breath) * breathY
+    return `translate(0 ${bty}) scale(1 ${breath})`
+  })
+  // Phase 1D: destination-layer reveal state — lazy init from Animated.Value
+  // to prevent first-frame flash of complete destination Tree
+  const [sourceOpacityState, setSourceOpacityState] = useState(() =>
+    hasAnimMotion ? readAnimValue(treeMotion.sourceOpacity, 0) : 0,
+  )
+  const [trunkOpacityState, setTrunkOpacityState] = useState(() =>
+    hasAnimMotion ? readAnimValue(treeMotion.trunkOpacity, 1) : 1,
+  )
+  const [canopyOpacityState, setCanopyOpacityState] = useState(() =>
+    hasAnimMotion ? readAnimValue(treeMotion.canopyOpacity, 1) : 1,
+  )
+  const [detailOpacityState, setDetailOpacityState] = useState(() =>
+    hasAnimMotion ? readAnimValue(treeMotion.detailOpacity, 1) : 1,
+  )
+
+  useEffect(() => {
+    if (!hasAnimMotion) return
+    const updateAll = () => {
+      const scaleY = treeMotion.scaleY.__getValue()
+      const ty = (1 - scaleY) * baseY
+      setTreeTransform(`translate(0 ${ty}) scale(1 ${scaleY})`)
+      setTreeOpacityState(treeMotion.opacity.__getValue())
+      // Inner opacity = canopy * detail
+      const canopy = treeMotion.canopy.__getValue()
+      const detail = treeMotion.detail.__getValue()
+      const canopyOp = Math.max(0.6, Math.min(1, 0.6 + 0.4 * canopy))
+      const detailOp = Math.max(0.5, Math.min(1, 0.5 + 0.5 * detail))
+      setInnerOpacityState(canopyOp * detailOp)
+      // Rim opacity
+      const rim = treeMotion.rim.__getValue()
+      setRimOpacityState(Math.max(0, Math.min(0.25, rim * 0.25)))
+      // Breath transform
+      const breath = treeMotion.breath.__getValue()
+      const bty = (1 - breath) * breathY
+      setBreathTransform(`translate(0 ${bty}) scale(1 ${breath})`)
+      // Phase 1D: destination-layer channels
+      if (treeMotion.sourceOpacity) {
+        setSourceOpacityState(treeMotion.sourceOpacity.__getValue())
+      }
+      if (treeMotion.trunkOpacity) {
+        setTrunkOpacityState(treeMotion.trunkOpacity.__getValue())
+      }
+      if (treeMotion.canopyOpacity) {
+        setCanopyOpacityState(treeMotion.canopyOpacity.__getValue())
+      }
+      if (treeMotion.detailOpacity) {
+        setDetailOpacityState(treeMotion.detailOpacity.__getValue())
+      }
+    }
+    updateAll()
+    const listeners = [
+      treeMotion.scaleY.addListener(updateAll),
+      treeMotion.opacity.addListener(updateAll),
+      treeMotion.canopy.addListener(updateAll),
+      treeMotion.detail.addListener(updateAll),
+      treeMotion.rim.addListener(updateAll),
+      treeMotion.breath.addListener(updateAll),
+    ]
+    // Phase 1D: add listeners for new channels
+    if (treeMotion.sourceOpacity) {
+      listeners.push(treeMotion.sourceOpacity.addListener(updateAll))
+    }
+    if (treeMotion.trunkOpacity) {
+      listeners.push(treeMotion.trunkOpacity.addListener(updateAll))
+    }
+    if (treeMotion.canopyOpacity) {
+      listeners.push(treeMotion.canopyOpacity.addListener(updateAll))
+    }
+    if (treeMotion.detailOpacity) {
+      listeners.push(treeMotion.detailOpacity.addListener(updateAll))
+    }
+    return () => {
+      treeMotion.scaleY.removeListener(listeners[0])
+      treeMotion.opacity.removeListener(listeners[1])
+      treeMotion.canopy.removeListener(listeners[2])
+      treeMotion.detail.removeListener(listeners[3])
+      treeMotion.rim.removeListener(listeners[4])
+      treeMotion.breath.removeListener(listeners[5])
+      if (treeMotion.sourceOpacity) treeMotion.sourceOpacity.removeListener(listeners[6])
+      if (treeMotion.trunkOpacity) {
+        treeMotion.trunkOpacity.removeListener(listeners[7])
+      }
+      if (treeMotion.canopyOpacity) {
+        treeMotion.canopyOpacity.removeListener(listeners[8])
+      }
+      if (treeMotion.detailOpacity) {
+        treeMotion.detailOpacity.removeListener(listeners[9])
+      }
+    }
+  }, [hasAnimMotion, treeMotion, baseY, breathY])
+
+  const motionWrapper = (children) => {
+    if (!hasAnimMotion) return children
+    // react-native-svg 15.x bug: G with opacity prop causes "Underflow in
+    // restore" crash during rapid state updates. Only use transform on G.
+    // Opacity is applied to individual SVG elements instead.
+    return (
+      <G transform={treeTransform}>
+        {children}
+        {/* Temporary rim/glow acknowledgement — resolves to 0 */}
+        {rimOpacityState > 0.01 && (
+          <Ellipse
+            cx={baseX}
+            cy={baseY - 100}
+            rx="60"
+            ry="50"
+            fill={WARM_RIM}
+            opacity={rimOpacityState * 0.15}
+            pointerEvents="none"
+          />
+        )}
+        {/* Idle canopy breath — subtle scale, pixel-neutral at rest */}
+        <G transform={breathTransform} pointerEvents="none">
+          <Ellipse cx={baseX} cy={breathY} rx="40" ry="30" fill="none" opacity="0" />
+        </G>
+      </G>
+    )
+  }
 
   // null = unstarted (0 lifetime days) — NOT seed
   if (journeyStageKey === null || journeyStageKey === undefined) {
     return (
       <G>
-        <TreeUnstarted
-          baseX={baseX}
-          baseY={baseY}
-          sceneId={sceneId}
-          atmosphere={atmosphere}
-          isReduced={isReduced}
-        />
+        {motionWrapper(
+          <TreeUnstarted
+            baseX={baseX}
+            baseY={baseY}
+            sceneId={sceneId}
+            atmosphere={atmosphere}
+            isReduced={isReduced}
+          />,
+        )}
       </G>
     )
   }
 
   const Renderer = TREE_RENDERERS[journeyStageKey] || TREE_RENDERERS.seed
+
+  // Phase 1D: source/destination transition layer
+  // Source canonical Tree renders with fading opacity (1→0)
+  // Destination canonical Tree subgroups reveal progressively
+  //
+  // Phase 1D pre-paint guard: Read Animated.Value DIRECTLY during render for
+  // subgroup opacities, NOT from React state. This eliminates the one-frame
+  // flash where stale canonical state (opacity=1) would briefly show the
+  // complete destination Tree before the listener delivers transition-start
+  // values (opacity=0). __getValue() is synchronous and always current.
+  //
+  // One-shot guard lifecycle: UNPREPARED → RUNNING → COMPLETE
+  // The guard forces transition-start values ONLY while UNPREPARED.
+  // Once the motion hook initializes (trunkOpacity < 1), transition to RUNNING.
+  // Once values return to canonical (trunk=1, canopy=1, source=0), transition
+  // to COMPLETE. After COMPLETE, the guard NEVER reactivates for this generation.
+  const readSync = (v, fallback) => (v && v.__getValue ? v.__getValue() : fallback)
+  let syncSourceOpacity = hasAnimMotion ? readSync(treeMotion.sourceOpacity, 0) : 0
+  let syncTrunkOpacity = hasAnimMotion ? readSync(treeMotion.trunkOpacity, 1) : 1
+  let syncCanopyOpacity = hasAnimMotion ? readSync(treeMotion.canopyOpacity, 1) : 1
+  let syncDetailOpacity = hasAnimMotion ? readSync(treeMotion.detailOpacity, 1) : 1
+
+  // ── Guard phase transitions (during render, synchronous) ──
+  // transitionGeneration from motion hook increments when the hook
+  // processes a new advancement. If the hook's generation has increased
+  // since the guard was armed, the hook has run its useEffect.
+  const hookGeneration = hasAnimMotion && treeMotion.transitionGeneration != null
+    ? treeMotion.transitionGeneration
+    : 0
+
+  if (guardPhaseRef.current === 1) {
+    // UNPREPARED: check if motion hook has initialized
+    if (syncTrunkOpacity < 1 || syncCanopyOpacity < 1) {
+      // Motion hook has set transition-start values → RUNNING
+      guardPhaseRef.current = 2
+    } else if (hookGeneration > guardArmedHookGenRef.current) {
+      // Hook has processed this advancement but values are still canonical.
+      // This means the transition was cancelled (Reduced Motion or background
+      // interruption called resolveToCanonicalRest). → COMPLETE
+      guardPhaseRef.current = 3
+    }
+  } else if (guardPhaseRef.current === 2) {
+    // RUNNING: check if animation completed (values back to canonical)
+    if (syncTrunkOpacity >= 1 && syncCanopyOpacity >= 1 && syncSourceOpacity < 0.01) {
+      // Values returned to canonical → COMPLETE
+      guardPhaseRef.current = 3
+    }
+  }
+
+  // ── Apply guard: force transition-start values while UNPREPARED ──
+  if (guardPhaseRef.current === 1) {
+    syncSourceOpacity = 1
+    syncTrunkOpacity = 0
+    syncCanopyOpacity = 0
+    syncDetailOpacity = 0
+  }
+
+  const hasSourceLayer = fromStage && fromStage !== journeyStageKey && syncSourceOpacity > 0.01
+  const SourceRenderer = hasSourceLayer ? TREE_RENDERERS[fromStage] || null : null
+
+  // Subgroup opacity props for destination renderer — read synchronously
+  // from Animated.Value to prevent first-frame flash
+  const destTrunkOpacity = syncTrunkOpacity
+  const destCanopyOpacity = syncCanopyOpacity
+  const destDetailOpacity = syncDetailOpacity
+
   return (
     <G>
-      <Renderer
-        baseX={baseX}
-        baseY={baseY}
-        sceneId={sceneId}
-        atmosphere={atmosphere}
-        isReduced={isReduced}
-      />
+      {/* Phase 1D: source canonical Tree layer (fades out) */}
+      {hasSourceLayer && SourceRenderer && (
+        <SourceRenderer
+          baseX={baseX}
+          baseY={baseY}
+          sceneId={`${sceneId}-src`}
+          atmosphere={atmosphere}
+          isReduced={isReduced}
+          treeOpacity={syncSourceOpacity}
+        />
+      )}
+      {/* Destination canonical Tree with subgroup reveal */}
+      {motionWrapper(
+        <Renderer
+          baseX={baseX}
+          baseY={baseY}
+          sceneId={sceneId}
+          atmosphere={atmosphere}
+          isReduced={isReduced}
+          trunkOpacity={destTrunkOpacity}
+          canopyOpacity={destCanopyOpacity}
+          detailOpacity={destDetailOpacity}
+        />,
+      )}
     </G>
   )
 }
@@ -967,8 +1305,11 @@ function LivingGardenJourneyTreeComponent({ journeyStageKey, atmosphere, isReduc
 function treeComparator(prev, next) {
   return (
     prev.journeyStageKey === next.journeyStageKey &&
+    prev.fromStage === next.fromStage &&
+    prev.transitionId === next.transitionId &&
     prev.isReduced === next.isReduced &&
-    prev.sceneId === next.sceneId
+    prev.sceneId === next.sceneId &&
+    prev.treeMotion === next.treeMotion
   )
 }
 

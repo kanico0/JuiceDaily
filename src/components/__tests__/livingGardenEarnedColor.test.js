@@ -237,10 +237,10 @@ describe('N. Element-count ramp — 1 → 1 → 2 → 4 → 7', () => {
     expect(src).toMatch(/STAGE_SPROUT.*1/)
     // Growing should have count 2
     expect(src).toMatch(/STAGE_GROWING.*2/)
-    // Harvesting should have count 4 (general) or per-bed
-    expect(src).toMatch(/STAGE_HARVESTING.*[34]/)
+    // Harvesting should have count 4 (canonical restored)
+    expect(src).toMatch(/STAGE_HARVESTING[\s\S]*?\? 4/)
     // Flourishing should have count 6 or 7
-    expect(src).toMatch(/STAGE_FLOURISHING.*[67]/)
+    expect(src).toMatch(/STAGE_FLOURISHING[\s\S]*?\? 6/)
   })
 
   test('canopy blend: Growing 0.18, Harvesting 0.72, Flourishing pure', () => {
@@ -776,10 +776,15 @@ describe('W. All 7 Flourishing categories use intended Produce token', () => {
       herbs: 'HerbsArt',
     }
     Object.entries(renderers).forEach(([_bedKey, fnName]) => {
-      const fnMatch = src.match(new RegExp(`function ${fnName}[\\s\\S]*?^}`, 'm'))
-      expect(fnMatch).toBeTruthy()
+      // Match the full function body by finding the next function declaration.
+      // Function signatures may span multiple lines after Prettier formatting.
+      const startIdx = src.indexOf(`function ${fnName}(`)
+      expect(startIdx).toBeGreaterThanOrEqual(0)
+      const nextFnIdx = src.indexOf('\nfunction ', startIdx + 1)
+      const endIdx = nextFnIdx > 0 ? nextFnIdx : src.length
+      const fnBody = src.slice(startIdx, endIdx)
       // Each renderer should use at least one gated palette property
-      expect(fnMatch[0]).toMatch(/gated\./)
+      expect(fnBody).toMatch(/gated\./)
     })
   })
 

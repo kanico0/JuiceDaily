@@ -1327,7 +1327,7 @@ describe('GlowJourneyDetail redesigned artwork', () => {
       path.join(__dirname, '..', '..', 'components', 'GlowJourneyDetail.js'),
       'utf8'
     )
-    expect(source).toMatch(/dropArtworkContainer/)
+    expect(source).toMatch(/artworkContainer/)
   })
 })
 
@@ -1555,5 +1555,109 @@ describe('Living Juice Glow — no new persistence', () => {
       'utf8'
     )
     expect(source).not.toMatch(/AsyncStorage/)
+  })
+})
+
+// ─────────────────────────────────────────────────────────────
+// 30. GlowJourneyDetail — canonical artwork + state consistency
+// ─────────────────────────────────────────────────────────────
+describe('GlowJourneyDetail — canonical artwork and state consistency', () => {
+  const fs = require('fs')
+  const path = require('path')
+  const DETAIL_SRC = fs.readFileSync(
+    path.join(__dirname, '..', '..', 'components', 'GlowJourneyDetail.js'),
+    'utf8'
+  )
+  const SCAN_SRC = fs.readFileSync(
+    path.join(__dirname, '..', '..', 'screens', 'ScanScreen.js'),
+    'utf8'
+  )
+
+  test('1. Explore uses canonical Glow artwork (GlowJourneyDropArtwork)', () => {
+    const DROP_SRC = fs.readFileSync(
+      path.join(__dirname, '..', '..', 'components', 'GlowJourneyDrop.js'),
+      'utf8'
+    )
+    expect(DROP_SRC).toMatch(/GlowJourneyDropArtwork/)
+  })
+
+  test('2. Tapped detail uses same canonical artwork family (GlowJourneyDropArtwork)', () => {
+    expect(DETAIL_SRC).toMatch(/GlowJourneyDropArtwork/)
+  })
+
+  test('3. Legacy giant solid-drop renderer is not used in production Glow detail', () => {
+    // Must NOT import or use legacy drop components
+    expect(DETAIL_SRC).not.toMatch(/LiquidNutrientOrb/)
+    expect(DETAIL_SRC).not.toMatch(/GlowDropLegacy/)
+    expect(DETAIL_SRC).not.toMatch(/OldGlowDrop/)
+  })
+
+  test('4. Detail passes heroWidth (not ignored size prop) to artwork', () => {
+    expect(DETAIL_SRC).toMatch(/heroWidth=/)
+    expect(DETAIL_SRC).not.toMatch(/size=\{detailDropSize\}/)
+  })
+
+  test('4b. Detail passes surfaceTranslateY from visual state to artwork', () => {
+    expect(DETAIL_SRC).toMatch(/surfaceTranslateY=\{detailVisualState\.heroState\.surfaceY\}/)
+  })
+
+  test('5. Detail passes vineWidth matching heroWidth', () => {
+    expect(DETAIL_SRC).toMatch(/vineWidth=/)
+  })
+
+  test('6. Detail receives weeklyLeafStates from ScanScreen', () => {
+    // ScanScreen must pass weeklyLeafStates to GlowJourneyDetail
+    expect(SCAN_SRC).toMatch(/weeklyLeafStates=\{glowJourney\.weeklyLeafStates\}/)
+    // Detail component must accept weeklyLeafStates prop
+    expect(DETAIL_SRC).toMatch(/weeklyLeafStates/)
+  })
+
+  test('7. Detail uses same buildGlowJourneyVisualState as Explore', () => {
+    expect(DETAIL_SRC).toMatch(/buildGlowJourneyVisualState/)
+  })
+
+  test('8. Close control remains present', () => {
+    expect(DETAIL_SRC).toMatch(/onClose/)
+    expect(DETAIL_SRC).toMatch(/accessibilityLabel="Close"/)
+  })
+
+  test('9. Detail hero width is compact (130-145px)', () => {
+    expect(DETAIL_SRC).toMatch(/DETAIL_HERO_WIDTH.*=.*13[0-9]/)
+  })
+
+  test('10. Backdrop is strongly dimmed for legibility', () => {
+    expect(DETAIL_SRC).toMatch(/rgba\(0,0,0,0\.8/)
+  })
+
+  test('10b. Sheet uses opaque elevated surface distinct from backdrop', () => {
+    expect(DETAIL_SRC).toMatch(/#252B33/)
+    expect(DETAIL_SRC).toMatch(/borderTopWidth/)
+    expect(DETAIL_SRC).toMatch(/borderTopColor/)
+    expect(DETAIL_SRC).toMatch(/elevation/)
+  })
+
+  test('10c. Header is inside sheet (not floating in backdrop)', () => {
+    // Header style is defined and used inside the sheet View
+    expect(DETAIL_SRC).toMatch(/styles\.header/)
+    expect(DETAIL_SRC).toMatch(/styles\.sheet/)
+  })
+
+  test('10d. ScrollView is internal to sheet', () => {
+    expect(DETAIL_SRC).toMatch(/styles\.scroll/)
+  })
+
+  test('10e. Dev trace is removed from production', () => {
+    expect(DETAIL_SRC).not.toMatch(/devTrace/)
+    expect(DETAIL_SRC).not.toMatch(/DETAIL HERO=/)
+  })
+
+  test('11. No progression logic changed — detail uses getJourneyStage only', () => {
+    expect(DETAIL_SRC).toMatch(/getJourneyStage/)
+    expect(DETAIL_SRC).not.toMatch(/WEEKLY_GLOW_GOAL\s*=\s*[^3]/)
+  })
+
+  test('12. No new persistence key in detail', () => {
+    expect(DETAIL_SRC).not.toMatch(/AsyncStorage/)
+    expect(DETAIL_SRC).not.toMatch(/glow_detail_/)
   })
 })

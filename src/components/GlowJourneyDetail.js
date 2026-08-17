@@ -1,8 +1,9 @@
 // ─────────────────────────────────────────────────────────────
 // GlowJourneyDetail.js — Detail modal for Glow Journey Drop.
 //
-// Shows: streak, weekly days, weekly goal, lifetime days,
-// current stage, progress to next stage, achievements.
+// Shows the SAME canonical GlowJourneyDropArtwork used on the
+// Explore card, at a slightly larger size. Includes streak,
+// weekly progress, current stage, and journey progress bar.
 // ─────────────────────────────────────────────────────────────
 
 import React, { useMemo } from 'react'
@@ -14,19 +15,22 @@ import { ACHIEVEMENTS } from '../services/achievements'
 import { buildGlowJourneyVisualState } from './GlowJourneyVisualState'
 import GlowJourneyDropArtwork from './GlowJourneyDropArtwork'
 
+// Detail artwork sizing — slightly larger than Explore card (~105px)
+// but compact enough to remain an accent, not a screen-dominating graphic.
+const DETAIL_HERO_WIDTH = 135
+
 function GlowJourneyDetail({
   visible,
   onClose,
   streakCount = 0,
   weeklyQualifyingDays = 0,
+  weeklyLeafStates = [],
   lifetimeDays = 0,
   unlockedAchievementIds = [],
 }) {
   const stage = useMemo(() => getJourneyStage(lifetimeDays), [lifetimeDays])
   const nextStage = useMemo(() => getNextStage(lifetimeDays), [lifetimeDays])
   const daysToNext = useMemo(() => getDaysToNextStage(lifetimeDays), [lifetimeDays])
-  const { width: screenWidth } = useWindowDimensions()
-  const detailDropSize = Math.min(screenWidth * 0.55, 280)
 
   const unlockedSet = useMemo(() => new Set(unlockedAchievementIds), [unlockedAchievementIds])
   const earnedAchievements = useMemo(
@@ -37,14 +41,15 @@ function GlowJourneyDetail({
   const detailVisualState = useMemo(() => buildGlowJourneyVisualState({
     lifetimeDays,
     weeklyQualifyingDays,
-    weeklyLeafStates: [],
+    weeklyLeafStates,
     streakCount,
-  }), [lifetimeDays, weeklyQualifyingDays, streakCount])
+  }), [lifetimeDays, weeklyQualifyingDays, weeklyLeafStates, streakCount])
 
   return (
     <Modal visible={visible} animationType="fade" transparent onRequestClose={onClose}>
       <View style={styles.overlay}>
         <View style={styles.sheet}>
+          {/* Header */}
           <View style={styles.header}>
             <Text style={styles.title}>Glow Journey</Text>
             <TouchableOpacity onPress={onClose} accessibilityRole="button" accessibilityLabel="Close">
@@ -53,18 +58,47 @@ function GlowJourneyDetail({
           </View>
 
           <ScrollView showsVerticalScrollIndicator={false} style={styles.scroll}>
-            {/* Redesigned Drop artwork */}
-            <View style={styles.dropArtworkContainer}>
+            {/* Canonical Glow artwork — same family as Explore card */}
+            <View style={styles.artworkContainer}>
               <GlowJourneyDropArtwork
                 visualState={detailVisualState}
-                size={detailDropSize}
+                heroWidth={DETAIL_HERO_WIDTH}
+                vineWidth={DETAIL_HERO_WIDTH}
+                surfaceTranslateY={detailVisualState.heroState.surfaceY}
                 isReduced={false}
               />
             </View>
 
+            {/* Streak numeral + label */}
+            <View style={styles.streakRow}>
+              <Text style={styles.streakNumeral}>{streakCount}</Text>
+              <View style={styles.streakLabelWrap}>
+                <Text style={styles.streakLabel}>DAY GLOW</Text>
+                <Text style={styles.streakLabel}>STREAK</Text>
+              </View>
+            </View>
+
+            {/* Weekly progress */}
+            <View style={styles.weeklyRow}>
+              <Text style={styles.weeklyLabel}>This Week</Text>
+              <Text style={styles.weeklyValue}>
+                {weeklyQualifyingDays} of {WEEKLY_GLOW_GOAL} Glow Days
+              </Text>
+            </View>
+
+            {/* Journey stage */}
+            {stage ? (
+              <View style={styles.journeyRow}>
+                <Text style={styles.journeyStageName}>{stage.label}</Text>
+                <Text style={styles.journeyDot}> · </Text>
+                <Text style={styles.journeyText}>Lifetime Journey</Text>
+              </View>
+            ) : (
+              <Text style={styles.emptyText}>Your journey starts with your first juice</Text>
+            )}
+
             {/* How it works guidance */}
             <View style={styles.guidanceBanner}>
-              <Text style={styles.guidanceTitle}>Your Glow Journey</Text>
               <Text style={styles.guidanceBody}>
                 Each day you juice, your Glow Drop grows brighter. Build streaks by
                 juicing on consecutive days, hit your weekly goal of {WEEKLY_GLOW_GOAL} days,
@@ -72,89 +106,51 @@ function GlowJourneyDetail({
               </Text>
             </View>
 
-            {/* Streak */}
-            <DetailRow
-              label="Glow Streak"
-              value={streakCount > 0 ? `${streakCount} day${streakCount !== 1 ? 's' : ''}` : 'No active streak'}
-            />
-
-            {/* Weekly */}
-            <DetailRow
-              label="Weekly Juicing Days"
-              value={`${weeklyQualifyingDays} of ${WEEKLY_GLOW_GOAL}`}
-            />
-            <DetailRow
-              label="Weekly Goal"
-              value={`${WEEKLY_GLOW_GOAL} juicing days per week`}
-            />
-
-            {/* Lifetime */}
-            <DetailRow
-              label="Lifetime Juicing Days"
-              value={lifetimeDays > 0 ? `${lifetimeDays} days` : 'Not started'}
-            />
-
-            {/* Stage */}
-            {stage ? (
-              <>
-                <DetailRow
-                  label="Current Stage"
-                  value={`${stage.emoji} ${stage.label}`}
-                />
-                {nextStage ? (
-                  <DetailRow
-                    label="Next Stage"
-                    value={`${daysToNext} day${daysToNext !== 1 ? 's' : ''} to ${nextStage.label}`}
-                  />
-                ) : (
-                  <DetailRow
-                    label="Next Stage"
-                    value="Highest stage reached"
-                  />
-                )}
-
-                {/* Stage progress bar */}
-                <View style={styles.progressSection}>
-                  <Text style={styles.progressLabel}>Journey Progress</Text>
-                  <View style={styles.progressBar}>
-                    {GLOW_JOURNEY_STAGES.map((s) => {
-                      const isCurrent = s.key === stage.key
-                      const isPassed = lifetimeDays > s.max
-                      return (
-                        <View
-                          key={s.key}
-                          style={[
-                            styles.progressSegment,
-                            {
-                              backgroundColor: isPassed
-                                ? SEMANTIC_COLORS.success
-                                : isCurrent
-                                  ? SEMANTIC_COLORS.success
-                                  : 'rgba(255,255,255,0.06)',
-                              opacity: isPassed ? 0.6 : isCurrent ? 1 : 0.4,
-                            },
-                          ]}
-                        />
-                      )
-                    })}
-                  </View>
-                  <View style={styles.stageLabelsRow}>
-                    {GLOW_JOURNEY_STAGES.map((s) => (
-                      <Text
+            {/* Stage progress bar */}
+            {stage && (
+              <View style={styles.progressSection}>
+                <Text style={styles.progressLabel}>Journey Progress</Text>
+                <View style={styles.progressBar}>
+                  {GLOW_JOURNEY_STAGES.map((s) => {
+                    const isCurrent = s.key === stage.key
+                    const isPassed = lifetimeDays > s.max
+                    return (
+                      <View
                         key={s.key}
                         style={[
-                          styles.stageLabelSmall,
-                          { color: s.key === stage.key ? SEMANTIC_COLORS.textPrimary : SEMANTIC_COLORS.textMuted },
+                          styles.progressSegment,
+                          {
+                            backgroundColor: isPassed
+                              ? SEMANTIC_COLORS.success
+                              : isCurrent
+                                ? SEMANTIC_COLORS.success
+                                : 'rgba(255,255,255,0.06)',
+                            opacity: isPassed ? 0.6 : isCurrent ? 1 : 0.4,
+                          },
                         ]}
-                      >
-                        {s.label}
-                      </Text>
-                    ))}
-                  </View>
+                      />
+                    )
+                  })}
                 </View>
-              </>
-            ) : (
-              <Text style={styles.emptyText}>Your journey starts with your first juice</Text>
+                <View style={styles.stageLabelsRow}>
+                  {GLOW_JOURNEY_STAGES.map((s) => (
+                    <Text
+                      key={s.key}
+                      style={[
+                        styles.stageLabelSmall,
+                        { color: s.key === stage.key ? SEMANTIC_COLORS.textPrimary : SEMANTIC_COLORS.textMuted },
+                      ]}
+                    >
+                      {s.label}
+                    </Text>
+                  ))}
+                </View>
+                {nextStage && (
+                  <Text style={styles.nextStageHint}>
+                    {daysToNext} day{daysToNext !== 1 ? 's' : ''} to {nextStage.label}
+                  </Text>
+                )}
+              </View>
             )}
 
             {/* Achievements */}
@@ -179,27 +175,25 @@ function GlowJourneyDetail({
   )
 }
 
-function DetailRow({ label, value }) {
-  return (
-    <View style={styles.detailRow}>
-      <Text style={styles.detailLabel}>{label}</Text>
-      <Text style={styles.detailValue}>{value}</Text>
-    </View>
-  )
-}
-
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: SEMANTIC_COLORS.overlay,
+    backgroundColor: 'rgba(0,0,0,0.88)',
     justifyContent: 'flex-end',
   },
   sheet: {
-    backgroundColor: SEMANTIC_COLORS.surfaceElevated,
+    backgroundColor: '#252B33',
     borderTopLeftRadius: SEMANTIC_RADIUS.xl,
     borderTopRightRadius: SEMANTIC_RADIUS.xl,
     padding: SEMANTIC_SPACE.lg,
-    maxHeight: '80%',
+    maxHeight: '82%',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.12)',
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 16,
   },
   header: {
     flexDirection: 'row',
@@ -213,12 +207,71 @@ const styles = StyleSheet.create({
     color: SEMANTIC_COLORS.textPrimary,
   },
   scroll: {
-    maxHeight: '70%',
+    maxHeight: '78%',
   },
-  dropArtworkContainer: {
+  artworkContainer: {
     alignItems: 'center',
-    paddingVertical: SEMANTIC_SPACE.md,
+    paddingVertical: SEMANTIC_SPACE.sm,
     marginBottom: SEMANTIC_SPACE.sm,
+  },
+  streakRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
+    gap: 9,
+    marginBottom: 12,
+  },
+  streakNumeral: {
+    fontSize: 34,
+    fontWeight: '600',
+    color: '#FFB74D',
+  },
+  streakLabelWrap: {
+    flexDirection: 'column',
+  },
+  streakLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    letterSpacing: 1.5,
+    color: SEMANTIC_COLORS.textMuted,
+  },
+  weeklyRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderBottomWidth: 0.5,
+    borderBottomColor: SEMANTIC_COLORS.borderSubtle,
+    marginBottom: 8,
+  },
+  weeklyLabel: {
+    fontSize: 14,
+    color: SEMANTIC_COLORS.textSecondary,
+  },
+  weeklyValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: SEMANTIC_COLORS.textPrimary,
+  },
+  journeyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  journeyStageName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: SEMANTIC_COLORS.textPrimary,
+  },
+  journeyDot: {
+    fontSize: 14,
+    color: SEMANTIC_COLORS.textMuted,
+  },
+  journeyText: {
+    fontSize: 14,
+    color: SEMANTIC_COLORS.textSecondary,
   },
   guidanceBanner: {
     backgroundColor: SEMANTIC_COLORS.surface,
@@ -227,36 +280,14 @@ const styles = StyleSheet.create({
     paddingVertical: SEMANTIC_SPACE.md,
     marginBottom: SEMANTIC_SPACE.md,
   },
-  guidanceTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: SEMANTIC_COLORS.textPrimary,
-    marginBottom: 4,
-  },
   guidanceBody: {
     fontSize: 13,
     color: SEMANTIC_COLORS.textSecondary,
     lineHeight: 19,
   },
-  detailRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 10,
-    borderBottomWidth: 0.5,
-    borderBottomColor: SEMANTIC_COLORS.borderSubtle,
-  },
-  detailLabel: {
-    fontSize: 14,
-    color: SEMANTIC_COLORS.textSecondary,
-  },
-  detailValue: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: SEMANTIC_COLORS.textPrimary,
-  },
   progressSection: {
-    marginTop: 16,
+    marginTop: 4,
+    marginBottom: 16,
   },
   progressLabel: {
     fontSize: 12,
@@ -284,6 +315,12 @@ const styles = StyleSheet.create({
     fontSize: 8,
     textAlign: 'center',
   },
+  nextStageHint: {
+    fontSize: 12,
+    color: SEMANTIC_COLORS.textMuted,
+    marginTop: 6,
+    textAlign: 'center',
+  },
   emptyText: {
     fontSize: 14,
     color: SEMANTIC_COLORS.textSecondary,
@@ -291,7 +328,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
   },
   achievementsSection: {
-    marginTop: 20,
+    marginTop: 12,
   },
   sectionHeader: {
     fontSize: 13,

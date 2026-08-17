@@ -56,8 +56,10 @@ describe('Item 8: Glow Journey user guidance', () => {
     expect(GLOW_JOURNEY_DETAIL_SRC).toMatch(/guidanceBanner/)
   })
 
-  test('8. guidance banner has a title', () => {
-    expect(GLOW_JOURNEY_DETAIL_SRC).toMatch(/guidanceTitle/)
+  test('8. guidance banner has body text (title removed in approved detail)', () => {
+    // guidanceTitle was removed in the approved detail rewrite
+    // guidance body remains as the explanatory text
+    expect(GLOW_JOURNEY_DETAIL_SRC).not.toMatch(/guidanceTitle/)
   })
 
   test('9. guidance banner has body text explaining the Glow Journey', () => {
@@ -74,20 +76,19 @@ describe('Item 8: Glow Journey user guidance', () => {
     expect(GLOW_JOURNEY_DETAIL_SRC).toMatch(/WEEKLY_GLOW_GOAL/)
   })
 
-  test('12. guidance banner is placed after artwork and before streak row', () => {
-    const artworkIdx = GLOW_JOURNEY_DETAIL_SRC.indexOf('dropArtworkContainer')
+  test('12. guidance banner is placed after artwork and before progress section', () => {
+    const artworkIdx = GLOW_JOURNEY_DETAIL_SRC.indexOf('artworkContainer')
     const guidanceIdx = GLOW_JOURNEY_DETAIL_SRC.indexOf('guidanceBanner')
-    const streakIdx = GLOW_JOURNEY_DETAIL_SRC.indexOf('Glow Streak')
+    const progressIdx = GLOW_JOURNEY_DETAIL_SRC.indexOf('progressSection')
     expect(artworkIdx).toBeGreaterThan(-1)
     expect(guidanceIdx).toBeGreaterThan(-1)
-    expect(streakIdx).toBeGreaterThan(-1)
+    expect(progressIdx).toBeGreaterThan(-1)
     expect(guidanceIdx).toBeGreaterThan(artworkIdx)
-    expect(guidanceIdx).toBeLessThan(streakIdx)
+    expect(guidanceIdx).toBeLessThan(progressIdx)
   })
 
   test('13. guidance banner styles are defined', () => {
     expect(GLOW_JOURNEY_DETAIL_SRC).toMatch(/guidanceBanner:\s*\{/)
-    expect(GLOW_JOURNEY_DETAIL_SRC).toMatch(/guidanceTitle:\s*\{/)
     expect(GLOW_JOURNEY_DETAIL_SRC).toMatch(/guidanceBody:\s*\{/)
   })
 })

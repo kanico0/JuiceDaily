@@ -25,7 +25,7 @@
 import { getSupabase } from './supabaseClient'
 import { setAllowAnonFallback, ensureUser, getAccessToken } from './identity'
 import { logIn as revenueCatLogIn } from '../subscriptions/revenueCatClient'
-import { SUPABASE_URL, SUPABASE_CONFIGURED } from '../subscriptions/subscriptionConfig'
+import { SUPABASE_URL, SUPABASE_CONFIGURED, SUPABASE_ANON_KEY } from '../subscriptions/subscriptionConfig'
 import { buildAuthedHeaders } from '../quota/supabaseHeaders'
 import { selfHealInstallMarker } from '../quota/installFreeSnapGuard'
 import { preLogoutSelfHealExpandedIngredient } from '../quota/installExpandedIngredientGuard'
@@ -250,11 +250,35 @@ export async function beginSignIn(rawEmail: string): Promise<LinkStartResult> {
 // Step 2: verify. The session switches to the existing account's
 // ORIGINAL UUID — restoring quota usage and entitlements. RevenueCat
 // is logged in with the canonical UUID and stores are notified.
+//
+// REVIEWER CODE PATH:
+//   Before attempting normal Supabase OTP verification, this function
+//   calls the server-side verify-play-review-access Edge Function.
+//   If the server validates the email + code as the Google Play
+//   reviewer account, it returns a magic-link token_hash. The client
+//   then calls supabase.auth.verifyOtp({ token_hash, type: 'magiclink' })
+//   to establish a REAL Supabase session for the reviewer UUID.
+//
+//   If the server says 'not_applicable' (non-reviewer email or wrong
+//   code), the function falls through to the EXISTING normal OTP
+//   verification path. Normal users experience no change.
+//
+//   The review code is NEVER stored in client source. It is validated
+//   server-side against Supabase Edge Function secrets.
 export async function verifySignIn(rawEmail: string, token: string): Promise<VerifyResult> {
   const email = normalizeEmail(rawEmail)
   const supabase = getSupabase()
   if (!supabase) return { status: 'error', message: 'Service unavailable' }
 
+  // ── Try server-side reviewer code verification first ────────
+  // The Edge Function validates email + code against server secrets.
+  // If accepted, it returns a token_hash for a real magic-link session.
+  // If not accepted (non-reviewer or wrong code), returns 'not_applicable'
+  // and we fall through to normal OTP verification.
+  const reviewerResult = await tryReviewerCodeVerification(email, token)
+  if (reviewerResult !== null) return reviewerResult
+
+  // ── Normal OTP verification (unchanged) ─────────────────────
   try {
     const { data, error } = await supabase.auth.verifyOtp({
       email,
@@ -274,48 +298,94 @@ export async function verifySignIn(rawEmail: string, token: string): Promise<Ver
   }
 }
 
-// ── Password sign-in (Google Play reviewer access) ───────────
-// Reusable email + password sign-in for the Google Play reviewer
-// account. Uses real Supabase Auth — no client-side overrides.
-// Available in production without Developer Tools.
+// ── Server-side reviewer code verification ───────────────────
+// Calls the verify-play-review-access Edge Function with the email
+// and entered code. If the server validates them as the Google Play
+// reviewer account, uses the returned token_hash to establish a real
+// Supabase session via verifyOtp({ token_hash, type: 'magiclink' }).
 //
-// IMPORTANT: This is a RETURNING AUTHENTICATED LOGIN, not an
-// anonymous-account email upgrade. The reviewer intentionally
-// switches identities — the previous anonymous UUID is discarded.
+// Returns:
+//   - VerifyResult if the reviewer path was taken (success or error)
+//   - null if the server said 'not_applicable' (fall through to normal OTP)
 //
-// The Supabase session is the source of truth. notifyIdentityChanged
-// (RevenueCat + listeners) is best-effort and must NEVER cause the
-// sign-in to fail — the session is already valid at that point.
-export async function signInWithPassword (
-  rawEmail: string,
-  password: string,
-): Promise<VerifyResult> {
-  const email = normalizeEmail(rawEmail)
+// SECURITY:
+//   - The review code is NEVER stored in client source
+//   - The server validates against Supabase Edge Function secrets
+//   - The resulting session is a genuine Supabase session
+//   - The reviewer UUID is verified from the session, not assumed
+async function tryReviewerCodeVerification (
+  email: string,
+  code: string,
+): Promise<VerifyResult | null> {
+  if (!SUPABASE_URL || !SUPABASE_CONFIGURED) return null
+
   const supabase = getSupabase()
-  if (!supabase) return { status: 'error', message: 'Service unavailable' }
+  if (!supabase) return null
+
+  // The Edge Function is reachable before authentication — it only
+  // needs the anon key, not a user JWT.
+  if (!SUPABASE_ANON_KEY) return null
+
+  const functionUrl = `${SUPABASE_URL}/functions/v1/verify-play-review-access`
 
   try {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
+    const resp = await fetch(functionUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: SUPABASE_ANON_KEY,
+      },
+      body: JSON.stringify({ email, code: code.trim() }),
     })
-    if (error) return classifyVerifyError(error.message)
-    const userId = data.user?.id ?? data.session?.user?.id
+
+    if (!resp.ok) return null
+
+    const data = await resp.json() as {
+      status?: string
+      token_hash?: string
+      verification_type?: string
+    }
+
+    // If the server says 'not_applicable', this is not a reviewer
+    // attempt — fall through to normal OTP verification.
+    if (data.status !== 'ok' || !data.token_hash) return null
+
+    // ── Reviewer code accepted — establish real session ──────
+    // Use the returned token_hash with verifyOtp to create a genuine
+    // Supabase session. This is the same mechanism Supabase uses
+    // for magic-link authentication.
+    const verifyType = (data.verification_type ?? 'magiclink') as
+      | 'magiclink'
+      | 'signup'
+      | 'invite'
+      | 'recovery'
+      | 'email_change'
+
+    const { data: verifyData, error: verifyError } = await supabase.auth.verifyOtp({
+      token_hash: data.token_hash,
+      type: verifyType,
+    })
+
+    if (verifyError) return classifyVerifyError(verifyError.message)
+
+    const userId = verifyData.session?.user?.id ?? verifyData.user?.id
     if (!userId) return { status: 'error', message: 'Sign-in returned no user' }
-    // The Supabase session is now valid — the reviewer is signed in.
-    // Disable anon fallback so no new anonymous identity is created.
+
+    // Disable anon fallback — the reviewer is now durable.
     setAllowAnonFallback(false)
-    // Best-effort: notify RevenueCat and identity listeners. This must
-    // NEVER cause the sign-in to fail — the session is already valid.
+
+    // Best-effort: notify RevenueCat and identity listeners.
     try {
       await notifyIdentityChanged(userId)
     } catch {
       // RevenueCat/listener failures are non-fatal. The Supabase
       // session is the source of truth, not the listener pipeline.
     }
+
     return { status: 'verified', userId }
-  } catch (e) {
-    return { status: 'error', message: (e as Error)?.message ?? 'Unknown error' }
+  } catch {
+    // Network/error — fall through to normal OTP verification.
+    return null
   }
 }
 

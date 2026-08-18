@@ -61,6 +61,14 @@ jest.mock('../../quota/supabaseHeaders', () => ({
   SupabaseConfigError: class SupabaseConfigError extends Error {},
 }))
 
+// Mock global fetch so tryReviewerCodeVerification gets a
+// not_applicable response and falls through to normal OTP.
+const mockFetch = jest.fn().mockResolvedValue({
+  ok: true,
+  json: async () => ({ status: 'not_applicable' }),
+} as Response)
+global.fetch = mockFetch as unknown as typeof global.fetch
+
 // Mock subscriptionConfig (imported by accountLink for logout safety)
 jest.mock('../../subscriptions/subscriptionConfig', () => ({
   SUPABASE_URL: 'https://test.supabase.co',
@@ -238,6 +246,12 @@ describe('beginSignIn', () => {
 })
 
 describe('verifySignIn (reinstall simulation)', () => {
+  beforeEach(() => {
+    mockFetch.mockClear()
+    mockAuth.verifyOtp.mockClear()
+    mockRcLogIn.mockClear()
+  })
+
   it('restores the ORIGINAL UUID and re-logs RevenueCat with it', async () => {
     // Fresh install: local storage cleared, new anonymous session
     // existed, but sign-in restores the original durable account.

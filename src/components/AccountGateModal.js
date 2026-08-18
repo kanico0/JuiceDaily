@@ -28,13 +28,12 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native'
-import { ShieldCheck, Mail, Lock, X } from 'lucide-react-native'
+import { ShieldCheck, Mail, X } from 'lucide-react-native'
 
 import {
   beginEmailLink,
   beginSignIn,
   isValidEmail,
-  signInWithPassword,
   verifyEmailLink,
   verifySignIn,
 } from '../services/supabase/accountLink'
@@ -61,12 +60,6 @@ const COPY = {
       'Sign in with the email you used before to restore your history, scans, and plan on RawLifeFlow: Juicing Daily.',
     cta: 'Send sign-in code',
   },
-  reviewer: {
-    title: 'Reviewer access',
-    subtitle:
-      'For Google Play review. Enter the reviewer email and password provided in the Play Console App Access section.',
-    cta: 'Sign in',
-  },
 }
 
 export default function AccountGateModal ({ visible, onClose, onAuthenticated, initialMode = 'protect' }) {
@@ -76,7 +69,6 @@ export default function AccountGateModal ({ visible, onClose, onAuthenticated, i
   const [step, setStep] = useState('email')
   const [email, setEmail] = useState('')
   const [code, setCode] = useState('')
-  const [password, setPassword] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
   const [cooldown, setCooldown] = useState(0)
@@ -90,7 +82,6 @@ export default function AccountGateModal ({ visible, onClose, onAuthenticated, i
       setStep('email')
       setEmail('')
       setCode('')
-      setPassword('')
       setError(null)
       setCooldown(0)
       busyRef.current = false
@@ -191,58 +182,10 @@ export default function AccountGateModal ({ visible, onClose, onAuthenticated, i
     }
   }, [code, email, mode, onAuthenticated, onClose])
 
-  const submitReviewer = useCallback(async () => {
-    if (busyRef.current) return
-    setError(null)
-
-    if (!isValidEmail(email)) {
-      setError('Please enter a valid email address.')
-      return
-    }
-    if (!password) {
-      setError('Please enter the reviewer password.')
-      return
-    }
-
-    busyRef.current = true
-    setBusy(true)
-    try {
-      const result = await signInWithPassword(email, password)
-      if (result.status === 'verified') {
-        // CRITICAL: Reviewer password sign-in is complete.
-        // Do NOT transition to the code/OTP step.
-        // Do NOT invoke the OTP send or verify callbacks.
-        // Close the modal and return to the app as the signed-in reviewer.
-        if (onAuthenticated) onAuthenticated(result.userId)
-        if (onClose) onClose()
-      } else if (result.status === 'invalid_code') {
-        setError('Invalid email or password. Please check your credentials.')
-      } else {
-        setError('Sign-in failed. Please check your credentials and try again.')
-      }
-    } finally {
-      // Ensure the modal stays in reviewer mode — never transition
-      // to the code/OTP step, even on error.
-      setMode('reviewer')
-      setStep('email')
-      busyRef.current = false
-      setBusy(false)
-    }
-  }, [email, password, onAuthenticated, onClose])
-
   const switchMode = useCallback(() => {
     setMode((m) => (m === 'protect' || m === 'guest' ? 'signin' : 'protect'))
     setStep('email')
     setCode('')
-    setPassword('')
-    setError(null)
-  }, [])
-
-  const switchToReviewer = useCallback(() => {
-    setMode('reviewer')
-    setStep('email')
-    setCode('')
-    setPassword('')
     setError(null)
   }, [])
 
@@ -290,56 +233,7 @@ export default function AccountGateModal ({ visible, onClose, onAuthenticated, i
                 <Text style={styles.supporting}>{copy.supporting}</Text>
               )}
 
-              {mode === 'reviewer' ? (
-                <>
-                  <View style={styles.inputRow}>
-                    <Mail size={16} color="#8B949E" />
-                    <TextInput
-                      style={styles.input}
-                      placeholder="you@example.com"
-                      placeholderTextColor="#90A4AE"
-                      value={email}
-                      onChangeText={setEmail}
-                      autoCapitalize="none"
-                      autoCorrect={false}
-                      keyboardType="email-address"
-                      autoComplete="email"
-                      editable={!busy}
-                      accessibilityLabel="Reviewer email"
-                    />
-                  </View>
-
-                  <View style={styles.inputRow}>
-                    <Lock size={16} color="#8B949E" />
-                    <TextInput
-                      style={styles.input}
-                      placeholder="Password"
-                      placeholderTextColor="#90A4AE"
-                      value={password}
-                      onChangeText={setPassword}
-                      autoCapitalize="none"
-                      autoCorrect={false}
-                      secureTextEntry
-                      editable={!busy}
-                      accessibilityLabel="Reviewer password"
-                    />
-                  </View>
-
-                  <TouchableOpacity
-                    style={[styles.cta, busy && styles.ctaDisabled]}
-                    onPress={submitReviewer}
-                    disabled={busy}
-                    accessibilityRole="button"
-                    accessibilityLabel={copy.cta}
-                  >
-                    {busy ? (
-                      <ActivityIndicator color="#0D1117" />
-                    ) : (
-                      <Text style={styles.ctaText}>{copy.cta}</Text>
-                    )}
-                  </TouchableOpacity>
-                </>
-              ) : step === 'email' ? (
+              {step === 'email' ? (
                 <>
                   <View style={styles.inputRow}>
                     <Mail size={16} color="#8B949E" />
@@ -418,29 +312,13 @@ export default function AccountGateModal ({ visible, onClose, onAuthenticated, i
 
               {error && <Text style={styles.error}>{error}</Text>}
 
-              {mode === 'reviewer' ? (
-                <TouchableOpacity onPress={switchMode} disabled={busy} accessibilityRole="button">
-                  <Text style={styles.link}>
-                    Back to sign in
-                  </Text>
-                </TouchableOpacity>
-              ) : (
-                <>
-                  <TouchableOpacity onPress={switchMode} disabled={busy} accessibilityRole="button">
-                    <Text style={styles.link}>
-                      {mode === 'protect' || mode === 'guest'
-                        ? 'Already have an account? Sign in'
-                        : 'New here? Create your free account'}
-                    </Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity onPress={switchToReviewer} disabled={busy} accessibilityRole="button">
-                    <Text style={styles.link}>
-                      Reviewer access
-                    </Text>
-                  </TouchableOpacity>
-                </>
-              )}
+              <TouchableOpacity onPress={switchMode} disabled={busy} accessibilityRole="button">
+                <Text style={styles.link}>
+                  {mode === 'protect' || mode === 'guest'
+                    ? 'Already have an account? Sign in'
+                    : 'New here? Create your free account'}
+                </Text>
+              </TouchableOpacity>
             </View>
           </ScrollView>
         </KeyboardAvoidingView>

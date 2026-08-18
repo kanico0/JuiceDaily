@@ -30,7 +30,7 @@ import { writeDeviceRecall } from '../_shared/deviceRecallWriter'
 
 const baseOpts = {
   integrityToken: 'mock-token',
-  packageName: 'com.juicingapp.app',
+  packageName: 'com.rawlifeflow.juicingdaily',
   serviceAccountJson: '{}',
   operation: 'snap',
 }

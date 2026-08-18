@@ -237,7 +237,7 @@ Deno.serve(async (req) => {
       const expectedRequestHash = [requestId, userId, 'analyze_blend', 'reserve'].join('|')
       const deviceVerification = await verifyPlayIntegrity({
         token: integrityToken,
-        expectedPackageName: Deno.env.get('PLAY_INTEGRITY_PACKAGE_NAME') ?? 'com.juicingapp.app',
+        expectedPackageName: Deno.env.get('PLAY_INTEGRITY_PACKAGE_NAME') ?? 'com.rawlifeflow.juicingdaily',
         expectedRequestHash,
         cloudProjectNumber: Deno.env.get('PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER') ?? '',
         serviceAccountJson: Deno.env.get('PLAY_INTEGRITY_SERVICE_ACCOUNT') ?? '',
@@ -255,7 +255,7 @@ Deno.serve(async (req) => {
         if (Object.keys(writeValues).length > 0) {
           const writeResult = await writeDeviceRecall({
             integrityToken,
-            packageName: Deno.env.get('PLAY_INTEGRITY_PACKAGE_NAME') ?? 'com.juicingapp.app',
+            packageName: Deno.env.get('PLAY_INTEGRITY_PACKAGE_NAME') ?? 'com.rawlifeflow.juicingdaily',
             serviceAccountJson: Deno.env.get('PLAY_INTEGRITY_SERVICE_ACCOUNT') ?? '',
             newValues: writeValues,
             operation: 'blend',
@@ -357,7 +357,7 @@ Deno.serve(async (req) => {
     serverIntegrityLog('blend_verify_called', requestId, true)
     const deviceVerification = await verifyPlayIntegrity({
       token: integrityToken,
-      expectedPackageName: Deno.env.get('PLAY_INTEGRITY_PACKAGE_NAME') ?? 'com.juicingapp.app',
+      expectedPackageName: Deno.env.get('PLAY_INTEGRITY_PACKAGE_NAME') ?? 'com.rawlifeflow.juicingdaily',
       expectedRequestHash,
       cloudProjectNumber: Deno.env.get('PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER') ?? '',
       serviceAccountJson: Deno.env.get('PLAY_INTEGRITY_SERVICE_ACCOUNT') ?? '',

@@ -60,8 +60,8 @@ describe('Issue 2 — Application Icon Configuration', () => {
     expect(icon).not.toContain('raw-logo')
   })
 
-  test('7. Package remains unchanged', () => {
-    expect(APP_JSON.expo.android.package).toBe('com.juicingapp.app')
+  test('7. Android package is the permanent production package', () => {
+    expect(APP_JSON.expo.android.package).toBe('com.rawlifeflow.juicingdaily')
   })
 
   test('8. App label remains unchanged', () => {

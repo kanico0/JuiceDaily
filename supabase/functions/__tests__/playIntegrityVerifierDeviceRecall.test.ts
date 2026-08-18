@@ -58,7 +58,7 @@ import {
 
 // ── Helpers ───────────────────────────────────────────────────
 
-const PACKAGE_NAME = 'com.juicingapp.app'
+const PACKAGE_NAME = 'com.rawlifeflow.juicingdaily'
 const CLOUD_PROJECT_NUMBER = '1080167721820'
 const REQUEST_HASH = 'test-challenge|user123|analyze_scan|digest456'
 

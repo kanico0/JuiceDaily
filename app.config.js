@@ -7,6 +7,7 @@ module.exports = ({ config }) => {
 
   return {
     ...config,
+    plugins: [...(config.plugins || []), 'expo-web-browser'],
     ios: {
       ...config.ios,
       bundleIdentifier: 'com.juicingapp.app',

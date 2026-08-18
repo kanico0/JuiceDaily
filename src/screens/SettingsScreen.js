@@ -36,6 +36,7 @@ import {
   ShoppingCart,
   Cog,
 } from 'lucide-react-native'
+import * as WebBrowser from 'expo-web-browser'
 import MeshGradientBg from '../components/MeshGradientBg'
 import {
   loadNotificationSettings,
@@ -353,7 +354,7 @@ function AccountSection() {
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.helpRow}
-              onPress={() => openLink('https://rawlifeflow.com/delete-account')}
+              onPress={openDeleteAccount}
               activeOpacity={0.7}
               accessibilityRole="link"
               accessibilityLabel="Delete Account"
@@ -481,6 +482,19 @@ function SubscriptionSection({ navigation }) {
 
   const openLink = (url) => {
     if (url) Linking.openURL(url).catch(() => {})
+  }
+
+  const openDeleteAccount = async () => {
+    try {
+      await WebBrowser.openBrowserAsync('https://rawlifeflow.com/delete-account')
+    } catch (error) {
+      console.error('[DeleteAccount] Failed to open deletion page', error)
+      Alert.alert(
+        'Unable to Open',
+        'We could not open the account deletion page in your browser. Please visit rawlifeflow.com/delete-account manually.',
+        [{ text: 'OK' }],
+      )
+    }
   }
 
   return (

@@ -3,12 +3,14 @@
 // Proves the committed native Android configuration has:
 // - expo.modules.updates.ENABLED = false
 // - runtime version = 1.0.20-local-build
+// - AndroidManifest.xml is tracked in git (durable from fresh checkout)
 //
 // Does NOT rely on app.config.js alone — inspects the actual native
 // manifest and resources that are packaged into the APK.
 
 const fs = require('fs')
 const path = require('path')
+const { execSync } = require('child_process')
 
 const manifestPath = path.resolve(__dirname, '../../../android/app/src/main/AndroidManifest.xml')
 const manifestSource = fs.readFileSync(manifestPath, 'utf8')
@@ -52,6 +54,29 @@ describe('H4: Native Expo Updates disabled', () => {
       const configPath = path.resolve(__dirname, '../../../app.config.js')
       const configSource = fs.readFileSync(configPath, 'utf8')
       expect(configSource).toMatch(/enabled:\s*false/)
+    })
+  })
+
+  describe('durability — manifest is tracked in git', () => {
+    it('8. AndroidManifest.xml is tracked by git (survives fresh checkout)', () => {
+      // The /android folder is gitignored, but critical native files
+      // (strings.xml, AndroidManifest.xml) are force-tracked so the
+      // OTA-disabled state is durable from repository state alone.
+      const repoRoot = path.resolve(__dirname, '../../..')
+      const result = execSync('git ls-files android/app/src/main/AndroidManifest.xml', {
+        cwd: repoRoot,
+        encoding: 'utf8',
+      }).trim()
+      expect(result).toBe('android/app/src/main/AndroidManifest.xml')
+    })
+
+    it('9. strings.xml is tracked by git (survives fresh checkout)', () => {
+      const repoRoot = path.resolve(__dirname, '../../..')
+      const result = execSync('git ls-files android/app/src/main/res/values/strings.xml', {
+        cwd: repoRoot,
+        encoding: 'utf8',
+      }).trim()
+      expect(result).toBe('android/app/src/main/res/values/strings.xml')
     })
   })
 })

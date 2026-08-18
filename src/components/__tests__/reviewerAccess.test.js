@@ -258,4 +258,237 @@ describe('Google Play Reviewer Access', () => {
       expect(fnSection).not.toMatch(/Garden|Glow/)
     })
   })
+
+  // ── NO-OTP REVIEWER PATH (physical QA regression) ────────
+  // After physical QA showed the app still asking for OTP after
+  // reviewer password sign-in, these tests prove the reviewer path
+  // is password-only and never transitions to the code/OTP step.
+
+  describe('14. Reviewer mode calls signInWithPassword', () => {
+    test('submitReviewer calls signInWithPassword, not sendCode', () => {
+      const reviewerSection = modalSource.slice(
+        modalSource.indexOf('submitReviewer'),
+      )
+      expect(reviewerSection).toMatch(/signInWithPassword/)
+      expect(reviewerSection).not.toMatch(/beginSignIn|beginEmailLink/)
+    })
+
+    test('reviewer CTA onPress is submitReviewer', () => {
+      const reviewerUiSection = modalSource.slice(
+        modalSource.indexOf("mode === 'reviewer'"),
+      )
+      expect(reviewerUiSection).toMatch(/onPress={submitReviewer}/)
+    })
+  })
+
+  describe('15. Successful reviewer login does NOT call signInWithOtp', () => {
+    test('signInWithPassword does not call signInWithOtp', () => {
+      const fnSection = accountLinkSource.slice(
+        accountLinkSource.indexOf('signInWithPassword'),
+      )
+      expect(fnSection).not.toMatch(/signInWithOtp/)
+    })
+
+    test('signInWithPassword does not call updateUser', () => {
+      const fnSection = accountLinkSource.slice(
+        accountLinkSource.indexOf('signInWithPassword'),
+      )
+      expect(fnSection).not.toMatch(/updateUser/)
+    })
+
+    test('signInWithPassword does not call verifyOtp', () => {
+      const fnSection = accountLinkSource.slice(
+        accountLinkSource.indexOf('signInWithPassword'),
+      )
+      expect(fnSection).not.toMatch(/verifyOtp/)
+    })
+  })
+
+  describe('16. Successful reviewer login does NOT show code-entry UI', () => {
+    test('submitReviewer does not call setStep("code")', () => {
+      const reviewerSection = modalSource.slice(
+        modalSource.indexOf('submitReviewer'),
+        modalSource.indexOf('switchMode'),
+      )
+      expect(reviewerSection).not.toMatch(/setStep\('code'\)/)
+      expect(reviewerSection).not.toMatch(/setStep\("code"\)/)
+    })
+
+    test('submitReviewer does not call sendCode', () => {
+      const reviewerSection = modalSource.slice(
+        modalSource.indexOf('submitReviewer'),
+        modalSource.indexOf('switchMode'),
+      )
+      expect(reviewerSection).not.toMatch(/sendCode/)
+    })
+
+    test('submitReviewer does not call confirmCode', () => {
+      const reviewerSection = modalSource.slice(
+        modalSource.indexOf('submitReviewer'),
+        modalSource.indexOf('switchMode'),
+      )
+      expect(reviewerSection).not.toMatch(/confirmCode/)
+    })
+
+    test('submitReviewer enforces reviewer mode in finally', () => {
+      const reviewerSection = modalSource.slice(
+        modalSource.indexOf('submitReviewer'),
+        modalSource.indexOf('switchMode'),
+      )
+      expect(reviewerSection).toMatch(/setMode\('reviewer'\)/)
+    })
+
+    test('submitReviewer enforces email step in finally', () => {
+      const reviewerSection = modalSource.slice(
+        modalSource.indexOf('submitReviewer'),
+        modalSource.indexOf('switchMode'),
+      )
+      expect(reviewerSection).toMatch(/setStep\('email'\)/)
+    })
+  })
+
+  describe('17. Successful reviewer login closes AccountGateModal', () => {
+    test('submitReviewer calls onAuthenticated on verified', () => {
+      const reviewerSection = modalSource.slice(
+        modalSource.indexOf('submitReviewer'),
+        modalSource.indexOf('switchMode'),
+      )
+      expect(reviewerSection).toMatch(/onAuthenticated/)
+    })
+
+    test('submitReviewer calls onClose on verified', () => {
+      const reviewerSection = modalSource.slice(
+        modalSource.indexOf('submitReviewer'),
+        modalSource.indexOf('switchMode'),
+      )
+      expect(reviewerSection).toMatch(/onClose/)
+    })
+  })
+
+  describe('18. Reviewer session uses returned Supabase UUID', () => {
+    test('signInWithPassword returns userId from data.user.id', () => {
+      const fnSection = accountLinkSource.slice(
+        accountLinkSource.indexOf('signInWithPassword'),
+      )
+      expect(fnSection).toMatch(/data\.user\?\.id/)
+    })
+
+    test('signInWithPassword returns verified with userId', () => {
+      const fnSection = accountLinkSource.slice(
+        accountLinkSource.indexOf('signInWithPassword'),
+      )
+      expect(fnSection).toMatch(/status: 'verified'/)
+    })
+  })
+
+  describe('19. Purchases.logIn receives canonical reviewer UUID', () => {
+    test('signInWithPassword calls notifyIdentityChanged with userId', () => {
+      const fnSection = accountLinkSource.slice(
+        accountLinkSource.indexOf('signInWithPassword'),
+      )
+      expect(fnSection).toMatch(/notifyIdentityChanged\(userId\)/)
+    })
+
+    test('notifyIdentityChanged calls revenueCatLogIn', () => {
+      const notifySection = accountLinkSource.slice(
+        accountLinkSource.indexOf('async function notifyIdentityChanged'),
+      )
+      expect(notifySection).toMatch(/revenueCatLogIn/)
+    })
+  })
+
+  describe('20. Normal anonymous email-upgrade flow still requires OTP', () => {
+    test('beginEmailLink still uses updateUser with email', () => {
+      const fnSection = accountLinkSource.slice(
+        accountLinkSource.indexOf('export async function beginEmailLink'),
+      )
+      expect(fnSection).toMatch(/updateUser/)
+    })
+
+    test('verifyEmailLink still uses verifyOtp with email_change', () => {
+      const fnSection = accountLinkSource.slice(
+        accountLinkSource.indexOf('export async function verifyEmailLink'),
+      )
+      expect(fnSection).toMatch(/verifyOtp/)
+      expect(fnSection).toMatch(/email_change/)
+    })
+
+    test('AccountGateModal still uses beginEmailLink for upgrade', () => {
+      expect(modalSource).toMatch(/beginEmailLink/)
+    })
+
+    test('AccountGateModal still uses verifyEmailLink for upgrade', () => {
+      expect(modalSource).toMatch(/verifyEmailLink/)
+    })
+  })
+
+  describe('21. Normal returning-user email sign-in still requires OTP', () => {
+    test('beginSignIn still uses signInWithOtp', () => {
+      const fnSection = accountLinkSource.slice(
+        accountLinkSource.indexOf('export async function beginSignIn'),
+      )
+      expect(fnSection).toMatch(/signInWithOtp/)
+    })
+
+    test('verifySignIn still uses verifyOtp with email type', () => {
+      const fnSection = accountLinkSource.slice(
+        accountLinkSource.indexOf('export async function verifySignIn'),
+      )
+      expect(fnSection).toMatch(/verifyOtp/)
+      expect(fnSection).toMatch(/type: 'email'/)
+    })
+
+    test('AccountGateModal still uses beginSignIn for normal sign-in', () => {
+      expect(modalSource).toMatch(/beginSignIn/)
+    })
+
+    test('AccountGateModal still uses verifySignIn for normal sign-in', () => {
+      expect(modalSource).toMatch(/verifySignIn/)
+    })
+  })
+
+  describe('22. No hardcoded bypass code exists', () => {
+    test('no universal code bypass pattern in AccountGateModal', () => {
+      // Check that no code like "if (code === 'XXXXXX')" exists
+      expect(modalSource).not.toMatch(/code\s*===?\s*['"]\d{4,8}['"]/)
+    })
+
+    test('no universal code bypass pattern in accountLink.ts', () => {
+      expect(accountLinkSource).not.toMatch(/code\s*===?\s*['"]\d{4,8}['"]/)
+    })
+
+    test('no universal code bypass pattern in identity.ts', () => {
+      expect(identitySource).not.toMatch(/code\s*===?\s*['"]\d{4,8}['"]/)
+    })
+
+    test('no hardcoded password bypass in AccountGateModal', () => {
+      // Check that no code like "if (password === 'XXXXXX')" exists
+      expect(modalSource).not.toMatch(/password\s*===?\s*['"][^'"]{4,20}['"]/)
+    })
+
+    test('no hardcoded password bypass in accountLink.ts', () => {
+      expect(accountLinkSource).not.toMatch(/password\s*===?\s*['"][^'"]{4,20}['"]/)
+    })
+  })
+
+  describe('23. signInWithPassword is robust against listener failures', () => {
+    test('notifyIdentityChanged is wrapped in try-catch', () => {
+      const fnSection = accountLinkSource.slice(
+        accountLinkSource.indexOf('signInWithPassword'),
+      )
+      expect(fnSection).toMatch(/try\s*{[^}]*notifyIdentityChanged/s)
+      expect(fnSection).toMatch(/}\s*catch/)
+    })
+
+    test('signInWithPassword returns verified even if notifyIdentityChanged fails', () => {
+      const fnSection = accountLinkSource.slice(
+        accountLinkSource.indexOf('signInWithPassword'),
+      )
+      // The return { status: 'verified' } must come AFTER the try-catch
+      // around notifyIdentityChanged, not inside it.
+      const catchIdx = fnSection.indexOf('catch')
+      const returnIdx = fnSection.indexOf("status: 'verified'")
+      expect(returnIdx).toBeGreaterThan(catchIdx)
+    })
+  })
 })

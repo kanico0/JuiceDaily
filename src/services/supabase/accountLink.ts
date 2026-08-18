@@ -278,6 +278,14 @@ export async function verifySignIn(rawEmail: string, token: string): Promise<Ver
 // Reusable email + password sign-in for the Google Play reviewer
 // account. Uses real Supabase Auth — no client-side overrides.
 // Available in production without Developer Tools.
+//
+// IMPORTANT: This is a RETURNING AUTHENTICATED LOGIN, not an
+// anonymous-account email upgrade. The reviewer intentionally
+// switches identities — the previous anonymous UUID is discarded.
+//
+// The Supabase session is the source of truth. notifyIdentityChanged
+// (RevenueCat + listeners) is best-effort and must NEVER cause the
+// sign-in to fail — the session is already valid at that point.
 export async function signInWithPassword (
   rawEmail: string,
   password: string,
@@ -294,8 +302,17 @@ export async function signInWithPassword (
     if (error) return classifyVerifyError(error.message)
     const userId = data.user?.id ?? data.session?.user?.id
     if (!userId) return { status: 'error', message: 'Sign-in returned no user' }
+    // The Supabase session is now valid — the reviewer is signed in.
+    // Disable anon fallback so no new anonymous identity is created.
     setAllowAnonFallback(false)
-    await notifyIdentityChanged(userId)
+    // Best-effort: notify RevenueCat and identity listeners. This must
+    // NEVER cause the sign-in to fail — the session is already valid.
+    try {
+      await notifyIdentityChanged(userId)
+    } catch {
+      // RevenueCat/listener failures are non-fatal. The Supabase
+      // session is the source of truth, not the listener pipeline.
+    }
     return { status: 'verified', userId }
   } catch (e) {
     return { status: 'error', message: (e as Error)?.message ?? 'Unknown error' }

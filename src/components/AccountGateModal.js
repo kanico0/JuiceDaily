@@ -209,6 +209,10 @@ export default function AccountGateModal ({ visible, onClose, onAuthenticated, i
     try {
       const result = await signInWithPassword(email, password)
       if (result.status === 'verified') {
+        // CRITICAL: Reviewer password sign-in is complete.
+        // Do NOT transition to the code/OTP step.
+        // Do NOT invoke the OTP send or verify callbacks.
+        // Close the modal and return to the app as the signed-in reviewer.
         if (onAuthenticated) onAuthenticated(result.userId)
         if (onClose) onClose()
       } else if (result.status === 'invalid_code') {
@@ -217,6 +221,10 @@ export default function AccountGateModal ({ visible, onClose, onAuthenticated, i
         setError('Sign-in failed. Please check your credentials and try again.')
       }
     } finally {
+      // Ensure the modal stays in reviewer mode — never transition
+      // to the code/OTP step, even on error.
+      setMode('reviewer')
+      setStep('email')
       busyRef.current = false
       setBusy(false)
     }

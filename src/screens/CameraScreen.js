@@ -238,12 +238,14 @@ export default function CameraScreen({
             Tap the button below to scan — we'll identify your produce and estimate nutrition.
           </Text>
 
-          {/* Free quota guidance — suppressed for Pro users */}
-          {!isProUser && !isProcessing && !error && (
+          {/* Plan quota guidance — label follows effective access state */}
+          {!isProcessing && !error && (
             <Text style={styles.quotaGuidance}>
               {quotaRemaining !== null && quotaRemaining !== undefined
-                ? `Free plan: ${quotaRemaining} Juice Snap${quotaRemaining === 1 ? '' : 's'} remaining. Frame your produce carefully before taking the photo.`
-                : 'Free Juice Snaps are limited. Frame your produce carefully before taking the photo.'}
+                ? `${isProUser ? 'Pro' : 'Free'} plan: ${quotaRemaining} Juice Snap${quotaRemaining === 1 ? '' : 's'} remaining. Frame your produce carefully before taking the photo.`
+                : isProUser
+                  ? 'Pro Juice Snaps are available. Frame your produce carefully before taking the photo.'
+                  : 'Free Juice Snaps are limited. Frame your produce carefully before taking the photo.'}
             </Text>
           )}
         </View>

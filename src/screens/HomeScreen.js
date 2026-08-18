@@ -2395,7 +2395,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
           onAccountRequired={() => setShowAccountGate(true)}
           guestFirstScan={guestFirstScan}
           quotaRemaining={filmRollRemaining}
-          isProUser={isPro}
+          isProUser={effectiveIsPro}
         />
       </Modal>
 

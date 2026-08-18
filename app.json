@@ -34,7 +34,8 @@
             "./assets/glass_clink.wav"
           ]
         }
-      ]
+      ],
+      "./plugins/android-package-flavors"
     ],
     "web": {
       "favicon": "./assets/favicon.png"

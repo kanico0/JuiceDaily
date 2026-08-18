@@ -201,3 +201,74 @@ describe('Android Package Identity Migration', () => {
     expect(config).toContain('com.juicingapp.app.pro.annual')
   })
 })
+
+// ─────────────────────────────────────────────────────────────
+// TRACKED SOURCE DURABILITY — proves the config plugin (not just
+// the generated build.gradle) preserves the beta identity across
+// a clean Expo prebuild.
+// ─────────────────────────────────────────────────────────────
+
+describe('Android Package Identity — Tracked Source Durability', () => {
+  const PLUGIN_PATH = path.join(ROOT, 'plugins', 'android-package-flavors.js')
+
+  test('config plugin is registered in app.json', () => {
+    expect(APP_JSON.expo.plugins).toContain(
+      './plugins/android-package-flavors',
+    )
+  })
+
+  test('config plugin file exists and is tracked', () => {
+    expect(fs.existsSync(PLUGIN_PATH)).toBe(true)
+  })
+
+  test('B. plugin preserves beta applicationId com.juicingapp.app.beta', () => {
+    const plugin = fs.readFileSync(PLUGIN_PATH, 'utf8')
+    // The plugin defines the beta application ID as a constant
+    expect(plugin).toContain(`const BETA_APPLICATION_ID = '${BETA_PACKAGE}'`)
+    // And uses it in the flavor block
+    expect(plugin).toContain("applicationId '${BETA_APPLICATION_ID}'")
+  })
+
+  test('C. plugin does NOT use applicationIdSuffix (would derive from production)', () => {
+    const plugin = fs.readFileSync(PLUGIN_PATH, 'utf8')
+    // The plugin must not contain applicationIdSuffix as an active directive
+    expect(plugin).not.toMatch(/^\s*applicationIdSuffix\b/m)
+  })
+
+  test('C2. plugin FLAVOR_BLOCK does NOT produce com.rawlifeflow.juicingdaily.beta', () => {
+    const plugin = fs.readFileSync(PLUGIN_PATH, 'utf8')
+    // Extract the FLAVOR_BLOCK template string (the actual Gradle code
+    // inserted into build.gradle). Comments in the plugin file itself
+    // may mention the wrong package as a warning — that's fine.
+    const flavorBlockMatch = plugin.match(
+      /const FLAVOR_BLOCK = `([\s\S]*?)`/,
+    )
+    expect(flavorBlockMatch).not.toBeNull()
+    const flavorBlock = flavorBlockMatch[1]
+    expect(flavorBlock).not.toContain('com.rawlifeflow.juicingdaily.beta')
+    // The flavor block must use the explicit beta applicationId
+    expect(flavorBlock).toContain("applicationId '${BETA_APPLICATION_ID}'")
+  })
+
+  test('D. production and beta IDs are deliberately independent', () => {
+    const plugin = fs.readFileSync(PLUGIN_PATH, 'utf8')
+    // The plugin must contain BOTH the production and beta identities
+    // as separate, independent values — not derived from each other.
+    expect(plugin).toContain(PRODUCTION_PACKAGE)
+    expect(plugin).toContain(BETA_PACKAGE)
+    // They must NOT be the same
+    expect(PRODUCTION_PACKAGE).not.toBe(BETA_PACKAGE)
+  })
+
+  test('D2. plugin preserves beta label "RawLifeFlow Beta"', () => {
+    const plugin = fs.readFileSync(PLUGIN_PATH, 'utf8')
+    expect(plugin).toContain('RawLifeFlow Beta')
+  })
+
+  test('plugin is idempotent (checks for existing flavorDimensions)', () => {
+    const plugin = fs.readFileSync(PLUGIN_PATH, 'utf8')
+    expect(plugin).toMatch(/flavorDimensions "distribution"/)
+    // The addProductFlavors function must check before inserting
+    expect(plugin).toMatch(/includes\('flavorDimensions "distribution"'\)/)
+  })
+})

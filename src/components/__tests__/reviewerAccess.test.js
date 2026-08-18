@@ -491,4 +491,120 @@ describe('Google Play Reviewer Access', () => {
       expect(returnIdx).toBeGreaterThan(catchIdx)
     })
   })
+
+  // ── RENDER REGRESSION: Reviewer access visible in signin mode ──
+  // Physical QA showed "Reviewer access" was not visible even though
+  // the source had it. Root cause was expo-updates serving a stale
+  // OTA bundle. These tests prove the SOURCE renders both links
+  // simultaneously in the normal returning-user sign-in modal.
+
+  describe('24. Returning-user modal renders BOTH links simultaneously', () => {
+    test('signin mode renders "Send sign-in code" AND "Reviewer access" together', () => {
+      // In signin mode, step email:
+      //   - CTA text is "Send sign-in code" (from COPY.signin.cta)
+      //   - switchMode link shows "New here? Create your free account"
+      //   - switchToReviewer link shows "Reviewer access"
+      // All three must be present in the same render output.
+      const signinSection = modalSource.slice(
+        modalSource.indexOf("title: 'Welcome back'"),
+      )
+      expect(signinSection).toContain('Send sign-in code')
+      expect(signinSection).toContain('New here? Create your free account')
+      expect(signinSection).toContain('Reviewer access')
+    })
+
+    test('"Reviewer access" is NOT inside a Developer Tools condition', () => {
+      const reviewerLinkIdx = modalSource.indexOf('Reviewer access')
+      // Search backwards for any DEVELOPER_TOOLS condition before the link
+      const beforeLink = modalSource.substring(0, reviewerLinkIdx)
+      // The last conditional before "Reviewer access" should be
+      // mode === 'reviewer' ? ... : <>, NOT a Developer Tools check
+      expect(beforeLink).not.toMatch(/DEVELOPER_TOOLS_ENABLED.*Reviewer access/s)
+    })
+
+    test('"Reviewer access" is NOT inside an environment variable check', () => {
+      const reviewerLinkIdx = modalSource.indexOf('Reviewer access')
+      const beforeLink = modalSource.substring(
+        Math.max(0, reviewerLinkIdx - 500),
+        reviewerLinkIdx,
+      )
+      expect(beforeLink).not.toMatch(/EXPO_PUBLIC_ENABLE_DEVELOPER_TOOLS/)
+      expect(beforeLink).not.toMatch(/process\.env/)
+    })
+
+    test('"Reviewer access" link is inside the non-reviewer conditional branch', () => {
+      // The JSX structure is:
+      //   {mode === 'reviewer' ? (
+      //     <Back to sign in>
+      //   ) : (
+      //     <>
+      //       <switchMode link>
+      //       <Reviewer access link>  ← must be here
+      //     </>
+      //   )}
+      // "Reviewer access" appears twice: once in COPY.reviewer.title
+      // and once in the JSX render. Find the JSX occurrence (the one
+      // inside a <Text> element).
+      const firstIdx = modalSource.indexOf('Reviewer access')
+      const reviewerLinkIdx = modalSource.indexOf('Reviewer access', firstIdx + 1)
+      expect(reviewerLinkIdx).toBeGreaterThan(-1)
+      // The JSX "Reviewer access" must come AFTER the conditional
+      const conditionalIdx = modalSource.lastIndexOf(
+        "mode === 'reviewer'",
+        reviewerLinkIdx,
+      )
+      expect(conditionalIdx).toBeGreaterThan(-1)
+      expect(reviewerLinkIdx).toBeGreaterThan(conditionalIdx)
+    })
+  })
+
+  describe('25. Reviewer mode renders email + password (no OTP)', () => {
+    test('reviewer mode renders password input with secureTextEntry', () => {
+      const reviewerModeIdx = modalSource.indexOf("mode === 'reviewer' ?")
+      const reviewerSection = modalSource.substring(reviewerModeIdx)
+      expect(reviewerSection).toMatch(/secureTextEntry/)
+    })
+
+    test('reviewer mode renders "Sign in" CTA (not "Send sign-in code")', () => {
+      // COPY.reviewer.cta = 'Sign in'
+      const reviewerCopyIdx = modalSource.indexOf("cta: 'Sign in'")
+      expect(reviewerCopyIdx).toBeGreaterThan(-1)
+    })
+
+    test('reviewer mode does NOT render "Send sign-in code"', () => {
+      // In reviewer mode, the CTA is "Sign in", not "Send sign-in code"
+      // The "Send sign-in code" text is only in COPY.signin.cta
+      // and is only used when mode === 'signin' and step === 'email'
+      const reviewerCopySection = modalSource.slice(
+        modalSource.indexOf("title: 'Reviewer access'"),
+        modalSource.indexOf("title: 'Reviewer access'") + 200,
+      )
+      expect(reviewerCopySection).not.toMatch(/Send sign-in code/)
+    })
+
+    test('reviewer mode does NOT render code input or Verify button', () => {
+      // The code input and Verify button are in the step === 'code' branch
+      // which is only reached in non-reviewer modes
+      const reviewerModeStart = modalSource.indexOf("mode === 'reviewer' ?")
+      const reviewerModeEnd = modalSource.indexOf(': step ===', reviewerModeStart)
+      const reviewerBranch = modalSource.substring(reviewerModeStart, reviewerModeEnd)
+      expect(reviewerBranch).not.toMatch(/codeInput/)
+      expect(reviewerBranch).not.toMatch(/Verify/)
+    })
+  })
+
+  describe('26. expo-updates disabled to prevent stale OTA', () => {
+    test('app.config.js disables expo-updates', () => {
+      const configPath = path.resolve(__dirname, '../../../app.config.js')
+      const configSource = fs.readFileSync(configPath, 'utf8')
+      expect(configSource).toMatch(/updates.*enabled.*false/s)
+    })
+
+    test('app.config.js overrides runtimeVersion', () => {
+      const configPath = path.resolve(__dirname, '../../../app.config.js')
+      const configSource = fs.readFileSync(configPath, 'utf8')
+      expect(configSource).toMatch(/runtimeVersion/)
+      expect(configSource).toMatch(/local-build/)
+    })
+  })
 })

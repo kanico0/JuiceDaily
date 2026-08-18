@@ -11,6 +11,18 @@ module.exports = ({ config }) => {
       ...config.ios,
       bundleIdentifier: 'com.juicingapp.app',
     },
+    // Disable expo-updates OTA so the app always uses the JS bundle
+    // embedded in the APK. This prevents a stale published update
+    // from overriding the local build (e.g. reviewer access UI).
+    // Re-enable by setting updates.enabled = true and providing a URL.
+    updates: {
+      ...config.updates,
+      enabled: false,
+    },
+    // Change runtimeVersion so any previously cached OTA update with
+    // the old runtime version is ignored. The app will use the
+    // embedded bundle from the APK.
+    runtimeVersion: '1.0.20-local-build',
     extra: {
       ...config.extra,
       BUILD_TARGET: buildTarget,

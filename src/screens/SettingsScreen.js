@@ -322,6 +322,19 @@ function AccountSection() {
     )
   }
 
+  const openDeleteAccount = async () => {
+    try {
+      await WebBrowser.openBrowserAsync('https://rawlifeflow.com/delete-account')
+    } catch (error) {
+      console.error('[DeleteAccount] Failed to open deletion page', error)
+      Alert.alert(
+        'Unable to Open',
+        'We could not open the account deletion page in your browser. Please visit rawlifeflow.com/delete-account manually.',
+        [{ text: 'OK' }],
+      )
+    }
+  }
+
   return (
     <>
       <SectionHeader
@@ -482,19 +495,6 @@ function SubscriptionSection({ navigation }) {
 
   const openLink = (url) => {
     if (url) Linking.openURL(url).catch(() => {})
-  }
-
-  const openDeleteAccount = async () => {
-    try {
-      await WebBrowser.openBrowserAsync('https://rawlifeflow.com/delete-account')
-    } catch (error) {
-      console.error('[DeleteAccount] Failed to open deletion page', error)
-      Alert.alert(
-        'Unable to Open',
-        'We could not open the account deletion page in your browser. Please visit rawlifeflow.com/delete-account manually.',
-        [{ text: 'OK' }],
-      )
-    }
   }
 
   return (

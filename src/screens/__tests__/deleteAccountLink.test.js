@@ -7,14 +7,31 @@
 // 4. It does NOT call resetAllUserData()
 // 5. It does NOT sign out
 // 6. Browser-opening failure is not silently swallowed
-// 7. Existing Sign Out behavior remains unchanged
+// 7. openDeleteAccount is defined INSIDE AccountSection's scope (not SubscriptionSection)
 // 8. Other Privacy/Terms link behavior remains unchanged
+//
+// REGRESSION: This test catches the scope bug where openDeleteAccount was
+// accidentally placed inside SubscriptionSection, causing a ReferenceError
+// in AccountSection that destroyed the React Host and blanked the screen.
 
 const fs = require('fs')
 const path = require('path')
 
 const sourcePath = path.resolve(__dirname, '../SettingsScreen.js')
 const source = fs.readFileSync(sourcePath, 'utf8')
+
+// Helper: find the byte range of a top-level function component
+function functionRange(name) {
+  const start = source.indexOf(`function ${name}(`)
+  if (start === -1) return null
+  // Find the next top-level function or end of file
+  const nextFn = source.indexOf('\nfunction ', start + 1)
+  const nextConst = source.indexOf('\nconst ', start + 1)
+  const nextExport = source.indexOf('\nexport ', start + 1)
+  const candidates = [nextFn, nextConst, nextExport].filter((i) => i > start)
+  const end = candidates.length > 0 ? Math.min(...candidates) : source.length
+  return { start, end }
+}
 
 describe('H2: In-app Delete Account entry point', () => {
   describe('Delete Account link is present for authenticated users', () => {
@@ -29,7 +46,7 @@ describe('H2: In-app Delete Account entry point', () => {
     it('3. is inside the account.isDurable block (authenticated users only)', () => {
       // The Delete Account entry must be within the durable-account branch,
       // not the guest/anonymous branch. Anchor on the accessibilityLabel
-      // in the JSX (not the URL string, which is now in the handler function).
+      // in the JSX (not the URL string, which is in the handler function).
       const durableStart = source.indexOf('account.isDurable ?')
       const durableElse = source.indexOf(') : (', durableStart)
       const deleteAccountLabelPos = source.indexOf('accessibilityLabel="Delete Account"')
@@ -40,26 +57,16 @@ describe('H2: In-app Delete Account entry point', () => {
 
     it('4. is NOT inside Developer Tools or gated by developer flags', () => {
       const deleteAccountLabelPos = source.indexOf('accessibilityLabel="Delete Account"')
-      // Find the nearest preceding "Developer" or "DEVELOPER" reference
       const devToolsSection = source.indexOf('Developer')
       if (devToolsSection > -1) {
-        // Delete Account must appear BEFORE the Developer Tools section,
-        // or the Developer Tools section must appear after Delete Account
-        // with clear separation. The key check: Delete Account is in the
-        // Account section, not the Developer section.
         const accountSectionStart = source.indexOf('title="Account"')
         expect(deleteAccountLabelPos).toBeGreaterThan(accountSectionStart)
       }
     })
 
     it('5. does NOT invoke resetAllUserData()', () => {
-      // The Delete Account entry must not call resetAllUserData.
-      // Find the openDeleteAccount function block and verify
-      // it only calls WebBrowser.openBrowserAsync, not resetAllUserData.
       const handlerPos = source.indexOf('openDeleteAccount')
       const blockStart = source.lastIndexOf('const openDeleteAccount', handlerPos)
-      const blockEnd = source.indexOf('}', blockStart + 10)
-      // Find the closing brace of the function by scanning forward
       let braceCount = 0
       let endPos = blockStart
       for (let i = source.indexOf('{', blockStart); i < source.length; i++) {
@@ -81,7 +88,6 @@ describe('H2: In-app Delete Account entry point', () => {
     it('7. uses WebBrowser.openBrowserAsync (not Linking.openURL) for Delete Account', () => {
       expect(source).toMatch(/import \* as WebBrowser from 'expo-web-browser'/)
       expect(source).toMatch(/WebBrowser\.openBrowserAsync/)
-      // The Delete Account onPress should call openDeleteAccount, not openLink
       const deleteAccountPos = source.indexOf('accessibilityLabel="Delete Account"')
       const blockStart = source.lastIndexOf('TouchableOpacity', deleteAccountPos)
       const blockEnd = source.indexOf('</TouchableOpacity>', deleteAccountPos)
@@ -120,40 +126,109 @@ describe('H2: In-app Delete Account entry point', () => {
         }
       }
       const block = source.substring(handlerPos, endPos + 1)
-      // Must have a catch block that logs and/or shows user feedback
       expect(block).toMatch(/catch/)
       expect(block).toMatch(/console\.error/)
       expect(block).toMatch(/Alert\.alert/)
     })
   })
 
+  describe('REGRESSION: openDeleteAccount scope correctness', () => {
+    // This test catches the bug where openDeleteAccount was accidentally
+    // defined inside SubscriptionSection, causing a ReferenceError in
+    // AccountSection that destroyed the React Host and blanked the screen.
+    // The physical-device logcat proved:
+    //   ReferenceError: Property 'openDeleteAccount' doesn't exist
+    //     at AccountSection
+
+    it('10. openDeleteAccount is defined INSIDE AccountSection', () => {
+      const accountRange = functionRange('AccountSection')
+      expect(accountRange).not.toBeNull()
+      const handlerPos = source.indexOf('const openDeleteAccount')
+      expect(handlerPos).toBeGreaterThan(-1)
+      expect(handlerPos).toBeGreaterThan(accountRange.start)
+      expect(handlerPos).toBeLessThan(accountRange.end)
+    })
+
+    it('11. openDeleteAccount is NOT defined inside SubscriptionSection', () => {
+      const subRange = functionRange('SubscriptionSection')
+      expect(subRange).not.toBeNull()
+      const handlerPos = source.indexOf('const openDeleteAccount')
+      expect(handlerPos).toBeGreaterThan(-1)
+      // The handler must NOT be within SubscriptionSection's range
+      const isInsideSub = handlerPos > subRange.start && handlerPos < subRange.end
+      expect(isInsideSub).toBe(false)
+    })
+
+    it('12. onPress={openDeleteAccount} reference is inside AccountSection', () => {
+      const accountRange = functionRange('AccountSection')
+      expect(accountRange).not.toBeNull()
+      const onPressPos = source.indexOf('onPress={openDeleteAccount}')
+      expect(onPressPos).toBeGreaterThan(-1)
+      expect(onPressPos).toBeGreaterThan(accountRange.start)
+      expect(onPressPos).toBeLessThan(accountRange.end)
+    })
+
+    it('13. there is exactly ONE definition of openDeleteAccount', () => {
+      const matches = source.match(/const openDeleteAccount/g)
+      expect(matches).not.toBeNull()
+      expect(matches.length).toBe(1)
+    })
+
+    it('14. AccountSection renders without ReferenceError (scope check)', () => {
+      // Verify that every identifier referenced in the AccountSection JSX
+      // is either defined within AccountSection or imported at module level.
+      // This is a static scope check — it doesn't render the component
+      // (which would require 20+ mocks) but catches the class of bug
+      // that caused the production crash.
+      const accountRange = functionRange('AccountSection')
+      const accountSrc = source.substring(accountRange.start, accountRange.end)
+
+      // openDeleteAccount must be defined in this range
+      expect(accountSrc).toMatch(/const openDeleteAccount/)
+
+      // handleSignOut must be defined in this range
+      expect(accountSrc).toMatch(/const handleSignOut/)
+
+      // openLink should NOT be in AccountSection (it's in SubscriptionSection)
+      expect(accountSrc).not.toMatch(/const openLink/)
+    })
+  })
+
   describe('Sign Out behavior remains unchanged', () => {
-    it('10. still has handleSignOut function', () => {
+    it('15. still has handleSignOut function', () => {
       expect(source).toMatch(/handleSignOut/)
       expect(source).toMatch(/Sign out\?/)
     })
 
-    it('11. Sign Out button is still present', () => {
+    it('16. Sign Out button is still present', () => {
       expect(source).toMatch(/accessibilityLabel="Sign out"/)
     })
 
-    it('12. Sign Out calls signOutAccount, not deletion', () => {
-      const signOutPos = source.indexOf('handleSignOut')
-      const signOutBlock = source.substring(signOutPos, signOutPos + 600)
+    it('17. Sign Out calls signOutAccount, not deletion', () => {
+      const signOutPos = source.indexOf('const handleSignOut')
+      // Find the end of handleSignOut by matching braces
+      let braceCount = 0
+      let endPos = signOutPos
+      for (let i = source.indexOf('{', signOutPos); i < source.length; i++) {
+        if (source[i] === '{') braceCount++
+        if (source[i] === '}') braceCount--
+        if (braceCount === 0) {
+          endPos = i
+          break
+        }
+      }
+      const signOutBlock = source.substring(signOutPos, endPos + 1)
       expect(signOutBlock).toMatch(/signOutAccount/)
       expect(signOutBlock).not.toMatch(/rawlifeflow\.com\/delete-account/)
     })
   })
 
   describe('Delete Account is visually distinct from Sign Out', () => {
-    it('13. has supporting text about account/data deletion', () => {
+    it('18. has supporting text about account/data deletion', () => {
       expect(source).toMatch(/Request deletion of your RawLifeFlow account/)
     })
 
-    it('14. uses a destructive/red color for the label', () => {
-      // The color override is on the Text style, which is on a
-      // separate line from the "Delete Account" label text.
-      // Anchor on the accessibilityLabel in the JSX.
+    it('19. uses a destructive/red color for the label', () => {
       const deleteAccountLabelPos = source.indexOf('accessibilityLabel="Delete Account"')
       const blockStart = source.lastIndexOf('TouchableOpacity', deleteAccountLabelPos)
       const blockEnd = source.indexOf('</TouchableOpacity>', deleteAccountLabelPos)
@@ -163,16 +238,18 @@ describe('H2: In-app Delete Account entry point', () => {
   })
 
   describe('Other Privacy/Terms link behavior remains unchanged', () => {
-    it('15. openLink helper still exists for Privacy/Terms links', () => {
-      expect(source).toMatch(/const openLink = \(url\) =>/)
-      expect(source).toMatch(/Linking\.openURL/)
+    it('20. openLink helper still exists in SubscriptionSection for Privacy/Terms links', () => {
+      const subRange = functionRange('SubscriptionSection')
+      const subSrc = source.substring(subRange.start, subRange.end)
+      expect(subSrc).toMatch(/const openLink = \(url\) =>/)
+      expect(subSrc).toMatch(/Linking\.openURL/)
     })
 
-    it('16. Terms of Use still uses openLink', () => {
+    it('21. Terms of Use still uses openLink', () => {
       expect(source).toMatch(/onPress=\{\(\) => openLink\(TERMS_URL\)\}/)
     })
 
-    it('17. Privacy Policy still uses openLink', () => {
+    it('22. Privacy Policy still uses openLink', () => {
       expect(source).toMatch(/onPress=\{\(\) => openLink\(PRIVACY_URL\)\}/)
     })
   })

@@ -274,6 +274,34 @@ export async function verifySignIn(rawEmail: string, token: string): Promise<Ver
   }
 }
 
+// ── Password sign-in (Google Play reviewer access) ───────────
+// Reusable email + password sign-in for the Google Play reviewer
+// account. Uses real Supabase Auth — no client-side overrides.
+// Available in production without Developer Tools.
+export async function signInWithPassword (
+  rawEmail: string,
+  password: string,
+): Promise<VerifyResult> {
+  const email = normalizeEmail(rawEmail)
+  const supabase = getSupabase()
+  if (!supabase) return { status: 'error', message: 'Service unavailable' }
+
+  try {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    })
+    if (error) return classifyVerifyError(error.message)
+    const userId = data.user?.id ?? data.session?.user?.id
+    if (!userId) return { status: 'error', message: 'Sign-in returned no user' }
+    setAllowAnonFallback(false)
+    await notifyIdentityChanged(userId)
+    return { status: 'verified', userId }
+  } catch (e) {
+    return { status: 'error', message: (e as Error)?.message ?? 'Unknown error' }
+  }
+}
+
 // ── Sign out ─────────────────────────────────────────────────
 // Clears the local session and transitions RevenueCat to the new
 // anonymous Supabase UUID. Server-side data (quota usage, subscription

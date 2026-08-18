@@ -578,7 +578,7 @@ export default function DashboardScreen({ navigation, route }) {
               style={styles.vaultLink}
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-                navigation.navigate('Vault')
+                navigation.navigate('Paywall', { source: 'dashboard_unlock' })
               }}
               activeOpacity={0.7}
             >
@@ -723,6 +723,7 @@ export default function DashboardScreen({ navigation, route }) {
         visible={!isPaywallDisabled && showPaywall}
         onDismiss={() => setShowPaywall(false)}
         trigger={challenge.streak >= 3 ? 'streak_3' : 'feature_gate'}
+        onSubscribe={() => navigation.navigate('Paywall', { source: 'dashboard_paywall_modal' })}
       />
 
       <AccountGateModal

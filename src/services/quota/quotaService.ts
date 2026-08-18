@@ -317,10 +317,36 @@ export async function analyzeScanOnServer(
         undefined,
       )
     } catch (e) {
-      // If the scan failed, release the guest journey so the user
-      // can try again.
-      if (e instanceof ScanQuotaError && e.code !== 'account_required') {
-        await releaseGuestJourney(journeyId)
+      // H6C fix: release the guest journey for ANY failure after
+      // successful reservation, not just typed ScanQuotaError.
+      //
+      // The previous code only released for ScanQuotaError (excluding
+      // account_required). A plain network Error (fetch rejection,
+      // timeout, transport error) bypassed release, leaving the
+      // journey permanently stranded as 'scan_reserved' with no way
+      // to retry or recover.
+      //
+      // The only case where release is inappropriate is
+      // account_required — that means the scan was already used and
+      // the journey is completed, so releasing would be wrong.
+      const shouldRelease = !(
+        e instanceof ScanQuotaError && e.code === 'account_required'
+      )
+      if (shouldRelease) {
+        // Best-effort release: do not mask the original error if
+        // cleanup itself fails. Cleanup is non-recursive and
+        // non-destructive. The server-side release RPC remains
+        // authoritative regarding whether the reservation is still
+        // releasable.
+        try {
+          await releaseGuestJourney(journeyId)
+        } catch (releaseErr: any) {
+          // Log but do not throw — the original error must remain
+          // surfaced to the caller.
+          if (__DEV__) {
+            console.warn('[quota] guest journey release failed after scan error:', releaseErr?.message)
+          }
+        }
       }
       throw e
     }

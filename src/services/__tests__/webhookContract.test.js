@@ -395,9 +395,21 @@ describe('Identity resolution in webhook', () => {
     expect(rpcSection).not.toMatch(/p_user_id: appUserId/)
   })
 
-  it('52a. webhook validates canonical UUID in auth.users', () => {
-    expect(webhookSource).toMatch(/auth\.users/)
+  it('52a. webhook validates canonical UUID via Auth Admin API (not PostgREST auth.users)', () => {
+    // H1 fix: the webhook must use admin.auth.admin.getUserById,
+    // NOT .from('auth.users') which PostgREST resolves as a
+    // non-existent public-schema relation. The old behavior
+    // discarded the PGRST205 error and stranded paying users as Free.
+    expect(webhookSource).toMatch(/validateCanonicalUser/)
     expect(webhookSource).toMatch(/canonical_uuid_not_found_in_auth/)
+    // The broken PostgREST path must be gone from the validation.
+    // (Comments may still mention auth.users for documentation, but
+    // the actual lookup must not use .from('auth.users').)
+    const validationSection = webhookSource.slice(
+      webhookSource.indexOf('Validate canonical UUID'),
+      webhookSource.indexOf('Outcome A — valid'),
+    )
+    expect(validationSection).not.toMatch(/\.from\(['"]auth\.users['"]\)/)
   })
 })
 

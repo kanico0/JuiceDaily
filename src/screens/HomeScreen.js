@@ -944,7 +944,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
       setBlendAllowanceVerified(true)
       return
     }
-    const snapshot = await fetchEffectiveBlendAllowance(isPro)
+    const snapshot = await fetchEffectiveBlendAllowance(effectiveIsPro)
     if (snapshot) {
       // Compute effective used from effective remaining so the
       // install guard is reflected in the displayed count.
@@ -957,7 +957,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
     } else {
       setBlendAllowanceVerified(false)
     }
-  }, [isPro, effectiveIsPro])
+  }, [effectiveIsPro])
 
   useEffect(() => {
     refreshBlendAllowance()
@@ -1294,14 +1294,14 @@ export default function JuiceSnapScreen({ navigation, route }) {
         setPrimaryProduceId(item.id)
       }
       // Show upsell nudge at 7+ manual ingredients
-      if (updated.length >= 7 && !isPro) {
+      if (updated.length >= 7 && !effectiveIsPro) {
         setShowUpsellNudge(true)
       }
       // Fifth-ingredient notice for Advanced Blend
       const distinctCount = countDistinctProduceIds(updated)
-      if (distinctCount === 5 && !blendNoticeShown && !isPro) {
+      if (distinctCount === 5 && !blendNoticeShown && !effectiveIsPro) {
         setAdvancedBlendStage('fifth_ingredient_notice')
-        setAdvancedBlendRemaining(getAdvancedBlendRemaining(blendUsedCount, isPro) ?? FREE_ADVANCED_BLEND_ALLOWANCE)
+        setAdvancedBlendRemaining(getAdvancedBlendRemaining(blendUsedCount, effectiveIsPro) ?? FREE_ADVANCED_BLEND_ALLOWANCE)
         setShowAdvancedBlendModal(true)
         setBlendNoticeShown(true)
         trackEvent('advanced_blend_threshold_reached', {
@@ -1317,7 +1317,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
       return buildBatch(updated, juiceMethod)
     })
     setIsLogged(false)
-  }, [isPro, blendNoticeShown, globalPortionMode, organicMode, primaryProduceId])
+  }, [effectiveIsPro, blendNoticeShown, globalPortionMode, organicMode, primaryProduceId])
 
   const handleCameraClose = useCallback(() => {
     setIsCameraOpen(false)
@@ -1391,9 +1391,9 @@ export default function JuiceSnapScreen({ navigation, route }) {
 
     // Check for Advanced Blend threshold from photo scan
     const distinctCount = countDistinctProduceIds(enriched)
-    if (distinctCount >= 5 && !isPro) {
+    if (distinctCount >= 5 && !effectiveIsPro) {
       setAdvancedBlendStage('fifth_ingredient_notice')
-      setAdvancedBlendRemaining(getAdvancedBlendRemaining(blendUsedCount, isPro) ?? FREE_ADVANCED_BLEND_ALLOWANCE)
+      setAdvancedBlendRemaining(getAdvancedBlendRemaining(blendUsedCount, effectiveIsPro) ?? FREE_ADVANCED_BLEND_ALLOWANCE)
       setShowAdvancedBlendModal(true)
       setBlendNoticeShown(true)
       trackEvent('advanced_blend_threshold_reached', {
@@ -1402,7 +1402,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
         source: 'photo',
       })
     }
-  }, [juiceMethod, isPro, primaryProduceId, applyQuotaSnapshot, refreshQuota])
+  }, [juiceMethod, effectiveIsPro, primaryProduceId, applyQuotaSnapshot, refreshQuota])
 
   const handleUpdateItem = useCallback((index, newProduceId, newWeightG) => {
     setBatch((prev) => {
@@ -1735,7 +1735,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
       const blendType = classifyBlend(distinctCount)
 
       // Advanced Blend: check allowance for free users
-      if (blendType === 'advanced' && !isPro && !blendApprovedRef.current) {
+      if (blendType === 'advanced' && !effectiveIsPro && !blendApprovedRef.current) {
         // Create a new operation ID for this analysis attempt
         blendOperationIdRef.current = createOperationId()
 
@@ -1753,7 +1753,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
           return
         }
 
-        const currentRemaining = getAdvancedBlendRemaining(blendUsedCount, isPro) ?? FREE_ADVANCED_BLEND_ALLOWANCE
+        const currentRemaining = getAdvancedBlendRemaining(blendUsedCount, effectiveIsPro) ?? FREE_ADVANCED_BLEND_ALLOWANCE
 
         // If server reports zero remaining, show exhausted messaging
         // instead of a confirmation that would immediately fail.
@@ -1785,7 +1785,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
       }
 
       // Pro users: create operation ID and proceed directly
-      if (blendType === 'advanced' && isPro) {
+      if (blendType === 'advanced' && effectiveIsPro) {
         blendOperationIdRef.current = createOperationId()
       }
 
@@ -1794,7 +1794,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
       if (__DEV__) console.warn('[log] handleLogToChallenge failed:', err?.message)
       Alert.alert('Logging Error', 'Could not log your juice. Please try again.')
     }
-  }, [hasItems, hasInvalidIngredients, batch, isPro, effectiveManualMode, executeLogToChallenge, blendAllowanceVerified, blendUsedCount, refreshBlendAllowance])
+  }, [hasItems, hasInvalidIngredients, batch, effectiveIsPro, effectiveManualMode, executeLogToChallenge, blendAllowanceVerified, blendUsedCount, refreshBlendAllowance])
 
   const executeLogToChallenge = useCallback(async () => {
     if (!hasItems) return
@@ -1832,7 +1832,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
         setBlendCheckInProgress(true)
         try {
           trackEvent('advanced_blend_analysis_started', {
-            plan: isPro ? 'pro' : 'free',
+            plan: effectiveIsPro ? 'pro' : 'free',
             ingredient_count: distinctCount,
             source: logSource,
           })
@@ -1902,13 +1902,13 @@ export default function JuiceSnapScreen({ navigation, route }) {
           setAdvancedBlendStage('network_retry')
           setShowAdvancedBlendModal(true)
           trackEvent('advanced_blend_allowance_error', {
-            plan: isPro ? 'pro' : 'free',
+            plan: effectiveIsPro ? 'pro' : 'free',
             error_code: err instanceof BlendAllowanceError ? err.code : 'unknown',
             ingredient_count: distinctCount,
             source: logSource,
           })
           trackEvent('advanced_blend_analysis_released', {
-            plan: isPro ? 'pro' : 'free',
+            plan: effectiveIsPro ? 'pro' : 'free',
             ingredient_count: distinctCount,
             error_code: err instanceof BlendAllowanceError ? err.code : 'unknown',
             source: logSource,
@@ -2043,7 +2043,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
       // If analysisCompletedRef.current is true but !loggingSucceeded,
       // preserve analysis state for retry (partial-success)
     }
-  }, [hasItems, hasInvalidIngredients, batch, isPro, effectiveManualMode, logJuice, recordNutritionLog, preMomentum, navigation, addLogEntry])
+  }, [hasItems, hasInvalidIngredients, batch, effectiveIsPro, effectiveManualMode, logJuice, recordNutritionLog, preMomentum, navigation, addLogEntry])
 
   const handleAdvancedBlendConfirm = useCallback(() => {
     blendApprovedRef.current = true
@@ -2279,12 +2279,12 @@ export default function JuiceSnapScreen({ navigation, route }) {
         </View>
 
         {/* ── Pro Upsell Nudge (7+ manual ingredients) ────────── */}
-        {showUpsellNudge && !isPro && (
+        {showUpsellNudge && !effectiveIsPro && (
           <TouchableOpacity
             style={manualStyles.upsellCard}
             onPress={() => {
               setShowUpsellNudge(false)
-              navigation.navigate('Vault')
+              navigation.navigate('Paywall', { source: 'upsell_nudge' })
             }}
             activeOpacity={0.8}
           >
@@ -2430,20 +2430,20 @@ export default function JuiceSnapScreen({ navigation, route }) {
       <SnapGateModal
         visible={showSnapGate}
         onDismiss={() => setShowSnapGate(false)}
-        onUpgrade={() => navigation.navigate('Vault')}
-        onBuyPack={() => navigation.navigate('Vault')}
+        onUpgrade={() => navigation.navigate('Paywall', { source: 'snap_gate' })}
+        onBuyPack={() => navigation.navigate('Paywall', { source: 'snap_gate_pack' })}
       />
 
       <AdvancedBlendModal
         visible={showAdvancedBlendModal}
         stage={advancedBlendStage}
         remaining={advancedBlendRemaining}
-        isPro={isPro}
+        isPro={effectiveIsPro}
         onUpgrade={() => {
           setShowAdvancedBlendModal(false)
           trackEvent('today_usage_row_tapped', {
             row: 'advanced_blend_upgrade',
-            plan: isPro ? 'pro' : 'free',
+            plan: effectiveIsPro ? 'pro' : 'free',
           })
           navigation.navigate('Paywall', { source: 'advanced_blend' })
         }}

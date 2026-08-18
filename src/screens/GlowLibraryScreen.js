@@ -128,6 +128,7 @@ export default function GlowLibraryScreen({ navigation }) {
         visible={!isPaywallDisabled && showPaywall}
         onDismiss={() => setShowPaywall(false)}
         trigger="pro_recipes"
+        onSubscribe={() => navigation.navigate('Paywall', { source: 'glow_library_paywall_modal' })}
       />
     </View>
   )

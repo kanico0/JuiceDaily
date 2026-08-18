@@ -111,14 +111,19 @@ export default function VaultScreen({ navigation }) {
   }, [])
 
   const handleSubscribe = () => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
-    subscribe(selectedPlan)
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+    // H3B fix: route to the real RevenueCat-backed Paywall instead of
+    // calling ProStore.subscribe(), which only flipped local state
+    // without a Google Play Billing purchase or receipt.
+    navigation.navigate('Paywall', { source: 'vault' })
   }
 
   const handleBuyPack = (pack) => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
-    if (pack.type === 'snap') buySnapPack()
-    else if (pack.type === 'recipe_pack') buyRecipePack(pack.id)
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+    // H3B fix: consumable packs also route to the real Paywall.
+    // The previous buySnapPack/buyRecipePack calls only set local
+    // state without a real purchase.
+    navigation.navigate('Paywall', { source: 'vault_pack' })
   }
 
   return (
@@ -228,7 +233,7 @@ export default function VaultScreen({ navigation }) {
                   >
                     <Crown size={18} color="#FFFFFF" />
                     <Text style={styles.subscribeCtaText}>
-                      Unlock Pro — {SUBSCRIPTION_PLANS[selectedPlan].price}
+                      Unlock Pro
                     </Text>
                   </LinearGradient>
                 </TouchableOpacity>

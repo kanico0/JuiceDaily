@@ -196,7 +196,9 @@ describe('Unified scan-quota display architecture', () => {
   test('executeLogToChallenge does not call applyQuotaSnapshot or recordSnapUsage', () => {
     const logIdx = homeScreenSource.indexOf('const executeLogToChallenge')
     expect(logIdx).toBeGreaterThan(-1)
-    const logBlock = homeScreenSource.slice(logIdx, logIdx + 6000)
+    // H3A fix: window widened because isPro→effectiveIsPro replacements
+    // added ~36 chars to the preceding handleLogToChallenge function.
+    const logBlock = homeScreenSource.slice(logIdx, logIdx + 7000)
     expect(logBlock).not.toContain('recordSnapUsage')
     // Snap was already consumed at analysis time
     expect(logBlock).toContain('already consumed')

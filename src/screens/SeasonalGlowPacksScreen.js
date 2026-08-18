@@ -134,6 +134,7 @@ export default function SeasonalGlowPacksScreen({ navigation }) {
         visible={!isPaywallDisabled && showPaywall}
         onDismiss={() => setShowPaywall(false)}
         trigger="seasonal_packs"
+        onSubscribe={() => navigation.navigate('Paywall', { source: 'seasonal_glow_paywall_modal' })}
       />
     </View>
   )

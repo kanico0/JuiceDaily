@@ -495,6 +495,7 @@ function BrowseIdeasModal({ visible, onDismiss, onScanReady, isReduced, navigati
         visible={!isPaywallDisabled && showPaywall}
         onDismiss={() => setShowPaywall(false)}
         trigger="pro_recipes"
+        onSubscribe={() => navigation.navigate('Paywall', { source: 'scan_paywall_modal' })}
       />
     </Modal>
   )

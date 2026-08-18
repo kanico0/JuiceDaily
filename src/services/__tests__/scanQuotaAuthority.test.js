@@ -158,7 +158,9 @@ describe('Scan quota server-authoritative architecture', () => {
     expect(logFnBody).not.toMatch(/recordSnapUsage/)
 
     // The comment should confirm snap was already consumed (may be further down)
-    const widerBody = code.slice(logFnIdx, logFnIdx + 6000)
+    // H3A fix: window widened because isPro→effectiveIsPro replacements
+    // added ~36 chars to the preceding handleLogToChallenge function.
+    const widerBody = code.slice(logFnIdx, logFnIdx + 7000)
     expect(widerBody).toMatch(/already consumed/i)
   })
 

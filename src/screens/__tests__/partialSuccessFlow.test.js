@@ -542,11 +542,13 @@ describe('Issue 2.5 — Partial-Success Analysis and Logging Retry', () => {
 
   describe('23. Pro remains unlimited', () => {
     it('pro users skip pre-analysis confirmation', () => {
-      expect(HOME_SRC).toContain("blendType === 'advanced' && !isPro")
+      // H3A fix: uses effectiveIsPro (canonical Pro) not legacy isPro
+      expect(HOME_SRC).toContain("blendType === 'advanced' && !effectiveIsPro")
     })
 
     it('pro users create operation ID directly', () => {
-      expect(HOME_SRC).toContain("blendType === 'advanced' && isPro")
+      // H3A fix: uses effectiveIsPro (canonical Pro) not legacy isPro
+      expect(HOME_SRC).toContain("blendType === 'advanced' && effectiveIsPro")
     })
   })
 

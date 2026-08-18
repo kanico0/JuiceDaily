@@ -313,7 +313,8 @@ describe('Advanced Blend Enforcement — QA Items 4 & 8 Regression', () => {
     const idx = HOME_SRC.indexOf('advancedBlendRemaining')
     expect(idx).toBeGreaterThan(-1)
     // Verify the computation uses getAdvancedBlendRemaining
-    const computeIdx = HOME_SRC.indexOf('getAdvancedBlendRemaining(blendUsedCount, isPro)')
+    // H3A fix: uses effectiveIsPro (canonical Pro) not legacy isPro
+    const computeIdx = HOME_SRC.indexOf('getAdvancedBlendRemaining(blendUsedCount, effectiveIsPro)')
     expect(computeIdx).toBeGreaterThan(-1)
   })
 

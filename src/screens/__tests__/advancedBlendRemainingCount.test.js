@@ -99,7 +99,8 @@ describe('Advanced Blend Remaining Count Correction', () => {
   test('13. Fifth-ingredient notice uses getAdvancedBlendRemaining', () => {
     const idx = HOME_SCREEN_SRC.indexOf("setAdvancedBlendStage('fifth_ingredient_notice')")
     const section = HOME_SCREEN_SRC.substring(idx, idx + 300)
-    expect(section).toContain('getAdvancedBlendRemaining(blendUsedCount, isPro)')
+    // H3A fix: uses effectiveIsPro (canonical Pro) not legacy isPro
+    expect(section).toContain('getAdvancedBlendRemaining(blendUsedCount, effectiveIsPro)')
   })
 
   // 14. Completion confirmation updates blendUsedCount from server
@@ -135,7 +136,8 @@ describe('Advanced Blend Remaining Count Correction', () => {
   test('19. HomeScreen passes isPro to AdvancedBlendModal', () => {
     const idx = HOME_SCREEN_SRC.indexOf('<AdvancedBlendModal')
     const section = HOME_SCREEN_SRC.substring(idx, idx + 200)
-    expect(section).toContain('isPro={isPro}')
+    // H3A fix: passes effectiveIsPro (canonical Pro) not legacy isPro
+    expect(section).toContain('isPro={effectiveIsPro}')
   })
 
   // 20. trackEvent for confirmation uses actual remaining

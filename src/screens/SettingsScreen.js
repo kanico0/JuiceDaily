@@ -351,6 +351,23 @@ function AccountSection() {
                 </Text>
               </View>
             </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.helpRow}
+              onPress={() => openLink('https://rawlifeflow.com/delete-account')}
+              activeOpacity={0.7}
+              accessibilityRole="link"
+              accessibilityLabel="Delete Account"
+            >
+              <View style={styles.helpInfo}>
+                <Text style={[styles.helpLabel, { color: '#E57373' }]}>
+                  Delete Account
+                </Text>
+                <Text style={styles.helpDesc}>
+                  Request deletion of your RawLifeFlow account and associated data
+                </Text>
+              </View>
+              <Text style={styles.helpArrow}>→</Text>
+            </TouchableOpacity>
           </>
         ) : (
           <>

@@ -72,6 +72,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { resolveLookupKey, type LookupKeyResolution } from './identityResolver.ts'
 import { fetchProEntitlement, type ProEntitlementState } from './revenueCatRest.ts'
+import { validateCanonicalUser } from './canonicalUserValidator.ts'
 
 function json(status: number, body: Record<string, unknown>): Response {
   return new Response(JSON.stringify(body), {
@@ -421,13 +422,34 @@ Deno.serve(async (req) => {
     // ── Validate canonical UUID exists in auth.users ────────
     // The REST-returned original_app_user_id must correspond to
     // a real RawLifeFlow account. If it doesn't, do NOT mutate.
-    const { data: userExists } = await admin
-      .from('auth.users')
-      .select('id')
-      .eq('id', canonicalUuid)
-      .maybeSingle()
+    //
+    // Uses the Supabase Auth Admin API (admin.auth.admin.getUserById)
+    // via validateCanonicalUser(). Three outcomes:
+    //   A. VALID USER       → continue processing
+    //   B. GENUINELY ABSENT → skipped + HTTP 200
+    //   C. LOOKUP ERROR     → failed + non-2xx (RevenueCat retries)
+    const userValidation = await validateCanonicalUser(admin, canonicalUuid)
 
-    if (!userExists) {
+    if (userValidation.status === 'error') {
+      // Outcome C — infrastructure / lookup error. Do NOT confuse
+      // this with a genuine "user not found". Mark failed and return
+      // non-2xx so RevenueCat can retry after the issue resolves.
+      console.error(
+        '[revenuecat-webhook] Auth Admin lookup error for canonical UUID:',
+        canonicalUuid,
+        'error:',
+        userValidation.message,
+      )
+      await admin
+        .from('revenuecat_webhook_events')
+        .update({ status: 'failed', processed_at: new Date().toISOString() })
+        .eq('event_id', eventId)
+      return json(500, { message: 'canonical_uuid_lookup_failed' })
+    }
+
+    if (userValidation.status === 'missing') {
+      // Outcome B — the Auth Admin API definitively reports no user
+      // exists for this UUID. Skipped + HTTP 200 is appropriate.
       console.error(
         '[revenuecat-webhook] REST canonical UUID does not correspond to a RawLifeFlow account:',
         canonicalUuid,
@@ -438,6 +460,7 @@ Deno.serve(async (req) => {
         .eq('event_id', eventId)
       return json(200, { ok: true, skipped: 'canonical_uuid_not_found_in_auth' })
     }
+    // Outcome A — valid RawLifeFlow account. Continue.
 
     const ent = restResult.entitlement!
     const derived = deriveStateFromRest(ent, event)

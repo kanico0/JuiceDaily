@@ -21,7 +21,7 @@ const PRO_PERKS = [
   { icon: <Infinity size={16} color="#CE93D8" />, text: 'Monthly Vitality Wraps' },
 ]
 
-export default function PaywallModal({ visible, onDismiss, trigger }) {
+export default function PaywallModal({ visible, onDismiss, trigger, onSubscribe }) {
   const { subscribe, setPaywallSeen } = usePro()
   const [selectedPlan, setSelectedPlan] = React.useState('annual')
   const scaleAnim = useRef(new Animated.Value(0.9)).current
@@ -46,8 +46,16 @@ export default function PaywallModal({ visible, onDismiss, trigger }) {
   }, [visible])
 
   const handleSubscribe = () => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
-    subscribe(selectedPlan)
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+    // H3B fix: when onSubscribe is provided (production callers), route
+    // to the real RevenueCat-backed Paywall instead of calling
+    // ProStore.subscribe(), which only flipped local state without a
+    // Google Play Billing purchase or receipt.
+    if (onSubscribe) {
+      onSubscribe()
+    } else {
+      subscribe(selectedPlan)
+    }
     onDismiss()
   }
 

@@ -400,13 +400,15 @@ export async function verifyPlayIntegrity(opts: VerifyOptions): Promise<DeviceRe
       : 'failed'
 
     // Step 7: Read Device Recall values
-    // Google's API structure:
-    //   deviceRecall.values.bitFirst / bitSecond / bitThird (booleans)
-    //   deviceRecall.writeDates.yyyymmFirst / yyyymmSecond / yyyymmThird (integers, YYYYMM)
+    // Google's API structure (deviceRecall is nested inside deviceIntegrity):
+    //   payload.deviceIntegrity.deviceRecall.values.bitFirst / bitSecond / bitThird (booleans)
+    //   payload.deviceIntegrity.deviceRecall.writeDates.yyyymmFirst / yyyymmSecond / yyyymmThird (integers, YYYYMM)
     //
     // Empty/unevaluated Device Recall: { values: {}, writeDates: {} }
     // This is NOT a fresh device — it means Device Recall is unavailable.
-    const deviceRecall = payload.deviceRecall
+    // A fresh device with Device Recall evaluated returns all three bits
+    // (defaulting to false), distinguishable from the empty {} case.
+    const deviceRecall = payload.deviceIntegrity?.deviceRecall
 
     // If Device Recall data is absent or empty, classify as unavailable.
     // In enforce mode: fail-closed for FREE AI-cost features.

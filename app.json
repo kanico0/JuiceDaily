@@ -35,7 +35,8 @@
           ]
         }
       ],
-      "./plugins/android-package-flavors"
+      "./plugins/android-package-flavors",
+      "./plugins/android-production-signing"
     ],
     "web": {
       "favicon": "./assets/favicon.png"

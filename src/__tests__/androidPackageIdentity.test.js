@@ -272,3 +272,102 @@ describe('Android Package Identity — Tracked Source Durability', () => {
     expect(plugin).toMatch(/includes\('flavorDimensions "distribution"'\)/)
   })
 })
+
+// ─────────────────────────────────────────────────────────────
+// PRODUCTION SIGNING DURABILITY — proves the signing config plugin
+// generates a proper release signingConfig that uses the upload
+// keystore, NOT the debug keystore.
+// ─────────────────────────────────────────────────────────────
+
+describe('Android Production Signing — Tracked Source Durability', () => {
+  const SIGNING_PLUGIN_PATH = path.join(
+    ROOT,
+    'plugins',
+    'android-production-signing.js',
+  )
+
+  test('signing config plugin is registered in app.json', () => {
+    expect(APP_JSON.expo.plugins).toContain(
+      './plugins/android-production-signing',
+    )
+  })
+
+  test('signing config plugin file exists and is tracked', () => {
+    expect(fs.existsSync(SIGNING_PLUGIN_PATH)).toBe(true)
+  })
+
+  test('plugin defines rawlifeflowUpload signingConfig', () => {
+    const plugin = fs.readFileSync(SIGNING_PLUGIN_PATH, 'utf8')
+    expect(plugin).toContain('rawlifeflowUpload')
+  })
+
+  test('plugin reads from user gradle.properties (not source)', () => {
+    const plugin = fs.readFileSync(SIGNING_PLUGIN_PATH, 'utf8')
+    expect(plugin).toContain('RAWLIFEFLOW_UPLOAD_STORE_FILE')
+    expect(plugin).toContain('RAWLIFEFLOW_UPLOAD_STORE_PASSWORD')
+    expect(plugin).toContain('RAWLIFEFLOW_UPLOAD_KEY_ALIAS')
+    expect(plugin).toContain('RAWLIFEFLOW_UPLOAD_KEY_PASSWORD')
+  })
+
+  test('plugin does NOT embed production passwords in source', () => {
+    const plugin = fs.readFileSync(SIGNING_PLUGIN_PATH, 'utf8')
+    // The SIGNING_CONFIG_BLOCK template string must use gradle
+    // property references, not hardcoded password values.
+    const blockMatch = plugin.match(
+      /const SIGNING_CONFIG_BLOCK = `([\s\S]*?)`/,
+    )
+    expect(blockMatch).not.toBeNull()
+    const block = blockMatch[1]
+    expect(block).toContain('RAWLIFEFLOW_UPLOAD_STORE_PASSWORD')
+    expect(block).toContain('RAWLIFEFLOW_UPLOAD_KEY_PASSWORD')
+    // The upload config must NOT contain hardcoded password literals.
+    // (The debug block legitimately uses 'android' — that's fine.)
+    // Extract just the upload config portion using the template var.
+    const uploadSection = block.match(
+      /\$\{SIGNING_CONFIG_NAME\} \{[\s\S]*?\}/,
+    )
+    expect(uploadSection).not.toBeNull()
+    expect(uploadSection[0]).not.toMatch(/storePassword\s*['"][^'"]+['"]/)
+    expect(uploadSection[0]).not.toMatch(/keyPassword\s*['"][^'"]+['"]/)
+  })
+
+  test('plugin sets release to use rawlifeflowUpload, NOT debug', () => {
+    const plugin = fs.readFileSync(SIGNING_PLUGIN_PATH, 'utf8')
+    // The RELEASE_BLOCK template uses ${SIGNING_CONFIG_NAME} which
+    // resolves to 'rawlifeflowUpload'. Check the template content.
+    const releaseBlockMatch = plugin.match(
+      /const RELEASE_BLOCK = `([\s\S]*?)`/,
+    )
+    expect(releaseBlockMatch).not.toBeNull()
+    const releaseBlock = releaseBlockMatch[1]
+    // The release buildType must use the upload signingConfig
+    const releaseSection = releaseBlock.match(
+      /release \{[\s\S]*?\}/,
+    )
+    expect(releaseSection).not.toBeNull()
+    expect(releaseSection[0]).toContain(
+      'signingConfig signingConfigs.${SIGNING_CONFIG_NAME}',
+    )
+    // The release section must NOT reference debug
+    expect(releaseSection[0]).not.toContain('signingConfigs.debug')
+  })
+
+  test('plugin does NOT modify debug signing', () => {
+    const plugin = fs.readFileSync(SIGNING_PLUGIN_PATH, 'utf8')
+    // Debug block must still use debug signingConfig
+    const debugMatch = plugin.match(/debug \{[\s\S]*?signingConfig[\s\S]*?\}/)
+    expect(debugMatch).not.toBeNull()
+    expect(debugMatch[0]).toContain('signingConfigs.debug')
+  })
+
+  test('plugin is idempotent (checks for existing signingConfig)', () => {
+    const plugin = fs.readFileSync(SIGNING_PLUGIN_PATH, 'utf8')
+    expect(plugin).toMatch(/includes\(`\$\{SIGNING_CONFIG_NAME\} \{`\)/)
+  })
+
+  test('plugin does NOT modify iOS', () => {
+    const plugin = fs.readFileSync(SIGNING_PLUGIN_PATH, 'utf8')
+    expect(plugin.toLowerCase()).not.toContain('ios')
+    expect(plugin.toLowerCase()).not.toContain('bundleIdentifier')
+  })
+})

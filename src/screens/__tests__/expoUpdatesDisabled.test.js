@@ -2,7 +2,7 @@
 //
 // Proves the committed native Android configuration has:
 // - expo.modules.updates.ENABLED = false
-// - runtime version = 1.0.20-local-build
+// - runtime version = 1.0.21-local-build
 // - AndroidManifest.xml is tracked in git (durable from fresh checkout)
 //
 // Does NOT rely on app.config.js alone — inspects the actual native
@@ -38,14 +38,14 @@ describe('H4: Native Expo Updates disabled', () => {
   })
 
   describe('strings.xml runtime version', () => {
-    it('5. expo_runtime_version is 1.0.20-local-build', () => {
-      expect(stringsSource).toMatch(/expo_runtime_version.*1\.0\.20-local-build/)
+    it('5. expo_runtime_version is 1.0.21-local-build', () => {
+      expect(stringsSource).toMatch(/expo_runtime_version.*1\.0\.21-local-build/)
     })
 
-    it('6. does NOT have bare 1.0.20 as runtime version', () => {
-      // The old value was exactly "1.0.20" which could match OTA updates
-      // published for app version 1.0.20.
-      expect(stringsSource).not.toMatch(/expo_runtime_version">1\.0\.20</)
+    it('6. does NOT have bare 1.0.21 as runtime version', () => {
+      // The old value was exactly "1.0.21" which could match OTA updates
+      // published for app version 1.0.21.
+      expect(stringsSource).not.toMatch(/expo_runtime_version">1\.0\.21</)
     })
   })
 

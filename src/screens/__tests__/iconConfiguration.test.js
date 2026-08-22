@@ -68,15 +68,15 @@ describe('Issue 2 — Application Icon Configuration', () => {
     expect(APP_JSON.expo.name).toBe('RawLifeFlow: Juicing Daily')
   })
 
-  test('9. Version is 1.0.20/code 20', () => {
-    expect(APP_JSON.expo.version).toBe('1.0.20')
-    expect(APP_JSON.expo.android.versionCode).toBe(20)
+  test('9. Version is 1.0.21/code 21', () => {
+    expect(APP_JSON.expo.version).toBe('1.0.21')
+    expect(APP_JSON.expo.android.versionCode).toBe(21)
   })
 
-  test('9b. Runtime version policy remains appVersion (derives 1.0.20)', () => {
+  test('9b. Runtime version policy remains appVersion (derives 1.0.21)', () => {
     expect(APP_JSON.expo.runtimeVersion).toEqual({ policy: 'appVersion' })
     // With appVersion policy, runtime version equals expo.version
-    expect(APP_JSON.expo.version).toBe('1.0.20')
+    expect(APP_JSON.expo.version).toBe('1.0.21')
   })
 
   test('10. Source artwork was not overwritten or deleted', () => {

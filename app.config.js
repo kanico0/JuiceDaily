@@ -23,7 +23,7 @@ module.exports = ({ config }) => {
     // Change runtimeVersion so any previously cached OTA update with
     // the old runtime version is ignored. The app will use the
     // embedded bundle from the APK.
-    runtimeVersion: '1.0.20-local-build',
+    runtimeVersion: '1.0.21-local-build',
     extra: {
       ...config.extra,
       BUILD_TARGET: buildTarget,

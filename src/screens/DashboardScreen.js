@@ -179,6 +179,7 @@ export default function DashboardScreen({ navigation, route }) {
   const ringsOpacity = useRef(new Animated.Value(0)).current
   const ringsScale = useRef(new Animated.Value(0.9)).current
   const identityGlow = useRef(new Animated.Value(0.7)).current
+  const identityGlowLoopRef = useRef(null)
 
   const greeting = useMemo(() => {
     const base = getGreeting()
@@ -223,12 +224,19 @@ export default function DashboardScreen({ navigation, route }) {
     ]).start()
 
     // Idle: Identity title breathing glow
-    Animated.loop(
+    const glowLoop = Animated.loop(
       Animated.sequence([
         Animated.timing(identityGlow, { toValue: 1, duration: 2500, useNativeDriver: true }),
         Animated.timing(identityGlow, { toValue: 0.7, duration: 2500, useNativeDriver: true }),
       ])
-    ).start()
+    )
+    identityGlowLoopRef.current = glowLoop
+    glowLoop.start()
+
+    return () => {
+      glowLoop.stop()
+      identityGlowLoopRef.current = null
+    }
   }, [])
 
   const handleClink = useCallback((user) => {

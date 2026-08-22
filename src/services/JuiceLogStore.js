@@ -20,7 +20,7 @@
 // Uses storage.ts for schema-versioned persistence.
 // ─────────────────────────────────────────────────────────────
 
-import React, { createContext, useContext, useReducer, useEffect, useRef, useState, useCallback } from 'react'
+import React, { createContext, useContext, useReducer, useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import { loadState, saveState } from './storage'
 import { PRODUCE_DATA } from './JuiceEngine'
 import { getDevNow, onDevClockChange } from '../utils/DevClock'
@@ -321,18 +321,24 @@ export function JuiceLogProvider({ children }) {
     dispatch({ type: 'RESET' })
   }, [])
 
-  // Derived data
+  // Derived data (memoized to prevent O(n) recomputation on every render)
   const todayKey = localDateKey()
-  const todayEntries = state.entries.filter((e) => e.dateKey === todayKey)
-  const last7DaysEntries = state.entries.filter((e) => {
-    const d = new Date(e.createdAt)
-    const now = getDevNow()
-    const diff = (now.getTime() - d.getTime()) / (1000 * 60 * 60 * 24)
-    return diff <= 7
-  })
+  const todayEntries = useMemo(
+    () => state.entries.filter((e) => e.dateKey === todayKey),
+    [state.entries, todayKey],
+  )
+  const last7DaysEntries = useMemo(
+    () => state.entries.filter((e) => {
+      const d = new Date(e.createdAt)
+      const now = getDevNow()
+      const diff = (now.getTime() - d.getTime()) / (1000 * 60 * 60 * 24)
+      return diff <= 7
+    }),
+    [state.entries, devClockTick],
+  )
 
   // Drill-down stats
-  const diversityStats = {
+  const diversityStats = useMemo(() => ({
     uniqueToday: [...new Set(todayEntries.flatMap((e) => e.ingredients))].length,
     repeatsToday: todayEntries.flatMap((e) => e.ingredients).length -
       [...new Set(todayEntries.flatMap((e) => e.ingredients))].length,
@@ -358,9 +364,9 @@ export function JuiceLogProvider({ children }) {
       const entry = PRODUCE_DATA[id]
       return { name: entry ? entry.name : id, count }
     })(),
-  }
+  }), [todayEntries, last7DaysEntries])
 
-  const consistencyStats = {
+  const consistencyStats = useMemo(() => ({
     totalEntriesToday: todayEntries.length,
     totalEntriesWeek: last7DaysEntries.length,
     activeDaysWeek: [...new Set(last7DaysEntries.map((e) => e.dateKey))].length,
@@ -377,11 +383,11 @@ export function JuiceLogProvider({ children }) {
       })
       return pattern
     })(),
-  }
+  }), [todayEntries, last7DaysEntries])
 
   const totalLogCount = state.entries.length
 
-  const value = {
+  const value = useMemo(() => ({
     entries: state.entries,
     isHydrated,
     totalLogCount,
@@ -399,7 +405,25 @@ export function JuiceLogProvider({ children }) {
     updateEntryMetadata,
     markTasteFeedbackResolved,
     resetLog,
-  }
+  }), [
+    state.entries,
+    isHydrated,
+    totalLogCount,
+    todayEntries,
+    last7DaysEntries,
+    diversityStats,
+    consistencyStats,
+    addEntry,
+    deleteEntry,
+    setTasteReaction,
+    setRating,
+    setNote,
+    toggleFavorite,
+    setFavorite,
+    updateEntryMetadata,
+    markTasteFeedbackResolved,
+    resetLog,
+  ])
 
   return (
     <JuiceLogContext.Provider value={value}>

@@ -146,7 +146,15 @@ export default function ExplainFlowScreen({ navigation }) {
         easing: EASING.decelerate,
         useNativeDriver: true,
       }),
-    ]).start()
+    ]).start(({ finished }) => {
+      // Safety net: if the animation is interrupted or fails to
+      // complete (observed on iOS when navigating to the final
+      // slide), force opacity to 1 so content is visible.
+      if (!finished) {
+        opacity.setValue(1)
+        contentScale.setValue(1)
+      }
+    })
   }, [isReduced])
 
   useEffect(() => {

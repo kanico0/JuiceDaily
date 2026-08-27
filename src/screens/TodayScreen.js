@@ -146,6 +146,8 @@ export default function TodayScreen({ navigation }) {
 
   const fadeAnim = useRef(new Animated.Value(0)).current
   const isNavigating = useRef(false)
+  const isFocusedRef = useRef(false)
+
   useEffect(() => {
     if (isReduced) { fadeAnim.setValue(1) } else {
       Animated.timing(fadeAnim, { toValue: 1, duration: DURATION.enter, easing: EASING.decelerate, useNativeDriver: true }).start()
@@ -179,9 +181,16 @@ export default function TodayScreen({ navigation }) {
   // Refresh usage card on navigation focus
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
+      isFocusedRef.current = true
       setUsageRefreshTrigger((t) => t + 1)
     })
-    return unsubscribe
+    const unsubscribeBlur = navigation.addListener('blur', () => {
+      isFocusedRef.current = false
+    })
+    return () => {
+      unsubscribe()
+      unsubscribeBlur()
+    }
   }, [navigation])
 
   // -- Daily summary for TodaySummaryStats --
@@ -414,7 +423,21 @@ export default function TodayScreen({ navigation }) {
       }
 
       if (pendingCelebration) {
-        setGardenCelebration(pendingCelebration)
+        // Delay mounting the celebration overlay until Today is
+        // focused. This prevents the transparent Modal backdrop
+        // from mounting during a navigation transition (e.g. after
+        // logging a juice from ScanSuccessScreen), which on iOS
+        // can cause the fade animation to not complete and leave
+        // an invisible touch-blocking layer.
+        const mountCelebration = () => {
+          if (isFocusedRef.current) {
+            setGardenCelebration(pendingCelebration)
+          } else {
+            // Retry shortly — navigation transition should complete
+            setTimeout(mountCelebration, 150)
+          }
+        }
+        mountCelebration()
       }
     })()
 
@@ -1080,6 +1103,21 @@ export default function TodayScreen({ navigation }) {
         visible={!!pendingAchievement}
         onDismiss={() => setPendingAchievement(null)}
       />
+
+      {/* Stage Celebration Overlay — renders the GlowJourney
+          celebration so stageCelebration state has a visible
+          Modal that can be dismissed. Without this, the
+          stageCelebration guard at line ~1128 blocks the
+          garden celebration invisibly. */}
+      {!pendingAchievement && stageCelebration && (
+        <GlowJourneyCelebrationOverlay
+          visible={true}
+          stage={stageCelebration.stage}
+          lifetimeDays={stageCelebration.lifetimeDays}
+          onDismiss={() => setStageCelebration(null)}
+          isReduced={isReduced}
+        />
+      )}
 
       <AccountGateModal
         visible={showAccountGate}

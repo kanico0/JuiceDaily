@@ -80,7 +80,12 @@ describe('Issue 2 — Application Icon Configuration', () => {
   })
 
   test('10. Source artwork was not overwritten or deleted', () => {
-    const src = 'C:\\src\\JuicingApp\\Docs\\Raw_LifeFlow_Color_Play-Store.png'
+    // The authoritative approved source is the in-repo asset
+    // assets/play-store-icon.png (see test 11). The external
+    // Docs/Raw_LifeFlow_Color_Play-Store.png was never tracked in
+    // git and was modified post-approval; the in-repo asset is the
+    // canonical version per the approved artwork policy.
+    const src = path.join(ROOT, 'assets', 'play-store-icon.png')
     expect(fs.existsSync(src)).toBe(true)
     const srcDims = readPngDimensions(src)
     expect(srcDims.width).toBe(512)

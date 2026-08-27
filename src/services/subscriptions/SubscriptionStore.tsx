@@ -36,6 +36,7 @@ import { addIdentityChangeListener, isDurableUser } from '../supabase/accountLin
 import { subscriptionAnalytics } from './subscriptionAnalytics'
 import {
   createInitialSubscriptionState,
+  type EntitlementPhase,
   type OfferingSnapshot,
   type PlanId,
   type PurchaseOutcome,
@@ -48,6 +49,11 @@ interface SubscriptionContextValue {
   offering: OfferingSnapshot | null
   purchasing: boolean
   isPro: boolean
+  // Explicit entitlement phase: 'unknown' | 'free' | 'pro'.
+  // 'unknown' during initial load or transient failure — never
+  // grants Pro access. Use this to block premium actions and show
+  // "Verifying your access…" instead of misleading Free display.
+  entitlementPhase: EntitlementPhase
   purchase: (
     plan: Extract<PlanId, 'pro_monthly' | 'pro_annual'>,
     source?: string,
@@ -83,6 +89,28 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     })
   }, [])
 
+  // Clear entitlement to unknown (used when CustomerInfo cannot be
+  // fetched after identity change, e.g. network failure during
+  // sign-out transition). Stale Pro UI must disappear immediately.
+  const clearEntitlement = useCallback(() => {
+    setState((prev) => ({
+      ...prev,
+      isProActive: false,
+      currentPlan: 'free',
+      source: null,
+      productId: null,
+      expirationDate: null,
+      willRenew: null,
+      isInGracePeriod: false,
+      managementUrl: null,
+      lastUpdatedAt: null,
+      entitlementPhase: 'unknown' as const,
+      loading: false,
+      initialized: true,
+    }))
+    wasProRef.current = false
+  }, [])
+
   // Keep raw PurchasesPackage refs so purchase() can hand the exact
   // package back to RevenueCat.
   const loadOffering = useCallback(async () => {
@@ -109,30 +137,55 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
 
     async function boot() {
       if (!MONETIZATION_ENABLED) {
-        setState((prev) => ({ ...prev, initialized: true }))
+        // Monetization disabled: verified Free (not unknown).
+        setState((prev) => ({
+          ...prev,
+          initialized: true,
+          entitlementPhase: 'free' as const,
+        }))
         return
       }
-      setState((prev) => ({ ...prev, loading: true }))
+      setState((prev) => ({ ...prev, loading: true, entitlementPhase: 'unknown' as const }))
 
       const identity = await ensureUser()
       if (!identity || cancelled) {
+        // Identity unavailable: entitlement stays UNKNOWN (not Free).
+        // Pro actions are blocked; safe functionality remains usable.
         setState((prev) => ({
           ...prev,
           initialized: true,
           loading: false,
           error: 'identity_unavailable',
+          entitlementPhase: 'unknown' as const,
         }))
         return
       }
 
       const ok = await configureRevenueCat(identity.userId)
       if (!ok || cancelled) {
-        setState((prev) => ({ ...prev, initialized: true, loading: false }))
+        // RevenueCat configure failed: entitlement stays UNKNOWN.
+        setState((prev) => ({
+          ...prev,
+          initialized: true,
+          loading: false,
+          entitlementPhase: 'unknown' as const,
+        }))
         return
       }
 
       const info = await getCustomerInfo()
-      if (info && !cancelled) applyCustomerInfo(deriveState(info))
+      if (info && !cancelled) {
+        applyCustomerInfo(deriveState(info))
+      } else if (!cancelled) {
+        // CustomerInfo fetch failed: entitlement stays UNKNOWN.
+        // Server-authoritative enforcement still protects limits.
+        setState((prev) => ({
+          ...prev,
+          initialized: true,
+          loading: false,
+          entitlementPhase: 'unknown' as const,
+        }))
+      }
 
       await loadOffering()
 
@@ -145,13 +198,25 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
 
     boot()
 
-    // When the canonical user changes (account linked or returning
-    // user signed in), accountLink already re-logged RevenueCat with
-    // the new UUID — re-derive entitlements from fresh CustomerInfo.
-    const removeIdentityListener = addIdentityChangeListener(async () => {
+    // When the canonical user changes (account linked, returning
+    // user signed in, or user signed out), re-derive entitlements
+    // from fresh CustomerInfo. If CustomerInfo cannot be fetched
+    // (e.g. after sign-out), clear the entitlement to UNKNOWN so
+    // stale Pro UI disappears immediately.
+    const removeIdentityListener = addIdentityChangeListener(async (newUserId: string | null) => {
       if (!MONETIZATION_ENABLED) return
+      if (!newUserId) {
+        clearEntitlement()
+        return
+      }
       const info = await getCustomerInfo()
-      if (info && !cancelled) applyCustomerInfo(deriveState(info))
+      if (info && !cancelled) {
+        applyCustomerInfo(deriveState(info))
+      } else if (!cancelled) {
+        // Could not fetch CustomerInfo after identity change.
+        // Clear to UNKNOWN rather than retaining stale state.
+        clearEntitlement()
+      }
     })
 
     return () => {
@@ -248,6 +313,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
       offering,
       purchasing,
       isPro: state.isProActive,
+      entitlementPhase: state.entitlementPhase,
       purchase,
       restore,
       refresh,
@@ -269,6 +335,7 @@ export function useSubscription(): SubscriptionContextValue {
       offering: null,
       purchasing: false,
       isPro: false,
+      entitlementPhase: 'free',
       purchase: async () => ({ status: 'unavailable' }),
       restore: async () => ({ status: 'error', message: 'not_configured' }),
       refresh: async () => {},

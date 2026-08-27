@@ -6,6 +6,13 @@ export type PlanId = 'free' | 'pro_monthly' | 'pro_annual'
 
 export type SubscriptionSource = 'app_store' | 'play_store' | 'promotional' | null
 
+// ── Entitlement phase ────────────────────────────────────────
+// UNKNOWN  — entitlement has not been verified yet (loading or
+//            transient failure). Must NOT grant Pro access.
+// FREE     — verified Free entitlement.
+// PRO      — verified Pro entitlement.
+export type EntitlementPhase = 'unknown' | 'free' | 'pro'
+
 export interface SubscriptionState {
   initialized: boolean
   loading: boolean
@@ -19,6 +26,9 @@ export interface SubscriptionState {
   managementUrl: string | null
   lastUpdatedAt: string | null
   error: string | null
+  // Explicit entitlement phase. 'unknown' during initial load
+  // or when CustomerInfo could not be fetched. Never grants Pro.
+  entitlementPhase: EntitlementPhase
 }
 
 export function createInitialSubscriptionState(): SubscriptionState {
@@ -35,6 +45,7 @@ export function createInitialSubscriptionState(): SubscriptionState {
     managementUrl: null,
     lastUpdatedAt: null,
     error: null,
+    entitlementPhase: 'unknown',
   }
 }
 

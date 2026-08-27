@@ -17,6 +17,9 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "validate:coverage": "tsx scripts/validateCoverage.ts",
+    "preflight:production": "node scripts/preflight-production.mjs",
+    "build:production": "node scripts/build-production.mjs",
+    "build:production:apk": "node scripts/build-production.mjs --apk",
     "lint": "eslint src/ --ext .js,.jsx,.ts,.tsx"
   },
   "dependencies": {

@@ -38,12 +38,24 @@ import type { ScanQuotaSnapshot } from '../subscriptions/subscriptionTypes'
 
 export type QuotaWarningLevel = 'none' | 'low' | 'critical' | 'exhausted'
 
+// ── Quota verification state ─────────────────────────────────
+// UNKNOWN        — quota has not been verified (initial load,
+//                  fetch failed, or identity changed). Quota-
+//                  consuming operations must be blocked.
+// KNOWN          — quota snapshot is available from the server.
+// EXHAUSTED      — quota snapshot is available and remaining <= 0.
+export type QuotaVerificationState = 'unknown' | 'known' | 'exhausted'
+
 interface QuotaContextValue {
   // Effective quota — server snapshot composed with the install
   // guard. All display selectors should use this value.
   quota: ScanQuotaSnapshot | null
   loading: boolean
   warningLevel: QuotaWarningLevel
+  // Explicit verification state. Use this to decide whether to
+  // block quota-consuming operations. When 'unknown', show a
+  // retry prompt instead of allowing or silently denying.
+  verificationState: QuotaVerificationState
   refresh: () => Promise<ScanQuotaSnapshot | null>
   applySnapshot: (snapshot: ScanQuotaSnapshot | null) => void
   // Mark the install-level Free Snap as consumed for the current
@@ -70,6 +82,9 @@ export function QuotaProvider ({ children }: { children: React.ReactNode }) {
   // Install-level remaining for Free users (0, 1, or null while loading)
   const [installRemaining, setInstallRemaining] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
+  // Tracks whether we have ever successfully verified quota from the
+  // server. Remains false until the first successful fetch.
+  const [everVerified, setEverVerified] = useState(false)
 
   // Effective quota — composed from server quota and install guard.
   // This is what all display selectors and camera eligibility checks use.
@@ -88,6 +103,7 @@ export function QuotaProvider ({ children }: { children: React.ReactNode }) {
       const snapshot = await fetchScanQuota()
       if (snapshot) {
         setServerQuota(snapshot)
+        setEverVerified(true)
         // Self-heal: if the authoritative Free quota is already
         // exhausted for the current window (e.g. the device consumed
         // a Snap on an older APK before the install marker existed),
@@ -120,6 +136,7 @@ export function QuotaProvider ({ children }: { children: React.ReactNode }) {
   const applySnapshot = useCallback((snapshot: ScanQuotaSnapshot | null) => {
     if (!snapshot) return
     setServerQuota(snapshot)
+    setEverVerified(true)
     // Read install guard for the new snapshot. After a successful
     // scan the server quota shows 0 remaining, so the effective
     // quota is 0 regardless of the install guard state. The
@@ -159,19 +176,32 @@ export function QuotaProvider ({ children }: { children: React.ReactNode }) {
     const remove = addIdentityChangeListener(() => {
       setServerQuota(null)
       setInstallRemaining(null)
+      setEverVerified(false)
       refresh()
     })
     return remove
   }, [refresh])
 
+  // Derive verification state:
+  // - loading → unknown (in-flight, not yet verified)
+  // - !everVerified && !loading → unknown (fetch failed or never ran)
+  // - quota with remaining > 0 → known
+  // - quota with remaining <= 0 → exhausted
+  const verificationState: QuotaVerificationState = (() => {
+    if (loading || !everVerified) return 'unknown'
+    if (quota && quota.remaining <= 0) return 'exhausted'
+    return 'known'
+  })()
+
   const value = useMemo<QuotaContextValue>(() => ({
     quota,
     loading,
     warningLevel: computeWarningLevel(quota),
+    verificationState,
     refresh,
     applySnapshot,
     markInstallSnapConsumed,
-  }), [quota, loading, refresh, applySnapshot, markInstallSnapConsumed])
+  }), [quota, loading, verificationState, refresh, applySnapshot, markInstallSnapConsumed])
 
   return (
     <QuotaContext.Provider value={value}>
@@ -188,6 +218,7 @@ export function useQuota (): QuotaContextValue {
       quota: null,
       loading: false,
       warningLevel: 'none',
+      verificationState: 'unknown',
       refresh: async () => null,
       applySnapshot: () => {},
       markInstallSnapConsumed: async () => {},

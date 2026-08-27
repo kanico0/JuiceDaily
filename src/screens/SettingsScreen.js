@@ -1223,7 +1223,7 @@ export default function SettingsScreen({ navigation }) {
           </View>
 
           {/* ═══ HELP & SUPPORT ═════════════════════════════════ */}
-          {SUPABASE_CONFIGURED && <AccountSection />}
+          <AccountSection />
 
           {MONETIZATION_ENABLED && <SubscriptionSection navigation={navigation} />}
 

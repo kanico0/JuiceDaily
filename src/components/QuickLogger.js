@@ -313,6 +313,14 @@ export default function QuickLogger({ visible, onDismiss, onLogComplete, onCusto
     } catch (err) {
       if (err instanceof BlendAllowanceError) {
         if (__DEV__) console.warn('[QuickLogger] Advanced Blend allowance error:', err.code)
+        // account_required: anonymous users must create a durable
+        // account before using Advanced Blend. Show the account gate
+        // rather than a generic network retry message.
+        if (err.code === 'account_required') {
+          if (onAccountRequired) onAccountRequired()
+          onDismiss()
+          return
+        }
       }
       onDismiss()
       return

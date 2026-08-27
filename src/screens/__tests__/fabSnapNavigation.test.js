@@ -77,7 +77,7 @@ describe('FAB Snap Navigation Flow', () => {
 
   test('4b. attemptCameraOpen uses checkCameraEligibility coordinator', () => {
     const attemptIdx = homeSource.indexOf('const attemptCameraOpen = useCallback')
-    const attemptSection = homeSource.substring(attemptIdx, attemptIdx + 3000)
+    const attemptSection = homeSource.substring(attemptIdx, attemptIdx + 5000)
     expect(attemptSection).toContain('checkCameraEligibility')
   })
 

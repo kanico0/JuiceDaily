@@ -90,6 +90,9 @@ if (DEVELOPER_TOOLS_ENABLED) {
   }
 }
 
+import ProductionConfigGate from './src/components/ProductionConfigGate'
+import { validateProductionConfig, isProductionBuild } from './src/services/subscriptions/productionConfig'
+
 const RootStack = createNativeStackNavigator()
 const Tab = createBottomTabNavigator()
 const navigationRef = React.createRef()
@@ -441,6 +444,20 @@ function RootNavigator() {
 // ── App Root ─────────────────────────────────────────────────
 
 export default function App() {
+  // ── Production configuration gate ──────────────────────────
+  // If a production binary is missing required configuration,
+  // show a blocking recovery screen. This is a BUILD CONFIGURATION
+  // FAILURE, not a temporary service outage. The app must not
+  // continue into normal operation.
+  const configResult = validateProductionConfig(isProductionBuild())
+  if (!configResult.ok) {
+    return (
+      <SafeAreaProvider>
+        <ProductionConfigGate />
+      </SafeAreaProvider>
+    )
+  }
+
   return (
     <SafeAreaProvider>
       <WeightUnitProvider>

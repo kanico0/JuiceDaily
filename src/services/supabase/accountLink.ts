@@ -57,7 +57,7 @@ export type VerifyResult =
 // QuotaStore / SubscriptionStore refresh when the canonical user
 // changes (e.g. signing into an existing account).
 
-type IdentityListener = (userId: string) => void
+type IdentityListener = (userId: string | null) => void
 const identityListeners = new Set<IdentityListener>()
 
 export function addIdentityChangeListener(cb: IdentityListener): () => void {
@@ -65,10 +65,12 @@ export function addIdentityChangeListener(cb: IdentityListener): () => void {
   return () => identityListeners.delete(cb)
 }
 
-async function notifyIdentityChanged(userId: string): Promise<void> {
+async function notifyIdentityChanged(userId: string | null): Promise<void> {
   // RevenueCat must always track the canonical Supabase UUID so
   // purchases can never strand under a temporary account.
-  await revenueCatLogIn(userId)
+  if (userId) {
+    await revenueCatLogIn(userId)
+  }
   identityListeners.forEach((cb) => {
     try {
       cb(userId)

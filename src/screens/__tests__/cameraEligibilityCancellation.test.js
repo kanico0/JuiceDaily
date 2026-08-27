@@ -19,7 +19,7 @@ const homeSource = fs.readFileSync(
 
 function getAttemptCameraOpenSection () {
   const idx = homeSource.indexOf('const attemptCameraOpen = useCallback')
-  return homeSource.substring(idx, idx + 8000)
+  return homeSource.substring(idx, idx + 10000)
 }
 
 describe('Camera Eligibility Cancellation Tokens', () => {
@@ -117,7 +117,7 @@ describe('Camera Eligibility Cancellation Tokens', () => {
   test('12. three isStale guard points exist (quota refresh, offline, main eligibility)', () => {
     const section = getAttemptCameraOpenSection()
     const staleChecks = section.match(/if \(isStale\(\)\) return/g)
-    expect(staleChecks).toHaveLength(3)
+    expect(staleChecks).toHaveLength(4)
   })
 })
 

@@ -149,6 +149,7 @@ export function deriveState (info: CustomerInfo): Partial<SubscriptionState> {
       isInGracePeriod: false,
       managementUrl: info.managementURL ?? null,
       lastUpdatedAt: new Date().toISOString(),
+      entitlementPhase: 'free',
     }
   }
 
@@ -174,6 +175,7 @@ export function deriveState (info: CustomerInfo): Partial<SubscriptionState> {
     ),
     managementUrl: info.managementURL ?? null,
     lastUpdatedAt: new Date().toISOString(),
+    entitlementPhase: 'pro',
   }
 }
 

@@ -812,7 +812,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
   const { addEntry: addLogEntry, setTasteReaction: setLogTasteReaction } = useJuiceLog()
   const { isPro } = usePro()
   const { isPro: effectiveIsPro, snapMonthlyLimit: effectiveSnapLimit, isQaProSimulation } = useEffectivePlanAccess()
-  const { quota: serverQuota, applySnapshot: applyQuotaSnapshot, refresh: refreshQuota, markInstallSnapConsumed } = useQuota()
+  const { quota: serverQuota, applySnapshot: applyQuotaSnapshot, refresh: refreshQuota, markInstallSnapConsumed, verificationState } = useQuota()
   const filmRollLabel = selectFilmRollLabel(serverQuota)
   const filmRollRemaining = selectFilmRollRemaining(serverQuota)
   const filmRollIsPro = selectFilmRollIsPro(serverQuota)
@@ -1054,6 +1054,32 @@ export default function JuiceSnapScreen({ navigation, route }) {
 
     try {
       let currentQuota = serverQuota
+
+      // ── Quota verification gate ──────────────────────────────
+      // When verificationState is UNKNOWN (initial load, fetch
+      // failed, or identity changed), block quota-consuming
+      // camera operations. The server remains the final authority.
+      if (verificationState === 'unknown' && SUPABASE_CONFIGURED) {
+        // Attempt one refresh before blocking
+        currentQuota = await Promise.race([
+          refreshQuota(),
+          new Promise(resolve => setTimeout(() => resolve(null), CAMERA_TIMEOUT_MS)),
+        ])
+        if (isStale()) return
+        // If still unknown after refresh, block
+        if (verificationState === 'unknown' && currentQuota === null) {
+          setIsPreparingCamera(false)
+          Alert.alert(
+            'Unable to Check Access',
+            'We could not verify your scan access. Please check your connection and try again.',
+            [
+              { text: 'Cancel', style: 'cancel' },
+              { text: 'Try Again', onPress: () => attemptCameraOpen(isAutoOpen) },
+            ],
+          )
+          return
+        }
+      }
 
       // If quota hasn't loaded yet and Supabase is configured, refresh once
       // and use the returned snapshot directly — no setTimeout, no ref sync.

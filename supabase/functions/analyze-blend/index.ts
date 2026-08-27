@@ -174,6 +174,20 @@ Deno.serve(async (req) => {
   const { data: userData, error: userError } = await admin.auth.getUser(jwt)
   if (userError || !userData.user) return json(401, { message: 'Invalid token' })
 
+  // ── Durable-account gate (server-authoritative) ────────────
+  // Anonymous Supabase users carry the 'authenticated' role, so
+  // the gate checks the server-trusted is_anonymous flag on the
+  // VERIFIED user record. Runs BEFORE any allowance reservation
+  // or consumption. This prevents the anonymous-reset bypass
+  // where a user clears storage, gets a new anonymous identity,
+  // and receives another 3 free Advanced Blend allowances.
+  if (userData.user.is_anonymous === true) {
+    return json(403, {
+      code: 'account_required',
+      message: 'A verified account is required before using Advanced Blend',
+    })
+  }
+
   const userId = userData.user.id
 
   // ── GET: fetch allowance snapshot ───────────────────────────

@@ -147,6 +147,7 @@ function LivingGardenSceneComponent({
   onRainbowMotionDebug = null, // QA-only: (values) => void
   motionVariant = null, // QA-only: 'v2-calibration', 'v3-hero', 'v4-hero-focus', 'v5-merge-proof'
   onV2Debug = null, // QA-only: Motion V2 diagnostic callback
+  entryToken = 0, // increments on each intentional Garden open → replays wake animation
   onV3Debug = null, // QA-only: Motion V3 HERO diagnostic callback
   onV4Debug = null, // QA-only: Motion V4 HERO FOCUS diagnostic callback
   onV5Debug = null, // QA-only: Motion V5 MERGE PROOF diagnostic callback
@@ -259,12 +260,18 @@ function LivingGardenSceneComponent({
   )
 
   // ── Wake animation (unconditional, no date input) ───────────
+  // Replays on each intentional Garden entry (entryToken change),
+  // resetting to the initial animation frame before animating into
+  // the current persisted Garden state. Presentation-only.
   useEffect(() => {
     if (isReduced) {
       wakeOpacity.current.setValue(1)
       wakeBrightness.current.setValue(1)
       return
     }
+    // Reset to initial frame on each replay
+    wakeOpacity.current.setValue(0.55)
+    wakeBrightness.current.setValue(0.72)
     // Phase 1C: both use useNativeDriver: false because the Animated.View
     // wraps SVG content with AnimatedG children. Using useNativeDriver: true
     // on opacity moves the animated node to native, which then conflicts
@@ -285,7 +292,7 @@ function LivingGardenSceneComponent({
       opacityAnim.stop()
       brightnessAnim.stop()
     }
-  }, [isReduced])
+  }, [isReduced, entryToken])
 
   // ── Scene SVG ───────────────────────────────────────────────
   const sceneSvg = (
@@ -588,7 +595,8 @@ function sceneComparator(prev, next) {
     prev.spotlightActive === next.spotlightActive &&
     prev.spotlightBedKey === next.spotlightBedKey &&
     prev.spotlightTargetStage === next.spotlightTargetStage &&
-    prev.rainbowProbeActive === next.rainbowProbeActive
+    prev.rainbowProbeActive === next.rainbowProbeActive &&
+    prev.entryToken === next.entryToken
   )
 }
 

@@ -92,6 +92,13 @@ function GardenDetail({
   const [advancements, setAdvancements] = useState(null)
   const seenStateLoaded = useRef(false)
   const prevVisibleRef = useRef(false)
+
+  // ── Entry replay token ──────────────────────────────────────
+  // Increments on each intentional Garden open (visible false→true).
+  // Passed to LivingGardenScene to replay the approved wake/entrance
+  // animation from its initial frame. Presentation-only — does not
+  // affect progression, seen-state, advancements, or celebrations.
+  const [entryToken, setEntryToken] = useState(0)
   // Ref mirror of currentSeenState so the open effect can depend on
   // [visible] only. This prevents a race where currentSeenState changes
   // while the async detection IIFE is running, which would cancel the
@@ -117,6 +124,7 @@ function GardenDetail({
   useEffect(() => {
     if (!visible || seenStateLoaded.current) return
     seenStateLoaded.current = true
+    setEntryToken((t) => t + 1)
     let cancelled = false
     ;(async () => {
       const currentState = currentSeenStateRef.current
@@ -235,6 +243,7 @@ function GardenDetail({
               onArborPress={handleArborPress}
               sceneId="garden-detail"
               advancements={sceneAdvancements}
+              entryToken={entryToken}
             />
           </View>
 

@@ -2800,6 +2800,7 @@ export default function ScanScreen({ navigation, route }) {
         weeklyLeafStates={glowJourney.weeklyLeafStates}
         lifetimeDays={glowJourney.lifetimeQualifyingDays}
         unlockedAchievementIds={glowJourney.unlockedAchievementIds}
+        isReduced={isReduced}
       />
     </View>
   )

@@ -6,8 +6,8 @@
 // weekly progress, current stage, and journey progress bar.
 // ─────────────────────────────────────────────────────────────
 
-import React, { useMemo } from 'react'
-import { View, Text, StyleSheet, Modal, TouchableOpacity, ScrollView, useWindowDimensions } from 'react-native'
+import React, { useMemo, useState, useEffect, useRef } from 'react'
+import { View, Text, StyleSheet, Modal, TouchableOpacity, ScrollView, useWindowDimensions, Animated } from 'react-native'
 import { X } from 'lucide-react-native'
 import { SEMANTIC_COLORS, SEMANTIC_SPACE, SEMANTIC_RADIUS } from '../constants/tokens'
 import { WEEKLY_GLOW_GOAL, getJourneyStage, getNextStage, getDaysToNextStage, GLOW_JOURNEY_STAGES } from '../constants/glowJourneyStages'
@@ -27,6 +27,7 @@ function GlowJourneyDetail({
   weeklyLeafStates = [],
   lifetimeDays = 0,
   unlockedAchievementIds = [],
+  isReduced = false,
 }) {
   const stage = useMemo(() => getJourneyStage(lifetimeDays), [lifetimeDays])
   const nextStage = useMemo(() => getNextStage(lifetimeDays), [lifetimeDays])
@@ -45,6 +46,50 @@ function GlowJourneyDetail({
     streakCount,
   }), [lifetimeDays, weeklyQualifyingDays, weeklyLeafStates, streakCount])
 
+  // ── Entrance replay ─────────────────────────────────────────
+  // Replays the approved ordinary Glow entrance animation on each
+  // intentional entry from Explore. Increments entryToken when the
+  // modal transitions from hidden→visible. Presentation-only — does
+  // not alter persisted Glow state, milestones, or celebrations.
+  const entranceOpacity = useRef(new Animated.Value(isReduced ? 1 : 0))
+  const entranceScale = useRef(new Animated.Value(isReduced ? 1 : 0.96))
+  const [entryToken, setEntryToken] = useState(0)
+  const prevVisibleRef = useRef(false)
+
+  useEffect(() => {
+    if (visible && !prevVisibleRef.current) {
+      setEntryToken((t) => t + 1)
+    }
+    prevVisibleRef.current = visible
+  }, [visible])
+
+  useEffect(() => {
+    if (isReduced) {
+      entranceOpacity.current.setValue(1)
+      entranceScale.current.setValue(1)
+      return
+    }
+    // Reset to initial frame on each replay
+    entranceOpacity.current.setValue(0)
+    entranceScale.current.setValue(0.96)
+    const opacityAnim = Animated.timing(entranceOpacity.current, {
+      toValue: 1,
+      duration: 320,
+      useNativeDriver: true,
+    })
+    const scaleAnim = Animated.timing(entranceScale.current, {
+      toValue: 1,
+      duration: 320,
+      useNativeDriver: true,
+    })
+    opacityAnim.start()
+    scaleAnim.start()
+    return () => {
+      opacityAnim.stop()
+      scaleAnim.stop()
+    }
+  }, [entryToken, isReduced])
+
   return (
     <Modal visible={visible} animationType="fade" transparent onRequestClose={onClose}>
       <View style={styles.overlay}>
@@ -59,15 +104,20 @@ function GlowJourneyDetail({
 
           <ScrollView showsVerticalScrollIndicator={false} style={styles.scroll}>
             {/* Canonical Glow artwork — same family as Explore card */}
-            <View style={styles.artworkContainer}>
+            <Animated.View
+              style={[
+                styles.artworkContainer,
+                { opacity: entranceOpacity.current, transform: [{ scale: entranceScale.current }] },
+              ]}
+            >
               <GlowJourneyDropArtwork
                 visualState={detailVisualState}
                 heroWidth={DETAIL_HERO_WIDTH}
                 vineWidth={DETAIL_HERO_WIDTH}
                 surfaceTranslateY={detailVisualState.heroState.surfaceY}
-                isReduced={false}
+                isReduced={isReduced}
               />
-            </View>
+            </Animated.View>
 
             {/* Streak numeral + label */}
             <View style={styles.streakRow}>

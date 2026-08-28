@@ -69,21 +69,41 @@
 //   from the underlying store purchase, not by the mobile client.
 //   RevenueCat delivers both sandbox and production events to the
 //   SAME webhook URL by default. SANDBOX events are skipped (never
-//   mutate subscriptions.is_active) unless the server-only secret
-//   REVENUECAT_ALLOW_SANDBOX_ENTITLEMENT=1 is explicitly set — that
-//   secret must never be set on the production project.
+//   mutate subscriptions.is_active) UNLESS either:
+//     a) the server-only secret REVENUECAT_ALLOW_SANDBOX_ENTITLEMENT=1
+//        is explicitly set — must never be set on the production
+//        project, or
+//     b) the event's CANONICAL identity (resolved via RevenueCat
+//        REST subscriber.original_app_user_id, then validated to
+//        exist in auth.users — never the raw, unvalidated webhook
+//        event.app_user_id) is present in the server-only
+//        REVENUECAT_SANDBOX_REVIEWER_UUIDS allowlist. This lets a
+//        small number of pre-provisioned App Review / QA reviewer
+//        accounts receive real Pro entitlement from a sandbox
+//        purchase so reviewers can validate the subscription
+//        experience end-to-end, without opening sandbox entitlement
+//        to arbitrary users. The allowlist decision is made only
+//        AFTER the same REST reconciliation, auth.users validation,
+//        idempotency, and event-ordering guarantees used for
+//        production events.
 //
 // Secrets (Supabase function secrets):
 //   REVENUECAT_WEBHOOK_SECRET
 //   REVENUECAT_SERVER_API_KEY  (required for REST reconciliation)
 //   REVENUECAT_ALLOW_SANDBOX_ENTITLEMENT  (must be unset/0 in production)
+//   REVENUECAT_SANDBOX_REVIEWER_UUIDS  (comma-separated auth.users UUIDs;
+//     optional — a small, curated allowlist for App Review only)
 // ─────────────────────────────────────────────────────────────
 
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { resolveLookupKey, type LookupKeyResolution } from './identityResolver.ts'
 import { fetchProEntitlement, type ProEntitlementState } from './revenueCatRest.ts'
 import { validateCanonicalUser } from './canonicalUserValidator.ts'
-import { shouldSkipSandboxEvent } from './sandboxGuard.ts'
+import {
+  shouldSkipSandboxEvent,
+  shouldSkipSandboxEventForCanonicalUser,
+  parseSandboxReviewerAllowlist,
+} from './sandboxGuard.ts'
 
 function json(status: number, body: Record<string, unknown>): Response {
   return new Response(JSON.stringify(body), {
@@ -360,35 +380,36 @@ Deno.serve(async (req) => {
     return json(200, { ok: true, skipped: 'transfer_not_supported' })
   }
 
-  // ── SANDBOX environment guard (fail-closed) ────────────────
+  // ── SANDBOX environment boundary ────────────────────────────
   // event.environment reflects RevenueCat's own classification of
   // the underlying store purchase (sandbox vs production), not a
   // value the mobile client can set directly. Sandbox purchases
-  // (e.g. TestFlight / Play internal-testing sandbox testers) are
-  // delivered to the SAME webhook URL as production purchases by
-  // default. A sandbox purchase must NEVER be allowed to activate
-  // real production Pro entitlement.
+  // (e.g. TestFlight / Play internal-testing sandbox testers, or an
+  // App-Review reviewer's sandbox purchase) are delivered to the
+  // SAME webhook URL as production purchases by default. A sandbox
+  // purchase must NEVER be allowed to activate real production Pro
+  // entitlement for an ordinary user.
   //
-  // This boundary is controlled ONLY by a server-side Supabase
-  // function secret (REVENUECAT_ALLOW_SANDBOX_ENTITLEMENT), never
-  // by any client-supplied request field. It is intended for a
-  // dedicated, explicitly-provisioned QA project/environment only —
-  // never enabled on the production project.
+  // EXCEPTION: a small, server-only allowlist of pre-provisioned
+  // reviewer Supabase UUIDs (REVENUECAT_SANDBOX_REVIEWER_UUIDS) may
+  // receive normal Pro entitlement from a sandbox purchase, so an
+  // Apple/Google App Review reviewer can validate the real
+  // subscription experience end-to-end. This check is performed
+  // ONLY after RevenueCat REST reconciliation resolves the canonical
+  // UUID (subscriber.original_app_user_id) and that UUID is
+  // validated to exist in auth.users — the raw, unvalidated webhook
+  // `event.app_user_id` is never sufficient on its own and is never
+  // compared against the allowlist. See the final decision below,
+  // near the apply_revenuecat_event call.
+  //
+  // This boundary is controlled ONLY by server-side Supabase
+  // function secrets (REVENUECAT_ALLOW_SANDBOX_ENTITLEMENT,
+  // REVENUECAT_SANDBOX_REVIEWER_UUIDS), never by any client-supplied
+  // request field.
   const allowSandboxEntitlement = Deno.env.get('REVENUECAT_ALLOW_SANDBOX_ENTITLEMENT') === '1'
-  if (shouldSkipSandboxEvent(environment, allowSandboxEntitlement)) {
-    console.warn(
-      '[revenuecat-webhook] SANDBOX event received — ignored (no production mutation).',
-      'event_id:', eventId, 'type:', eventType,
-    )
-    await admin
-      .from('revenuecat_webhook_events')
-      .update({ status: 'skipped', processed_at: new Date().toISOString() })
-      .eq('event_id', eventId)
-    // 200 (not an error) so RevenueCat does not retry-storm a
-    // sandbox event that is intentionally never going to mutate
-    // production state.
-    return json(200, { ok: true, skipped: 'sandbox_environment_not_authoritative' })
-  }
+  const sandboxReviewerAllowlist = parseSandboxReviewerAllowlist(
+    Deno.env.get('REVENUECAT_SANDBOX_REVIEWER_UUIDS'),
+  )
 
   // ── Lookup key extraction ──────────────────────────────────
   // Extract ANY valid UUID from the event to use as a RevenueCat
@@ -428,6 +449,24 @@ Deno.serve(async (req) => {
   const serverApiKey = Deno.env.get('REVENUECAT_SERVER_API_KEY')
   const restConfigured = Boolean(serverApiKey)
   const allowEventTypeFallback = Deno.env.get('REVENUECAT_ALLOW_EVENT_TYPE_FALLBACK') === '1'
+
+  // ── SANDBOX early bail-out when REST is unavailable ────────
+  // The reviewer-allowlist exception requires a REST-resolved,
+  // auth.users-validated canonical UUID. Without REST reconciliation
+  // there is no safe way to resolve that identity, so a sandbox
+  // event is skipped immediately (fail closed) rather than falling
+  // through to the non-authoritative event-type-fallback path.
+  if (environment === 'sandbox' && !restConfigured && shouldSkipSandboxEvent(environment, allowSandboxEntitlement)) {
+    console.warn(
+      '[revenuecat-webhook] SANDBOX event received with no REST reconciliation configured — ignored.',
+      'event_id:', eventId, 'type:', eventType,
+    )
+    await admin
+      .from('revenuecat_webhook_events')
+      .update({ status: 'skipped', processed_at: new Date().toISOString() })
+      .eq('event_id', eventId)
+    return json(200, { ok: true, skipped: 'sandbox_environment_not_authoritative' })
+  }
 
   let canonicalUuid: string
   let isActive: boolean
@@ -556,6 +595,36 @@ Deno.serve(async (req) => {
       })
       .eq('event_id', eventId)
     return json(500, { message: 'REVENUECAT_SERVER_API_KEY not configured' })
+  }
+
+  // ── Final SANDBOX decision (post-reconciliation) ────────────
+  // By this point, for a sandbox event, canonicalUuid has been
+  // resolved via RevenueCat REST (subscriber.original_app_user_id)
+  // and validated to exist in auth.users (the restConfigured branch
+  // above returns early on REST failure or a missing/invalid user).
+  // Only NOW — against this validated identity, never the raw
+  // webhook event.app_user_id — do we decide whether this sandbox
+  // event may proceed to mutate subscriptions.
+  if (
+    shouldSkipSandboxEventForCanonicalUser(
+      environment,
+      allowSandboxEntitlement,
+      canonicalUuid,
+      sandboxReviewerAllowlist,
+    )
+  ) {
+    console.warn(
+      '[revenuecat-webhook] SANDBOX event received — canonical user not on reviewer allowlist, ignored.',
+      'event_id:', eventId, 'type:', eventType,
+    )
+    await admin
+      .from('revenuecat_webhook_events')
+      .update({ status: 'skipped', processed_at: new Date().toISOString() })
+      .eq('event_id', eventId)
+    // 200 (not an error) so RevenueCat does not retry-storm a
+    // sandbox event that is intentionally never going to mutate
+    // production state.
+    return json(200, { ok: true, skipped: 'sandbox_environment_not_authoritative' })
   }
 
   // ── Atomic subscription update ─────────────────────────────

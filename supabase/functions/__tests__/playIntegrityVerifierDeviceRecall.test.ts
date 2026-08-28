@@ -128,6 +128,7 @@ const baseVerifyOpts = {
   cloudProjectNumber: CLOUD_PROJECT_NUMBER,
   serviceAccountJson: testServiceAccountJson,
   isMock: false,
+  allowMock: false,
   enforcementMode: 'observe' as string,
 }
 

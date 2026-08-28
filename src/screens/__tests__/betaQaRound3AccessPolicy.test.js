@@ -286,8 +286,12 @@ describe('Shared visibility policy function', () => {
   })
 
   test('Browse screen source uses applyRecipeVisibilityPolicy or equivalent Pro handling', () => {
-    // The Browse screen must have Pro badge and paywall handling
-    expect(SCAN_SRC).toContain('usePro')
+    // The Browse screen must have Pro badge and paywall handling.
+    // Real Pro gating now uses the canonical useEffectiveProAccess()
+    // hook (P1 audit Fix 5) rather than the legacy ProStore usePro(),
+    // so a real paying subscriber is never shown Free-tier UI here.
+    expect(SCAN_SRC).toContain('useEffectiveProAccess')
+    expect(SCAN_SRC).toContain('hasEffectiveFeatureAccess')
     expect(SCAN_SRC).toContain('hasFeatureAccess')
     expect(SCAN_SRC).toContain('PaywallModal')
     expect(SCAN_SRC).toContain('proRecipes')

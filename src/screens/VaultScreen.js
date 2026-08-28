@@ -31,8 +31,10 @@ import {
   Lock,
 } from 'lucide-react-native'
 import { SUBSCRIPTION_PLANS, IAP_PACKS, PRO_FEATURES, usePro } from '../services/ProStore'
+import { useEffectiveProAccess } from '../hooks/useEffectiveProAccess'
+import { useSubscription } from '../services/subscriptions/SubscriptionStore'
 import { useQuota } from '../services/quota/QuotaStore'
-import { selectFilmRollLabel } from '../services/subscriptions/subscriptionSelectors'
+import { selectFilmRollLabel, selectPlanLabel } from '../services/subscriptions/subscriptionSelectors'
 import MeshGradientBg from '../components/MeshGradientBg'
 
 const PLAN_KEYS = ['monthly', 'annual']
@@ -95,7 +97,14 @@ function PackCard({ pack, onBuy, isPurchased }) {
 // ── Main Screen ──────────────────────────────────────────────
 
 export default function VaultScreen({ navigation }) {
-  const { pro, isPro, subscribe, buySnapPack, buyRecipePack, hasRecipePack } = usePro()
+  // Legacy ProStore is still used for the local recipe/snap pack
+  // purchase mechanics (a separate, non-subscription feature), but
+  // real Pro entitlement gating uses the canonical effective-Pro
+  // hook so a real paying subscriber is never shown Free-tier UI.
+  const { subscribe, buySnapPack, buyRecipePack, hasRecipePack } = usePro()
+  const { isPro } = useEffectiveProAccess()
+  const { state: subState } = useSubscription()
+  const planLabel = selectPlanLabel(subState)
   const { quota: serverQuota } = useQuota()
   const snapInfoLabel = selectFilmRollLabel(serverQuota)
   const [selectedPlan, setSelectedPlan] = useState('annual')
@@ -158,7 +167,7 @@ export default function VaultScreen({ navigation }) {
                   <View style={styles.proStatusInfo}>
                     <Text style={styles.proStatusTitle}>Architect Pro</Text>
                     <Text style={styles.proStatusDesc}>
-                      {`${pro.subscriptionPlan === 'annual' ? 'Annual' : 'Monthly'} plan active`}
+                      {`${planLabel.includes('Annual') ? 'Annual' : 'Monthly'} plan active`}
                     </Text>
                   </View>
                   <Check size={20} color="#81C784" />

@@ -20,6 +20,7 @@
     "preflight:production": "node scripts/preflight-production.mjs",
     "build:production": "node scripts/build-production.mjs",
     "build:production:apk": "node scripts/build-production.mjs --apk",
+    "eas-build-pre-install": "node scripts/preflight-production.mjs",
     "lint": "eslint src/ --ext .js,.jsx,.ts,.tsx"
   },
   "dependencies": {

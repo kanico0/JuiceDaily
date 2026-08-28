@@ -21,7 +21,7 @@
 // ─────────────────────────────────────────────────────────────
 
 import { useMemo } from 'react'
-import { usePro } from '../services/ProStore'
+import { usePro, PRO_FEATURES } from '../services/ProStore'
 import { useSubscription } from '../services/subscriptions/SubscriptionStore'
 
 // Build-time gate: dev override only works in QA/local builds
@@ -67,4 +67,22 @@ export function useEffectiveProAccess() {
       isDevOverridePossible: DEVELOPER_TOOLS_ENABLED,
     }
   }, [realIsProActive, subState.initialized, devProActive])
+}
+
+/**
+ * Canonical, fail-closed feature-access check for the effective Pro
+ * state returned by useEffectiveProAccess()/useEffectivePlanAccess().
+ *
+ * Unlike the legacy ProStore.hasFeatureAccess (which defaults to
+ * `true` for unrecognized feature keys), this helper fails CLOSED:
+ * an unknown feature key never grants access, regardless of Pro
+ * status. Only keys present in PRO_FEATURES are recognized.
+ *
+ * @param {boolean} isPro - effective Pro status (from useEffectiveProAccess)
+ * @param {string} featureKey - key from PRO_FEATURES
+ * @returns {boolean}
+ */
+export function hasEffectiveFeatureAccess(isPro, featureKey) {
+  if (!Object.prototype.hasOwnProperty.call(PRO_FEATURES, featureKey)) return false
+  return Boolean(isPro)
 }

@@ -7,6 +7,19 @@
 //
 // Usage:
 //   node scripts/preflight-production.mjs
+//   node scripts/preflight-production.mjs --store   (strict store mode)
+//
+// Strict STORE mode is activated by either:
+//   - the --store CLI flag, or
+//   - EAS_BUILD_PROFILE=production (set automatically by EAS Build
+//     for the "production" build profile — see eas-build-pre-install
+//     hook in package.json)
+//
+// In strict STORE mode, EXPO_PUBLIC_MONETIZATION_ENABLED must be
+// exactly "true". A distributable store build must never ship with
+// monetization intentionally disabled. Non-store builds (local QA,
+// preview, development, beta) retain the existing looser check
+// (must be explicitly "true" or "false", but either is accepted).
 //
 // Exit codes:
 //   0 — all checks passed, safe to build
@@ -45,6 +58,39 @@ const env = {
   ...process.env,
 }
 
+// ── EAS build-profile awareness ──────────────────────────────
+// This script is wired as the `eas-build-pre-install` npm lifecycle
+// hook, which EAS Build runs automatically for EVERY profile
+// (development, beta, remoteBeta, preview, production). Only the
+// "production" profile is a distributable store build; other
+// profiles (dev client, internal beta/preview APKs) intentionally
+// may not have full production credentials configured and must not
+// be blocked by this hook.
+//
+// EAS Build sets EAS_BUILD_PROFILE automatically. When running
+// under EAS for any profile OTHER than "production", skip
+// validation entirely (exit 0). Local/manual invocation (no
+// EAS_BUILD_PROFILE set, e.g. `npm run build:production`) always
+// runs the full check, preserving existing local-wrapper behavior.
+const isEasBuild = Boolean(env.EAS_BUILD_PROFILE)
+const isNonProductionEasProfile = isEasBuild && env.EAS_BUILD_PROFILE !== 'production'
+
+if (isNonProductionEasProfile) {
+  console.log(
+    `\n[preflight-production] EAS profile "${env.EAS_BUILD_PROFILE}" is not a store production build — skipping preflight.\n`,
+  )
+  process.exit(0)
+}
+
+// ── Strict STORE mode detection ──────────────────────────────
+// A distributable store build (Play Store / App Store) must always
+// have monetization enabled. This is intentionally stricter than
+// the general production-config validation, which only requires the
+// flag to be an explicit, well-formed boolean (allowing a local QA
+// build to intentionally disable monetization for testing).
+const isStoreBuild =
+  process.argv.includes('--store') || env.EAS_BUILD_PROFILE === 'production'
+
 // ── Validators ───────────────────────────────────────────────
 
 function isValidSupabaseUrl (url) {
@@ -75,6 +121,11 @@ function isValidMonetizationFlag (flag) {
   return lower === 'true' || lower === 'false'
 }
 
+function isValidStoreMonetizationFlag (flag) {
+  if (flag === null || flag === undefined) return false
+  return String(flag).toLowerCase() === 'true'
+}
+
 // ── Required production checks ───────────────────────────────
 
 const checks = [
@@ -103,8 +154,10 @@ const checks = [
     key: 'EXPO_PUBLIC_MONETIZATION_ENABLED',
     label: 'Monetization flag',
     getValue: () => env.EXPO_PUBLIC_MONETIZATION_ENABLED,
-    validate: isValidMonetizationFlag,
-    reason: 'Must be explicitly "true" or "false"',
+    validate: isStoreBuild ? isValidStoreMonetizationFlag : isValidMonetizationFlag,
+    reason: isStoreBuild
+      ? 'Store production builds must have monetization enabled: must be exactly "true"'
+      : 'Must be explicitly "true" or "false"',
   },
 ]
 
@@ -113,6 +166,9 @@ const checks = [
 console.log('\n┌─────────────────────────────────────────────────────────┐')
 console.log('│  RawLifeFlow Production Preflight Validation            │')
 console.log('└─────────────────────────────────────────────────────────┘\n')
+if (isStoreBuild) {
+  console.log('  Mode: STORE (monetization must be enabled)\n')
+}
 
 let allPassed = true
 const failures = []

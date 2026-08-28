@@ -149,6 +149,65 @@ describe('build misconfiguration vs temporary service failure', () => {
   })
 })
 
+describe('store-production monetization validator (Fix 3, P1 audit)', () => {
+  function isValidStoreMonetizationFlag (flag) {
+    if (flag === null || flag === undefined) return false
+    return String(flag).toLowerCase() === 'true'
+  }
+
+  it('accepts "true" for store builds', () => {
+    expect(isValidStoreMonetizationFlag('true')).toBe(true)
+  })
+
+  it('rejects "false" for store builds — monetization=false must not ship to the store', () => {
+    expect(isValidStoreMonetizationFlag('false')).toBe(false)
+  })
+
+  it('rejects missing flag for store builds', () => {
+    expect(isValidStoreMonetizationFlag(null)).toBe(false)
+    expect(isValidStoreMonetizationFlag(undefined)).toBe(false)
+  })
+
+  it('preflight-production.mjs uses the strict store validator when --store or EAS_BUILD_PROFILE=production', () => {
+    const src = fs.readFileSync(path.join(__dirname, '..', 'preflight-production.mjs'), 'utf8')
+    expect(src).toContain("process.argv.includes('--store')")
+    expect(src).toContain("env.EAS_BUILD_PROFILE === 'production'")
+    expect(src).toContain('isValidStoreMonetizationFlag')
+    expect(src).toMatch(/validate:\s*isStoreBuild\s*\?\s*isValidStoreMonetizationFlag\s*:\s*isValidMonetizationFlag/)
+  })
+
+  it('preflight-production.mjs skips validation entirely for non-production EAS profiles (does not block beta/preview/dev)', () => {
+    const src = fs.readFileSync(path.join(__dirname, '..', 'preflight-production.mjs'), 'utf8')
+    expect(src).toContain('isNonProductionEasProfile')
+    expect(src).toMatch(/isEasBuild\s*&&\s*env\.EAS_BUILD_PROFILE\s*!==\s*'production'/)
+    expect(src).toContain('process.exit(0)')
+  })
+})
+
+describe('EAS build lifecycle hook (Fix 3, P1 audit)', () => {
+  it('package.json defines eas-build-pre-install running the preflight script', () => {
+    const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'))
+    expect(pkg.scripts['eas-build-pre-install']).toBeDefined()
+    expect(pkg.scripts['eas-build-pre-install']).toContain('preflight-production.mjs')
+  })
+
+  it('build-production.mjs passes --store to preflight (local AAB/APK is always store-bound)', () => {
+    const buildScript = fs.readFileSync(
+      path.join(__dirname, '..', 'build-production.mjs'),
+      'utf8',
+    )
+    expect(buildScript).toMatch(/preflight-production\.mjs --store/)
+  })
+
+  it('Gradle-embedded preflightProduction task also passes --store', () => {
+    const buildScript = fs.readFileSync(
+      path.join(__dirname, '..', 'build-production.mjs'),
+      'utf8',
+    )
+    expect(buildScript).toMatch(/commandLine 'node', 'scripts\/preflight-production\.mjs', '--store'/)
+  })
+})
+
 describe('build-production wrapper', () => {
   it('scripts/build-production.mjs exists', () => {
     const buildScript = path.join(__dirname, '..', 'build-production.mjs')

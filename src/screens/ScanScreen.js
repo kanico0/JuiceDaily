@@ -66,7 +66,7 @@ import AchievementOverlay from '../components/AchievementOverlay'
 import { RECIPES, getCleanupLabel } from '../constants/recipeData'
 import { searchRecipes } from '../services/recipeSearch'
 import { resolveQueryToCanonicalProduce, isRecipeLockedForUser } from '../services/produceFamilies'
-import { usePro } from '../services/ProStore'
+import { useEffectiveProAccess, hasEffectiveFeatureAccess } from '../hooks/useEffectiveProAccess'
 import PaywallModal from '../components/PaywallModal'
 import GlowJourneyDrop from '../components/GlowJourneyDrop'
 import GlowJourneyDetail from '../components/GlowJourneyDetail'
@@ -259,7 +259,11 @@ function BrowseIdeasModal({ visible, onDismiss, onScanReady, isReduced, navigati
   const [showPaywall, setShowPaywall] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
   const listRef = useRef(null)
-  const { hasFeatureAccess } = usePro()
+  const { isPro: effectiveIsPro } = useEffectiveProAccess()
+  const hasFeatureAccess = useCallback(
+    (featureKey) => hasEffectiveFeatureAccess(effectiveIsPro, featureKey),
+    [effectiveIsPro],
+  )
   const { isEnabled } = useFlags()
   const isPaywallDisabled = isEnabled('ff_dev_disable_paywalls')
   const isPaywallForced = isEnabled('ff_dev_force_paywalls')

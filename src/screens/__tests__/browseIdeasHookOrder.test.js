@@ -43,7 +43,7 @@ describe('BrowseIdeasModal — Hook Order Regression (14 tests)', () => {
   const beforeReturn = modalSource.slice(0, earlyReturnIdx)
   const afterReturn = modalSource.slice(earlyReturnIdx)
 
-  const hookPattern = /\b(useState|useEffect|useMemo|useCallback|useRef|useContext|useReducer|usePro|useFlags)\b\s*[\n(]/g
+  const hookPattern = /\b(useState|useEffect|useMemo|useCallback|useRef|useContext|useReducer|useEffectiveProAccess|useFlags)\b\s*[\n(]/g
   const hooksBefore = beforeReturn.match(hookPattern) || []
   const hooksAfter = afterReturn.match(hookPattern) || []
 
@@ -69,7 +69,7 @@ describe('BrowseIdeasModal — Hook Order Regression (14 tests)', () => {
   test('4. handleRecipePress useCallback appears after all other hooks', () => {
     const handlePressIdx = modalSource.indexOf('const handleRecipePress = useCallback')
     const lastHookBeforeReturn = Math.max(
-      ...['useRef', 'useState', 'usePro', 'useFlags', 'useMemo', 'useEffect']
+      ...['useRef', 'useState', 'useEffectiveProAccess', 'useFlags', 'useMemo', 'useEffect']
         .map((h) => {
           const idx = beforeReturn.lastIndexOf(h)
           return idx === -1 ? 0 : idx
@@ -84,7 +84,7 @@ describe('BrowseIdeasModal — Hook Order Regression (14 tests)', () => {
     const useRefIdx = modalSource.indexOf('useRef(new Animated.Value(0))')
     expect(useRefIdx).toBeGreaterThan(-1)
     expect(useRefIdx).toBeLessThan(earlyReturnIdx)
-    const firstHookMatch = modalSource.match(/\b(useState|useEffect|useMemo|useCallback|useRef|usePro|useFlags)\b/)
+    const firstHookMatch = modalSource.match(/\b(useState|useEffect|useMemo|useCallback|useRef|useEffectiveProAccess|useFlags)\b/)
     expect(firstHookMatch[0]).toBe('useRef')
   })
 
@@ -103,12 +103,12 @@ describe('BrowseIdeasModal — Hook Order Regression (14 tests)', () => {
     })
   })
 
-  // ── Tests 7–8: usePro and useFlags placement ───────────────
+  // ── Tests 7–8: useEffectiveProAccess and useFlags placement ─
 
-  test('7. usePro() is called before the early return', () => {
-    const useProIdx = modalSource.indexOf('usePro()')
-    expect(useProIdx).toBeGreaterThan(-1)
-    expect(useProIdx).toBeLessThan(earlyReturnIdx)
+  test('7. useEffectiveProAccess() is called before the early return', () => {
+    const useEffectiveProAccessIdx = modalSource.indexOf('useEffectiveProAccess()')
+    expect(useEffectiveProAccessIdx).toBeGreaterThan(-1)
+    expect(useEffectiveProAccessIdx).toBeLessThan(earlyReturnIdx)
   })
 
   test('8. useFlags() is called before the early return', () => {
@@ -144,12 +144,12 @@ describe('BrowseIdeasModal — Hook Order Regression (14 tests)', () => {
 
   // ── Tests 13–14: Hook order stability across re-renders ────
 
-  test('13. hook call order is deterministic (useRef → useState → useState → useState → useRef → usePro → useFlags → useMemo → useMemo → useEffect → useEffect → useCallback → useCallback → useEffect → useCallback)', () => {
-    const expectedOrder = ['useRef', 'useState', 'useState', 'useState', 'useRef', 'usePro', 'useFlags', 'useMemo', 'useMemo', 'useEffect', 'useEffect', 'useCallback', 'useCallback', 'useEffect', 'useCallback']
+  test('13. hook call order is deterministic (useRef → useState → useState → useState → useRef → useEffectiveProAccess → useCallback → useFlags → useMemo → useMemo → useEffect → useEffect → useCallback → useCallback → useEffect → useCallback)', () => {
+    const expectedOrder = ['useRef', 'useState', 'useState', 'useState', 'useRef', 'useEffectiveProAccess', 'useCallback', 'useFlags', 'useMemo', 'useMemo', 'useEffect', 'useEffect', 'useCallback', 'useCallback', 'useEffect', 'useCallback']
     const hookCalls = []
     let searchIdx = 0
     while (searchIdx < earlyReturnIdx) {
-      const match = modalSource.slice(searchIdx).match(/\b(useState|useEffect|useMemo|useCallback|useRef|usePro|useFlags)\b\s*[\n(]/)
+      const match = modalSource.slice(searchIdx).match(/\b(useState|useEffect|useMemo|useCallback|useRef|useEffectiveProAccess|useFlags)\b\s*[\n(]/)
       if (!match) break
       hookCalls.push(match[0].trim().split(/[\n(]/)[0])
       searchIdx += match.index + match[0].length

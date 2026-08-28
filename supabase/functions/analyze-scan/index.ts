@@ -230,6 +230,9 @@ Deno.serve(async (req) => {
   let quota: Record<string, unknown> | null = null
   let supportBonusRemaining = 0
   const devicePoolMode = Deno.env.get('DEVICE_FREE_POOL_MODE') ?? 'off'
+  // Server-controlled mock-integrity gate. Never derived from client
+  // input. Must remain unset (falsy) on the production project.
+  const allowMockIntegrity = Deno.env.get('ALLOW_MOCK_INTEGRITY') === '1'
   serverIntegrityLog('pool_mode', requestId, true, undefined, { mode: devicePoolMode })
   let isProUser = false
   let deviceVerification: Awaited<ReturnType<typeof verifyPlayIntegrity>> | null = null
@@ -371,6 +374,7 @@ Deno.serve(async (req) => {
       cloudProjectNumber: Deno.env.get('PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER') ?? '',
       serviceAccountJson: Deno.env.get('PLAY_INTEGRITY_SERVICE_ACCOUNT') ?? '',
       isMock: isMockToken,
+      allowMock: allowMockIntegrity,
       enforcementMode: devicePoolMode,
     })
 

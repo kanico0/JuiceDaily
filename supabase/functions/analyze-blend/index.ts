@@ -256,6 +256,9 @@ Deno.serve(async (req) => {
         cloudProjectNumber: Deno.env.get('PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER') ?? '',
         serviceAccountJson: Deno.env.get('PLAY_INTEGRITY_SERVICE_ACCOUNT') ?? '',
         isMock: isMockToken,
+        // Server-controlled mock-integrity gate. Never derived from
+        // client input. Must remain unset (falsy) on production.
+        allowMock: Deno.env.get('ALLOW_MOCK_INTEGRITY') === '1',
         enforcementMode: Deno.env.get('DEVICE_FREE_POOL_MODE') ?? 'observe',
       })
 
@@ -376,6 +379,9 @@ Deno.serve(async (req) => {
       cloudProjectNumber: Deno.env.get('PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER') ?? '',
       serviceAccountJson: Deno.env.get('PLAY_INTEGRITY_SERVICE_ACCOUNT') ?? '',
       isMock: isMockToken,
+      // Server-controlled mock-integrity gate. Never derived from
+      // client input. Must remain unset (falsy) on production.
+      allowMock: Deno.env.get('ALLOW_MOCK_INTEGRITY') === '1',
       enforcementMode: devicePoolMode,
     })
 

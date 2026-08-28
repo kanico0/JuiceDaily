@@ -73,7 +73,16 @@ export interface VerifyOptions {
   expectedRequestHash: string
   cloudProjectNumber: string
   serviceAccountJson: string
+  // Client-supplied claim that this token is a mock (QA-only signal).
+  // NEVER trusted on its own — see `allowMock`.
   isMock: boolean
+  // SERVER-CONTROLLED gate (derived from a Supabase function secret,
+  // e.g. Deno.env.get('ALLOW_MOCK_INTEGRITY') === '1'). The client
+  // cannot set this. Mock verification is only permitted when the
+  // caller explicitly passes `allowMock: true`, which must only ever
+  // happen in an approved QA/development environment, never on the
+  // production project.
+  allowMock: boolean
   enforcementMode: string
 }
 
@@ -229,8 +238,14 @@ export function verifyMockIntegrity(
 // ── Production verification ──────────────────────────────────
 
 export async function verifyPlayIntegrity(opts: VerifyOptions): Promise<DeviceRecallVerification> {
-  // Handle mock tokens in development
-  if (opts.isMock || opts.token.startsWith('mock_integrity:')) {
+  // Handle mock tokens — ONLY when the SERVER (not the client) has
+  // explicitly enabled mock verification via `allowMock`. A client
+  // claiming `isMock: true` or sending a `mock_integrity:`-prefixed
+  // token is never sufficient on its own; without `allowMock` the
+  // request falls through to real Google verification, which fails
+  // closed for a non-Google token via the normal failure-classification
+  // path below.
+  if (opts.allowMock && (opts.isMock || opts.token.startsWith('mock_integrity:'))) {
     serverIntegrityLog('verify_called', 'mock', true, undefined, { path: 'mock' })
     return verifyMockIntegrity(opts.token, opts.expectedRequestHash)
   }

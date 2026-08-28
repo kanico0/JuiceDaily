@@ -37,7 +37,9 @@ console.log('│  RawLifeFlow Production Build — Preflight Validation    │')
 console.log('└─────────────────────────────────────────────────────────┘\n')
 
 try {
-  execSync('node scripts/preflight-production.mjs', {
+  // --store: this wrapper always produces a distributable AAB/APK,
+  // so monetization must be strictly enabled (see Fix 3, P1 audit).
+  execSync('node scripts/preflight-production.mjs --store', {
     cwd: projectRoot,
     stdio: 'inherit',
   })
@@ -80,7 +82,7 @@ if (!gradleContent.includes('preflightProduction')) {
 // Runs the Node.js preflight before bundleRelease/assembleRelease.
 task preflightProduction(type: Exec) {
     workingDir projectRoot
-    commandLine 'node', 'scripts/preflight-production.mjs'
+    commandLine 'node', 'scripts/preflight-production.mjs', '--store'
     onlyIf {
         gradle.startParameter.taskNames.any { name ->
             name.toLowerCase().contains('release')

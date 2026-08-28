@@ -64,15 +64,26 @@
 //   with success, and do NOT mutate any subscription. Used for
 //   dashboard connectivity verification. No identity resolution occurs.
 //
+// Sandbox environment boundary:
+//   event.environment ('SANDBOX' | 'PRODUCTION') is set by RevenueCat
+//   from the underlying store purchase, not by the mobile client.
+//   RevenueCat delivers both sandbox and production events to the
+//   SAME webhook URL by default. SANDBOX events are skipped (never
+//   mutate subscriptions.is_active) unless the server-only secret
+//   REVENUECAT_ALLOW_SANDBOX_ENTITLEMENT=1 is explicitly set — that
+//   secret must never be set on the production project.
+//
 // Secrets (Supabase function secrets):
 //   REVENUECAT_WEBHOOK_SECRET
 //   REVENUECAT_SERVER_API_KEY  (required for REST reconciliation)
+//   REVENUECAT_ALLOW_SANDBOX_ENTITLEMENT  (must be unset/0 in production)
 // ─────────────────────────────────────────────────────────────
 
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { resolveLookupKey, type LookupKeyResolution } from './identityResolver.ts'
 import { fetchProEntitlement, type ProEntitlementState } from './revenueCatRest.ts'
 import { validateCanonicalUser } from './canonicalUserValidator.ts'
+import { shouldSkipSandboxEvent } from './sandboxGuard.ts'
 
 function json(status: number, body: Record<string, unknown>): Response {
   return new Response(JSON.stringify(body), {
@@ -347,6 +358,36 @@ Deno.serve(async (req) => {
       .update({ status: 'skipped', processed_at: new Date().toISOString() })
       .eq('event_id', eventId)
     return json(200, { ok: true, skipped: 'transfer_not_supported' })
+  }
+
+  // ── SANDBOX environment guard (fail-closed) ────────────────
+  // event.environment reflects RevenueCat's own classification of
+  // the underlying store purchase (sandbox vs production), not a
+  // value the mobile client can set directly. Sandbox purchases
+  // (e.g. TestFlight / Play internal-testing sandbox testers) are
+  // delivered to the SAME webhook URL as production purchases by
+  // default. A sandbox purchase must NEVER be allowed to activate
+  // real production Pro entitlement.
+  //
+  // This boundary is controlled ONLY by a server-side Supabase
+  // function secret (REVENUECAT_ALLOW_SANDBOX_ENTITLEMENT), never
+  // by any client-supplied request field. It is intended for a
+  // dedicated, explicitly-provisioned QA project/environment only —
+  // never enabled on the production project.
+  const allowSandboxEntitlement = Deno.env.get('REVENUECAT_ALLOW_SANDBOX_ENTITLEMENT') === '1'
+  if (shouldSkipSandboxEvent(environment, allowSandboxEntitlement)) {
+    console.warn(
+      '[revenuecat-webhook] SANDBOX event received — ignored (no production mutation).',
+      'event_id:', eventId, 'type:', eventType,
+    )
+    await admin
+      .from('revenuecat_webhook_events')
+      .update({ status: 'skipped', processed_at: new Date().toISOString() })
+      .eq('event_id', eventId)
+    // 200 (not an error) so RevenueCat does not retry-storm a
+    // sandbox event that is intentionally never going to mutate
+    // production state.
+    return json(200, { ok: true, skipped: 'sandbox_environment_not_authoritative' })
   }
 
   // ── Lookup key extraction ──────────────────────────────────

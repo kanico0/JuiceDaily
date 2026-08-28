@@ -26,7 +26,7 @@ import MeshGradientBg from '../components/MeshGradientBg'
 import WelcomeModal from '../components/WelcomeModal'
 import PaywallModal from '../components/PaywallModal'
 import { useChallenge, DAILY_PILLARS, WEEKLY_COLORS } from '../services/ChallengeStore'
-import { usePro } from '../services/ProStore'
+import { useEffectiveProAccess, hasEffectiveFeatureAccess } from '../hooks/useEffectiveProAccess'
 import { useFlags } from '../services/FeatureFlags'
 import TodayHubCard from '../components/TodayHubCard'
 import QuickLogger from '../components/QuickLogger'
@@ -155,7 +155,11 @@ function ClinkToast({ visible, userName }) {
 export default function DashboardScreen({ navigation, route }) {
   const [showAccountGate, setShowAccountGate] = useState(false)
   const { challenge, todayLog, vitalityScore, weeklyDiversity, weeklyStats, completeOnboarding, logJuice } = useChallenge()
-  const { isPro, hasFeatureAccess, pro } = usePro()
+  const { isPro } = useEffectiveProAccess()
+  const hasFeatureAccess = useCallback(
+    (featureKey) => hasEffectiveFeatureAccess(isPro, featureKey),
+    [isPro],
+  )
   const { isEnabled } = useFlags()
   const { useSoonItems } = usePantry()
   const showOnboarding = !challenge.hasOnboarded

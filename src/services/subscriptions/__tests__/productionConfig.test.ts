@@ -20,6 +20,12 @@ const mockConfig = {
   REVENUECAT_PUBLIC_API_KEY: 'goog_validkey123456789',
   SUPABASE_URL: 'https://twnkxajnoeljgerqgqep.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR3bmt4YWpub2VsamdlcnFncWVwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQwMDcxODEsImV4cCI6MjA5OTU4MzE4MX0.G2Ofc3ZNXsR_DOh_eMSKX3sXu8nIjukj4f6Ua2Bp53o',
+  // Controllable value for the EXPO_PUBLIC_MONETIZATION_ENABLED check.
+  // Regression coverage for the release-blocker fix: readMonetizationEnvFlag()
+  // now delegates to subscriptionConfig's readPublic() (Constants.expoConfig.extra
+  // fallback aware) instead of a raw globalThis.process.env lookup that never
+  // resolves in a compiled release bundle.
+  monetizationEnvFlag: 'true' as string | null,
 }
 
 jest.mock('../subscriptionConfig', () => ({
@@ -27,44 +33,21 @@ jest.mock('../subscriptionConfig', () => ({
   get REVENUECAT_PUBLIC_API_KEY () { return mockConfig.REVENUECAT_PUBLIC_API_KEY },
   get SUPABASE_URL () { return mockConfig.SUPABASE_URL },
   get SUPABASE_ANON_KEY () { return mockConfig.SUPABASE_ANON_KEY },
+  readPublic: (name: string) => (name === 'EXPO_PUBLIC_MONETIZATION_ENABLED' ? mockConfig.monetizationEnvFlag : null),
 }))
 
-// Mock process.env for the monetization flag check
-// Use bracket access to avoid babel react-native-dotenv transforms
-const envHolder: { EXPO_PUBLIC_MONETIZATION_ENABLED?: string } = {}
-
 describe('productionConfig', () => {
-  beforeEach(() => {
-    // Set up globalThis.process.env mock for the readMonetizationEnvFlag helper
-    const g = globalThis as Record<string, unknown>
-    if (!g.process) g.process = { env: {} }
-    const proc = g.process as { env: Record<string, string | undefined> }
-    if (!proc.env) proc.env = {}
-    // Save original
-    envHolder.EXPO_PUBLIC_MONETIZATION_ENABLED = proc.env.EXPO_PUBLIC_MONETIZATION_ENABLED
-    proc.env.EXPO_PUBLIC_MONETIZATION_ENABLED = 'true'
-  })
-
   afterEach(() => {
     // Reset mocks
     mockConfig.MONETIZATION_ENABLED = true
     mockConfig.REVENUECAT_PUBLIC_API_KEY = 'goog_validkey123456789'
     mockConfig.SUPABASE_URL = 'https://twnkxajnoeljgerqgqep.supabase.co'
     mockConfig.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR3bmt4YWpub2VsamdlcnFncWVwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQwMDcxODEsImV4cCI6MjA5OTU4MzE4MX0.G2Ofc3ZNXsR_DOh_eMSKX3sXu8nIjukj4f6Ua2Bp53o'
-    const g = globalThis as Record<string, unknown>
-    const proc = g.process as { env: Record<string, string | undefined> }
-    if (envHolder.EXPO_PUBLIC_MONETIZATION_ENABLED !== undefined) {
-      proc.env.EXPO_PUBLIC_MONETIZATION_ENABLED = envHolder.EXPO_PUBLIC_MONETIZATION_ENABLED
-    } else {
-      delete proc.env.EXPO_PUBLIC_MONETIZATION_ENABLED
-    }
+    mockConfig.monetizationEnvFlag = 'true'
   })
 
   describe('validateProductionConfig (production mode)', () => {
     it('passes when all required config is present and valid', () => {
-      const g = globalThis as Record<string, unknown>
-      const proc = g.process as { env: Record<string, string | undefined> }
-      proc.env['EXPO_PUBLIC_MONETIZATION_ENABLED'] = 'true'
       const result = validateProductionConfig(true)
       expect(result.ok).toBe(true)
       expect(result.missing).toHaveLength(0)
@@ -127,21 +110,27 @@ describe('productionConfig', () => {
     })
 
     it('fails when MONETIZATION_ENABLED is not set', () => {
-      const g = globalThis as Record<string, unknown>
-      const proc = g.process as { env: Record<string, string | undefined> }
-      delete proc.env['EXPO_PUBLIC_MONETIZATION_ENABLED']
+      mockConfig.monetizationEnvFlag = null
       const result = validateProductionConfig(true)
       expect(result.ok).toBe(false)
       expect(result.missing.some(c => c.key === 'EXPO_PUBLIC_MONETIZATION_ENABLED')).toBe(true)
     })
 
     it('fails when MONETIZATION_ENABLED is an invalid value', () => {
-      const g = globalThis as Record<string, unknown>
-      const proc = g.process as { env: Record<string, string | undefined> }
-      proc.env['EXPO_PUBLIC_MONETIZATION_ENABLED'] = 'maybe'
+      mockConfig.monetizationEnvFlag = 'maybe'
       const result = validateProductionConfig(true)
       expect(result.ok).toBe(false)
       expect(result.missing.some(c => c.key === 'EXPO_PUBLIC_MONETIZATION_ENABLED')).toBe(true)
+    })
+
+    it('reads the monetization flag through readPublic (Constants.expoConfig.extra aware), not a raw process.env lookup', () => {
+      // Regression test for the release-blocker fix: simulates a compiled
+      // release bundle where process.env has no live EXPO_PUBLIC_* values,
+      // but Constants.expoConfig.extra (surfaced here via readPublic) does.
+      mockConfig.monetizationEnvFlag = 'true'
+      const result = validateProductionConfig(true)
+      const check = result.checks.find(c => c.key === 'EXPO_PUBLIC_MONETIZATION_ENABLED')
+      expect(check?.valid).toBe(true)
     })
   })
 

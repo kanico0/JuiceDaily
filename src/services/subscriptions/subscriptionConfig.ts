@@ -14,7 +14,12 @@ import Constants from 'expo-constants'
 // EXPO_PUBLIC_* vars are inlined by Expo at build time, but native
 // dev clients may also read them via expo-constants extra.
 
-function readPublic (name: string): string | null {
+// Exported so other modules (e.g. productionConfig.ts's startup
+// validation gate) read EXPO_PUBLIC_* values through the same
+// process.env-or-Constants.expoConfig.extra resolution used by the
+// real runtime config below, instead of re-implementing their own
+// (potentially incomplete) reader.
+export function readPublic (name: string): string | null {
   const fromProcess = (process.env as Record<string, string | undefined>)[name]
   if (fromProcess && fromProcess !== '') return fromProcess
   const extra = Constants.expoConfig?.extra as Record<string, string | undefined> | undefined

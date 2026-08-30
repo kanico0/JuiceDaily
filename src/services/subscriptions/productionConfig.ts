@@ -20,19 +20,23 @@ import {
   REVENUECAT_PUBLIC_API_KEY,
   SUPABASE_ANON_KEY,
   SUPABASE_URL,
+  readPublic,
 } from './subscriptionConfig'
 
-// Read the raw env flag through a helper that avoids direct
-// process.env.EXPO_PUBLIC_* references (which babel transforms).
+// Root cause (release-blocker investigation, fixed): this used to read
+// the raw flag via a hand-rolled globalThis.process.env lookup that
+// deliberately avoided Babel's static process.env.EXPO_PUBLIC_*
+// inlining. In a compiled Hermes release bundle there is no live,
+// dotenv-populated process.env object at runtime, so that lookup
+// always resolved to null/undefined — causing this ONE check to fail
+// startup validation on every real device build, regardless of
+// whether the app was actually configured correctly (the real
+// MONETIZATION_ENABLED constant below, and every other check in this
+// file, already read correctly via readPublic()'s
+// Constants.expoConfig.extra fallback). Reuse that same reader here
+// so this check observes the same value the rest of the app uses.
 function readMonetizationEnvFlag (): string | null {
-  try {
-    // Use bracket access to avoid babel react-native-dotenv transforms
-    const env = (globalThis as Record<string, unknown>).process as Record<string, Record<string, string | undefined>> | undefined
-    const val = env?.env?.EXPO_PUBLIC_MONETIZATION_ENABLED
-    return val ?? null
-  } catch {
-    return null
-  }
+  return readPublic('EXPO_PUBLIC_MONETIZATION_ENABLED')
 }
 
 // ── Types ────────────────────────────────────────────────────

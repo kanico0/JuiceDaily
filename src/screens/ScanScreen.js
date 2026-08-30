@@ -21,7 +21,7 @@ import {
   BackHandler,
   Share,
 } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { LinearGradient } from 'expo-linear-gradient'
 import * as Haptics from 'expo-haptics'
 import {
@@ -259,6 +259,13 @@ function BrowseIdeasModal({ visible, onDismiss, onScanReady, isReduced, navigati
   const [showPaywall, setShowPaywall] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
   const listRef = useRef(null)
+  // Modal content renders in a separate native layer, which is not always
+  // reliably measured by SafeAreaView's automatic edge insets on iOS.
+  // Apply the same explicit useSafeAreaInsets + manual paddingTop pattern
+  // already used by other in-app Modals (e.g. HistoryScreen's
+  // EntryDetailsModal) so the header never clashes with the status
+  // bar/notch, on either platform.
+  const insets = useSafeAreaInsets()
   const { isPro: effectiveIsPro } = useEffectiveProAccess()
   const hasFeatureAccess = useCallback(
     (featureKey) => hasEffectiveFeatureAccess(effectiveIsPro, featureKey),
@@ -382,8 +389,13 @@ function BrowseIdeasModal({ visible, onDismiss, onScanReady, isReduced, navigati
   return (
     <Modal visible transparent animationType="none" statusBarTranslucent>
       <Animated.View style={[browseStyles.overlay, { opacity: fadeAnim }]}>
-        <SafeAreaView style={browseStyles.safe} edges={['top', 'bottom']}>
-          <View style={browseStyles.header}>
+        {/* Top inset applied explicitly below via useSafeAreaInsets (not
+            via SafeAreaView's 'top' edge) — SafeAreaView's automatic edge
+            measurement is not always reliable for content rendered inside
+            a transparent full-screen Modal on iOS, which was the root
+            cause of the header clashing with the status bar/notch. */}
+        <SafeAreaView style={browseStyles.safe} edges={['bottom']}>
+          <View style={[browseStyles.header, { paddingTop: BROWSE_HEADER_VERTICAL_PADDING + insets.top }]}>
             <Text style={browseStyles.title}>Juice Ideas</Text>
             <TouchableOpacity
               onPress={onDismiss}
@@ -505,6 +517,11 @@ function BrowseIdeasModal({ visible, onDismiss, onScanReady, isReduced, navigati
   )
 }
 
+// Base vertical padding for the Juice Ideas header, applied on top of the
+// safe-area top inset (see BrowseIdeasModal's paddingTop calculation) so
+// the header never clashes with the status bar/notch on either platform.
+const BROWSE_HEADER_VERTICAL_PADDING = 12
+
 const browseStyles = StyleSheet.create({
   overlay: {
     flex: 1,
@@ -518,7 +535,7 @@ const browseStyles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingBottom: BROWSE_HEADER_VERTICAL_PADDING,
   },
   title: {
     fontSize: 20,
@@ -2600,6 +2617,18 @@ export default function ScanScreen({ navigation, route }) {
       })
     }
   }, [route?.params?.restoreBrowseIdeas, navigation])
+
+  // Open Browse Ideas (Juice Ideas) directly when navigated here with
+  // openBrowseIdeas param — e.g. from TodayScreen's "Browse Juice Ideas"
+  // card, which navigates straight into Explore + this modal in one tap
+  // instead of requiring the user to land on Explore and tap again.
+  useEffect(() => {
+    if (route?.params?.openBrowseIdeas) {
+      setShowBrowseModal(true)
+      // Clear the param so it doesn't re-trigger on re-render or re-focus.
+      navigation.setParams({ openBrowseIdeas: undefined })
+    }
+  }, [route?.params?.openBrowseIdeas, navigation])
 
   // Sync if activation hydrates after mount
   useEffect(() => {

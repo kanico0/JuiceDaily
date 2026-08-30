@@ -20,7 +20,7 @@ import { standardCard } from '../constants/styleRecipes'
 export default function WellnessResultsScreen({ route, navigation }) {
   const { focusAreaId } = route.params || {}
   const [showDisclaimerModal, setShowDisclaimerModal] = useState(false)
-  const [accepted, acceptDisclaimer] = useWellnessDisclaimerAccepted()
+  const [accepted, acceptDisclaimer, disclaimerLoaded] = useWellnessDisclaimerAccepted()
 
   const focusArea = useMemo(() => getFocusAreaById(focusAreaId), [focusAreaId])
 
@@ -173,7 +173,12 @@ export default function WellnessResultsScreen({ route, navigation }) {
       </SafeAreaView>
 
       <WellnessDisclaimerModal
-        visible={!accepted || showDisclaimerModal}
+        // Gate the first-use path on disclaimerLoaded so the modal never
+        // mounts visible only to be told to close a moment later once the
+        // AsyncStorage rehydration resolves accepted=true. The explicit
+        // "Learn more" re-open path (showDisclaimerModal) is unaffected —
+        // by the time a user can tap that, rehydration has long finished.
+        visible={(disclaimerLoaded && !accepted) || showDisclaimerModal}
         onAccept={() => {
           if (!accepted) acceptDisclaimer()
           setShowDisclaimerModal(false)

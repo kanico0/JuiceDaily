@@ -790,7 +790,15 @@ export default function TodayScreen({ navigation }) {
                     style={styles.exploreBtn}
                     onPress={() => {
                       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-                      navigation.navigate('ExploreTab')
+                      // Navigate directly into the Juice Ideas modal within
+                      // Explore, rather than merely switching tabs and
+                      // requiring a second tap. ExploreHome (ScanScreen)
+                      // consumes the openBrowseIdeas param and opens
+                      // BrowseIdeasModal immediately on arrival.
+                      navigation.navigate('ExploreTab', {
+                        screen: 'ExploreHome',
+                        params: { openBrowseIdeas: true },
+                      })
                     }}
                     activeOpacity={0.7}
                     accessibilityRole="button"

@@ -107,17 +107,19 @@ export default function FreePlanUsageCard ({ onUpgrade, refreshTrigger }) {
         Manual logging and blends with 1-4 ingredients are unlimited.
       </Text>
 
-      {(scanRemaining === 0 || blendDisplay === 0) && (
-        <Pressable
-          style={({ pressed }) => [styles.upgradeBtn, pressed && styles.btnPressed]}
-          onPress={onUpgrade}
-          accessibilityRole="button"
-          accessibilityLabel="View Pro plan"
-        >
-          <Crown size={14} color="#7EE787" />
-          <Text style={styles.upgradeText}>View Pro</Text>
-        </Pressable>
-      )}
+      {/* "View Pro" must be visible to every Free-tier user on both
+          platforms, not only once quota is exhausted — this code path
+          only runs when isPro is false (Pro users return early above),
+          so there is no risk of showing it to a real Pro subscriber. */}
+      <Pressable
+        style={({ pressed }) => [styles.upgradeBtn, pressed && styles.btnPressed]}
+        onPress={onUpgrade}
+        accessibilityRole="button"
+        accessibilityLabel="View Pro plan"
+      >
+        <Crown size={14} color="#7EE787" />
+        <Text style={styles.upgradeText}>View Pro</Text>
+      </Pressable>
     </View>
   )
 }

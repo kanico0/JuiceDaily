@@ -44,8 +44,18 @@ const SETTINGS_BODY =
 
 const WELLNESS_DISCLAIMER_ACCEPTED_KEY = '@wellness_disclaimer_accepted'
 
+// Returns [accepted, accept, loaded].
+//
+// `loaded` is false until the AsyncStorage rehydration completes. Callers
+// MUST gate the first-use modal's `visible` prop on `loaded` as well as
+// `accepted` — otherwise the modal briefly mounts visible (because
+// `accepted` starts false) and then gets told to close a fraction of a
+// second later when the rehydrated value resolves to 'true', which reads
+// to the user as the popup flashing and disappearing without giving them
+// a chance to acknowledge it.
 export function useWellnessDisclaimerAccepted() {
   const [accepted, setAccepted] = useState(false)
+  const [loaded, setLoaded] = useState(false)
 
   useEffect(() => {
     AsyncStorage.getItem(WELLNESS_DISCLAIMER_ACCEPTED_KEY)
@@ -53,6 +63,7 @@ export function useWellnessDisclaimerAccepted() {
         if (val === 'true') setAccepted(true)
       })
       .catch(() => {})
+      .finally(() => setLoaded(true))
   }, [])
 
   const accept = useCallback(() => {
@@ -60,7 +71,7 @@ export function useWellnessDisclaimerAccepted() {
     AsyncStorage.setItem(WELLNESS_DISCLAIMER_ACCEPTED_KEY, 'true').catch(() => {})
   }, [])
 
-  return [accepted, accept]
+  return [accepted, accept, loaded]
 }
 
 export function resetWellnessDisclaimer() {

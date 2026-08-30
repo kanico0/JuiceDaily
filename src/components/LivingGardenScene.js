@@ -183,7 +183,6 @@ function LivingGardenSceneComponent({
     isReduced,
     sceneId,
     onRainbowMotionDebug,
-    entryToken,
   })
 
   // ── V6 Spotlight production integration ───────────────────

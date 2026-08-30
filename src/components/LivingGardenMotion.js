@@ -397,7 +397,7 @@ function getArborStagger(count) {
 // All other motion (scaleY, translateY, opacity, soilScale,
 // tree channels, arborReveal, rainbowBloom) are Animated.Value
 // objects consumed directly by Animated.createAnimatedComponent.
-export function useGardenMotion({ advancements, isReduced, sceneId: _sceneId, onRainbowMotionDebug, entryToken = 0 }) {
+export function useGardenMotion({ advancements, isReduced, sceneId: _sceneId, onRainbowMotionDebug }) {
   // ── Animated.Value refs (NOT state-bridged) ────────────────
   // These are passed directly to Animated.createAnimatedComponent.
   // No listener, no setState, no rerender per frame.
@@ -1057,124 +1057,97 @@ export function useGardenMotion({ advancements, isReduced, sceneId: _sceneId, on
     })
   }, [isReduced, stopIdleMotion])
 
-  // ── Entrance replay on intentional Garden entry ────────────
-  // On each entryToken change (except first mount), reset all
-  // animation values to a dormant state and replay a visual
-  // "growth entrance" to canonical rest. Presentation-only —
-  // does not affect advancements, seen-state, or persisted progress.
-  // If advancements arrive after this starts, the orchestration
-  // effect will cancel this and run the advancement timeline.
-  const prevEntryTokenRef = useRef(entryToken)
-  useEffect(() => {
-    if (prevEntryTokenRef.current === entryToken) return
-    prevEntryTokenRef.current = entryToken
-    // Reduced motion: instant canonical
-    if (isReduced) {
-      resolveToCanonicalRest()
-      return
-    }
-    // Cancel any running timeline + idle
+  // ── Ambient entrance replay (no new progression) ────────────
+  // Plays a presentation-only reveal of the CURRENT canonical Garden
+  // state. Invoked exclusively from the orchestration effect below
+  // (the single authority over these Animated.Values) whenever an
+  // intentional open produces no new bed/tree/arbor/rainbow
+  // advancement — so every intentional open still shows an entrance,
+  // not just opens with real progression. Reuses the same restrained
+  // "mid transition" and FROZEN duration/easing constants as the real
+  // advancement timeline (GROWTH_START_SCALE_MID, GROWTH_START_OPACITY_MID,
+  // TREE_START_SCALE, TREE_START_OPACITY, TREE_DURATION_COMPRESSED,
+  // ARBOR_ORNAMENT_DURATION, WAKE_DURATION, BAND_STAGGER,
+  // EASING.decelerate) rather than inventing new motion. Does not
+  // affect advancements, seen-state, milestones, or persisted progress
+  // — animation/presentation values only.
+  const playAmbientEntranceReplay = useCallback(() => {
     cancelTimeline()
     stopIdleMotion()
-    // Reset all animation values to dormant state
+    // Reset to a restrained "mid transition" starting frame (not a
+    // full empty-to-seed emergence — the garden already has earned
+    // content; this is a gentle reveal, not a regrowth from nothing).
     ALL_BEDS_ORDER.forEach((bedKey) => {
       const refs = ensureBedRefs(bedKey)
-      refs.scaleY.setValue(0.01)
+      refs.scaleY.setValue(GROWTH_START_SCALE_MID)
       refs.translateY.setValue(0)
-      refs.opacity.setValue(0)
-      if (bedSoilRefs.current[bedKey]) bedSoilRefs.current[bedKey].setValue(0)
-      if (colorProgressRefs.current[bedKey]) colorProgressRefs.current[bedKey].setValue(0)
-      if (produceRevealRefs.current[bedKey]) produceRevealRefs.current[bedKey].setValue(0)
-      if (deltaRevealRefs.current[bedKey]) deltaRevealRefs.current[bedKey].setValue(0)
+      refs.opacity.setValue(GROWTH_START_OPACITY_MID)
     })
-    treeScaleRef.current.setValue(0.01)
-    treeOpacityRef.current.setValue(0)
-    treeCanopyRef.current.setValue(0)
-    treeDetailRef.current.setValue(0)
-    treeRimRef.current.setValue(0)
-    treeSourceOpacityRef.current.setValue(0)
-    treeTrunkOpacityRef.current.setValue(0)
-    treeCanopyOpacityRef.current.setValue(0)
-    treeDetailOpacityRef.current.setValue(0)
+    treeScaleRef.current.setValue(TREE_START_SCALE)
+    treeOpacityRef.current.setValue(TREE_START_OPACITY)
     arborRevealRef.current.setValue(0)
-    rainbowRef.current.setValue(0)
-    // Reset state-bridged values to dormant
-    const dormantColors = {}
-    const dormantProduce = {}
-    ALL_BEDS_ORDER.forEach((k) => {
-      dormantColors[k] = 0
-      dormantProduce[k] = 0
-    })
-    setBedColorProgress(dormantColors)
-    setBedProduceReveal(dormantProduce)
-    // Animate beds to canonical with staggered delays
+
+    // Animate beds to canonical with staggered delays (same stagger
+    // language as the real per-bed motion, starting after the wake
+    // fade so it reads as one coherent entrance).
     ALL_BEDS_ORDER.forEach((bedKey, idx) => {
       const refs = ensureBedRefs(bedKey)
-      const delay = idx * BAND_STAGGER
+      const delay = WAKE_DURATION + idx * BAND_STAGGER
       trackedTimeout(() => {
         Animated.parallel([
           Animated.timing(refs.scaleY, {
-            toValue: 1, duration: 600, easing: EASING.decelerate, useNativeDriver: false,
+            toValue: 1,
+            duration: STAGE_TRANSITION_DURATION.sprout,
+            easing: EASING.decelerate,
+            useNativeDriver: false,
           }),
           Animated.timing(refs.opacity, {
-            toValue: 1, duration: 400, useNativeDriver: false,
-          }),
-          Animated.timing(bedSoilRefs.current[bedKey], {
-            toValue: 1, duration: 500, useNativeDriver: false,
+            toValue: 1,
+            duration: STAGE_TRANSITION_DURATION.sprout,
+            easing: EASING.decelerate,
+            useNativeDriver: false,
           }),
         ]).start()
       }, delay)
     })
-    // Tree growth
-    const treeDelay = ALL_BEDS_ORDER.length * BAND_STAGGER + BED_TO_TREE_DELAY
+
+    // Tree reveal — same FROZEN compressed duration used elsewhere
+    // for ambient/no-op orchestration timing.
+    const treeDelay = WAKE_DURATION + ALL_BEDS_ORDER.length * BAND_STAGGER + BED_TO_TREE_DELAY
     trackedTimeout(() => {
       Animated.parallel([
         Animated.timing(treeScaleRef.current, {
-          toValue: 1, duration: 700, easing: EASING.decelerate, useNativeDriver: false,
+          toValue: 1,
+          duration: TREE_DURATION_COMPRESSED,
+          easing: EASING.decelerate,
+          useNativeDriver: false,
         }),
         Animated.timing(treeOpacityRef.current, {
-          toValue: 1, duration: 500, useNativeDriver: false,
-        }),
-        Animated.timing(treeCanopyRef.current, {
-          toValue: 1, duration: 600, useNativeDriver: false,
-        }),
-        Animated.timing(treeDetailRef.current, {
-          toValue: 1, duration: 600, useNativeDriver: false,
-        }),
-        Animated.timing(treeTrunkOpacityRef.current, {
-          toValue: 1, duration: 500, useNativeDriver: false,
-        }),
-        Animated.timing(treeCanopyOpacityRef.current, {
-          toValue: 1, duration: 500, useNativeDriver: false,
-        }),
-        Animated.timing(treeDetailOpacityRef.current, {
-          toValue: 1, duration: 500, useNativeDriver: false,
+          toValue: 1,
+          duration: TREE_DURATION_COMPRESSED,
+          easing: EASING.decelerate,
+          useNativeDriver: false,
         }),
       ]).start()
     }, treeDelay)
-    // Arbor reveal
-    const arborDelay = treeDelay + 600 + TREE_TO_ARBOR_DELAY
+
+    // Arbor reveal — same FROZEN ornament reveal duration/easing used
+    // by the real runArborReveal, applied to the existing earned set.
+    const arborDelay = treeDelay + TREE_DURATION_COMPRESSED + TREE_TO_ARBOR_DELAY
     trackedTimeout(() => {
       Animated.timing(arborRevealRef.current, {
-        toValue: 1, duration: 600, useNativeDriver: false,
+        toValue: 1,
+        duration: ARBOR_ORNAMENT_DURATION,
+        easing: EASING.decelerate,
+        useNativeDriver: false,
       }).start()
     }, arborDelay)
-    // State-bridged values to canonical
-    trackedTimeout(() => {
-      const canonicalColors = {}
-      const canonicalProduce = {}
-      ALL_BEDS_ORDER.forEach((k) => {
-        canonicalColors[k] = 1
-        canonicalProduce[k] = 1
-      })
-      setBedColorProgress(canonicalColors)
-      setBedProduceReveal(canonicalProduce)
-    }, 800)
-    // Start idle motion after entrance completes
-    const totalEntrance = arborDelay + 600 + 300
-    const idleTimer = trackedTimeout(() => startIdleMotion(), totalEntrance)
+
+    // Start idle motion after the ambient reveal completes.
+    const totalAmbientDuration = arborDelay + ARBOR_ORNAMENT_DURATION + 300
+    const idleTimer = trackedTimeout(() => startIdleMotion(), totalAmbientDuration)
     pendingTimeoutsRef.current.add(idleTimer)
-  }, [entryToken, isReduced, cancelTimeline, stopIdleMotion, resolveToCanonicalRest, ensureBedRefs, trackedTimeout, startIdleMotion])
+  }, [cancelTimeline, stopIdleMotion, ensureBedRefs, trackedTimeout, startIdleMotion])
 
   // ── Orchestration effect (event boundary) ──────────────────
   useEffect(() => {
@@ -1196,9 +1169,17 @@ export function useGardenMotion({ advancements, isReduced, sceneId: _sceneId, on
     const hasRainbow = !!advancements.rainbowComplete
 
     if (!hasBeds && !hasJourney && !hasArbor && !hasRainbow) {
-      resolveToCanonicalRest()
-      const idleTimer = setTimeout(() => startIdleMotion(), 500)
-      pendingTimeoutsRef.current.add(idleTimer)
+      // No new progression since last open — this is a repeat,
+      // intentional Garden entry. Still replay a presentation-only
+      // ambient entrance reveal of the current canonical state so
+      // every intentional open shows the intended entrance animation
+      // (not just opens with real progression). Reduced Motion still
+      // resolves instantly.
+      if (isReduced) {
+        resolveToCanonicalRest()
+        return
+      }
+      playAmbientEntranceReplay()
       return
     }
 
@@ -1353,6 +1334,7 @@ export function useGardenMotion({ advancements, isReduced, sceneId: _sceneId, on
     cancelTimeline,
     stopIdleMotion,
     resolveToCanonicalRest,
+    playAmbientEntranceReplay,
     runBedMotion,
     runTreeGrowth,
     runArborReveal,

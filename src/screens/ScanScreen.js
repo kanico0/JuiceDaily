@@ -1370,7 +1370,7 @@ function ScanHome({ onScan, onBrowse, onExample, onExplore, totalLogs, showSecon
 
 // ── Browse Home: Stable Dashboard ────────────────────────────
 
-function BrowseHome({ onScan, onBrowse, onExample, onExplore, onViewToday, onWellnessFocus, onLogIngredients, dailySummary, totalLogs, savedGoalId, onDismissGoalBanner, isReduced, glowJourney }) {
+function BrowseHome({ onScan, onBrowse, onExample, onExplore, onViewToday, onWellnessFocus, onLogIngredients, dailySummary, totalLogs, savedGoalId, onDismissGoalBanner, isReduced, glowJourney, glowReplayToken }) {
   const fadeAnim = useRef(new Animated.Value(0)).current
   const btnScale = useRef(new Animated.Value(1)).current
   const goalData = savedGoalId ? GOALS.find((g) => g.id === savedGoalId) : null
@@ -2552,15 +2552,22 @@ export default function ScanScreen({ navigation, route }) {
   const glowJourney = useGlowJourney()
 
   // ── Glow Journey entrance replay on Explore tab focus ──────
-  // Increments on each intentional navigation focus into Explore.
+  // Increments on each intentional navigation focus into Explore,
+  // EXCEPT the very first focus after mount (the natural mount-time
+  // entrance animation already covers that — incrementing here too
+  // would immediately restart it a second time).
   // Passed to GlowJourneyDrop to replay the entrance animation.
   // Presentation-only — does not alter persisted Glow state.
   const [glowReplayToken, setGlowReplayToken] = useState(0)
   const glowReplayPrevFocusedRef = useRef(false)
+  const glowReplayHasSkippedInitialFocusRef = useRef(false)
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
       if (!glowReplayPrevFocusedRef.current) {
-        setGlowReplayToken((t) => t + 1)
+        if (glowReplayHasSkippedInitialFocusRef.current) {
+          setGlowReplayToken((t) => t + 1)
+        }
+        glowReplayHasSkippedInitialFocusRef.current = true
       }
       glowReplayPrevFocusedRef.current = true
     })
@@ -2795,6 +2802,7 @@ export default function ScanScreen({ navigation, route }) {
               onDismissGoalBanner={() => setSavedGoalId(null)}
               isReduced={isReduced}
               glowJourney={glowJourney}
+              glowReplayToken={glowReplayToken}
             />
           )}
           {obStep === 'tracking' && (

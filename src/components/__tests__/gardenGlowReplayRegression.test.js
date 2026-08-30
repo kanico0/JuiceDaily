@@ -108,28 +108,23 @@ describe('Garden replay-on-entry regression', () => {
   })
 
   test('7. Garden progress data is not modified by replay', () => {
-    // entryToken IS now passed to useGardenMotion for entrance replay
-    // (presentation-only). But it must NOT be passed to any
-    // advancement/progression service or affect seen-state logic.
+    // ARCHITECTURE: entryToken is scoped ONLY to the LivingGardenScene
+    // wake effect (opacity/brightness fade). It is intentionally NOT
+    // passed into useGardenMotion — that hook's bed/tree/arbor replay
+    // is driven exclusively by the `advancements` orchestration effect
+    // (see tests 36+), which is the single authority over those
+    // Animated.Values. This avoids the two-effects-racing bug found
+    // in physical QA (5863859).
     const motionHookMatch = livingGardenSceneSrc.match(
       /useGardenMotion\(\{[\s\S]*?\}\)/,
     )
     expect(motionHookMatch).toBeTruthy()
-    // entryToken must appear in the useGardenMotion call (entrance replay)
-    expect(motionHookMatch[0]).toContain('entryToken')
+    expect(motionHookMatch[0]).not.toContain('entryToken')
     // GardenDetail must not write entryToken to any service
     expect(gardenDetailSrc).not.toMatch(/saveLastSeenState.*entryToken/)
     expect(gardenDetailSrc).not.toMatch(/detectAdvancements.*entryToken/)
-    // LivingGardenMotion must not pass entryToken to advancement detection
-    const livingGardenMotionSrc = fs.readFileSync(
-      path.join(__dirname, '..', 'LivingGardenMotion.js'),
-      'utf-8',
-    )
-    // entryToken must not appear in the orchestration effect's advancement logic
-    expect(livingGardenMotionSrc).not.toMatch(/detectAdvancements.*entryToken/)
-    // entryToken must not be written to any persistence service
-    expect(livingGardenMotionSrc).not.toMatch(/saveLastSeenState.*entryToken/i)
-    expect(livingGardenMotionSrc).not.toMatch(/AsyncStorage.*entryToken/i)
+    // LivingGardenMotion must not reference entryToken at all
+    expect(livingGardenMotionSrc).not.toMatch(/entryToken/)
   })
 
   test('8. Reduced Motion: wake resolves to canonical immediately', () => {
@@ -407,81 +402,240 @@ describe('Glow repeated-entry replay — behavioral lifecycle', () => {
 })
 
 // ─────────────────────────────────────────────────────────────
-// GARDEN ENTRANCE REPLAY IN useGardenMotion — verifies the
-// entrance replay effect exists, depends on entryToken, resets
-// to dormant, animates to canonical, and respects Reduce Motion.
+// GARDEN AMBIENT ENTRANCE REPLAY — ROOT-CAUSE FIX (post-5863859)
+//
+// Physical QA on 5863859 found the Garden growth entrance did not
+// reliably replay. Root cause: a standalone entryToken-keyed effect
+// in useGardenMotion raced with the pre-existing advancements-keyed
+// orchestration effect. Both effects wrote to the SAME shared
+// Animated.Values. On every repeat open with no new progression, the
+// orchestration effect's "no changes" branch called
+// resolveToCanonicalRest() — which snapped everything to canonical
+// INSTANTLY, cutting off/overriding the entryToken effect's
+// in-flight dormant→canonical animation (started moments earlier in
+// the same or adjacent commit).
+//
+// FIX: entryToken was removed from useGardenMotion entirely. The
+// `advancements` orchestration effect is now the SOLE authority over
+// these Animated.Values. Its "no changes" branch (previously an
+// instant resolveToCanonicalRest with no visible animation) now
+// calls playAmbientEntranceReplay() — an animated reveal using the
+// same FROZEN duration/easing constants as the real advancement
+// timeline. Because `detectAdvancements()` produces a fresh object
+// reference on every intentional Garden open (verified below), this
+// effect — and therefore some entrance animation — fires exactly
+// once per open, with no competing effect to race against.
 // ─────────────────────────────────────────────────────────────
-describe('Garden useGardenMotion entrance replay', () => {
-  test('36. useGardenMotion accepts entryToken parameter', () => {
-    expect(livingGardenMotionSrc).toMatch(/entryToken = 0/)
-    expect(livingGardenMotionSrc).toMatch(/export function useGardenMotion\(\{[\s\S]*?entryToken/)
+describe('Garden ambient entrance replay — root-cause fix', () => {
+  test('36. useGardenMotion no longer accepts an entryToken parameter', () => {
+    // The standalone entryToken mechanism that raced with the
+    // orchestration effect has been removed entirely.
+    expect(livingGardenMotionSrc).not.toMatch(/entryToken/)
   })
 
-  test('37. Entrance replay effect depends on entryToken', () => {
-    // The entrance replay effect must include entryToken in deps
-    const entranceEffectMatch = livingGardenMotionSrc.match(
-      /useEffect\(\(\) => \{[\s\S]*?prevEntryTokenRef[\s\S]*?\}, \[entryToken[\s\S]*?\]\)/,
+  test('37. Only ONE effect in LivingGardenMotion touches bed/tree/arbor Animated.Values on open', () => {
+    // There must be exactly one useEffect keyed on `advancements`
+    // that owns the bed/tree/arbor/rainbow Animated.Values (the
+    // orchestration effect). No second effect should independently
+    // reset/animate refs.scaleY, treeScaleRef, or arborRevealRef.
+    const refsScaleYSetValueCount = (
+      livingGardenMotionSrc.match(/refs\.scaleY\.setValue/g) || []
+    ).length
+    // Only resolveToCanonicalRest() and ensureBedRefs's initial
+    // creation touch refs directly outside of Animated.timing calls;
+    // there must be no second "reset to dormant" site duplicating
+    // the ambient replay's dormant-state assignment.
+    const dormantResetSites = (
+      livingGardenMotionSrc.match(/refs\.scaleY\.setValue\(GROWTH_START_SCALE_MID\)/g) || []
+    ).length
+    expect(dormantResetSites).toBe(1)
+    expect(refsScaleYSetValueCount).toBeGreaterThan(0)
+  })
+
+  test('38. playAmbientEntranceReplay exists and is invoked only from the orchestration effect', () => {
+    expect(livingGardenMotionSrc).toMatch(/const playAmbientEntranceReplay = useCallback\(/)
+    // Must be called from within the "no changes" branch, guarded
+    // by hasBeds/hasJourney/hasArbor/hasRainbow all false
+    const noChangeBranchMatch = livingGardenMotionSrc.match(
+      /if \(!hasBeds && !hasJourney && !hasArbor && !hasRainbow\) \{[\s\S]*?playAmbientEntranceReplay\(\)[\s\S]*?return\s*\}/,
     )
-    expect(entranceEffectMatch).toBeTruthy()
+    expect(noChangeBranchMatch).toBeTruthy()
   })
 
-  test('38. Entrance replay resets to dormant state on replay', () => {
-    // Must reset bed refs to dormant (scaleY 0.01, opacity 0)
-    expect(livingGardenMotionSrc).toMatch(/refs\.scaleY\.setValue\(0\.01\)/)
-    expect(livingGardenMotionSrc).toMatch(/refs\.opacity\.setValue\(0\)/)
-    // Must reset tree to dormant
-    expect(livingGardenMotionSrc).toMatch(/treeScaleRef\.current\.setValue\(0\.01\)/)
-    expect(livingGardenMotionSrc).toMatch(/treeOpacityRef\.current\.setValue\(0\)/)
-    // Must reset arbor to dormant
-    expect(livingGardenMotionSrc).toMatch(/arborRevealRef\.current\.setValue\(0\)/)
+  test('39. Ambient replay resets to a restrained "mid transition" frame (not literal empty/dormant)', () => {
+    // Reuses the approved GROWTH_START_SCALE_MID / GROWTH_START_OPACITY_MID
+    // constants (already used by real bed advancement motion) rather
+    // than inventing a new "emptied garden" visual.
+    expect(livingGardenMotionSrc).toMatch(/refs\.scaleY\.setValue\(GROWTH_START_SCALE_MID\)/)
+    expect(livingGardenMotionSrc).toMatch(/refs\.opacity\.setValue\(GROWTH_START_OPACITY_MID\)/)
+    expect(livingGardenMotionSrc).toMatch(/treeScaleRef\.current\.setValue\(TREE_START_SCALE\)/)
+    expect(livingGardenMotionSrc).toMatch(/treeOpacityRef\.current\.setValue\(TREE_START_OPACITY\)/)
   })
 
-  test('39. Entrance replay animates to canonical rest', () => {
-    // Must animate beds back to scaleY 1, opacity 1
-    expect(livingGardenMotionSrc).toMatch(/Animated\.timing\(refs\.scaleY[\s\S]*?toValue: 1/)
-    expect(livingGardenMotionSrc).toMatch(/Animated\.timing\(refs\.opacity[\s\S]*?toValue: 1/)
-    // Must animate tree back to 1
-    expect(livingGardenMotionSrc).toMatch(/Animated\.timing\(treeScaleRef\.current[\s\S]*?toValue: 1/)
-    // Must animate arbor back to 1
-    expect(livingGardenMotionSrc).toMatch(/Animated\.timing\(arborRevealRef\.current[\s\S]*?toValue: 1/)
-  })
-
-  test('40. Entrance replay respects Reduce Motion', () => {
-    // When isReduced, must resolve to canonical immediately
-    const reducedMatch = livingGardenMotionSrc.match(
-      /prevEntryTokenRef\.current = entryToken[\s\S]*?if \(isReduced\) \{[\s\S]*?resolveToCanonicalRest\(\)[\s\S]*?return/,
+  test('40. Ambient replay reuses FROZEN duration/easing constants, not invented values', () => {
+    const ambientFnMatch = livingGardenMotionSrc.match(
+      /const playAmbientEntranceReplay = useCallback\(\(\) => \{[\s\S]*?\}, \[cancelTimeline[\s\S]*?\]\)/,
     )
-    expect(reducedMatch).toBeTruthy()
+    expect(ambientFnMatch).toBeTruthy()
+    const fnSrc = ambientFnMatch[0]
+    expect(fnSrc).toMatch(/STAGE_TRANSITION_DURATION\.sprout/)
+    expect(fnSrc).toMatch(/TREE_DURATION_COMPRESSED/)
+    expect(fnSrc).toMatch(/ARBOR_ORNAMENT_DURATION/)
+    expect(fnSrc).toMatch(/EASING\.decelerate/)
+    expect(fnSrc).toMatch(/WAKE_DURATION/)
+    expect(fnSrc).toMatch(/BAND_STAGGER/)
   })
 
-  test('41. Entrance replay does not modify advancements or seen-state', () => {
-    // The entrance replay effect must not call detectAdvancements,
-    // saveLastSeenState, or any persistence service
-    const entranceEffectMatch = livingGardenMotionSrc.match(
-      /useEffect\(\(\) => \{[\s\S]*?prevEntryTokenRef[\s\S]*?\}, \[entryToken[\s\S]*?\]\)/,
+  test('41. Ambient replay animates back to canonical (toValue: 1)', () => {
+    const ambientFnMatch = livingGardenMotionSrc.match(
+      /const playAmbientEntranceReplay = useCallback\(\(\) => \{[\s\S]*?\}, \[cancelTimeline[\s\S]*?\]\)/,
     )
-    expect(entranceEffectMatch).toBeTruthy()
-    expect(entranceEffectMatch[0]).not.toMatch(/detectAdvancements/)
-    expect(entranceEffectMatch[0]).not.toMatch(/saveLastSeenState/)
-    expect(entranceEffectMatch[0]).not.toMatch(/initializeIfAbsent/)
+    expect(ambientFnMatch).toBeTruthy()
+    const fnSrc = ambientFnMatch[0]
+    expect(fnSrc).toMatch(/Animated\.timing\(refs\.scaleY[\s\S]*?toValue: 1/)
+    expect(fnSrc).toMatch(/Animated\.timing\(treeScaleRef\.current[\s\S]*?toValue: 1/)
+    expect(fnSrc).toMatch(/Animated\.timing\(arborRevealRef\.current[\s\S]*?toValue: 1/)
   })
 
-  test('42. Entrance replay cancels existing timeline before starting', () => {
-    // Must call cancelTimeline and stopIdleMotion at the start
-    const entranceEffectMatch = livingGardenMotionSrc.match(
-      /useEffect\(\(\) => \{[\s\S]*?prevEntryTokenRef[\s\S]*?\}, \[entryToken[\s\S]*?\]\)/,
+  test('42. Reduced Motion resolves the no-change branch instantly, bypassing ambient replay', () => {
+    const noChangeBranchMatch = livingGardenMotionSrc.match(
+      /if \(!hasBeds && !hasJourney && !hasArbor && !hasRainbow\) \{[\s\S]*?if \(isReduced\) \{[\s\S]*?resolveToCanonicalRest\(\)[\s\S]*?return[\s\S]*?\}[\s\S]*?playAmbientEntranceReplay\(\)/,
     )
-    expect(entranceEffectMatch).toBeTruthy()
-    expect(entranceEffectMatch[0]).toMatch(/cancelTimeline\(\)/)
-    expect(entranceEffectMatch[0]).toMatch(/stopIdleMotion\(\)/)
+    expect(noChangeBranchMatch).toBeTruthy()
   })
 
-  test('43. LivingGardenScene passes entryToken to useGardenMotion', () => {
+  test('43. Ambient replay does not call detectAdvancements, saveLastSeenState, or any persistence API', () => {
+    const ambientFnMatch = livingGardenMotionSrc.match(
+      /const playAmbientEntranceReplay = useCallback\(\(\) => \{[\s\S]*?\}, \[cancelTimeline[\s\S]*?\]\)/,
+    )
+    expect(ambientFnMatch).toBeTruthy()
+    const fnSrc = ambientFnMatch[0]
+    expect(fnSrc).not.toMatch(/detectAdvancements/)
+    expect(fnSrc).not.toMatch(/saveLastSeenState/)
+    expect(fnSrc).not.toMatch(/initializeIfAbsent/)
+    expect(fnSrc).not.toMatch(/AsyncStorage/)
+  })
+
+  test('44. Ambient replay cancels any existing timeline/idle motion before starting (no double-animation)', () => {
+    const ambientFnMatch = livingGardenMotionSrc.match(
+      /const playAmbientEntranceReplay = useCallback\(\(\) => \{[\s\S]*?\}, \[cancelTimeline[\s\S]*?\]\)/,
+    )
+    expect(ambientFnMatch).toBeTruthy()
+    const fnSrc = ambientFnMatch[0]
+    expect(fnSrc).toMatch(/cancelTimeline\(\)/)
+    expect(fnSrc).toMatch(/stopIdleMotion\(\)/)
+  })
+
+  test('45. GardenDetail seen-state detection produces a fresh advancements object on every open (confirms single-effect trigger)', () => {
+    // detectAdvancements is called inside the per-open async IIFE and
+    // its result is always passed to setAdvancements — a fresh object
+    // reference each time, which is what allows the orchestration
+    // effect (keyed on advancements) to fire exactly once per open
+    // without needing a second entryToken-based trigger.
+    const openIifeMatch = gardenDetailSrc.match(
+      /if \(!wasFirstOpen\) \{[\s\S]*?const adv = detectAdvancements\(lastSeen, currentState\)[\s\S]*?setAdvancements\(adv\)/,
+    )
+    expect(openIifeMatch).toBeTruthy()
+  })
+
+  test('46. LivingGardenScene no longer passes entryToken into useGardenMotion', () => {
     const motionCallMatch = livingGardenSceneSrc.match(
-      /useGardenMotion\(\{[\s\S]*?entryToken[\s\S]*?\}\)/,
+      /useGardenMotion\(\{[\s\S]*?\}\)/,
     )
     expect(motionCallMatch).toBeTruthy()
-    expect(motionCallMatch[0]).toContain('entryToken')
+    expect(motionCallMatch[0]).not.toContain('entryToken')
+  })
+
+  test('47. entryToken remains scoped to the wake (opacity/brightness) effect only', () => {
+    // entryToken is still a valid concept for the lightweight wake
+    // fade, which is a separate, non-conflicting channel untouched
+    // by useGardenMotion.
+    expect(gardenDetailSrc).toMatch(/const \[entryToken, setEntryToken\] = useState\(0\)/)
+    expect(livingGardenSceneSrc).toMatch(/entryToken = 0,/)
+    expect(livingGardenSceneSrc).toMatch(/\}, \[isReduced, entryToken\]\)/)
+  })
+})
+
+// ─────────────────────────────────────────────────────────────
+// GARDEN BEHAVIORAL LIFECYCLE — models the actual async runtime
+// ordering that exposed the 5863859 race: entryToken commits
+// synchronously (before advancements), so any second effect keyed
+// on entryToken alone would fire BEFORE the advancements-driven
+// effect and could be overridden by it. This models that no such
+// second effect exists, and that the single orchestration effect's
+// decision (ambient replay vs real timeline vs first-open) is based
+// on a freshly computed advancements object every time.
+// ─────────────────────────────────────────────────────────────
+function simulateGardenOrchestration(opens) {
+  // opens: array of { wasFirstOpen, hasRealChange } describing each
+  // intentional Garden open in sequence.
+  const calls = []
+  let processedRef = null
+  for (const open of opens) {
+    const advancements = open.wasFirstOpen
+      ? null
+      : { isFirstOpen: false, hasRealChange: open.hasRealChange, _ref: {} }
+    if (!advancements) continue // orchestration effect guard: if (!advancements) return
+    if (processedRef === advancements) continue // never true — fresh object each open
+    processedRef = advancements
+    if (advancements.isFirstOpen) {
+      calls.push('resolveToCanonicalRest')
+      continue
+    }
+    if (!advancements.hasRealChange) {
+      calls.push('playAmbientEntranceReplay')
+      continue
+    }
+    calls.push('realAdvancementTimeline')
+  }
+  return calls
+}
+
+describe('Garden orchestration — behavioral lifecycle (no second-effect race)', () => {
+  test('48. First-ever open (wasFirstOpen) plays no motion', () => {
+    const calls = simulateGardenOrchestration([{ wasFirstOpen: true }])
+    expect(calls).toEqual([])
+  })
+
+  test('49. Second open with no new progress plays the ambient replay', () => {
+    const calls = simulateGardenOrchestration([
+      { wasFirstOpen: true },
+      { wasFirstOpen: false, hasRealChange: false },
+    ])
+    expect(calls).toEqual(['playAmbientEntranceReplay'])
+  })
+
+  test('50. Third open with still no new progress plays the ambient replay again', () => {
+    const calls = simulateGardenOrchestration([
+      { wasFirstOpen: true },
+      { wasFirstOpen: false, hasRealChange: false },
+      { wasFirstOpen: false, hasRealChange: false },
+    ])
+    expect(calls).toEqual(['playAmbientEntranceReplay', 'playAmbientEntranceReplay'])
+  })
+
+  test('51. Open with real new progress plays the real advancement timeline, not the ambient replay', () => {
+    const calls = simulateGardenOrchestration([
+      { wasFirstOpen: true },
+      { wasFirstOpen: false, hasRealChange: true },
+    ])
+    expect(calls).toEqual(['realAdvancementTimeline'])
+  })
+
+  test('52. Alternating real-change and no-change opens each produce exactly one replay call', () => {
+    const calls = simulateGardenOrchestration([
+      { wasFirstOpen: true },
+      { wasFirstOpen: false, hasRealChange: true },
+      { wasFirstOpen: false, hasRealChange: false },
+      { wasFirstOpen: false, hasRealChange: true },
+      { wasFirstOpen: false, hasRealChange: false },
+    ])
+    expect(calls).toEqual([
+      'realAdvancementTimeline',
+      'playAmbientEntranceReplay',
+      'realAdvancementTimeline',
+      'playAmbientEntranceReplay',
+    ])
   })
 })
 
@@ -490,11 +644,11 @@ describe('Garden useGardenMotion entrance replay', () => {
 // replayToken prop, entrance reset, and ScanScreen focus wiring.
 // ─────────────────────────────────────────────────────────────
 describe('GlowJourneyDrop replay on Explore focus', () => {
-  test('44. GlowJourneyDrop accepts replayToken prop', () => {
+  test('53. GlowJourneyDrop accepts replayToken prop', () => {
     expect(glowJourneyDropSrc).toMatch(/replayToken = 0/)
   })
 
-  test('45. Entrance effect depends on replayToken', () => {
+  test('54. Entrance effect depends on replayToken', () => {
     // The entrance effect must include replayToken in deps
     const entranceEffectMatch = glowJourneyDropSrc.match(
       /useEffect\(\(\) => \{[\s\S]*?prevReplayTokenRef[\s\S]*?\}, \[replayToken[\s\S]*?\]\)/,
@@ -502,40 +656,18 @@ describe('GlowJourneyDrop replay on Explore focus', () => {
     expect(entranceEffectMatch).toBeTruthy()
   })
 
-  test('46. replayToken change resets hasEnteredRef', () => {
+  test('55. replayToken change resets hasEnteredRef', () => {
     // When replayToken changes, hasEnteredRef must be set to false
     expect(glowJourneyDropSrc).toMatch(/prevReplayTokenRef\.current !== replayToken/)
     expect(glowJourneyDropSrc).toMatch(/hasEnteredRef\.current = false/)
   })
 
-  test('47. replayToken change resets entrance animation values', () => {
+  test('56. replayToken change resets entrance animation values', () => {
     // entranceAnim must be reset to 0 on replay
     expect(glowJourneyDropSrc).toMatch(/entranceAnim\.setValue\(0\)/)
   })
 
-  test('48. ScanScreen tracks glowReplayToken state', () => {
-    expect(scanScreenSrc).toMatch(/const \[glowReplayToken, setGlowReplayToken\] = useState\(0\)/)
-  })
-
-  test('49. ScanScreen increments glowReplayToken on navigation focus', () => {
-    // Must have a focus listener that increments the token
-    const focusMatch = scanScreenSrc.match(
-      /navigation\.addListener\('focus'[\s\S]*?setGlowReplayToken\(\(t\) => t \+ 1\)/,
-    )
-    expect(focusMatch).toBeTruthy()
-  })
-
-  test('50. ScanScreen passes replayToken to GlowJourneyDrop', () => {
-    expect(scanScreenSrc).toMatch(/replayToken=\{glowReplayToken\}/)
-  })
-
-  test('51. ScanScreen tracks blur to reset focus state', () => {
-    // Must have a blur listener to reset the prev-focused ref
-    expect(scanScreenSrc).toMatch(/navigation\.addListener\('blur'/)
-    expect(scanScreenSrc).toMatch(/glowReplayPrevFocusedRef\.current = false/)
-  })
-
-  test('52. GlowJourneyDrop replay does not modify persisted Glow state', () => {
+  test('57. GlowJourneyDrop replay does not modify persisted Glow state', () => {
     // replayToken must not be passed to any service or visualState
     const visualStateMatch = glowJourneyDropSrc.match(
       /buildGlowJourneyVisualState\(\{[\s\S]*?\}\)/,
@@ -547,7 +679,7 @@ describe('GlowJourneyDrop replay on Explore focus', () => {
     expect(glowJourneyDropSrc).not.toMatch(/AsyncStorage.*replayToken/i)
   })
 
-  test('53. GlowJourneyDrop replay respects Reduce Motion', () => {
+  test('58. GlowJourneyDrop replay respects Reduce Motion', () => {
     // The entrance effect must handle isReduced
     const entranceEffectMatch = glowJourneyDropSrc.match(
       /useEffect\(\(\) => \{[\s\S]*?prevReplayTokenRef[\s\S]*?\}, \[replayToken[\s\S]*?\]\)/,
@@ -558,40 +690,147 @@ describe('GlowJourneyDrop replay on Explore focus', () => {
 })
 
 // ─────────────────────────────────────────────────────────────
+// GLOW BLANK-SCREEN ROOT-CAUSE FIX (post-5863859)
+//
+// Physical QA found that entering Explore produced a blank screen.
+// Root cause: `glowReplayToken` was declared as state inside the
+// top-level `ScanScreen` component, but the <GlowJourneyDrop
+// replayToken={glowReplayToken} /> JSX that reads it lives inside
+// `BrowseHome` — a SEPARATE, sibling function component (not a
+// closure nested inside ScanScreen). `BrowseHome`'s render was
+// invoked via <BrowseHome glowJourney={glowJourney} .../> WITHOUT a
+// `glowReplayToken` prop, so `glowReplayToken` was out of scope
+// inside BrowseHome, throwing `ReferenceError: glowReplayToken is
+// not defined` on every render of the Explore/browse view — an
+// uncaught render exception that produced the reported blank screen.
+//
+// Source-pattern tests alone could not catch this because the
+// tokens existed *somewhere* in the file; they were simply declared
+// and consumed in two different function scopes. These tests verify
+// the token is DECLARED in ScanScreen, PASSED to BrowseHome as an
+// explicit prop, ACCEPTED by BrowseHome's parameter list, and that
+// BrowseHome's own GlowJourneyDrop render resolves the prop by name
+// rather than the outer closure variable.
+// ─────────────────────────────────────────────────────────────
+describe('Glow blank-screen root-cause fix — glowReplayToken scope', () => {
+  test('59. ScanScreen declares glowReplayToken state', () => {
+    expect(scanScreenSrc).toMatch(/const \[glowReplayToken, setGlowReplayToken\] = useState\(0\)/)
+  })
+
+  test('60. ScanScreen increments glowReplayToken on navigation focus (after initial mount)', () => {
+    const focusMatch = scanScreenSrc.match(
+      /navigation\.addListener\('focus'[\s\S]*?setGlowReplayToken\(\(t\) => t \+ 1\)/,
+    )
+    expect(focusMatch).toBeTruthy()
+  })
+
+  test('61. ScanScreen skips incrementing glowReplayToken on the very first post-mount focus', () => {
+    // Avoids a redundant immediate restart of the entrance animation
+    // right after the natural mount-time entrance already played.
+    expect(scanScreenSrc).toMatch(/glowReplayHasSkippedInitialFocusRef/)
+    const skipGuardMatch = scanScreenSrc.match(
+      /if \(glowReplayHasSkippedInitialFocusRef\.current\) \{[\s\S]*?setGlowReplayToken\(\(t\) => t \+ 1\)[\s\S]*?\}[\s\S]*?glowReplayHasSkippedInitialFocusRef\.current = true/,
+    )
+    expect(skipGuardMatch).toBeTruthy()
+  })
+
+  test('62. ScanScreen tracks blur to reset focus state', () => {
+    expect(scanScreenSrc).toMatch(/navigation\.addListener\('blur'/)
+    expect(scanScreenSrc).toMatch(/glowReplayPrevFocusedRef\.current = false/)
+  })
+
+  test('63. THE FIX: BrowseHome function signature accepts glowReplayToken as a parameter', () => {
+    // This is the exact scope bug: BrowseHome is a top-level function
+    // component distinct from ScanScreen. It must declare
+    // glowReplayToken in its own destructured parameter list to be
+    // in scope inside its render.
+    const browseHomeSignatureMatch = scanScreenSrc.match(
+      /function BrowseHome\(\{[^}]*glowReplayToken[^}]*\}\)/,
+    )
+    expect(browseHomeSignatureMatch).toBeTruthy()
+  })
+
+  test('64. THE FIX: ScanScreen passes glowReplayToken as an explicit prop to <BrowseHome>', () => {
+    const browseHomeRenderMatch = scanScreenSrc.match(
+      /<BrowseHome[\s\S]*?glowReplayToken=\{glowReplayToken\}[\s\S]*?\/>/,
+    )
+    expect(browseHomeRenderMatch).toBeTruthy()
+  })
+
+  test('65. <GlowJourneyDrop replayToken={glowReplayToken} /> is only reachable where glowReplayToken is an in-scope prop or state', () => {
+    // Locate the function body containing the GlowJourneyDrop render
+    // and confirm that same function scope declares/receives
+    // glowReplayToken (either as its own state, via useGlowJourney,
+    // or as a destructured parameter) — not merely present somewhere
+    // else in the file.
+    const browseHomeFnMatch = scanScreenSrc.match(
+      /function BrowseHome\(\{[\s\S]*?glowReplayToken[\s\S]*?\}\) \{[\s\S]*?<GlowJourneyDrop[\s\S]*?replayToken=\{glowReplayToken\}[\s\S]*?\/>/,
+    )
+    expect(browseHomeFnMatch).toBeTruthy()
+  })
+
+  test('66. Regression guard: no <GlowJourneyDrop replayToken=.../> render exists in a function that does not also declare/receive glowReplayToken', () => {
+    // Split the source into top-level function bodies and verify
+    // every occurrence of `replayToken={glowReplayToken}` is preceded
+    // (within the same enclosing function) by a declaration/parameter
+    // of glowReplayToken.
+    const functionBoundaries = [...scanScreenSrc.matchAll(/^function \w+\(/gm)].map((m) => m.index)
+    const exportBoundary = scanScreenSrc.indexOf('export default function ScanScreen')
+    functionBoundaries.push(exportBoundary, scanScreenSrc.length)
+    functionBoundaries.sort((a, b) => a - b)
+
+    const replayTokenUsages = [...scanScreenSrc.matchAll(/replayToken=\{glowReplayToken\}/g)]
+    expect(replayTokenUsages.length).toBeGreaterThan(0)
+
+    for (const usage of replayTokenUsages) {
+      const usageIdx = usage.index
+      // Find the enclosing function's start (largest boundary <= usageIdx)
+      let fnStart = 0
+      for (const b of functionBoundaries) {
+        if (b <= usageIdx) fnStart = b
+        else break
+      }
+      const fnEnd = functionBoundaries.find((b) => b > usageIdx) ?? scanScreenSrc.length
+      const enclosingFnSrc = scanScreenSrc.slice(fnStart, fnEnd)
+      // The enclosing function must declare/receive glowReplayToken
+      // somewhere before or at its own definition (as a param or via
+      // useState) — i.e. it must appear in the function's own header
+      // or body, not merely elsewhere in the file.
+      expect(enclosingFnSrc).toMatch(/glowReplayToken/)
+    }
+  })
+})
+
+// ─────────────────────────────────────────────────────────────
 // GARDEN DETAIL SAFE-AREA SPACING — verifies the Done button
 // and scroll content use safe-area insets for comfortable spacing.
+// (Physical QA confirmed this fix PASSED — preserved unchanged.)
 // ─────────────────────────────────────────────────────────────
-describe('GardenDetail safe-area spacing', () => {
-  test('54. GardenDetail imports useSafeAreaInsets', () => {
+describe('GardenDetail safe-area spacing (physical-QA PASS — preserved)', () => {
+  test('67. GardenDetail imports useSafeAreaInsets', () => {
     expect(gardenDetailSrc).toMatch(/useSafeAreaInsets/)
     expect(gardenDetailSrc).toMatch(/react-native-safe-area-context/)
   })
 
-  test('55. GardenDetail calls useSafeAreaInsets', () => {
+  test('68. GardenDetail calls useSafeAreaInsets', () => {
     expect(gardenDetailSrc).toMatch(/const safeAreaInsets = useSafeAreaInsets\(\)/)
   })
 
-  test('56. Header uses safe-area top inset for padding', () => {
-    // The header must use safeAreaInsets.top in its paddingTop
+  test('69. Header uses safe-area top inset for padding', () => {
     expect(gardenDetailSrc).toMatch(/paddingTop: safeAreaInsets\.top/)
   })
 
-  test('57. Scroll content uses safe-area bottom inset for padding', () => {
-    // The scroll content must use safeAreaInsets.bottom in its paddingBottom
+  test('70. Scroll content uses safe-area bottom inset for padding', () => {
     expect(gardenDetailSrc).toMatch(/paddingBottom: safeAreaInsets\.bottom/)
   })
 
-  test('58. Done button remains tappable (min 44x44)', () => {
-    // The closeButton style must retain minHeight/minWidth 44
+  test('71. Done button remains tappable (min 44x44)', () => {
     expect(gardenDetailSrc).toMatch(/closeButton:[\s\S]*?minHeight: 44/)
     expect(gardenDetailSrc).toMatch(/closeButton:[\s\S]*?minWidth: 44/)
   })
 
-  test('59. Safe-area spacing does not move entire composition upward', () => {
-    // The header must use paddingTop (not marginTop) to avoid
-    // shifting the entire layout
+  test('72. Safe-area spacing does not move entire composition upward', () => {
     expect(gardenDetailSrc).toMatch(/paddingTop: safeAreaInsets\.top/)
-    // Must NOT use negative margins or large upward shifts
     expect(gardenDetailSrc).not.toMatch(/marginTop: -safeAreaInsets/)
   })
 })

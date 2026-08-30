@@ -112,6 +112,7 @@ function GlowJourneyDrop({
   weeklyLeafStates = [],
   onPress,
   isReduced: isReducedProp,
+  replayToken = 0,
 }) {
   const reducedMotion = useReducedMotion()
   const isReduced = isReducedProp !== undefined ? isReducedProp : reducedMotion
@@ -314,7 +315,22 @@ function GlowJourneyDrop({
   }, [])
 
   // ── Storyboard 1: Entrance ─────────────────────────────────
+  // Replays on each intentional Explore tab focus (replayToken change).
+  // replayToken is incremented by the parent screen on navigation focus.
+  // Presentation-only — does not alter persisted Glow state.
+  const prevReplayTokenRef = useRef(replayToken)
   useEffect(() => {
+    // Reset entrance guard when replayToken changes (except first mount)
+    if (prevReplayTokenRef.current !== replayToken) {
+      prevReplayTokenRef.current = replayToken
+      hasEnteredRef.current = false
+      // Reset entrance animation values to initial frame
+      entranceAnim.setValue(0)
+      // Reset liquid to start position for replay
+      if (!isReduced) {
+        liquidTranslateAnim.setValue(visualState.heroState.surfaceY - 40)
+      }
+    }
     if (hasEnteredRef.current) return
     hasEnteredRef.current = true
     if (isReduced) {
@@ -338,7 +354,7 @@ function GlowJourneyDrop({
       const lId = liquidTranslateAnim.addListener(({ value }) => setAnimatedSurfaceY(value))
       trackedTimeout(() => liquidTranslateAnim.removeListener(lId), MOTION_LIQUID_RISE + 100)
     }
-  }, [])
+  }, [replayToken, isReduced, targetSurfaceY, fillRatio, visualState.heroState.completionBloomOpacity, visualState.heroState.surfaceY, entranceAnim, liquidTranslateAnim, setAnimatedSurfaceY, setBloomOpacity, trackedTimeout])
 
   // ── Storyboard 3: Progress update — composed timeline ──────
   // Priority: 1 Goal Complete, 2 Journey, 3 Deepening, 4 Rise, 5 Ripen, 6 Streak

@@ -1577,6 +1577,7 @@ function BrowseHome({ onScan, onBrowse, onExample, onExplore, onViewToday, onWel
           weeklyLeafStates={glowJourney.weeklyLeafStates}
           onPress={glowJourney.handleGlowJourneyPress}
           isReduced={isReduced}
+          replayToken={glowReplayToken}
         />
       )}
 
@@ -2549,6 +2550,28 @@ export default function ScanScreen({ navigation, route }) {
 
   // Glow Journey — moved from TodayScreen to Explore
   const glowJourney = useGlowJourney()
+
+  // ── Glow Journey entrance replay on Explore tab focus ──────
+  // Increments on each intentional navigation focus into Explore.
+  // Passed to GlowJourneyDrop to replay the entrance animation.
+  // Presentation-only — does not alter persisted Glow state.
+  const [glowReplayToken, setGlowReplayToken] = useState(0)
+  const glowReplayPrevFocusedRef = useRef(false)
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      if (!glowReplayPrevFocusedRef.current) {
+        setGlowReplayToken((t) => t + 1)
+      }
+      glowReplayPrevFocusedRef.current = true
+    })
+    const blurUnsub = navigation.addListener('blur', () => {
+      glowReplayPrevFocusedRef.current = false
+    })
+    return () => {
+      unsubscribe()
+      blurUnsub()
+    }
+  }, [navigation])
 
   const dailySummary = useMemo(() => {
     const todayCount = todayEntries.length

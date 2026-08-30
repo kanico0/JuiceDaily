@@ -19,6 +19,7 @@ import {
   Pressable,
   useWindowDimensions,
 } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import JourneyTreeArtwork, { TREE_DESCRIPTORS } from './JourneyTreeArtwork'
 import MilestoneArborArtwork, { getArborEarnedCount, getArborSlotStates } from './MilestoneArborArtwork'
 import { GARDEN_PALETTE } from './GardenVisualState'
@@ -65,6 +66,7 @@ function GardenDetail({
   unlockedAchievementIds = [],
 }) {
   const { width: screenWidth } = useWindowDimensions()
+  const safeAreaInsets = useSafeAreaInsets()
   const [selectedBed, setSelectedBed] = useState(null)
 
   const summary = useMemo(() => getGardenSummary(entries), [entries])
@@ -213,8 +215,8 @@ function GardenDetail({
       accessibilityLabel="RawLife Garden detail view"
     >
       <View style={styles.modalContainer}>
-        {/* Header */}
-        <View style={styles.header}>
+        {/* Header — safe-area-aware top inset for status bar / notch */}
+        <View style={[styles.header, { paddingTop: safeAreaInsets.top + SEMANTIC_SPACE.md }]}>
           <Text style={styles.headerTitle}>RawLife Garden</Text>
           <Pressable
             onPress={onClose}
@@ -228,7 +230,10 @@ function GardenDetail({
 
         <ScrollView
           style={styles.scroll}
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[
+            styles.scrollContent,
+            { paddingBottom: safeAreaInsets.bottom + SEMANTIC_SPACE.xxxl },
+          ]}
           showsVerticalScrollIndicator={false}
         >
           {/* Living Garden immersive scene */}

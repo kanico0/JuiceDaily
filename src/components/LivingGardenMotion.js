@@ -397,7 +397,7 @@ function getArborStagger(count) {
 // All other motion (scaleY, translateY, opacity, soilScale,
 // tree channels, arborReveal, rainbowBloom) are Animated.Value
 // objects consumed directly by Animated.createAnimatedComponent.
-export function useGardenMotion({ advancements, isReduced, sceneId: _sceneId, onRainbowMotionDebug }) {
+export function useGardenMotion({ advancements, isReduced, sceneId: _sceneId, onRainbowMotionDebug, entryToken = 0 }) {
   // ── Animated.Value refs (NOT state-bridged) ────────────────
   // These are passed directly to Animated.createAnimatedComponent.
   // No listener, no setState, no rerender per frame.
@@ -1056,6 +1056,125 @@ export function useGardenMotion({ advancements, isReduced, sceneId: _sceneId, on
       swayLoop.start()
     })
   }, [isReduced, stopIdleMotion])
+
+  // ── Entrance replay on intentional Garden entry ────────────
+  // On each entryToken change (except first mount), reset all
+  // animation values to a dormant state and replay a visual
+  // "growth entrance" to canonical rest. Presentation-only —
+  // does not affect advancements, seen-state, or persisted progress.
+  // If advancements arrive after this starts, the orchestration
+  // effect will cancel this and run the advancement timeline.
+  const prevEntryTokenRef = useRef(entryToken)
+  useEffect(() => {
+    if (prevEntryTokenRef.current === entryToken) return
+    prevEntryTokenRef.current = entryToken
+    // Reduced motion: instant canonical
+    if (isReduced) {
+      resolveToCanonicalRest()
+      return
+    }
+    // Cancel any running timeline + idle
+    cancelTimeline()
+    stopIdleMotion()
+    // Reset all animation values to dormant state
+    ALL_BEDS_ORDER.forEach((bedKey) => {
+      const refs = ensureBedRefs(bedKey)
+      refs.scaleY.setValue(0.01)
+      refs.translateY.setValue(0)
+      refs.opacity.setValue(0)
+      if (bedSoilRefs.current[bedKey]) bedSoilRefs.current[bedKey].setValue(0)
+      if (colorProgressRefs.current[bedKey]) colorProgressRefs.current[bedKey].setValue(0)
+      if (produceRevealRefs.current[bedKey]) produceRevealRefs.current[bedKey].setValue(0)
+      if (deltaRevealRefs.current[bedKey]) deltaRevealRefs.current[bedKey].setValue(0)
+    })
+    treeScaleRef.current.setValue(0.01)
+    treeOpacityRef.current.setValue(0)
+    treeCanopyRef.current.setValue(0)
+    treeDetailRef.current.setValue(0)
+    treeRimRef.current.setValue(0)
+    treeSourceOpacityRef.current.setValue(0)
+    treeTrunkOpacityRef.current.setValue(0)
+    treeCanopyOpacityRef.current.setValue(0)
+    treeDetailOpacityRef.current.setValue(0)
+    arborRevealRef.current.setValue(0)
+    rainbowRef.current.setValue(0)
+    // Reset state-bridged values to dormant
+    const dormantColors = {}
+    const dormantProduce = {}
+    ALL_BEDS_ORDER.forEach((k) => {
+      dormantColors[k] = 0
+      dormantProduce[k] = 0
+    })
+    setBedColorProgress(dormantColors)
+    setBedProduceReveal(dormantProduce)
+    // Animate beds to canonical with staggered delays
+    ALL_BEDS_ORDER.forEach((bedKey, idx) => {
+      const refs = ensureBedRefs(bedKey)
+      const delay = idx * BAND_STAGGER
+      trackedTimeout(() => {
+        Animated.parallel([
+          Animated.timing(refs.scaleY, {
+            toValue: 1, duration: 600, easing: EASING.decelerate, useNativeDriver: false,
+          }),
+          Animated.timing(refs.opacity, {
+            toValue: 1, duration: 400, useNativeDriver: false,
+          }),
+          Animated.timing(bedSoilRefs.current[bedKey], {
+            toValue: 1, duration: 500, useNativeDriver: false,
+          }),
+        ]).start()
+      }, delay)
+    })
+    // Tree growth
+    const treeDelay = ALL_BEDS_ORDER.length * BAND_STAGGER + BED_TO_TREE_DELAY
+    trackedTimeout(() => {
+      Animated.parallel([
+        Animated.timing(treeScaleRef.current, {
+          toValue: 1, duration: 700, easing: EASING.decelerate, useNativeDriver: false,
+        }),
+        Animated.timing(treeOpacityRef.current, {
+          toValue: 1, duration: 500, useNativeDriver: false,
+        }),
+        Animated.timing(treeCanopyRef.current, {
+          toValue: 1, duration: 600, useNativeDriver: false,
+        }),
+        Animated.timing(treeDetailRef.current, {
+          toValue: 1, duration: 600, useNativeDriver: false,
+        }),
+        Animated.timing(treeTrunkOpacityRef.current, {
+          toValue: 1, duration: 500, useNativeDriver: false,
+        }),
+        Animated.timing(treeCanopyOpacityRef.current, {
+          toValue: 1, duration: 500, useNativeDriver: false,
+        }),
+        Animated.timing(treeDetailOpacityRef.current, {
+          toValue: 1, duration: 500, useNativeDriver: false,
+        }),
+      ]).start()
+    }, treeDelay)
+    // Arbor reveal
+    const arborDelay = treeDelay + 600 + TREE_TO_ARBOR_DELAY
+    trackedTimeout(() => {
+      Animated.timing(arborRevealRef.current, {
+        toValue: 1, duration: 600, useNativeDriver: false,
+      }).start()
+    }, arborDelay)
+    // State-bridged values to canonical
+    trackedTimeout(() => {
+      const canonicalColors = {}
+      const canonicalProduce = {}
+      ALL_BEDS_ORDER.forEach((k) => {
+        canonicalColors[k] = 1
+        canonicalProduce[k] = 1
+      })
+      setBedColorProgress(canonicalColors)
+      setBedProduceReveal(canonicalProduce)
+    }, 800)
+    // Start idle motion after entrance completes
+    const totalEntrance = arborDelay + 600 + 300
+    const idleTimer = trackedTimeout(() => startIdleMotion(), totalEntrance)
+    pendingTimeoutsRef.current.add(idleTimer)
+  }, [entryToken, isReduced, cancelTimeline, stopIdleMotion, resolveToCanonicalRest, ensureBedRefs, trackedTimeout, startIdleMotion])
 
   // ── Orchestration effect (event boundary) ──────────────────
   useEffect(() => {

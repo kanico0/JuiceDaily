@@ -95,12 +95,24 @@ function GardenDetail({
   const seenStateLoaded = useRef(false)
   const prevVisibleRef = useRef(false)
 
-  // ── Entry replay token ──────────────────────────────────────
-  // Increments on each intentional Garden open (visible false→true).
-  // Passed to LivingGardenScene to replay the approved wake/entrance
-  // animation from its initial frame. Presentation-only — does not
-  // affect progression, seen-state, advancements, or celebrations.
+  // ── Garden open session identity ────────────────────────────
+  // entryToken IS the Garden open session id. It increments exactly
+  // once per intentional Garden open (visible false→true) and never
+  // on ordinary rerenders.
+  //
+  // On Android, tapping Done sets visible=false, which makes RN's
+  // Modal render null — unmounting LivingGardenScene entirely. On the
+  // next open the Scene remounts FRESH, so any per-mount guard inside
+  // it (e.g. processedAdvancementsRef) resets. That means a stale
+  // advancements object retained by this (persistent) parent would be
+  // re-processed as if it were new progress.
+  //
+  // To prevent that, every detectAdvancements() result is tagged with
+  // the session that requested it. A result from session N is only
+  // valid while session N is still the current session.
   const [entryToken, setEntryToken] = useState(0)
+  const openSessionRef = useRef(0)
+  const [advancementsSessionId, setAdvancementsSessionId] = useState(0)
   // Ref mirror of currentSeenState so the open effect can depend on
   // [visible] only. This prevents a race where currentSeenState changes
   // while the async detection IIFE is running, which would cancel the
@@ -126,23 +138,36 @@ function GardenDetail({
   useEffect(() => {
     if (!visible || seenStateLoaded.current) return
     seenStateLoaded.current = true
-    setEntryToken((t) => t + 1)
+    // Begin a new Garden open session.
+    openSessionRef.current += 1
+    const sessionId = openSessionRef.current
+    setEntryToken(sessionId)
     let cancelled = false
     ;(async () => {
       const currentState = currentSeenStateRef.current
       const wasFirstOpen = await initializeIfAbsent(currentState)
       if (cancelled) return
-      if (!wasFirstOpen) {
+      // Resolve this session with exactly one advancement descriptor.
+      // Every session resolves — including first-ever open and the
+      // (defensive) missing-last-seen case — so the Scene always makes
+      // exactly ONE presentation decision per open instead of acting on
+      // a previous session's data.
+      let adv = null
+      if (wasFirstOpen) {
+        adv = { isFirstOpen: true, bedAdvancements: [], journeyAdvancement: null, newMilestoneIds: [] }
+      } else {
         // Detect missed advancements for the Living Garden motion
         // orchestration. ONE coalesced previous-seen → current
         // transition is animated (no historical replay).
         const lastSeen = await getLastSeenState()
         if (cancelled) return
-        if (lastSeen) {
-          const adv = detectAdvancements(lastSeen, currentState)
-          if (!cancelled) setAdvancements(adv)
-        }
+        adv = lastSeen
+          ? detectAdvancements(lastSeen, currentState)
+          : { isFirstOpen: false, bedAdvancements: [], journeyAdvancement: null, newMilestoneIds: [] }
       }
+      if (cancelled) return
+      setAdvancements(adv)
+      setAdvancementsSessionId(sessionId)
       // Show intro callouts if not yet seen
       const introSeen = await isIntroSeen()
       if (cancelled) return
@@ -163,6 +188,16 @@ function GardenDetail({
     if (!visible && prevVisibleRef.current) {
       saveLastSeenState(currentSeenStateRef.current)
       seenStateLoaded.current = false
+      // Discard this session's presentation result on close. Without
+      // this, the previous session's still-valid result would be read
+      // during the very first render of the NEXT open (before the open
+      // effect has advanced the session id), starting a spurious second
+      // presentation for that open. Clearing here means a reopen always
+      // begins in 'pending' and presents exactly once.
+      // Presentation state only — persisted progression is untouched
+      // and was just saved above.
+      setAdvancements(null)
+      setAdvancementsSessionId(0)
     }
     prevVisibleRef.current = visible
   }, [visible]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -203,7 +238,40 @@ function GardenDetail({
   // intro (tap "Got it"), the same advancement object becomes
   // presentation-eligible and the Scene's useMemo queue activates.
   const presentationReady = !showIntro
-  const sceneAdvancements = presentationReady ? advancements : null
+
+  // ── ONE presentation decision per Garden open session ───────
+  // A detection result is only valid for the session that requested
+  // it. This is what rejects a previous session's advancements after
+  // the Scene remounts (Done → reopen on Android).
+  const advancementsValid = advancements != null && advancementsSessionId === entryToken
+
+  // Does this session have REAL new progression the user earned?
+  const hasRealAdvancement = !!(
+    advancementsValid &&
+    !advancements.isFirstOpen &&
+    (
+      (advancements.bedAdvancements && advancements.bedAdvancements.length > 0) ||
+      advancements.journeyAdvancement ||
+      (advancements.newMilestoneIds && advancements.newMilestoneIds.length > 0) ||
+      advancements.rainbowComplete
+    )
+  )
+
+  // 'pending'         — this session's detection has not resolved yet.
+  //                     Nothing is presented, so no stale/duplicate
+  //                     timeline can start and later be cancelled.
+  // 'realAdvancement' — user earned new progress: existing advancement
+  //                     presentation (unchanged semantics).
+  // 'entryReplay'     — user simply reopened Garden: replay the same
+  //                     recognizable entrance presentation using their
+  //                     CURRENT persisted state. Visual only.
+  const presentationMode = !presentationReady || !advancementsValid
+    ? 'pending'
+    : (hasRealAdvancement ? 'realAdvancement' : 'entryReplay')
+
+  // Only REAL advancements reach useGardenMotion / the advancement
+  // queue. Entry replay must never be mistaken for earned progress.
+  const sceneAdvancements = presentationMode === 'realAdvancement' ? advancements : null
 
   return (
     <Modal
@@ -249,6 +317,7 @@ function GardenDetail({
               sceneId="garden-detail"
               advancements={sceneAdvancements}
               entryToken={entryToken}
+              presentationMode={presentationMode}
             />
           </View>
 

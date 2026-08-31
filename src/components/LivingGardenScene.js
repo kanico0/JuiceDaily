@@ -45,7 +45,7 @@ import {
 import { LivingGardenBed } from './LivingGardenBed'
 import { LivingGardenJourneyTree } from './LivingGardenJourneyTree'
 import { LivingGardenArbor } from './LivingGardenArbor'
-import { useGardenMotion } from './LivingGardenMotion'
+import { useGardenMotion, ALL_BEDS_ORDER } from './LivingGardenMotion'
 import { GreensV2CalibrationBed } from './LivingGardenBedV2Calibration'
 import { GreensV3HeroCalibrationBed } from './LivingGardenBedV3HeroCalibration'
 import { GreensV4HeroFocusCalibrationBed } from './LivingGardenBedV4HeroFocusCalibration'
@@ -147,7 +147,11 @@ function LivingGardenSceneComponent({
   onRainbowMotionDebug = null, // QA-only: (values) => void
   motionVariant = null, // QA-only: 'v2-calibration', 'v3-hero', 'v4-hero-focus', 'v5-merge-proof'
   onV2Debug = null, // QA-only: Motion V2 diagnostic callback
-  entryToken = 0, // increments on each intentional Garden open → replays wake animation
+  entryToken = 0, // Garden open session id — increments on each intentional open
+  // Presentation decision for the CURRENT Garden open session, owned by
+  // the parent (GardenDetail): 'pending' | 'realAdvancement' | 'entryReplay'.
+  // Exactly one major entrance presentation runs per open session.
+  presentationMode = 'pending',
   onV3Debug = null, // QA-only: Motion V3 HERO diagnostic callback
   onV4Debug = null, // QA-only: Motion V4 HERO FOCUS diagnostic callback
   onV5Debug = null, // QA-only: Motion V5 MERGE PROOF diagnostic callback
@@ -200,10 +204,45 @@ function LivingGardenSceneComponent({
   // useEffect-based approach could fail if the useGardenMotion hook's
   // effect (which runs first) caused state changes that interfered
   // with the queue effect's execution.
+  // ENTRY REPLAY reuses this exact Spotlight choreography. For an entry
+  // replay the source and target stage are BOTH the bed's CURRENT
+  // persisted stage, so the recognizable entrance (lift → glow → settle)
+  // plays without implying any advancement: nothing "grows", nothing new
+  // is claimed, and no persisted state is touched. A single
+  // representative bed (the most advanced non-empty bed) is spotlighted
+  // so the replay stays short and reads as an entrance, not a tour.
   const spotlightQueue = useMemo(() => {
-    if (!advancements || advancements.isFirstOpen) return []
-    return advancements.bedAdvancements || []
-  }, [advancements])
+    if (presentationMode === 'realAdvancement') {
+      if (!advancements || advancements.isFirstOpen) return []
+      return advancements.bedAdvancements || []
+    }
+    if (presentationMode === 'entryReplay') {
+      const stageOrder = ['empty', 'seed', 'sprout', 'growing', 'harvesting', 'flourishing']
+      let bestBedKey = null
+      let bestRank = 0
+      ALL_BEDS_ORDER.forEach((bedKey) => {
+        const stageEntry = bedStages ? bedStages[bedKey] : null
+        const stageKey = stageEntry && stageEntry.key ? stageEntry.key : 'empty'
+        const rank = stageOrder.indexOf(stageKey)
+        if (rank > bestRank) {
+          bestRank = rank
+          bestBedKey = bedKey
+        }
+      })
+      // Empty garden: nothing earned to present. The wake animation is
+      // the entrance; do not fabricate a bed to spotlight.
+      if (!bestBedKey) return []
+      const currentStage = bedStages[bestBedKey].key
+      return [{
+        bedKey: bestBedKey,
+        fromStage: currentStage,
+        toStage: currentStage,
+        isEntryReplay: true,
+      }]
+    }
+    // 'pending' — this session's detection has not resolved yet.
+    return []
+  }, [presentationMode, advancements, bedStages])
 
   const [spotlightIdx, setSpotlightIdx] = useState(-1)
   const [spotlightReplayToken, setSpotlightReplayToken] = useState(0)
@@ -216,7 +255,7 @@ function LivingGardenSceneComponent({
     } else {
       setSpotlightIdx(-1)
     }
-  }, [spotlightQueue])
+  }, [spotlightQueue]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSpotlightComplete = useCallback(() => {
     setSpotlightIdx((prev) => {
@@ -596,7 +635,8 @@ function sceneComparator(prev, next) {
     prev.spotlightBedKey === next.spotlightBedKey &&
     prev.spotlightTargetStage === next.spotlightTargetStage &&
     prev.rainbowProbeActive === next.rainbowProbeActive &&
-    prev.entryToken === next.entryToken
+    prev.entryToken === next.entryToken &&
+    prev.presentationMode === next.presentationMode
   )
 }
 

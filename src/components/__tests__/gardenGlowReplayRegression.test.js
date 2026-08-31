@@ -76,13 +76,14 @@ describe('Garden replay-on-entry regression', () => {
     expect(gardenDetailSrc).toMatch(/const \[entryToken, setEntryToken\] = useState\(0\)/)
   })
 
-  test('2. entryToken increments on visible open (inside seen-state effect)', () => {
-    // The increment must be inside the visible-dependent open effect
-    // that runs on each intentional Garden open
-    expect(gardenDetailSrc).toMatch(/setEntryToken\(\(t\) => t \+ 1\)/)
+  test('2. entryToken (open session id) advances on visible open (inside seen-state effect)', () => {
+    // entryToken IS the Garden open session id. It is advanced from a
+    // monotonic ref so the session value is known synchronously and can
+    // tag the async detection result.
+    expect(gardenDetailSrc).toMatch(/setEntryToken\(sessionId\)/)
     // It must be in the same effect that handles visible opens
     const openEffectMatch = gardenDetailSrc.match(
-      /useEffect\(\(\) => \{[\s\S]*?if \(!visible \|\| seenStateLoaded\.current\) return[\s\S]*?setEntryToken\(\(t\) => t \+ 1\)/,
+      /useEffect\(\(\) => \{[\s\S]*?if \(!visible \|\| seenStateLoaded\.current\) return[\s\S]*?setEntryToken\(sessionId\)/,
     )
     expect(openEffectMatch).toBeTruthy()
   })
@@ -135,10 +136,10 @@ describe('Garden replay-on-entry regression', () => {
     expect(reducedMatch).toBeTruthy()
   })
 
-  test('9. Ordinary rerender does not increment entryToken', () => {
-    // entryToken must only increment inside the visible-dependent effect,
+  test('9. Ordinary rerender does not advance entryToken', () => {
+    // entryToken must only advance inside the visible-dependent effect,
     // not in any other effect or callback
-    const allIncrements = gardenDetailSrc.match(/setEntryToken\(\(t\) => t \+ 1\)/g)
+    const allIncrements = gardenDetailSrc.match(/setEntryToken\(sessionId\)/g)
     expect(allIncrements).toHaveLength(1)
     // The increment must be guarded by visible check
     const effectBlock = gardenDetailSrc.match(
@@ -358,15 +359,13 @@ describe('Garden repeated-entry replay — behavioral lifecycle', () => {
   })
 
   test('30. Celebration/discovery state is not replayed (no advancement detection on mere open)', () => {
-    // The entryToken increment is synchronous and does not trigger
-    // detectAdvancements. Advancement detection only runs in the
-    // async IIFE after the guard, and only when wasFirstOpen is false.
-    // The entryToken increment is BEFORE the async IIFE, proving
-    // they are independent — replay happens even if advancement
-    // detection produces nothing.
+    // The session advance is synchronous and does not itself trigger
+    // detectAdvancements. Detection runs in the async IIFE after the
+    // guard. The session advance happens BEFORE the async IIFE, proving
+    // the session identity is established independently of (and prior
+    // to) any advancement detection result.
     const source = gardenDetailSrc
-    // entryToken increment must come BEFORE the async IIFE
-    const tokenIdx = source.indexOf('setEntryToken((t) => t + 1)')
+    const tokenIdx = source.indexOf('setEntryToken(sessionId)')
     const iifeIdx = source.indexOf('(async () => {')
     expect(tokenIdx).toBeGreaterThan(-1)
     expect(iifeIdx).toBeGreaterThan(-1)
@@ -402,240 +401,419 @@ describe('Glow repeated-entry replay — behavioral lifecycle', () => {
 })
 
 // ─────────────────────────────────────────────────────────────
-// GARDEN AMBIENT ENTRANCE REPLAY — ROOT-CAUSE FIX (post-5863859)
+// GARDEN OPEN-SESSION IDENTITY + ENTRY REPLAY (post-874a407)
 //
-// Physical QA on 5863859 found the Garden growth entrance did not
-// reliably replay. Root cause: a standalone entryToken-keyed effect
-// in useGardenMotion raced with the pre-existing advancements-keyed
-// orchestration effect. Both effects wrote to the SAME shared
-// Animated.Values. On every repeat open with no new progression, the
-// orchestration effect's "no changes" branch called
-// resolveToCanonicalRest() — which snapped everything to canonical
-// INSTANTLY, cutting off/overriding the entryToken effect's
-// in-flight dormant→canonical animation (started moments earlier in
-// the same or adjacent commit).
+// PROVEN ANDROID LIFECYCLE (physical-device logcat, scales=1):
+//   - GardenDetail PERSISTS across opens (rendered unconditionally
+//     by TodayScreen; only Modal children come and go).
+//   - Tapping Done sets visible=false. RN's Modal.render() returns
+//     null when visible!==true on Android, so LivingGardenScene
+//     UNMOUNTS on Done and REMOUNTS on the next open.
+//   - Because the Scene remounts, its per-mount guard
+//     (processedAdvancementsRef) resets. The persistent parent still
+//     held the PREVIOUS open's advancements object, so on reopen the
+//     stale object was re-processed as if it were new progress:
+//         open #2 → "hasChanges=true"  (STALE session-1 data)
+//         then    → "hasChanges=false" (fresh session-2 detection)
+//         then    → ambient replay cancelled the stale timeline
+//     Two competing major timelines per open, and the visible one was
+//     driven by stale data.
+//   - The ambient (in-grid value nudge) replay DID run on opens #2/#3
+//     but was too subtle to read as the Garden entrance. The
+//     recognizable entrance is the V6 Spotlight choreography, which
+//     only mounted when real bed advancements existed.
 //
-// FIX: entryToken was removed from useGardenMotion entirely. The
-// `advancements` orchestration effect is now the SOLE authority over
-// these Animated.Values. Its "no changes" branch (previously an
-// instant resolveToCanonicalRest with no visible animation) now
-// calls playAmbientEntranceReplay() — an animated reveal using the
-// same FROZEN duration/easing constants as the real advancement
-// timeline. Because `detectAdvancements()` produces a fresh object
-// reference on every intentional Garden open (verified below), this
-// effect — and therefore some entrance animation — fires exactly
-// once per open, with no competing effect to race against.
+// FIX UNDER TEST:
+//   1. GardenDetail owns an open-session id (entryToken), incremented
+//      exactly once per intentional visible false→true open.
+//   2. Every detectAdvancements() result is tagged with the session
+//      that requested it (advancementsSessionId). A result is valid
+//      only while its session is current — so a prior session's
+//      object can never be processed after remount.
+//   3. Exactly ONE presentation decision per open:
+//        'pending'         → nothing presented yet (no stale timeline)
+//        'realAdvancement' → existing advancement presentation
+//        'entryReplay'     → same recognizable V6 Spotlight entrance,
+//                            using CURRENT persisted state
+//                            (fromStage === toStage), no fake progress
+//   4. Only REAL advancements are passed to useGardenMotion / the
+//      advancement queue.
 // ─────────────────────────────────────────────────────────────
-describe('Garden ambient entrance replay — root-cause fix', () => {
-  test('36. useGardenMotion no longer accepts an entryToken parameter', () => {
-    // The standalone entryToken mechanism that raced with the
-    // orchestration effect has been removed entirely.
-    expect(livingGardenMotionSrc).not.toMatch(/entryToken/)
-  })
-
-  test('37. Only ONE effect in LivingGardenMotion touches bed/tree/arbor Animated.Values on open', () => {
-    // There must be exactly one useEffect keyed on `advancements`
-    // that owns the bed/tree/arbor/rainbow Animated.Values (the
-    // orchestration effect). No second effect should independently
-    // reset/animate refs.scaleY, treeScaleRef, or arborRevealRef.
-    const refsScaleYSetValueCount = (
-      livingGardenMotionSrc.match(/refs\.scaleY\.setValue/g) || []
-    ).length
-    // Only resolveToCanonicalRest() and ensureBedRefs's initial
-    // creation touch refs directly outside of Animated.timing calls;
-    // there must be no second "reset to dormant" site duplicating
-    // the ambient replay's dormant-state assignment.
-    const dormantResetSites = (
-      livingGardenMotionSrc.match(/refs\.scaleY\.setValue\(GROWTH_START_SCALE_MID\)/g) || []
-    ).length
-    expect(dormantResetSites).toBe(1)
-    expect(refsScaleYSetValueCount).toBeGreaterThan(0)
-  })
-
-  test('38. playAmbientEntranceReplay exists and is invoked only from the orchestration effect', () => {
-    expect(livingGardenMotionSrc).toMatch(/const playAmbientEntranceReplay = useCallback\(/)
-    // Must be called from within the "no changes" branch, guarded
-    // by hasBeds/hasJourney/hasArbor/hasRainbow all false
-    const noChangeBranchMatch = livingGardenMotionSrc.match(
-      /if \(!hasBeds && !hasJourney && !hasArbor && !hasRainbow\) \{[\s\S]*?playAmbientEntranceReplay\(\)[\s\S]*?return\s*\}/,
+describe('Garden open-session identity', () => {
+  test('36. GardenDetail owns an open-session ref incremented once per open', () => {
+    expect(gardenDetailSrc).toMatch(/const openSessionRef = useRef\(0\)/)
+    const openEffect = gardenDetailSrc.match(
+      /if \(!visible \|\| seenStateLoaded\.current\) return[\s\S]*?openSessionRef\.current \+= 1[\s\S]*?const sessionId = openSessionRef\.current/,
     )
-    expect(noChangeBranchMatch).toBeTruthy()
+    expect(openEffect).toBeTruthy()
   })
 
-  test('39. Ambient replay resets to a restrained "mid transition" frame (not literal empty/dormant)', () => {
-    // Reuses the approved GROWTH_START_SCALE_MID / GROWTH_START_OPACITY_MID
-    // constants (already used by real bed advancement motion) rather
-    // than inventing a new "emptied garden" visual.
-    expect(livingGardenMotionSrc).toMatch(/refs\.scaleY\.setValue\(GROWTH_START_SCALE_MID\)/)
-    expect(livingGardenMotionSrc).toMatch(/refs\.opacity\.setValue\(GROWTH_START_OPACITY_MID\)/)
-    expect(livingGardenMotionSrc).toMatch(/treeScaleRef\.current\.setValue\(TREE_START_SCALE\)/)
-    expect(livingGardenMotionSrc).toMatch(/treeOpacityRef\.current\.setValue\(TREE_START_OPACITY\)/)
+  test('37. Detection results are tagged with the requesting session id', () => {
+    expect(gardenDetailSrc).toMatch(/const \[advancementsSessionId, setAdvancementsSessionId\] = useState\(0\)/)
+    expect(gardenDetailSrc).toMatch(/setAdvancementsSessionId\(sessionId\)/)
   })
 
-  test('40. Ambient replay reuses FROZEN duration/easing constants, not invented values', () => {
-    const ambientFnMatch = livingGardenMotionSrc.match(
-      /const playAmbientEntranceReplay = useCallback\(\(\) => \{[\s\S]*?\}, \[cancelTimeline[\s\S]*?\]\)/,
+  test('38. Stale prior-session advancements are rejected via session equality', () => {
+    expect(gardenDetailSrc).toMatch(
+      /const advancementsValid = advancements != null && advancementsSessionId === entryToken/,
     )
-    expect(ambientFnMatch).toBeTruthy()
-    const fnSrc = ambientFnMatch[0]
-    expect(fnSrc).toMatch(/STAGE_TRANSITION_DURATION\.sprout/)
-    expect(fnSrc).toMatch(/TREE_DURATION_COMPRESSED/)
-    expect(fnSrc).toMatch(/ARBOR_ORNAMENT_DURATION/)
-    expect(fnSrc).toMatch(/EASING\.decelerate/)
-    expect(fnSrc).toMatch(/WAKE_DURATION/)
-    expect(fnSrc).toMatch(/BAND_STAGGER/)
   })
 
-  test('41. Ambient replay animates back to canonical (toValue: 1)', () => {
-    const ambientFnMatch = livingGardenMotionSrc.match(
-      /const playAmbientEntranceReplay = useCallback\(\(\) => \{[\s\S]*?\}, \[cancelTimeline[\s\S]*?\]\)/,
+  test('39. Every session resolves exactly one advancement descriptor (incl. first-ever open)', () => {
+    // wasFirstOpen and missing-lastSeen both produce a descriptor, so
+    // a session never silently fails to resolve (which would leave the
+    // Scene acting on the previous session's data).
+    expect(gardenDetailSrc).toMatch(/if \(wasFirstOpen\)[\s\S]*?isFirstOpen: true/)
+    expect(gardenDetailSrc).toMatch(/lastSeen[\s\S]*?\?[\s\S]*?detectAdvancements\(lastSeen, currentState\)[\s\S]*?:[\s\S]*?isFirstOpen: false/)
+  })
+
+  test('40. presentationMode is exactly one of pending/realAdvancement/entryReplay', () => {
+    const modeMatch = gardenDetailSrc.match(
+      /const presentationMode = !presentationReady \|\| !advancementsValid\s*\?\s*'pending'\s*:\s*\(hasRealAdvancement \? 'realAdvancement' : 'entryReplay'\)/,
     )
-    expect(ambientFnMatch).toBeTruthy()
-    const fnSrc = ambientFnMatch[0]
-    expect(fnSrc).toMatch(/Animated\.timing\(refs\.scaleY[\s\S]*?toValue: 1/)
-    expect(fnSrc).toMatch(/Animated\.timing\(treeScaleRef\.current[\s\S]*?toValue: 1/)
-    expect(fnSrc).toMatch(/Animated\.timing\(arborRevealRef\.current[\s\S]*?toValue: 1/)
+    expect(modeMatch).toBeTruthy()
   })
 
-  test('42. Reduced Motion resolves the no-change branch instantly, bypassing ambient replay', () => {
-    const noChangeBranchMatch = livingGardenMotionSrc.match(
-      /if \(!hasBeds && !hasJourney && !hasArbor && !hasRainbow\) \{[\s\S]*?if \(isReduced\) \{[\s\S]*?resolveToCanonicalRest\(\)[\s\S]*?return[\s\S]*?\}[\s\S]*?playAmbientEntranceReplay\(\)/,
+  test('41. Only REAL advancements are passed down as advancements', () => {
+    expect(gardenDetailSrc).toMatch(
+      /const sceneAdvancements = presentationMode === 'realAdvancement' \? advancements : null/,
     )
-    expect(noChangeBranchMatch).toBeTruthy()
+    expect(gardenDetailSrc).toMatch(/advancements=\{sceneAdvancements\}/)
+    expect(gardenDetailSrc).toMatch(/presentationMode=\{presentationMode\}/)
   })
 
-  test('43. Ambient replay does not call detectAdvancements, saveLastSeenState, or any persistence API', () => {
-    const ambientFnMatch = livingGardenMotionSrc.match(
-      /const playAmbientEntranceReplay = useCallback\(\(\) => \{[\s\S]*?\}, \[cancelTimeline[\s\S]*?\]\)/,
+  test('42. hasRealAdvancement requires genuine earned progression', () => {
+    const hasRealMatch = gardenDetailSrc.match(
+      /const hasRealAdvancement = !!\([\s\S]*?advancementsValid &&[\s\S]*?!advancements\.isFirstOpen &&[\s\S]*?bedAdvancements[\s\S]*?journeyAdvancement[\s\S]*?newMilestoneIds[\s\S]*?rainbowComplete[\s\S]*?\)/,
     )
-    expect(ambientFnMatch).toBeTruthy()
-    const fnSrc = ambientFnMatch[0]
-    expect(fnSrc).not.toMatch(/detectAdvancements/)
-    expect(fnSrc).not.toMatch(/saveLastSeenState/)
-    expect(fnSrc).not.toMatch(/initializeIfAbsent/)
-    expect(fnSrc).not.toMatch(/AsyncStorage/)
+    expect(hasRealMatch).toBeTruthy()
   })
 
-  test('44. Ambient replay cancels any existing timeline/idle motion before starting (no double-animation)', () => {
-    const ambientFnMatch = livingGardenMotionSrc.match(
-      /const playAmbientEntranceReplay = useCallback\(\(\) => \{[\s\S]*?\}, \[cancelTimeline[\s\S]*?\]\)/,
+  test('43. Session id does not change on ordinary rerenders while open', () => {
+    // The increment lives ONLY inside the visible-gated open effect.
+    const increments = (gardenDetailSrc.match(/openSessionRef\.current \+= 1/g) || []).length
+    expect(increments).toBe(1)
+    const openEffect = gardenDetailSrc.match(
+      /useEffect\(\(\) => \{\s*if \(!visible \|\| seenStateLoaded\.current\) return[\s\S]*?\}, \[visible\]\)/,
     )
-    expect(ambientFnMatch).toBeTruthy()
-    const fnSrc = ambientFnMatch[0]
-    expect(fnSrc).toMatch(/cancelTimeline\(\)/)
-    expect(fnSrc).toMatch(/stopIdleMotion\(\)/)
+    expect(openEffect).toBeTruthy()
+    expect(openEffect[0]).toContain('openSessionRef.current += 1')
   })
 
-  test('45. GardenDetail seen-state detection produces a fresh advancements object on every open (confirms single-effect trigger)', () => {
-    // detectAdvancements is called inside the per-open async IIFE and
-    // its result is always passed to setAdvancements — a fresh object
-    // reference each time, which is what allows the orchestration
-    // effect (keyed on advancements) to fire exactly once per open
-    // without needing a second entryToken-based trigger.
-    const openIifeMatch = gardenDetailSrc.match(
-      /if \(!wasFirstOpen\) \{[\s\S]*?const adv = detectAdvancements\(lastSeen, currentState\)[\s\S]*?setAdvancements\(adv\)/,
-    )
-    expect(openIifeMatch).toBeTruthy()
-  })
-
-  test('46. LivingGardenScene no longer passes entryToken into useGardenMotion', () => {
-    const motionCallMatch = livingGardenSceneSrc.match(
-      /useGardenMotion\(\{[\s\S]*?\}\)/,
-    )
-    expect(motionCallMatch).toBeTruthy()
-    expect(motionCallMatch[0]).not.toContain('entryToken')
-  })
-
-  test('47. entryToken remains scoped to the wake (opacity/brightness) effect only', () => {
-    // entryToken is still a valid concept for the lightweight wake
-    // fade, which is a separate, non-conflicting channel untouched
-    // by useGardenMotion.
-    expect(gardenDetailSrc).toMatch(/const \[entryToken, setEntryToken\] = useState\(0\)/)
-    expect(livingGardenSceneSrc).toMatch(/entryToken = 0,/)
-    expect(livingGardenSceneSrc).toMatch(/\}, \[isReduced, entryToken\]\)/)
+  test('44. Persisted seen-state/progression APIs are never given the session id', () => {
+    expect(gardenDetailSrc).not.toMatch(/saveLastSeenState\([^)]*sessionId/)
+    expect(gardenDetailSrc).not.toMatch(/detectAdvancements\([^)]*sessionId/)
+    expect(gardenDetailSrc).not.toMatch(/initializeIfAbsent\([^)]*sessionId/)
   })
 })
 
 // ─────────────────────────────────────────────────────────────
-// GARDEN BEHAVIORAL LIFECYCLE — models the actual async runtime
-// ordering that exposed the 5863859 race: entryToken commits
-// synchronously (before advancements), so any second effect keyed
-// on entryToken alone would fire BEFORE the advancements-driven
-// effect and could be overridden by it. This models that no such
-// second effect exists, and that the single orchestration effect's
-// decision (ambient replay vs real timeline vs first-open) is based
-// on a freshly computed advancements object every time.
+// ENTRY REPLAY REUSES THE V6 SPOTLIGHT ENTRANCE
 // ─────────────────────────────────────────────────────────────
-function simulateGardenOrchestration(opens) {
-  // opens: array of { wasFirstOpen, hasRealChange } describing each
-  // intentional Garden open in sequence.
-  const calls = []
-  let processedRef = null
-  for (const open of opens) {
-    const advancements = open.wasFirstOpen
-      ? null
-      : { isFirstOpen: false, hasRealChange: open.hasRealChange, _ref: {} }
-    if (!advancements) continue // orchestration effect guard: if (!advancements) return
-    if (processedRef === advancements) continue // never true — fresh object each open
-    processedRef = advancements
-    if (advancements.isFirstOpen) {
-      calls.push('resolveToCanonicalRest')
-      continue
-    }
-    if (!advancements.hasRealChange) {
-      calls.push('playAmbientEntranceReplay')
-      continue
-    }
-    calls.push('realAdvancementTimeline')
+describe('Garden entry replay — reuses V6 Spotlight, no fake progress', () => {
+  test('45. LivingGardenScene accepts presentationMode', () => {
+    expect(livingGardenSceneSrc).toMatch(/presentationMode = 'pending',/)
+  })
+
+  test('46. Spotlight queue is derived per presentationMode', () => {
+    const queueMatch = livingGardenSceneSrc.match(
+      /const spotlightQueue = useMemo\(\(\) => \{[\s\S]*?if \(presentationMode === 'realAdvancement'\)[\s\S]*?if \(presentationMode === 'entryReplay'\)[\s\S]*?\}, \[presentationMode, advancements, bedStages\]\)/,
+    )
+    expect(queueMatch).toBeTruthy()
+  })
+
+  test('47. entryReplay uses CURRENT stage for BOTH source and target (no fabricated growth)', () => {
+    const entryReplayBranch = livingGardenSceneSrc.match(
+      /if \(presentationMode === 'entryReplay'\) \{[\s\S]*?fromStage: currentStage,\s*toStage: currentStage,[\s\S]*?\}/,
+    )
+    expect(entryReplayBranch).toBeTruthy()
+    // The stage must be read from persisted bedStages, not invented.
+    expect(livingGardenSceneSrc).toMatch(/const currentStage = bedStages\[bestBedKey\]\.key/)
+  })
+
+  test('48. entryReplay marks its queue entries so they are not advancement semantics', () => {
+    expect(livingGardenSceneSrc).toMatch(/isEntryReplay: true/)
+  })
+
+  test('49. entryReplay spotlights a single representative bed (short, reads as an entrance)', () => {
+    const branch = livingGardenSceneSrc.match(/if \(presentationMode === 'entryReplay'\) \{[\s\S]*?return \[\{[\s\S]*?\}\]/)
+    expect(branch).toBeTruthy()
+  })
+
+  test('50. Empty garden does not fabricate a bed to spotlight', () => {
+    expect(livingGardenSceneSrc).toMatch(/if \(!bestBedKey\) return \[\]/)
+  })
+
+  test("51. 'pending' presents nothing (prevents the stale/duplicate timeline)", () => {
+    const pendingMatch = livingGardenSceneSrc.match(
+      /\/\/ 'pending' — this session's detection has not resolved yet\.\s*return \[\]/,
+    )
+    expect(pendingMatch).toBeTruthy()
+  })
+
+  test('52. Scene memo comparator includes presentationMode', () => {
+    expect(livingGardenSceneSrc).toMatch(/prev\.presentationMode === next\.presentationMode/)
+  })
+
+  test('53. The subtle ambient in-grid replay was removed from useGardenMotion', () => {
+    expect(livingGardenMotionSrc).not.toMatch(/playAmbientEntranceReplay/)
+    expect(livingGardenMotionSrc).not.toMatch(/GROWTH_START_SCALE_MID\)/)
+  })
+
+  test('54. useGardenMotion is documented as receiving REAL advancements only', () => {
+    expect(livingGardenMotionSrc).toMatch(/only ever given REAL advancements/)
+  })
+
+  test('55. entryReplay never reaches useGardenMotion as advancements', () => {
+    // GardenDetail passes null unless realAdvancement.
+    expect(gardenDetailSrc).toMatch(
+      /const sceneAdvancements = presentationMode === 'realAdvancement' \? advancements : null/,
+    )
+  })
+
+  test('56. Reduce Motion still resolves instantly in the motion hook', () => {
+    expect(livingGardenMotionSrc).toMatch(/if \(isReduced\) \{[\s\S]*?resolveToCanonicalRest\(\)[\s\S]*?return/)
+  })
+
+  test('57. Spotlight overlay itself respects Reduce Motion', () => {
+    const spotlightSrc = fs.readFileSync(
+      path.join(__dirname, '..', 'LivingGardenSpotlight.js'),
+      'utf-8',
+    )
+    expect(spotlightSrc).toMatch(/isReduced/)
+  })
+})
+
+// ─────────────────────────────────────────────────────────────
+// BEHAVIORAL LIFECYCLE — models the PROVEN Android sequence:
+// parent persists, Scene unmounts on Done and remounts on reopen,
+// and the parent may still physically hold the prior session's data.
+// ─────────────────────────────────────────────────────────────
+
+// Faithful model of the shipped decision logic.
+function createGardenDetailModel() {
+  return {
+    // persistent parent state (survives Scene unmount)
+    openSession: 0,
+    advancements: null,
+    advancementsSessionId: 0,
+    seenStateLoaded: false,
+    visible: false,
+    savedSeenStateCount: 0,
   }
-  return calls
 }
 
-describe('Garden orchestration — behavioral lifecycle (no second-effect race)', () => {
-  test('48. First-ever open (wasFirstOpen) plays no motion', () => {
-    const calls = simulateGardenOrchestration([{ wasFirstOpen: true }])
-    expect(calls).toEqual([])
+function computePresentation(model, { presentationReady = true } = {}) {
+  const advancementsValid =
+    model.advancements != null && model.advancementsSessionId === model.openSession
+  const a = model.advancements
+  const hasRealAdvancement = !!(
+    advancementsValid &&
+    !a.isFirstOpen &&
+    (
+      (a.bedAdvancements && a.bedAdvancements.length > 0) ||
+      a.journeyAdvancement ||
+      (a.newMilestoneIds && a.newMilestoneIds.length > 0) ||
+      a.rainbowComplete
+    )
+  )
+  const presentationMode = !presentationReady || !advancementsValid
+    ? 'pending'
+    : (hasRealAdvancement ? 'realAdvancement' : 'entryReplay')
+  return {
+    advancementsValid,
+    hasRealAdvancement,
+    presentationMode,
+    motionAdvancements: presentationMode === 'realAdvancement' ? a : null,
+  }
+}
+
+// Simulates one intentional open. Returns every presentation the Scene
+// would start, in order, across the whole open (mount + async resolve).
+function simulateOpen(model, freshAdvancements) {
+  const presentations = []
+  // 1. visible false → true. Parent opens a new session.
+  model.visible = true
+  model.seenStateLoaded = true
+  model.openSession += 1
+  // 2. Scene MOUNTS FRESH (per-mount guards reset). At this instant the
+  //    parent may still hold the PREVIOUS session's advancements.
+  let p = computePresentation(model)
+  if (p.presentationMode !== 'pending') presentations.push(p.presentationMode)
+  // 3. This session's async detection resolves and is session-tagged.
+  model.advancements = freshAdvancements
+  model.advancementsSessionId = model.openSession
+  p = computePresentation(model)
+  if (p.presentationMode !== 'pending') presentations.push(p.presentationMode)
+  return presentations
+}
+
+function simulateClose(model) {
+  // Done: Scene unmounts, seen-state saved, guard reset for next open,
+  // and the presentation result is discarded so the next open starts
+  // in 'pending' (see GardenDetail close effect).
+  model.visible = false
+  model.savedSeenStateCount += 1
+  model.seenStateLoaded = false
+  model.advancements = null
+  model.advancementsSessionId = 0
+}
+
+const NO_CHANGE_ADV = () => ({
+  isFirstOpen: false, bedAdvancements: [], journeyAdvancement: null, newMilestoneIds: [],
+})
+const REAL_ADV = () => ({
+  isFirstOpen: false,
+  bedAdvancements: [{ bedKey: 'greens', fromStage: 'seed', toStage: 'sprout' }],
+  journeyAdvancement: null,
+  newMilestoneIds: [],
+})
+
+describe('Garden proven-lifecycle behavior — 3 sessions', () => {
+  test('58. Session 1 with real progress: exactly one realAdvancement presentation', () => {
+    const m = createGardenDetailModel()
+    const p = simulateOpen(m, REAL_ADV())
+    expect(p).toEqual(['realAdvancement'])
   })
 
-  test('49. Second open with no new progress plays the ambient replay', () => {
-    const calls = simulateGardenOrchestration([
-      { wasFirstOpen: true },
-      { wasFirstOpen: false, hasRealChange: false },
-    ])
-    expect(calls).toEqual(['playAmbientEntranceReplay'])
+  test('59. Session 1 with no progress: exactly one entryReplay presentation', () => {
+    const m = createGardenDetailModel()
+    const p = simulateOpen(m, NO_CHANGE_ADV())
+    expect(p).toEqual(['entryReplay'])
   })
 
-  test('50. Third open with still no new progress plays the ambient replay again', () => {
-    const calls = simulateGardenOrchestration([
-      { wasFirstOpen: true },
-      { wasFirstOpen: false, hasRealChange: false },
-      { wasFirstOpen: false, hasRealChange: false },
-    ])
-    expect(calls).toEqual(['playAmbientEntranceReplay', 'playAmbientEntranceReplay'])
+  test('60. REGRESSION: session 2 must NOT process session 1 stale data', () => {
+    // Layer 1 — the result is discarded on close.
+    const m = createGardenDetailModel()
+    simulateOpen(m, REAL_ADV()) // session 1 produced a real-advancement object
+    simulateClose(m)
+    expect(m.advancements).toBeNull()
+    const p = simulateOpen(m, NO_CHANGE_ADV())
+    expect(p).toEqual(['entryReplay'])
+    expect(p).not.toContain('realAdvancement')
   })
 
-  test('51. Open with real new progress plays the real advancement timeline, not the ambient replay', () => {
-    const calls = simulateGardenOrchestration([
-      { wasFirstOpen: true },
-      { wasFirstOpen: false, hasRealChange: true },
-    ])
-    expect(calls).toEqual(['realAdvancementTimeline'])
+  test('60b. DEFENSE IN DEPTH: even if a stale object were retained, session tagging rejects it', () => {
+    // Simulates the exact failure seen in physical logcat: the parent
+    // holding session 1's real-advancement object at session 2's
+    // Scene remount. Session equality alone must reject it, independent
+    // of the close-time clearing.
+    const m = createGardenDetailModel()
+    m.openSession = 1
+    m.advancements = REAL_ADV()
+    m.advancementsSessionId = 1
+    expect(computePresentation(m).presentationMode).toBe('realAdvancement')
+    // New open begins: session advances but the result is still session 1's.
+    m.openSession = 2
+    const atRemount = computePresentation(m)
+    expect(atRemount.advancementsValid).toBe(false)
+    expect(atRemount.presentationMode).toBe('pending')
+    expect(atRemount.motionAdvancements).toBeNull()
   })
 
-  test('52. Alternating real-change and no-change opens each produce exactly one replay call', () => {
-    const calls = simulateGardenOrchestration([
-      { wasFirstOpen: true },
-      { wasFirstOpen: false, hasRealChange: true },
-      { wasFirstOpen: false, hasRealChange: false },
-      { wasFirstOpen: false, hasRealChange: true },
-      { wasFirstOpen: false, hasRealChange: false },
-    ])
-    expect(calls).toEqual([
-      'realAdvancementTimeline',
-      'playAmbientEntranceReplay',
-      'realAdvancementTimeline',
-      'playAmbientEntranceReplay',
-    ])
+  test('61. Sessions 1→2→3 each produce exactly ONE presentation', () => {
+    const m = createGardenDetailModel()
+    const s1 = simulateOpen(m, REAL_ADV()); simulateClose(m)
+    const s2 = simulateOpen(m, NO_CHANGE_ADV()); simulateClose(m)
+    const s3 = simulateOpen(m, NO_CHANGE_ADV()); simulateClose(m)
+    expect(s1).toHaveLength(1)
+    expect(s2).toHaveLength(1)
+    expect(s3).toHaveLength(1)
+    expect(s1).toEqual(['realAdvancement'])
+    expect(s2).toEqual(['entryReplay'])
+    expect(s3).toEqual(['entryReplay'])
+  })
+
+  test('62. Opens #4 and #5 keep replaying (behavior does not decay)', () => {
+    const m = createGardenDetailModel()
+    simulateOpen(m, REAL_ADV()); simulateClose(m)
+    simulateOpen(m, NO_CHANGE_ADV()); simulateClose(m)
+    simulateOpen(m, NO_CHANGE_ADV()); simulateClose(m)
+    const s4 = simulateOpen(m, NO_CHANGE_ADV()); simulateClose(m)
+    const s5 = simulateOpen(m, NO_CHANGE_ADV()); simulateClose(m)
+    expect(s4).toEqual(['entryReplay'])
+    expect(s5).toEqual(['entryReplay'])
+  })
+
+  test('63. Real progress earned between opens still uses the real advancement path', () => {
+    const m = createGardenDetailModel()
+    simulateOpen(m, NO_CHANGE_ADV()); simulateClose(m)
+    const s2 = simulateOpen(m, REAL_ADV()); simulateClose(m)
+    expect(s2).toEqual(['realAdvancement'])
+  })
+
+  test('64. Ordinary rerenders while Garden stays open do NOT re-present', () => {
+    const m = createGardenDetailModel()
+    simulateOpen(m, NO_CHANGE_ADV())
+    const sessionBefore = m.openSession
+    // Several rerenders with no visible transition:
+    const modes = [
+      computePresentation(m).presentationMode,
+      computePresentation(m).presentationMode,
+      computePresentation(m).presentationMode,
+    ]
+    // Mode is stable and the session never advances → the Scene's
+    // queue useMemo inputs are unchanged, so no new presentation starts.
+    expect(new Set(modes).size).toBe(1)
+    expect(m.openSession).toBe(sessionBefore)
+  })
+
+  test('65. First-ever open (isFirstOpen) resolves to entryReplay, never realAdvancement', () => {
+    const m = createGardenDetailModel()
+    const p = simulateOpen(m, {
+      isFirstOpen: true, bedAdvancements: [], journeyAdvancement: null, newMilestoneIds: [],
+    })
+    expect(p).toEqual(['entryReplay'])
+  })
+
+  test('66. Persisted seen-state is written once per close, never per presentation', () => {
+    const m = createGardenDetailModel()
+    simulateOpen(m, REAL_ADV()); simulateClose(m)
+    simulateOpen(m, NO_CHANGE_ADV()); simulateClose(m)
+    simulateOpen(m, NO_CHANGE_ADV()); simulateClose(m)
+    expect(m.savedSeenStateCount).toBe(3)
+  })
+
+  test('67. entryReplay never mutates the advancement descriptor (no fake progress)', () => {
+    const m = createGardenDetailModel()
+    const fresh = NO_CHANGE_ADV()
+    simulateOpen(m, fresh)
+    expect(fresh.bedAdvancements).toEqual([])
+    expect(fresh.journeyAdvancement).toBeNull()
+    expect(fresh.newMilestoneIds).toEqual([])
+    expect(fresh.isFirstOpen).toBe(false)
+  })
+
+  test('68b. Close discards the presentation result so reopen starts in pending (exactly one START)', () => {
+    // Physical logcat on the first fix attempt showed a SECOND
+    // 'presentation START' at Scene remount, carrying the PREVIOUS
+    // session's still-valid entryReplay mode, because the Scene mounts
+    // one render before the open effect advances the session id.
+    expect(gardenDetailSrc).toMatch(
+      /if \(!visible && prevVisibleRef\.current\) \{[\s\S]*?setAdvancements\(null\)[\s\S]*?setAdvancementsSessionId\(0\)/,
+    )
+    // Behavioral: immediately after close, nothing is presentable.
+    const m = createGardenDetailModel()
+    simulateOpen(m, NO_CHANGE_ADV())
+    simulateClose(m)
+    expect(computePresentation(m).presentationMode).toBe('pending')
+    // And at the first render of the next open (session not yet advanced)
+    // it is still pending — no premature presentation.
+    m.visible = true
+    expect(computePresentation(m).presentationMode).toBe('pending')
+  })
+
+  test('68. Stale real-advancement data can never leak into useGardenMotion after reopen', () => {
+    const m = createGardenDetailModel()
+    simulateOpen(m, REAL_ADV())
+    simulateClose(m)
+    // Reopen; before the fresh detection resolves, motion must get null.
+    m.visible = true
+    m.seenStateLoaded = true
+    m.openSession += 1
+    const atRemount = computePresentation(m)
+    expect(atRemount.presentationMode).toBe('pending')
+    expect(atRemount.motionAdvancements).toBeNull()
   })
 })
 

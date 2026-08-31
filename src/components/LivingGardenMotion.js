@@ -1057,98 +1057,13 @@ export function useGardenMotion({ advancements, isReduced, sceneId: _sceneId, on
     })
   }, [isReduced, stopIdleMotion])
 
-  // ── Ambient entrance replay (no new progression) ────────────
-  // Plays a presentation-only reveal of the CURRENT canonical Garden
-  // state. Invoked exclusively from the orchestration effect below
-  // (the single authority over these Animated.Values) whenever an
-  // intentional open produces no new bed/tree/arbor/rainbow
-  // advancement — so every intentional open still shows an entrance,
-  // not just opens with real progression. Reuses the same restrained
-  // "mid transition" and FROZEN duration/easing constants as the real
-  // advancement timeline (GROWTH_START_SCALE_MID, GROWTH_START_OPACITY_MID,
-  // TREE_START_SCALE, TREE_START_OPACITY, TREE_DURATION_COMPRESSED,
-  // ARBOR_ORNAMENT_DURATION, WAKE_DURATION, BAND_STAGGER,
-  // EASING.decelerate) rather than inventing new motion. Does not
-  // affect advancements, seen-state, milestones, or persisted progress
-  // — animation/presentation values only.
-  const playAmbientEntranceReplay = useCallback(() => {
-    cancelTimeline()
-    stopIdleMotion()
-    // Reset to a restrained "mid transition" starting frame (not a
-    // full empty-to-seed emergence — the garden already has earned
-    // content; this is a gentle reveal, not a regrowth from nothing).
-    ALL_BEDS_ORDER.forEach((bedKey) => {
-      const refs = ensureBedRefs(bedKey)
-      refs.scaleY.setValue(GROWTH_START_SCALE_MID)
-      refs.translateY.setValue(0)
-      refs.opacity.setValue(GROWTH_START_OPACITY_MID)
-    })
-    treeScaleRef.current.setValue(TREE_START_SCALE)
-    treeOpacityRef.current.setValue(TREE_START_OPACITY)
-    arborRevealRef.current.setValue(0)
-
-    // Animate beds to canonical with staggered delays (same stagger
-    // language as the real per-bed motion, starting after the wake
-    // fade so it reads as one coherent entrance).
-    ALL_BEDS_ORDER.forEach((bedKey, idx) => {
-      const refs = ensureBedRefs(bedKey)
-      const delay = WAKE_DURATION + idx * BAND_STAGGER
-      trackedTimeout(() => {
-        Animated.parallel([
-          Animated.timing(refs.scaleY, {
-            toValue: 1,
-            duration: STAGE_TRANSITION_DURATION.sprout,
-            easing: EASING.decelerate,
-            useNativeDriver: false,
-          }),
-          Animated.timing(refs.opacity, {
-            toValue: 1,
-            duration: STAGE_TRANSITION_DURATION.sprout,
-            easing: EASING.decelerate,
-            useNativeDriver: false,
-          }),
-        ]).start()
-      }, delay)
-    })
-
-    // Tree reveal — same FROZEN compressed duration used elsewhere
-    // for ambient/no-op orchestration timing.
-    const treeDelay = WAKE_DURATION + ALL_BEDS_ORDER.length * BAND_STAGGER + BED_TO_TREE_DELAY
-    trackedTimeout(() => {
-      Animated.parallel([
-        Animated.timing(treeScaleRef.current, {
-          toValue: 1,
-          duration: TREE_DURATION_COMPRESSED,
-          easing: EASING.decelerate,
-          useNativeDriver: false,
-        }),
-        Animated.timing(treeOpacityRef.current, {
-          toValue: 1,
-          duration: TREE_DURATION_COMPRESSED,
-          easing: EASING.decelerate,
-          useNativeDriver: false,
-        }),
-      ]).start()
-    }, treeDelay)
-
-    // Arbor reveal — same FROZEN ornament reveal duration/easing used
-    // by the real runArborReveal, applied to the existing earned set.
-    const arborDelay = treeDelay + TREE_DURATION_COMPRESSED + TREE_TO_ARBOR_DELAY
-    trackedTimeout(() => {
-      Animated.timing(arborRevealRef.current, {
-        toValue: 1,
-        duration: ARBOR_ORNAMENT_DURATION,
-        easing: EASING.decelerate,
-        useNativeDriver: false,
-      }).start()
-    }, arborDelay)
-
-    // Start idle motion after the ambient reveal completes.
-    const totalAmbientDuration = arborDelay + ARBOR_ORNAMENT_DURATION + 300
-    const idleTimer = trackedTimeout(() => startIdleMotion(), totalAmbientDuration)
-    pendingTimeoutsRef.current.add(idleTimer)
-  }, [cancelTimeline, stopIdleMotion, ensureBedRefs, trackedTimeout, startIdleMotion])
-
+  // ── (removed) Ambient entrance replay ───────────────────────
+  // Entry replay is no longer performed by nudging these in-grid
+  // Animated.Values. Physical QA proved that presentation was too
+  // subtle to read as the Garden entrance. Entry replay now reuses the
+  // recognizable V6 Spotlight entrance choreography, driven by
+  // LivingGardenScene from the parent's presentationMode. This hook is
+  // therefore only ever given REAL advancements.
   // ── Orchestration effect (event boundary) ──────────────────
   useEffect(() => {
     if (!advancements) return
@@ -1168,18 +1083,14 @@ export function useGardenMotion({ advancements, isReduced, sceneId: _sceneId, on
     const hasArbor = advancements.newMilestoneIds && advancements.newMilestoneIds.length > 0
     const hasRainbow = !!advancements.rainbowComplete
 
+    // Defensive: this hook is only ever given REAL advancements (the
+    // parent's presentationMode gate guarantees it), so a no-change
+    // object should not reach here. Entry replay is presented by the V6
+    // Spotlight in LivingGardenScene, not by this hook.
     if (!hasBeds && !hasJourney && !hasArbor && !hasRainbow) {
-      // No new progression since last open — this is a repeat,
-      // intentional Garden entry. Still replay a presentation-only
-      // ambient entrance reveal of the current canonical state so
-      // every intentional open shows the intended entrance animation
-      // (not just opens with real progression). Reduced Motion still
-      // resolves instantly.
-      if (isReduced) {
-        resolveToCanonicalRest()
-        return
-      }
-      playAmbientEntranceReplay()
+      resolveToCanonicalRest()
+      const idleTimer = setTimeout(() => startIdleMotion(), 500)
+      pendingTimeoutsRef.current.add(idleTimer)
       return
     }
 
@@ -1334,7 +1245,6 @@ export function useGardenMotion({ advancements, isReduced, sceneId: _sceneId, on
     cancelTimeline,
     stopIdleMotion,
     resolveToCanonicalRest,
-    playAmbientEntranceReplay,
     runBedMotion,
     runTreeGrowth,
     runArborReveal,

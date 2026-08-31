@@ -359,7 +359,15 @@ describe('Intro presentation gate — advancement held while intro visible', () 
 
   test('17. GardenDetail gates advancements prop to Scene via sceneAdvancements', () => {
     expect(GARDEN_DETAIL_SRC).toMatch(/sceneAdvancements/)
-    expect(GARDEN_DETAIL_SRC).toMatch(/presentationReady \? advancements : null/)
+    // Gating is now stricter than the old `presentationReady ? adv : null`:
+    // the Scene only receives advancements when this open session's own
+    // detection resolved AND it contains real earned progression.
+    // presentationReady (intro not showing) still participates via
+    // presentationMode.
+    expect(GARDEN_DETAIL_SRC).toMatch(/!presentationReady \|\| !advancementsValid/)
+    expect(GARDEN_DETAIL_SRC).toMatch(
+      /const sceneAdvancements = presentationMode === 'realAdvancement' \? advancements : null/,
+    )
   })
 
   test('18. GardenDetail passes sceneAdvancements (not raw advancements) to Scene', () => {

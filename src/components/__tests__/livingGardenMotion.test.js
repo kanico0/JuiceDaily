@@ -1119,9 +1119,17 @@ describe('AAA. Phase 1C — Production wiring audit', () => {
 
   test('GardenDetail first-open does not replay history', () => {
     const src = readSrc('GardenDetail.js')
-    // wasFirstOpen → no detectAdvancements call
+    // wasFirstOpen must still short-circuit history replay: it resolves
+    // the session with an isFirstOpen descriptor and never calls
+    // detectAdvancements. (Structure is now if/else rather than
+    // if (!wasFirstOpen), so assert the semantics, not the old shape.)
     expect(src).toMatch(/wasFirstOpen/)
-    expect(src).toMatch(/if \(!wasFirstOpen\)/)
+    const firstOpenBranch = src.match(/if \(wasFirstOpen\) \{[\s\S]*?isFirstOpen: true[\s\S]*?\} else \{/)
+    expect(firstOpenBranch).toBeTruthy()
+    expect(firstOpenBranch[0]).not.toMatch(/detectAdvancements/)
+    // detectAdvancements must live only in the non-first-open branch
+    const elseBranch = src.match(/\} else \{[\s\S]*?detectAdvancements\(lastSeen, currentState\)/)
+    expect(elseBranch).toBeTruthy()
   })
 
   test('GardenDetail coalesces previous-seen to current', () => {

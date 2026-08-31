@@ -58,8 +58,8 @@ describe('Unified scan-quota display architecture', () => {
     // Both use the same `serverQuota` from `useQuota()`
     const useQuotaIdx = homeScreenSource.indexOf('useQuota()')
     expect(useQuotaIdx).toBeGreaterThan(-1)
-    // filmRollLabel is derived from serverQuota
-    expect(homeScreenSource).toContain('selectFilmRollLabel(serverQuota)')
+    // filmRollLabel is derived from serverQuota (with effectiveIsPro)
+    expect(homeScreenSource).toContain('selectFilmRollLabel(serverQuota, effectiveIsPro)')
     // QuotaMeter also reads from the same QuotaStore context
     const quotaMeterIdx = homeScreenSource.indexOf('function QuotaMeter')
     if (quotaMeterIdx > -1) {
@@ -167,8 +167,8 @@ describe('Unified scan-quota display architecture', () => {
     expect(selectorsSource).toContain('selectFilmRollLabel')
     // Free plan: "X/Y Free"
     expect(selectorsSource).toMatch(/\$\{quota\.remaining\}\/\$\{quota\.limit\} Free/)
-    // Pro plan: "X/Y Pro"
-    expect(selectorsSource).toMatch(/\$\{quota\.remaining\}\/\$\{quota\.limit\} Pro/)
+    // Pro plan: "X/Y Pro" (uses local remaining/limit vars for isPro fallback)
+    expect(selectorsSource).toMatch(/\$\{remaining\}\/\$\{limit\} Pro/)
     // Null quota fallback
     expect(selectorsSource).toContain("'— Free'")
   })

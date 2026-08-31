@@ -33,8 +33,6 @@ export default function SnapGateModal({ visible, onDismiss, onUpgrade, onBuyPack
     }
   }, [visible])
 
-  const monthName = new Date().toLocaleDateString('en-US', { month: 'long' })
-
   return (
     <Modal visible={visible} transparent animationType="none" statusBarTranslucent>
       <BlurView intensity={40} tint="dark" style={styles.overlay}>
@@ -59,8 +57,8 @@ export default function SnapGateModal({ visible, onDismiss, onUpgrade, onBuyPack
           {/* Headline */}
           <Text style={styles.headline}>Snaps Exhausted</Text>
           <Text style={styles.body}>
-            You've used your 1 Free Snap for {monthName}.{' '}
-            <Text style={styles.proHighlight}>Wellness Architects</Text> get 12 AI Snaps each month,
+            You've used your introductory Free AI Snap.{' '}
+            <Text style={styles.proHighlight}>Wellness Architects</Text> get 4 AI Snaps each month,
             instant nutrient breakdown, and expanded ingredient analysis.
           </Text>
 

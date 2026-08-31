@@ -6,7 +6,7 @@
 //   - effectiveTier: 'pro' | 'free'
 //   - isPro: effective Pro status (real || dev override)
 //   - isQaProSimulation: whether QA Pro simulation is active
-//   - snapMonthlyLimit: 12 for Pro, 1 for Free
+//   - snapMonthlyLimit: 4 for Pro, 1 for Free
 //   - expandedIngredientUnlimited: true for Pro
 //   - realIsPro / realTier: the real RevenueCat state (unchanged)
 //

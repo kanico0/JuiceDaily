@@ -656,7 +656,7 @@ function QuotaMeter({ navigation }) {
       </Text>
       {exhausted && isFree && (
         <Text style={{ color: '#7EE787', fontSize: 12, marginTop: 2 }}>
-          Upgrade to Pro for 12 AI Snaps / month — or keep logging manually free
+          Upgrade to Pro for 4 AI Snaps / month — or keep logging manually free
         </Text>
       )}
     </TouchableOpacity>
@@ -813,9 +813,9 @@ export default function JuiceSnapScreen({ navigation, route }) {
   const { isPro } = usePro()
   const { isPro: effectiveIsPro, snapMonthlyLimit: effectiveSnapLimit, isQaProSimulation } = useEffectivePlanAccess()
   const { quota: serverQuota, applySnapshot: applyQuotaSnapshot, refresh: refreshQuota, markInstallSnapConsumed, verificationState } = useQuota()
-  const filmRollLabel = selectFilmRollLabel(serverQuota)
+  const filmRollLabel = selectFilmRollLabel(serverQuota, effectiveIsPro)
   const filmRollRemaining = selectFilmRollRemaining(serverQuota)
-  const filmRollIsPro = selectFilmRollIsPro(serverQuota)
+  const filmRollIsPro = selectFilmRollIsPro(serverQuota, effectiveIsPro)
   const [qaSnapUsed, setQaSnapUsed] = useState(0)
   useEffect(() => {
     if (isQaProSimulation) {
@@ -1150,7 +1150,7 @@ export default function JuiceSnapScreen({ navigation, route }) {
       const serverIsPro = selectFilmRollIsPro(currentQuota)
 
       // When QA Pro Simulation is active, use the QA-only snap counter
-      // with the Pro monthly limit (12). Otherwise use real server quota.
+      // with the Pro monthly limit. Otherwise use real server quota.
       let snapRemaining
       let snapIsPro
       if (isQaProSimulation) {
@@ -2225,13 +2225,13 @@ export default function JuiceSnapScreen({ navigation, route }) {
               <View style={styles.depletedOverlay} pointerEvents="none" />
               <Text style={styles.depletedMessage}>
                 {filmRollIsPro
-                  ? "You've used your 12 AI Snaps for this month."
-                  : "You've used your complimentary AI Snap for this month."}
+                  ? "You've used your 4 AI Snaps for this month."
+                  : "You've used your complimentary introductory AI Snap."}
               </Text>
               <Text style={styles.depletedSubMessage}>
                 {filmRollIsPro
-                  ? 'Keep adding produce manually for free. Your next 12 AI Snaps arrive at the start of your next quota month.'
-                  : 'Keep adding produce manually for free, or upgrade to RawLifeFlow Pro for 12 AI Snaps each month.'}
+                  ? 'Keep adding produce manually for free. Your next 4 AI Snaps arrive at the start of your next quota month.'
+                  : 'Keep adding produce manually for free, or upgrade to RawLifeFlow Pro for 4 AI Snaps each month.'}
               </Text>
               <View style={styles.depletedActions}>
                 {!filmRollIsPro && (

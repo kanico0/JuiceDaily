@@ -10,33 +10,42 @@
 // Snap. This module bridges that gap by tracking successful Free AI
 // Snaps at the *installation* level, independent of the Supabase UUID.
 //
-// ── Install Anchor ────────────────────────────────────────────
+// ── NEW LAUNCH POLICY (1.0.21): Free = 1 LIFETIME Snap ───────
 //
-// The install guard uses an IMMUTABLE install-level anniversary anchor,
-// persisted independently of any Supabase UUID. This anchor:
-//   - Is established once on the first quota refresh
-//   - Is seeded from the first serverQuota.periodStart (which is
-//     derived from auth.users.created_at on the server)
-//   - Does NOT change on logout, account switch, or app restart
-//   - Is NOT tied to any specific account's periodStart
+// The Free Snap is now a LIFETIME introductory allowance, not a
+// monthly one. Once consumed on this installation, it never resets.
+// This is tracked using a constant LIFETIME window key — there is no
+// monthly anniversary window for Free users.
 //
-// This prevents the cross-identity reset that would occur if the
-// guard used the current account's periodStart as its window key:
-//   Account A created Aug 11 → periodStart Aug 11
-//   logout → new anonymous B created Aug 20 → periodStart Aug 20
-//   If the guard used B's periodStart, it would see a different
-//   window key and incorrectly reset the install allowance.
+// ── NOT THE CANONICAL AUTHORITY ───────────────────────────────
 //
-// The install anchor uses the SAME anniversary window semantics as
-// the server quota (computed from the anchor, not chained), ensuring
-// alignment without a separate independent timer.
+// The SERVER is the sole authority for Free introductory
+// eligibility, via the durable, monotonic marker:
 //
-// ── Month-End Anniversary Correctness ─────────────────────────
+//   public.scan_quotas.free_lifetime_consumed   (migration 0018)
 //
-// Each install window is computed from the immutable install anchor
-// using addMonthsFromAnchor / anniversaryWindowStart. This handles
-// end-of-month clamping correctly:
-//   Anchor Jan 31 → Feb 28 (clamped) → Mar 31 (returns to 31st)
+// which is set exactly once inside commit_scan() and is never
+// reset by monthly windows, plan changes, upgrade, downgrade,
+// expiration, logout or reinstall. reserve_scan() /
+// reserve_guest_scan() reject a second Free Snap server-side.
+//
+// This install-level guard is UX / DEFENSE-IN-DEPTH ONLY. Its sole
+// purpose is to close the "logout → new anonymous UUID → fresh
+// server quota row" loophole that exists BEFORE a durable account
+// is established, and to avoid showing an allowance the server
+// will refuse.
+//
+// It is deliberately one-directional: composeEffectiveQuota() takes
+// min(server remaining, install remaining), so this local state can
+// only ever RESTRICT access, never GRANT it. Stale, cleared, or
+// tampered local state can therefore never authorize a Snap the
+// server would deny — and clearing app data cannot mint a new
+// introductory Snap for a durable signed-in account, because the
+// server marker persists independently.
+//
+// The install anchor is still established (for diagnostic purposes
+// and potential future use), but the consumption marker uses
+// 'LIFETIME' as its windowKey, so it never expires or resets.
 //
 // For Free users, the effective remaining is:
 //   min(account remaining, install remaining)
@@ -51,6 +60,11 @@ import type { ScanQuotaSnapshot } from '../subscriptions/subscriptionTypes'
 
 export const INSTALL_FREE_SNAP_KEY = '@juicing_install_free_snap_v1'
 export const INSTALL_ANCHOR_KEY = '@juicing_install_anchor_v1'
+
+// NEW POLICY: Free Snap is a LIFETIME introductory allowance.
+// The window key is a constant — it never changes, so once
+// consumed, the marker persists forever (no monthly reset).
+export const LIFETIME_WINDOW_KEY = 'LIFETIME'
 
 // ── Install anchor record ─────────────────────────────────────
 interface InstallAnchorRecord {
@@ -214,14 +228,13 @@ export async function getInstallAnchor (): Promise<string | null> {
 // ── Install Free Snap remaining ───────────────────────────────
 
 // Returns the install-level remaining allowance for Free users:
-//   1 — no consumed marker exists for the current install window
-//   0 — consumed marker exists for the current install window
+//   1 — no consumed marker exists (lifetime allowance unused)
+//   0 — consumed marker exists (lifetime allowance used)
 //   null — install state is unknown (no anchor, no serverQuota)
 //
-// The install window key is computed from the IMMUTABLE install
-// anchor, NOT from the current account's serverQuota.periodStart.
-// This prevents cross-identity resets when a new anonymous UUID
-// has a different periodStart.
+// NEW POLICY: The Free Snap is LIFETIME. The window key is a
+// constant 'LIFETIME' — it never changes, so once consumed, the
+// marker persists forever. There is no monthly reset.
 export async function getInstallFreeSnapRemaining (
   serverQuota: ScanQuotaSnapshot | null,
 ): Promise<number | null> {
@@ -229,35 +242,30 @@ export async function getInstallFreeSnapRemaining (
   // Ensure the install anchor exists (seed from serverQuota if needed)
   const anchorISO = await getOrCreateInstallAnchor(serverQuota)
   if (!anchorISO) return null
-  // Compute the install window key from the immutable anchor
-  const windowKey = computeInstallWindowKey(anchorISO)
-  if (!windowKey) return null
   const record = await readRecord()
   if (!record) return 1
-  // Same install window → consumed
-  if (record.windowKey === windowKey) return 0
-  // Different install window → new anniversary month, resets
-  return 1
+  // LIFETIME: any consumption record means the lifetime allowance
+  // is used. No monthly reset.
+  return 0
 }
 
 // ── Mark install consumed ─────────────────────────────────────
 
-// Mark the install-level Free Snap as consumed for the current
-// install anniversary window. The window key is computed from the
-// immutable install anchor.
+// Mark the install-level Free Snap as consumed.
 //
-// Idempotent — calling multiple times for the same window is safe.
+// NEW POLICY: Uses the LIFETIME window key — once consumed, the
+// marker persists forever. There is no monthly reset.
+//
+// Idempotent — calling multiple times is safe.
 export async function markInstallFreeSnapConsumed (
   serverQuota: ScanQuotaSnapshot | null,
 ): Promise<void> {
   const anchorISO = await getOrCreateInstallAnchor(serverQuota)
   if (!anchorISO) return
-  const windowKey = computeInstallWindowKey(anchorISO)
-  if (!windowKey) return
   const existing = await readRecord()
-  if (existing && existing.windowKey === windowKey) return
+  if (existing && existing.windowKey === LIFETIME_WINDOW_KEY) return
   await writeRecord({
-    windowKey,
+    windowKey: LIFETIME_WINDOW_KEY,
     consumedAt: new Date().toISOString(),
   })
 }
@@ -298,16 +306,14 @@ export async function selfHealInstallMarker (
   const isExhausted = serverQuota.used >= serverQuota.limit ||
     Math.max(0, serverQuota.remaining) <= 0 && serverQuota.used >= 1
   if (!isExhausted) return false
-  // Ensure the install anchor exists, then mark consumed for the
-  // current install anniversary window.
+  // Ensure the install anchor exists, then mark consumed with the
+  // LIFETIME window key.
   const anchorISO = await getOrCreateInstallAnchor(serverQuota)
   if (!anchorISO) return false
-  const windowKey = computeInstallWindowKey(anchorISO)
-  if (!windowKey) return false
   const existing = await readRecord()
-  if (existing && existing.windowKey === windowKey) return true
+  if (existing && existing.windowKey === LIFETIME_WINDOW_KEY) return true
   await writeRecord({
-    windowKey,
+    windowKey: LIFETIME_WINDOW_KEY,
     consumedAt: new Date().toISOString(),
   })
   return true

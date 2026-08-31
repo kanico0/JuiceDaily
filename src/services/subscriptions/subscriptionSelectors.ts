@@ -4,6 +4,7 @@
 // ─────────────────────────────────────────────────────────────
 
 import type { ScanQuotaSnapshot, SubscriptionState } from './subscriptionTypes'
+import { PRO_MONTHLY_SCAN_LIMIT } from './subscriptionConfig'
 
 export function selectIsPro (state: Pick<SubscriptionState, 'isProActive'>): boolean {
   return state.isProActive
@@ -42,13 +43,35 @@ export function selectRenewalLabel (
 }
 
 // ── Quota display ────────────────────────────────────────────
+// NEW POLICY: An active Pro subscriber must NEVER see "free scans"
+// quota wording. When isPro is true, the selector always renders
+// Pro wording, even if the server quota snapshot still says
+// plan='free' (e.g. webhook reconciliation lag or backend issue).
+//
+// When isPro is true but the server says Free (reconciliation lag),
+// the selector uses PRO_MONTHLY_SCAN_LIMIT as the display limit
+// fallback, since the server's limit=1 is the Free allowance, not
+// the Pro allowance. The server's remaining is clamped to the Pro
+// limit to avoid displaying more than the Pro allowance.
 
-export function selectQuotaLabel (quota: ScanQuotaSnapshot | null): string | null {
+export function selectQuotaLabel (
+  quota: ScanQuotaSnapshot | null,
+  isPro?: boolean,
+): string | null {
   if (!quota) return null
-  if (quota.plan === 'pro') {
-    return `${quota.remaining} of ${quota.limit} Pro scans remaining`
+  if (quota.plan === 'pro' || isPro) {
+    const limit = quota.plan === 'pro' ? quota.limit : PRO_MONTHLY_SCAN_LIMIT
+    const remaining = quota.plan === 'pro'
+      ? quota.remaining
+      : Math.min(quota.remaining, PRO_MONTHLY_SCAN_LIMIT)
+    return `${remaining} of ${limit} Pro scans remaining`
   }
-  return `${quota.used} of ${quota.limit} free scans used this month`
+  // Free: 1 introductory AI Snap, lifetime (not monthly).
+  // Unused → "Introductory AI Snap available"
+  // Consumed → "Introductory AI Snap used"
+  return quota.used > 0
+    ? 'Introductory AI Snap used'
+    : 'Introductory AI Snap available'
 }
 
 export function selectQuotaExhausted (quota: ScanQuotaSnapshot | null): boolean {
@@ -56,11 +79,18 @@ export function selectQuotaExhausted (quota: ScanQuotaSnapshot | null): boolean 
   return quota.remaining <= 0
 }
 
-export function selectFilmRollLabel (quota: ScanQuotaSnapshot | null): string {
+export function selectFilmRollLabel (
+  quota: ScanQuotaSnapshot | null,
+  isPro?: boolean,
+): string {
   if (!quota) return '— Free'
-  if (quota.plan === 'pro') {
-    if (quota.limit === 0) return '∞ Pro'
-    return `${quota.remaining}/${quota.limit} Pro`
+  if (quota.plan === 'pro' || isPro) {
+    const limit = quota.plan === 'pro' ? quota.limit : PRO_MONTHLY_SCAN_LIMIT
+    const remaining = quota.plan === 'pro'
+      ? quota.remaining
+      : Math.min(quota.remaining, PRO_MONTHLY_SCAN_LIMIT)
+    if (limit === 0) return '∞ Pro'
+    return `${remaining}/${limit} Pro`
   }
   return `${quota.remaining}/${quota.limit} Free`
 }
@@ -70,9 +100,12 @@ export function selectFilmRollRemaining (quota: ScanQuotaSnapshot | null): numbe
   return quota.remaining
 }
 
-export function selectFilmRollIsPro (quota: ScanQuotaSnapshot | null): boolean {
+export function selectFilmRollIsPro (
+  quota: ScanQuotaSnapshot | null,
+  isPro?: boolean,
+): boolean {
   if (!quota) return false
-  return quota.plan === 'pro'
+  return quota.plan === 'pro' || Boolean(isPro)
 }
 
 export function selectNextRefreshLabel (quota: ScanQuotaSnapshot | null): string | null {

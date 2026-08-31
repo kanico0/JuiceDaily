@@ -47,7 +47,6 @@ export interface ProEntitlementState {
   willRenew: boolean
   store: 'play_store' | 'app_store' | 'promotional' | null
 }
-
 export interface RestReconciliationResult {
   ok: boolean
   // The canonical RawLifeFlow UUID from RevenueCat CustomerInfo.
@@ -78,10 +77,19 @@ export async function fetchProEntitlement(
   const url = `https://api.revenuecat.com/v1/subscribers/${encodeURIComponent(lookupKey)}`
 
   try {
+    // NOTE: Do NOT send an 'X-Platform' header here. RevenueCat's
+    // REST API rejects requests that combine a Secret API key with
+    // an X-Platform header (which signals client-SDK-style usage)
+    // with HTTP 403 { code: 7243, message: "Secret API keys should
+    // not be used in your app." }. This previously caused EVERY
+    // server-side REST reconciliation call to fail permanently,
+    // regardless of webhook delivery — confirmed via production
+    // diagnostic on 2026-08-31 (0/0 historical webhook events ever
+    // reached 'processed' status). Server-to-server calls using the
+    // Secret key must omit platform-identifying headers entirely.
     const resp = await fetch(url, {
       method: 'GET',
       headers: {
-        'X-Platform': 'android',
         Authorization: `Bearer ${serverApiKey}`,
       },
     })
@@ -175,15 +183,29 @@ function parseProEntitlement(data: Record<string, unknown>): RestReconciliationR
     }
 
     const expirationDate = (proEntitlement.expires_date as string) ?? null
-    const productId = (proEntitlement.product_identifier as string) ?? null
+    const baseProductId = (proEntitlement.product_identifier as string) ?? null
+    // Google Play base-plan id (e.g. "monthly", "annual") is a
+    // SEPARATE field from product_identifier in RevenueCat's REST
+    // response. Combine them into "<product_identifier>:<base_plan>"
+    // so downstream planFromProductId() can resolve pro_monthly /
+    // pro_annual correctly, matching the format Play Store webhook
+    // events use in event.product_id. Without this, REST-derived
+    // productId never contains the base-plan suffix and plan always
+    // resolves to null (cosmetic — does not affect is_active/entitlement
+    // authority, but leaves public.subscriptions.plan unset).
+    const productPlanIdentifier = (proEntitlement.product_plan_identifier as string) ?? null
+    const productId = baseProductId && productPlanIdentifier
+      ? `${baseProductId}:${productPlanIdentifier}`
+      : baseProductId
     const isActive = proEntitlement.expires_date === null || new Date(expirationDate!) > new Date()
 
-    // Determine store from subscriptions
+    // Determine store from subscriptions (keyed by the BASE product
+    // id, not the combined "id:plan" form).
     const subscriptions = subscriber.subscriptions as Record<string, unknown> | undefined
     let store: 'play_store' | 'app_store' | 'promotional' | null = null
     let willRenew = false
-    if (productId && subscriptions) {
-      const sub = subscriptions[productId] as Record<string, unknown> | undefined
+    if (baseProductId && subscriptions) {
+      const sub = subscriptions[baseProductId] as Record<string, unknown> | undefined
       if (sub) {
         const storeStr = String(sub.store ?? '').toLowerCase()
         if (storeStr === 'play_store') store = 'play_store'

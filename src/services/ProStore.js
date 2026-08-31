@@ -12,8 +12,8 @@ export const SUBSCRIPTION_PLANS = {
   monthly: {
     id: 'pro_monthly',
     label: 'Monthly',
-    price: '$5.99',
-    priceValue: 5.99,
+    price: '$4.99',
+    priceValue: 4.99,
     period: '/mo',
     tagline: 'The "Coffee" price point',
     savings: null,
@@ -25,7 +25,7 @@ export const SUBSCRIPTION_PLANS = {
     priceValue: 39.99,
     period: '/yr',
     tagline: 'Deep Commitment — best value',
-    savings: 'Save 44%',
+    savings: 'Save 33%',
     badge: 'BEST VALUE',
   },
 }
@@ -91,7 +91,7 @@ export const PRO_FEATURES = {
   weeklyReports: { label: 'Weekly Reports', icon: 'BarChart3', tier: 'pro' },
   advancedNutrients: { label: 'Advanced Nutrient Data', icon: 'Microscope', tier: 'pro' },
   proRecipes: { label: 'Pro Recipe Categories', icon: 'ChefHat', tier: 'pro' },
-  unlimitedSnaps: { label: '12 AI Snaps per month', icon: 'Camera', tier: 'pro' },
+  unlimitedSnaps: { label: '4 AI Snaps per month', icon: 'Camera', tier: 'pro' },
   monthlyWrap: { label: 'Monthly Vitality Wrap', icon: 'Gift', tier: 'pro' },
   advancedHistoryPreview: { label: 'Full Detailed History', icon: 'BarChart3', tier: 'pro' },
 }
@@ -279,7 +279,7 @@ export function ProProvider({ children }) {
     const isNewMonth = currentMonth !== state.currentMonth
     const usedThisMonth = isNewMonth ? 0 : state.monthlySnapCount
 
-    // Pro: 12 per monthly window
+    // Pro: 4 per monthly window
     if (isPro) {
       const proRemaining = Math.max(0, PRO_MONTHLY_SCAN_LIMIT - usedThisMonth)
       if (proRemaining > 0) {
@@ -289,7 +289,7 @@ export function ProProvider({ children }) {
       return {
         eligible: false,
         remaining: 0,
-        reason: `You've used your ${PRO_MONTHLY_SCAN_LIMIT} AI Snaps for ${monthName}. Your next 12 AI Snaps arrive at the start of your next quota month.`,
+        reason: `You've used your ${PRO_MONTHLY_SCAN_LIMIT} AI Snaps for ${monthName}. Your next 4 AI Snaps arrive at the start of your next quota month.`,
         source: 'exhausted',
       }
     }
@@ -315,11 +315,10 @@ export function ProProvider({ children }) {
     }
 
     // Out of snaps
-    const monthName = now.toLocaleDateString('en-US', { month: 'long' })
     return {
       eligible: false,
       remaining: 0,
-      reason: `You've used your complimentary AI Snap for ${monthName}. Keep adding produce manually for free, or upgrade to RawLifeFlow Pro for 12 AI Snaps each month.`,
+      reason: `You've used your complimentary introductory AI Snap. Keep adding produce manually for free, or upgrade to RawLifeFlow Pro for 4 AI Snaps each month.`,
       source: 'exhausted',
     }
   }, [isPro, state.monthlySnapCount, state.snapPackBalance, state.currentMonth])

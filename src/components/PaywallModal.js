@@ -14,7 +14,7 @@ import { SUBSCRIPTION_PLANS, usePro } from '../services/ProStore'
 const PLAN_KEYS = ['monthly', 'annual']
 
 const PRO_PERKS = [
-  { icon: <Camera size={16} color="#64B5F6" />, text: '12 AI Snaps per month' },
+  { icon: <Camera size={16} color="#64B5F6" />, text: '4 AI Snaps per month' },
   { icon: <BarChart3 size={16} color="#81C784" />, text: 'Full Detailed History' },
   { icon: <ChefHat size={16} color="#FFB74D" />, text: 'Pro Recipe Categories' },
   { icon: <Zap size={16} color="#FFD54F" />, text: 'Advanced Nutrient Data' },

@@ -10,11 +10,11 @@ import {
 } from '../subscriptionSelectors'
 import type { ScanQuotaSnapshot } from '../subscriptionTypes'
 
-// Current authoritative policy:
-//   Free = 1 AI Snap per monthly window
-//   Pro  = 12 AI Snaps per monthly window
+// Current authoritative policy (1.0.21 launch):
+//   Free = 1 AI Snap TOTAL (lifetime introductory)
+//   Pro  = 4 AI Snaps per monthly window
 const FREE_LIMIT = 1
-const PRO_LIMIT = 12
+const PRO_LIMIT = 4
 
 function makeQuota (overrides: Partial<ScanQuotaSnapshot> = {}): ScanQuotaSnapshot {
   return {
@@ -77,25 +77,25 @@ describe('selectRenewalLabel', () => {
 })
 
 describe('quota selectors', () => {
-  it('renders free usage copy for current policy (1/month)', () => {
-    // Free plan: 1 AI Snap per month, 0 used → "0 of 1 free scans used this month"
-    expect(selectQuotaLabel(makeQuota())).toBe('0 of 1 free scans used this month')
+  it('renders free usage copy for current policy (1 lifetime introductory)', () => {
+    // Free plan: 1 introductory AI Snap lifetime, 0 used → "Introductory AI Snap available"
+    expect(selectQuotaLabel(makeQuota())).toBe('Introductory AI Snap available')
   })
 
   it('renders free usage copy when the single snap is used', () => {
     expect(selectQuotaLabel(makeQuota({ used: 1, remaining: 0 })))
-      .toBe('1 of 1 free scans used this month')
+      .toBe('Introductory AI Snap used')
   })
 
-  it('renders pro remaining copy for current policy (12/month)', () => {
-    // Pro plan: 12 AI Snaps per month, 4 used, 8 remaining
-    expect(selectQuotaLabel(makeQuota({ plan: 'pro', limit: PRO_LIMIT, used: 4, remaining: 8 })))
-      .toBe('8 of 12 Pro scans remaining')
+  it('renders pro remaining copy for current policy (4/month)', () => {
+    // Pro plan: 4 AI Snaps per month, 1 used, 3 remaining
+    expect(selectQuotaLabel(makeQuota({ plan: 'pro', limit: PRO_LIMIT, used: 1, remaining: 3 })))
+      .toBe('3 of 4 Pro scans remaining')
   })
 
   it('renders pro remaining copy when fully unused', () => {
-    expect(selectQuotaLabel(makeQuota({ plan: 'pro', limit: PRO_LIMIT, used: 0, remaining: 12 })))
-      .toBe('12 of 12 Pro scans remaining')
+    expect(selectQuotaLabel(makeQuota({ plan: 'pro', limit: PRO_LIMIT, used: 0, remaining: 4 })))
+      .toBe('4 of 4 Pro scans remaining')
   })
 
   it('null quota renders nothing', () => {
@@ -108,8 +108,8 @@ describe('quota selectors', () => {
     expect(selectQuotaExhausted(null)).toBe(false)
   })
 
-  it('detects exhaustion for pro (12 used of 12)', () => {
-    expect(selectQuotaExhausted(makeQuota({ plan: 'pro', limit: PRO_LIMIT, used: 12, remaining: 0 }))).toBe(true)
+  it('detects exhaustion for pro (4 used of 4)', () => {
+    expect(selectQuotaExhausted(makeQuota({ plan: 'pro', limit: PRO_LIMIT, used: 4, remaining: 0 }))).toBe(true)
   })
 
   it('formats the next refresh date', () => {

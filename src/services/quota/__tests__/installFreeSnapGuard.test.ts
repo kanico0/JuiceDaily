@@ -217,14 +217,12 @@ describe('installFreeSnapGuard', () => {
       const anchorParsed = JSON.parse(anchorRaw!)
       expect(anchorParsed.anchorISO).toBe(WINDOW_JAN)
 
-      // The consumed marker's windowKey is computed from the anchor
+      // The consumed marker's windowKey is LIFETIME (new policy:
+      // Free Snap is a lifetime introductory allowance, not monthly)
       const raw = mockStore.get(INSTALL_FREE_SNAP_KEY)
       expect(raw).toBeDefined()
       const parsed = JSON.parse(raw!)
-      // The windowKey is the anniversary window start computed from
-      // the install anchor (which was seeded from WINDOW_JAN).
-      // Since the anchor IS WINDOW_JAN, the window start is WINDOW_JAN.
-      expect(parsed.windowKey).toBe(WINDOW_JAN)
+      expect(parsed.windowKey).toBe('LIFETIME')
       expect(typeof parsed.consumedAt).toBe('string')
     })
   })
@@ -341,7 +339,7 @@ describe('installFreeSnapGuard', () => {
       const raw = mockStore.get(INSTALL_FREE_SNAP_KEY)
       expect(raw).toBeDefined()
       const parsed = JSON.parse(raw!)
-      expect(parsed.windowKey).toBe(WINDOW_JAN)
+      expect(parsed.windowKey).toBe('LIFETIME')
 
       // Remaining is still 0 (not negative or error)
       const remaining = await getInstallFreeSnapRemaining(quota)
@@ -356,10 +354,10 @@ describe('installFreeSnapGuard', () => {
     })
   })
 
-  // ── 10. A new legitimate monthly window resets the install allowance ─
-  describe('10. A new legitimate monthly window resets the install allowance', () => {
-    it('different periodStart (new month) resets the allowance to 1', async () => {
-      // Consume in the current window
+  // ── 10. Free lifetime: no monthly reset (new 1.0.21 policy) ─
+  describe('10. Free lifetime: no monthly reset (new 1.0.21 policy)', () => {
+    it('different periodStart (new month) does NOT reset the allowance — lifetime', async () => {
+      // Consume the lifetime Free Snap
       const janQuota = makeFreeQuota({ periodStart: WINDOW_JAN })
       await markInstallFreeSnapConsumed(janQuota)
       expect(await getInstallFreeSnapRemaining(janQuota)).toBe(0)
@@ -367,41 +365,41 @@ describe('installFreeSnapGuard', () => {
       // Simulate time passing to the next install anniversary window
       jest.useFakeTimers().setSystemTime(new Date(WINDOW_FEB))
 
-      // Next window is a new install anniversary window
+      // LIFETIME policy: the allowance does NOT reset
       const febQuota = makeFreeQuota({ periodStart: WINDOW_FEB })
       const remaining = await getInstallFreeSnapRemaining(febQuota)
-      expect(remaining).toBe(1)
+      expect(remaining).toBe(0)
 
       jest.useRealTimers()
     })
 
-    it('composeEffectiveQuota reflects the reset in the new window', async () => {
+    it('composeEffectiveQuota reflects lifetime exhaustion in the new window', async () => {
       await markInstallFreeSnapConsumed(makeFreeQuota())
 
       jest.useFakeTimers().setSystemTime(new Date(WINDOW_FEB))
 
       const febQuota = makeFreeQuota({ periodStart: WINDOW_FEB, remaining: 1, used: 0 })
       const installRem = await getInstallFreeSnapRemaining(febQuota)
+      // LIFETIME: install remaining is 0 (consumed), so effective is 0
       const effective = composeEffectiveQuota(febQuota, installRem)
-      expect(effective!.remaining).toBe(1)
-      expect(effective!.used).toBe(0)
+      expect(effective!.remaining).toBe(0)
 
       jest.useRealTimers()
     })
 
-    it('marking consumption in the new window does not affect the old window', async () => {
+    it('marking consumption persists LIFETIME windowKey (not monthly)', async () => {
       await markInstallFreeSnapConsumed(makeFreeQuota())
 
       jest.useFakeTimers().setSystemTime(new Date(WINDOW_FEB))
 
       await markInstallFreeSnapConsumed(makeFreeQuota({ periodStart: WINDOW_FEB }))
 
-      // The record now points to the next window (computed from install anchor)
+      // The record uses LIFETIME windowKey, not a monthly window key
       const raw = mockStore.get(INSTALL_FREE_SNAP_KEY)
       const parsed = JSON.parse(raw!)
-      expect(parsed.windowKey).toBe(WINDOW_FEB)
+      expect(parsed.windowKey).toBe('LIFETIME')
 
-      // Next window is consumed
+      // Still consumed
       const febQuota = makeFreeQuota({ periodStart: WINDOW_FEB })
       expect(await getInstallFreeSnapRemaining(febQuota)).toBe(0)
 
@@ -539,12 +537,11 @@ describe('composeEffectiveQuota integration scenarios', () => {
     // Simulate time passing to the next install anniversary window
     jest.useFakeTimers().setSystemTime(new Date(WINDOW_FEB))
 
-    // New month: next window
+    // LIFETIME policy: no reset — the Free Snap is lifetime
     const febQuota = makeFreeQuota({ periodStart: WINDOW_FEB, remaining: 1, used: 0 })
     const installRem = await getInstallFreeSnapRemaining(febQuota)
     const effective = composeEffectiveQuota(febQuota, installRem)
-    expect(effective!.remaining).toBe(1) // Reset
-    expect(effective!.used).toBe(0)
+    expect(effective!.remaining).toBe(0) // Lifetime exhausted
 
     jest.useRealTimers()
   })
@@ -867,18 +864,17 @@ describe('Migration / Self-Heal', () => {
       const healed = await selfHealInstallMarker(febQuota)
       expect(healed).toBe(false)
 
-      // Install remaining is 1 (available in new window)
+      // LIFETIME policy: install remaining is 0 (lifetime consumed)
       const remaining = await getInstallFreeSnapRemaining(febQuota)
-      expect(remaining).toBe(1)
+      expect(remaining).toBe(0)
 
       const effective = composeEffectiveQuota(febQuota, remaining)
-      expect(effective!.remaining).toBe(1)
-      expect(effective!.used).toBe(0)
+      expect(effective!.remaining).toBe(0)
 
       jest.useRealTimers()
     })
 
-    it('old window consumed + new window exhausted → self-heal persists new window', async () => {
+    it('old window consumed + new window exhausted → self-heal persists LIFETIME', async () => {
       // Current window consumed
       const janQuota = makeFreeQuota({ periodStart: WINDOW_JAN, used: 1, remaining: 0 })
       await selfHealInstallMarker(janQuota)
@@ -886,15 +882,15 @@ describe('Migration / Self-Heal', () => {
       // Simulate time passing to the next install anniversary window
       jest.useFakeTimers().setSystemTime(new Date(WINDOW_FEB))
 
-      // Next window also consumed (e.g. user scanned in the new month)
+      // Next window also consumed (e.g. server still shows used=1)
       const febQuota = makeFreeQuota({ periodStart: WINDOW_FEB, used: 1, remaining: 0 })
       const healed = await selfHealInstallMarker(febQuota)
       expect(healed).toBe(true)
 
-      // Marker now points to the next window (computed from install anchor)
+      // Marker uses LIFETIME windowKey (not monthly)
       const raw = mockStore.get(INSTALL_FREE_SNAP_KEY)
       const parsed = JSON.parse(raw!)
-      expect(parsed.windowKey).toBe(WINDOW_FEB)
+      expect(parsed.windowKey).toBe('LIFETIME')
 
       jest.useRealTimers()
     })
@@ -903,7 +899,7 @@ describe('Migration / Self-Heal', () => {
   // ── Pro ──────────────────────────────────────────────────────
   describe('Pro bypass with self-heal', () => {
     it('Pro quota with used scans → do NOT create Free install marker', async () => {
-      // Pro has used 5 of 12 scans — must not seed Free marker
+      // Pro has used scans — must not seed Free marker (legacy fixture values)
       const proQuota = makeProQuota({ used: 5, remaining: 7 })
       const healed = await selfHealInstallMarker(proQuota)
 

@@ -3,7 +3,7 @@
 //
 // Tests for QA10 Part 6: Redesigned Free vs Pro comparison.
 // Verifies:
-// - Required current limits (Free Snap=1/mo, Pro Snap=12/mo, etc.)
+// - Required current limits (Free Snap=1 lifetime, Pro Snap=4/mo, etc.)
 // - Unsupported claims are NOT present
 // - Pro content is vertically scrollable
 // - Free limitations section exists
@@ -30,8 +30,8 @@ describe('QA10 P6: Paywall — verified feature limits', () => {
     expect(PAYWALL_SRC).toMatch(/\$\{FREE_MONTHLY_SCAN_LIMIT\} successful Juice Snap per monthly/)
   })
 
-  test('Pro Snap = 12 per monthly window', () => {
-    expect(PRO_MONTHLY_SCAN_LIMIT).toBe(12)
+  test('Pro Snap = 4 per monthly window', () => {
+    expect(PRO_MONTHLY_SCAN_LIMIT).toBe(4)
     expect(PAYWALL_SRC).toMatch(/\$\{PRO_MONTHLY_SCAN_LIMIT\} successful Juice Snaps per monthly/)
   })
 

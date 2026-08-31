@@ -445,7 +445,7 @@ function SubscriptionSection({ navigation }) {
   const planLabel = selectPlanLabel(state)
   const storeLabel = selectBillingStoreLabel(state)
   const renewalLabel = selectRenewalLabel(state)
-  const quotaLabel = selectQuotaLabel(quota)
+  const quotaLabel = selectQuotaLabel(quota, isPro)
   const refreshLabel = selectNextRefreshLabel(quota)
 
   // Fetch authoritative Advanced Blend allowance from server for display.
@@ -538,7 +538,7 @@ function SubscriptionSection({ navigation }) {
             <Sparkles size={16} color="#7EE787" />
             <View style={styles.helpInfo}>
               <Text style={styles.helpLabel}>Upgrade to Pro</Text>
-              <Text style={styles.helpDesc}>12 AI Snaps per month, advanced reports & more</Text>
+              <Text style={styles.helpDesc}>4 AI Snaps per month, advanced reports & more</Text>
             </View>
             <Text style={styles.helpArrow}>→</Text>
           </TouchableOpacity>

@@ -51,7 +51,7 @@ describe('Snap button depleted state — QA Pro Simulation', () => {
     // separate from the QuotaMeter's internal state
     const mainComponentStart = src.indexOf('const { isPro } = usePro()')
     expect(mainComponentStart).toBeGreaterThan(-1)
-    const mainSection = src.slice(mainComponentStart, mainComponentStart + 600)
+    const mainSection = src.slice(mainComponentStart, mainComponentStart + 700)
     expect(mainSection).toMatch(/qaSnapUsed/)
     expect(mainSection).toMatch(/getQaProSnapRemaining/)
   })

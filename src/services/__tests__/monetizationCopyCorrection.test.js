@@ -4,7 +4,7 @@
 // Verifies:
 // 1. Pro-selling surfaces say "Full Advanced History" (not "Advanced History Preview")
 // 2. SnapGateModal says "1 Free Snap" (not "3 Free Snaps")
-// 3. SnapGateModal says "12 AI Snaps each month" (not "unlimited AI scanning")
+// 3. SnapGateModal says "4 AI Snaps each month" (not "unlimited AI scanning")
 // 4. scan-quota anonymous display shows limit: 1 (not limit: 5)
 // 5. No active lifetime plan in SUBSCRIPTION_PLANS
 // 6. No lifetime in VaultScreen PLAN_KEYS
@@ -59,13 +59,13 @@ describe('Pro history copy correction', () => {
 })
 
 describe('Snap quota copy correction', () => {
-  it('5. SnapGateModal says "1 Free Snap" not "3 Free Snaps"', () => {
-    expect(snapGateModalSource).toMatch(/1 Free Snap/)
+  it('5. SnapGateModal says "introductory Free AI Snap" not "3 Free Snaps"', () => {
+    expect(snapGateModalSource).toMatch(/introductory Free AI Snap/)
     expect(snapGateModalSource).not.toMatch(/3 Free Snaps/)
   })
 
-  it('6. SnapGateModal says "12 AI Snaps each month" not "unlimited AI scanning"', () => {
-    expect(snapGateModalSource).toMatch(/12 AI Snaps each month/)
+  it('6. SnapGateModal says "4 AI Snaps each month" not "unlimited AI scanning"', () => {
+    expect(snapGateModalSource).toMatch(/4 AI Snaps each month/)
     expect(snapGateModalSource).not.toMatch(/unlimited AI scanning/)
   })
 
@@ -159,15 +159,15 @@ describe('No stale "60 scans" in Settings or Home', () => {
     expect(settingsScreenSource).not.toMatch(/60 AI scans/)
   })
 
-  it('20. SettingsScreen says "12 AI Snaps per month" for Pro upgrade', () => {
-    expect(settingsScreenSource).toMatch(/12 AI Snaps per month/)
+  it('20. SettingsScreen says "4 AI Snaps per month" for Pro upgrade', () => {
+    expect(settingsScreenSource).toMatch(/4 AI Snaps per month/)
   })
 
   it('21. HomeScreen does not say "60 scans"', () => {
     expect(homeScreenSource).not.toMatch(/60 scans/)
   })
 
-  it('22. HomeScreen says "12 AI Snaps" for Pro upgrade', () => {
-    expect(homeScreenSource).toMatch(/12 AI Snaps/)
+  it('22. HomeScreen says "4 AI Snaps" for Pro upgrade', () => {
+    expect(homeScreenSource).toMatch(/4 AI Snaps/)
   })
 })

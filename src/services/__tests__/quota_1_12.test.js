@@ -1,14 +1,19 @@
-// quota_1_12.test.js — Tests for FREE=1 / PRO=12 snap quota policy
+// quota_1_12.test.js — Tests for FREE=1 / PRO=4 snap quota policy
+//
+// NEW LAUNCH POLICY (1.0.21):
+//   Free: 1 introductory successful AI Snap TOTAL (lifetime)
+//   Pro:  4 successful AI Snaps per monthly window
 //
 // Verifies:
 // 1. Free limit = 1
-// 2. Pro limit = 12
-// 3. First guest successful scan consumes Free's single monthly Snap
+// 2. Pro limit = 4
+// 3. First guest successful scan consumes Free's single lifetime Snap
 // 4. Registration does not reset usage
 // 5. Second Free Snap attempt is blocked
-// 6. Upgrade after one consumed scan results in 11 remaining
-// 7. Pro cannot exceed 12 in monthly window
-// 8. Annual Pro receives 12 per monthly window, not 144 upfront
+// 6. Upgrade after one consumed Free intro Snap gives the FULL 4 Pro Snaps
+//    (Free lifetime and Pro monthly usage are independent — no carry-over)
+// 7. Pro cannot exceed 4 in monthly window
+// 8. Annual Pro receives 4 per monthly window, not 48 upfront
 // 9. Technical failures do not consume quota
 // 10. Manual entry remains unlimited
 // 11. Advanced Blend remains 3 lifetime complimentary
@@ -33,8 +38,8 @@ describe('Quota 1/12 — source audit', () => {
     expect(configSource).toMatch(/export\s+const\s+FREE_MONTHLY_SCAN_LIMIT\s*=\s*1\b/)
   })
 
-  it('PRO_MONTHLY_SCAN_LIMIT = 12', () => {
-    expect(configSource).toMatch(/export\s+const\s+PRO_MONTHLY_SCAN_LIMIT\s*=\s*12\b/)
+  it('PRO_MONTHLY_SCAN_LIMIT = 4', () => {
+    expect(configSource).toMatch(/export\s+const\s+PRO_MONTHLY_SCAN_LIMIT\s*=\s*4\b/)
   })
 
   it('PRO_DAILY_SCAN_SAFETY_LIMIT = 10 (unchanged anti-abuse safeguard)', () => {
@@ -49,8 +54,8 @@ describe('Quota 1/12 — source audit', () => {
     expect(configSource).not.toMatch(/FREE_MONTHLY_SCAN_LIMIT\s*=\s*5\b/)
   })
 
-  it('PRO_MONTHLY_SCAN_LIMIT is NOT 60', () => {
-    expect(configSource).not.toMatch(/PRO_MONTHLY_SCAN_LIMIT\s*=\s*60\b/)
+  it('PRO_MONTHLY_SCAN_LIMIT is NOT 12', () => {
+    expect(configSource).not.toMatch(/PRO_MONTHLY_SCAN_LIMIT\s*=\s*12\b/)
   })
 
   it('ProStore imports PRO_MONTHLY_SCAN_LIMIT', () => {
@@ -66,16 +71,16 @@ describe('Quota 1/12 — source audit', () => {
     expect(proStoreSource).not.toMatch(/total:\s*Infinity/)
   })
 
-  it('ProStore exhausted reason mentions 12 AI Snaps for Pro', () => {
-    expect(proStoreSource).toMatch(/12 AI Snaps/)
+  it('ProStore exhausted reason mentions 4 AI Snaps for Pro', () => {
+    expect(proStoreSource).toMatch(/4 AI Snaps/)
   })
 
   it('ProStore exhausted reason mentions complimentary for Free', () => {
-    expect(proStoreSource).toMatch(/complimentary AI Snap/)
+    expect(proStoreSource).toMatch(/complimentary introductory AI Snap/)
   })
 
-  it('PRO_FEATURES label says 12 AI Snaps per month (not Unlimited)', () => {
-    expect(proStoreSource).toMatch(/12 AI Snaps per month/)
+  it('PRO_FEATURES label says 4 AI Snaps per month (not Unlimited)', () => {
+    expect(proStoreSource).toMatch(/4 AI Snaps per month/)
     expect(proStoreSource).not.toMatch(/Unlimited AI Snaps/)
   })
 })
@@ -114,19 +119,19 @@ describe('Quota 1/12 — backend migration', () => {
 
 // ── Quota logic simulation ──
 
-describe('Quota 1/12 — logic simulation', () => {
+describe('Quota 1/4 — logic simulation', () => {
   const FREE_LIMIT = 1
-  const PRO_LIMIT = 12
+  const PRO_LIMIT = 4
 
   it('1. Free limit = 1', () => {
     expect(FREE_LIMIT).toBe(1)
   })
 
-  it('2. Pro limit = 12', () => {
-    expect(PRO_LIMIT).toBe(12)
+  it('2. Pro limit = 4', () => {
+    expect(PRO_LIMIT).toBe(4)
   })
 
-  it('3. First guest successful scan consumes Free single monthly Snap', () => {
+  it('3. First guest successful scan consumes Free single lifetime Snap', () => {
     let used = 0
     let plan = 'free'
     let limit = FREE_LIMIT
@@ -155,31 +160,56 @@ describe('Quota 1/12 — logic simulation', () => {
     expect(canSnap).toBe(false)
   })
 
-  it('6. Upgrade after one consumed scan results in 11 remaining', () => {
-    let used = 1
-    let plan = 'free'
-    let limit = FREE_LIMIT
-    // Upgrade to Pro: limit changes to 12, used stays at 1
-    plan = 'pro'
-    limit = PRO_LIMIT
-    const remaining = limit - used
-    expect(remaining).toBe(11)
-    expect(used).toBe(1)
+  it('6. Upgrade after one consumed Free intro Snap gives the FULL 4 Pro Snaps', () => {
+    // LOCKED POLICY: Free lifetime consumption and Pro monthly usage
+    // are INDEPENDENT. The Free introductory Snap must never occupy
+    // one of the four Pro monthly slots.
+    //
+    // Server model (migration 0018):
+    //   free_lifetime_consumed : durable monotonic marker (Free authority)
+    //   used                   : Pro monthly counter ONLY
+    // A committed event with plan_at_time_of_scan='free' sets the
+    // marker and does NOT increment `used`.
+    let freeLifetimeConsumed = false
+    let proUsed = 0
+
+    // Free introductory Snap succeeds.
+    freeLifetimeConsumed = true
+    // …and must NOT touch the Pro counter.
+    expect(proUsed).toBe(0)
+
+    // Free is now exhausted.
+    const freeRemaining = Math.max(0, FREE_LIMIT - (freeLifetimeConsumed ? 1 : 0))
+    expect(freeRemaining).toBe(0)
+
+    // Upgrade to Pro: the full monthly allowance is available.
+    const proRemaining = PRO_LIMIT - proUsed
+    expect(proRemaining).toBe(4)
+    // It is 1 Free intro Snap + 4 Pro Snaps — NOT 5 Pro Snaps,
+    // and NOT 3 remaining via carry-over.
+    expect(proRemaining).not.toBe(3)
+    expect(freeLifetimeConsumed).toBe(true)
   })
 
-  it('7. Pro cannot exceed 12 in monthly window', () => {
-    let used = 12
+  it('6b. One Pro Snap after upgrading leaves 3 Pro Snaps', () => {
+    let proUsed = 0
+    proUsed += 1
+    expect(PRO_LIMIT - proUsed).toBe(3)
+  })
+
+  it('7. Pro cannot exceed 4 in monthly window', () => {
+    let used = 4
     let limit = PRO_LIMIT
     const canSnap = used < limit
     expect(canSnap).toBe(false)
   })
 
-  it('8. Annual Pro receives 12 per monthly window, not 144 upfront', () => {
-    // Annual Pro gets 12 per monthly window, same as monthly Pro
+  it('8. Annual Pro receives 4 per monthly window, not 48 upfront', () => {
+    // Annual Pro gets 4 per monthly window, same as monthly Pro
     const annualMonthlyLimit = PRO_LIMIT
-    expect(annualMonthlyLimit).toBe(12)
-    // NOT 144 upfront
-    expect(annualMonthlyLimit).not.toBe(144)
+    expect(annualMonthlyLimit).toBe(4)
+    // NOT 48 upfront
+    expect(annualMonthlyLimit).not.toBe(48)
   })
 
   it('9. Technical failures do not consume quota', () => {
@@ -226,14 +256,14 @@ const vaultSource = fs.readFileSync(vaultPath, 'utf8')
 const paywallModalPath = path.resolve(__dirname, '../../components/PaywallModal.js')
 const paywallModalSource = fs.readFileSync(paywallModalPath, 'utf8')
 
-describe('Quota 1/12 — display strings', () => {
-  it('VaultScreen says 12 AI Snaps per month (not Unlimited)', () => {
-    expect(vaultSource).toMatch(/12 AI Snaps per month/)
+describe('Quota 1/4 — display strings', () => {
+  it('VaultScreen says 4 AI Snaps per month (not Unlimited)', () => {
+    expect(vaultSource).toMatch(/4 AI Snaps per month/)
     expect(vaultSource).not.toMatch(/Unlimited AI Snaps/)
   })
 
-  it('PaywallModal says 12 AI Snaps per month (not Unlimited)', () => {
-    expect(paywallModalSource).toMatch(/12 AI Snaps per month/)
+  it('PaywallModal says 4 AI Snaps per month (not Unlimited)', () => {
+    expect(paywallModalSource).toMatch(/4 AI Snaps per month/)
     expect(paywallModalSource).not.toMatch(/Unlimited AI Snaps/)
   })
 
@@ -289,8 +319,81 @@ describe('Quota 1/12 — _quota_limit_for_plan fix (migration 0015)', () => {
     expect(configSource).not.toMatch(/FREE_MONTHLY_SCAN_LIMIT\s*=\s*5/)
   })
 
-  it('Pro UI can never fall back to 60 — config is 12', () => {
-    expect(configSource).toMatch(/PRO_MONTHLY_SCAN_LIMIT\s*=\s*12/)
+  it('Pro UI can never fall back to 60 — config is 4', () => {
+    expect(configSource).toMatch(/PRO_MONTHLY_SCAN_LIMIT\s*=\s*4/)
     expect(configSource).not.toMatch(/PRO_MONTHLY_SCAN_LIMIT\s*=\s*60/)
+  })
+})
+
+// ── Migration 0018: Pro 12→4, Free lifetime ──
+
+const migration18Path = path.resolve(__dirname, '../../../supabase/migrations/0018_quota_4_per_month.sql')
+const migration18Source = fs.existsSync(migration18Path)
+  ? fs.readFileSync(migration18Path, 'utf8')
+  : ''
+
+describe('Quota 1/4 — migration 0018 (Pro 12→4, Free lifetime)', () => {
+  it('migration 0018 exists', () => {
+    expect(fs.existsSync(migration18Path)).toBe(true)
+  })
+
+  it('0018 updates _quota_limit_for_plan to return 4 for pro', () => {
+    expect(migration18Source).toMatch(/_quota_limit_for_plan/)
+    expect(migration18Source).toMatch(/p_plan\s*=\s*'pro'\s*then\s*4\s*else\s*1/)
+  })
+
+  it('0018 updates existing pro rows to scan_limit = 4', () => {
+    expect(migration18Source).toMatch(/set\s+scan_limit\s*=\s*4/i)
+    expect(migration18Source).toMatch(/where\s+plan\s*=\s*'pro'/i)
+  })
+
+  it('0018 Free lifetime state is a durable marker, independent of `used`', () => {
+    // The Free introductory allowance is tracked by a dedicated
+    // monotonic marker, NOT by the shared `used` counter, so no Pro
+    // monthly reset can ever restore it.
+    expect(migration18Source).toMatch(/free_lifetime_consumed boolean not null default false/i)
+    expect(migration18Source).toMatch(/q\.used := case when q\.free_lifetime_consumed then 1 else 0 end/)
+  })
+
+  it('0018 window rollover resets the Pro counter unconditionally', () => {
+    // `used` is exclusively the Pro monthly counter and is scoped to
+    // one window, so it must reset on EVERY window advance — even if
+    // the user is Free at that instant. Otherwise a user who was Pro
+    // in window W, went Free, and let the window roll to W+1 would
+    // carry W's Pro count into W+1 on re-upgrade.
+    expect(migration18Source).toMatch(/q\.used\s*:=\s*0/i)
+    const resetIdx = migration18Source.indexOf('q.used := 0')
+    const preceding = migration18Source.slice(Math.max(0, resetIdx - 500), resetIdx)
+    expect(preceding).not.toMatch(/if v_plan = 'pro' then\s*$/)
+  })
+
+  it('0018 rollover derives `reserved` from the ledger instead of zeroing it', () => {
+    // Blindly zeroing a scalar forgets a reservation that is still
+    // in flight across the rollover instant, which allowed a new
+    // window to admit and finalize more than 4 successful Pro Snaps.
+    const resolveBody = migration18Source.slice(
+      migration18Source.indexOf('create or replace function public.resolve_quota'),
+      migration18Source.indexOf('create or replace function public.commit_scan'),
+    )
+    expect(resolveBody).not.toMatch(/q\.reserved\s*:=\s*0/i)
+    expect(resolveBody).toMatch(/q\.reserved := public\._live_reservations_in_window\(/)
+  })
+
+  it('0018 rollover never resets the Free lifetime marker', () => {
+    const resetIdx = migration18Source.indexOf('q.used := 0')
+    const block = migration18Source.slice(resetIdx - 100, resetIdx + 200)
+    expect(block).not.toMatch(/free_lifetime_consumed\s*:?=/)
+  })
+
+  it('0018 a Free success never increments the Pro monthly counter', () => {
+    const commit = migration18Source.slice(
+      migration18Source.indexOf('create or replace function public.commit_scan'),
+      migration18Source.indexOf('create or replace function public.reserve_scan'),
+    )
+    const freeBranch = commit
+      .slice(commit.indexOf('-- FREE success:'), commit.indexOf('-- PRO success:'))
+      .split('\n').filter((l) => !l.trim().startsWith('--')).join('\n')
+    expect(freeBranch).toMatch(/free_lifetime_consumed = true/)
+    expect(freeBranch).not.toMatch(/used\s*=\s*used\s*\+\s*1/)
   })
 })

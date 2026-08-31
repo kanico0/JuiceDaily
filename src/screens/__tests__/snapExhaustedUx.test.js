@@ -38,8 +38,18 @@ describe('Snap exhausted UX — HomeScreen', () => {
     expect(homeSource).toMatch(/SnapIcon.*disabled/)
   })
 
-  it('14. Free exhausted copy mentions complimentary AI Snap has been used', () => {
-    expect(homeSource).toMatch(/complimentary AI Snap for this month/)
+  it('14. Free exhausted copy mentions complimentary introductory AI Snap has been used', () => {
+    expect(homeSource).toMatch(/complimentary introductory AI Snap/)
+  })
+
+  it('14b. Free exhausted copy does NOT promise a monthly Snap refresh', () => {
+    // Regression: Free is a LIFETIME introductory allowance, not monthly.
+    // The Free branch must never say "for this month" or "for <month>".
+    const freeBranchMatch = homeSource.match(
+      /"You've used your complimentary introductory AI Snap\."/
+    )
+    expect(freeBranchMatch).not.toBeNull()
+    expect(homeSource).not.toMatch(/complimentary AI Snap for this month/)
   })
 
   it('15. Free exhausted UI offers manual entry via helper text', () => {
@@ -57,8 +67,8 @@ describe('Snap exhausted UX — HomeScreen', () => {
     expect(homeSource).toMatch(/Paywall.*snap_exhausted/)
   })
 
-  it('17. Pro copy reflects 12 AI Snaps for this month', () => {
-    expect(homeSource).toMatch(/12 AI Snaps for this month/)
+  it('17. Pro copy reflects 4 AI Snaps for this month', () => {
+    expect(homeSource).toMatch(/4 AI Snaps for this month/)
   })
 
   it('17b. Pro exhausted does NOT show upgrade button', () => {

@@ -47,13 +47,16 @@ export const GOOGLE_BASE_PLANS = {
 } as const
 
 // ── Quota constants (display only — server is authoritative) ─
-
+// NEW LAUNCH POLICY (1.0.21):
+//   Free: 1 introductory successful AI Snap TOTAL (lifetime, not monthly)
+//   Pro:  4 successful AI Snaps per monthly window (monthly + annual same)
+//   Pro daily safety cap: 10/day (unchanged)
 export const FREE_MONTHLY_SCAN_LIMIT = 1
-export const PRO_MONTHLY_SCAN_LIMIT = 12
+export const PRO_MONTHLY_SCAN_LIMIT = 4
 export const PRO_DAILY_SCAN_SAFETY_LIMIT = 10
 
 export const FREE_WARNING_THRESHOLDS = [1, 1]
-export const PRO_WARNING_THRESHOLDS = [3, 1]
+export const PRO_WARNING_THRESHOLDS = [2, 1]
 
 // ── Public keys from environment ─────────────────────────────
 

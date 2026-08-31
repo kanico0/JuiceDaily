@@ -208,22 +208,25 @@ describe('Anniversary Quota Window', () => {
       expect(INSTALL_GUARD_SRC).toContain('getOrCreateInstallAnchor')
     })
 
-    it('install guard computes windowKey from install anchor', () => {
-      expect(INSTALL_GUARD_SRC).toContain('computeInstallWindowKey(anchorISO)')
+    it('install guard uses LIFETIME windowKey (new 1.0.21 policy)', () => {
+      // NEW POLICY: Free Snap is lifetime, not monthly.
+      // The guard uses a constant 'LIFETIME' windowKey instead of
+      // computing a monthly anniversary window key.
+      expect(INSTALL_GUARD_SRC).toContain('LIFETIME_WINDOW_KEY')
     })
 
     it('install guard does NOT compute its own calendar month', () => {
       expect(INSTALL_GUARD_SRC).not.toContain('date_trunc')
     })
 
-    it('install guard self-heal uses install anchor windowKey', () => {
+    it('install guard self-heal uses LIFETIME windowKey', () => {
       expect(INSTALL_GUARD_SRC).toContain('selfHealInstallMarker')
-      // selfHeal calls getOrCreateInstallAnchor + computeInstallWindowKey
+      // selfHeal calls getOrCreateInstallAnchor + uses LIFETIME_WINDOW_KEY
       const selfHealSection = INSTALL_GUARD_SRC.slice(
         INSTALL_GUARD_SRC.indexOf('export async function selfHealInstallMarker'),
       )
       expect(selfHealSection).toContain('getOrCreateInstallAnchor')
-      expect(selfHealSection).toContain('computeInstallWindowKey')
+      expect(selfHealSection).toContain('LIFETIME_WINDOW_KEY')
     })
 
     it('install anchor is seeded once from serverQuota.periodStart', () => {

@@ -36,8 +36,8 @@ export const DEFAULT_OFFERING_ID = 'default'
 // ── Store product identifiers ────────────────────────────────
 
 export const APPLE_PRODUCT_IDS = {
-  monthly: 'com.juicingapp.app.pro.monthly',
-  annual: 'com.juicingapp.app.pro.annual',
+  monthly: 'com.rawlifeflow.juicingdaily.pro.monthly',
+  annual: 'com.rawlifeflow.juicingdaily.pro.annual',
 } as const
 
 export const GOOGLE_SUBSCRIPTION_ID = 'juicing_daily_pro'

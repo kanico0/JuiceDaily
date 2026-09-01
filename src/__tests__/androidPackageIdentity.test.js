@@ -176,17 +176,17 @@ describe('Android Package Identity Migration', () => {
     expect(fs.existsSync(oldPath)).toBe(false)
   })
 
-  // Deferred items must NOT be changed
-  test('iOS bundleIdentifier remains unchanged (deferred)', () => {
+  // iOS identifiers migrated to com.rawlifeflow.juicingdaily for 1.0.22
+  test('iOS bundleIdentifier is com.rawlifeflow.juicingdaily', () => {
     const config = fs.readFileSync(path.join(ROOT, 'app.config.js'), 'utf8')
-    expect(config).toContain("bundleIdentifier: 'com.juicingapp.app'")
+    expect(config).toContain("bundleIdentifier: 'com.rawlifeflow.juicingdaily'")
   })
 
   test('deep-link scheme remains juicingapp (deferred)', () => {
     expect(APP_JSON.expo.scheme).toBe('juicingapp')
   })
 
-  test('Apple product IDs remain unchanged (deferred)', () => {
+  test('Apple product IDs are com.rawlifeflow.juicingdaily.pro.*', () => {
     const config = fs.readFileSync(
       path.join(
         ROOT,
@@ -197,8 +197,8 @@ describe('Android Package Identity Migration', () => {
       ),
       'utf8',
     )
-    expect(config).toContain('com.juicingapp.app.pro.monthly')
-    expect(config).toContain('com.juicingapp.app.pro.annual')
+    expect(config).toContain('com.rawlifeflow.juicingdaily.pro.monthly')
+    expect(config).toContain('com.rawlifeflow.juicingdaily.pro.annual')
   })
 })
 

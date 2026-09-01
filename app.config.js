@@ -10,7 +10,7 @@ module.exports = ({ config }) => {
     plugins: [...(config.plugins || []), 'expo-web-browser'],
     ios: {
       ...config.ios,
-      bundleIdentifier: 'com.juicingapp.app',
+      bundleIdentifier: 'com.rawlifeflow.juicingdaily',
     },
     // Disable expo-updates OTA so the app always uses the JS bundle
     // embedded in the APK. This prevents a stale published update

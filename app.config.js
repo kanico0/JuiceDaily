@@ -11,6 +11,10 @@ module.exports = ({ config }) => {
     ios: {
       ...config.ios,
       bundleIdentifier: 'com.rawlifeflow.juicingdaily',
+      infoPlist: {
+        ...(config.ios?.infoPlist || {}),
+        ITSAppUsesNonExemptEncryption: false,
+      },
     },
     // Disable expo-updates OTA so the app always uses the JS bundle
     // embedded in the APK. This prevents a stale published update

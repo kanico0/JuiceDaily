@@ -35,6 +35,12 @@
           ]
         }
       ],
+      [
+        "react-native-vision-camera",
+        {
+          "enableLocation": false
+        }
+      ],
       "./plugins/android-package-flavors",
       "./plugins/android-production-signing"
     ],

@@ -1,14 +1,51 @@
-import React, { useMemo } from 'react'
+import React, { useMemo, useEffect, useRef, useCallback } from 'react'
 import { View, Text, StyleSheet, Modal, TouchableOpacity } from 'react-native'
 import { SEMANTIC_COLORS, SEMANTIC_SPACE, SEMANTIC_RADIUS } from '../constants/tokens'
+
+const AUTO_DISMISS_MS = 3500
 
 function GlowJourneyCelebrationOverlay({
   visible,
   stage,
   lifetimeDays,
   onDismiss,
+  onModalDismiss,
   isReduced = false,
 }) {
+  const autoDismissTimer = useRef(null)
+  const dismissedRef = useRef(false)
+
+  const handleDismiss = useCallback(() => {
+    if (dismissedRef.current) return
+    dismissedRef.current = true
+    if (autoDismissTimer.current) {
+      clearTimeout(autoDismissTimer.current)
+      autoDismissTimer.current = null
+    }
+    onDismiss()
+  }, [onDismiss])
+
+  useEffect(() => {
+    if (visible) {
+      dismissedRef.current = false
+      autoDismissTimer.current = setTimeout(() => {
+        autoDismissTimer.current = null
+        handleDismiss()
+      }, AUTO_DISMISS_MS)
+    } else {
+      if (autoDismissTimer.current) {
+        clearTimeout(autoDismissTimer.current)
+        autoDismissTimer.current = null
+      }
+    }
+    return () => {
+      if (autoDismissTimer.current) {
+        clearTimeout(autoDismissTimer.current)
+        autoDismissTimer.current = null
+      }
+    }
+  }, [visible])
+
   if (!stage) return null
 
   return (
@@ -16,7 +53,8 @@ function GlowJourneyCelebrationOverlay({
       visible={visible}
       transparent
       animationType={isReduced ? 'none' : 'fade'}
-      onRequestClose={onDismiss}
+      onRequestClose={handleDismiss}
+      onDismiss={onModalDismiss}
     >
       <View style={styles.overlay}>
         <View style={styles.card}>
@@ -29,7 +67,7 @@ function GlowJourneyCelebrationOverlay({
             {lifetimeDays} days of adding more raw to your life
           </Text>
           <TouchableOpacity
-            onPress={onDismiss}
+            onPress={handleDismiss}
             style={styles.button}
             accessibilityRole="button"
             accessibilityLabel="Dismiss celebration"

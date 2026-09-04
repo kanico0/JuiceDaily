@@ -172,7 +172,8 @@ describe('TodayScreen Garden integration', () => {
 
   test('Garden celebration checks pendingAchievement and stageCelebration', () => {
     const src = readScreenSrc()
-    expect(src).toContain('!pendingAchievement && !stageCelebration && gardenCelebration')
+    expect(src).toContain('!pendingAchievement && !stageCelebration')
+    expect(src).toContain('!awaitingModalDismiss && gardenCelebration')
   })
 
   test('passes isReduced to GardenCard', () => {

@@ -55,8 +55,10 @@ describe('Defect 1 — Discovery popup blocks Today screen', () => {
 
   test('5. Garden celebration guard includes stageCelebration check', () => {
     // The garden celebration must still be guarded by !stageCelebration
-    // so only one celebration shows at a time
-    expect(source).toContain('!pendingAchievement && !stageCelebration && gardenCelebration')
+    // so only one celebration shows at a time. Also guarded by
+    // !awaitingModalDismiss to prevent simultaneous Modal transitions.
+    expect(source).toContain('!pendingAchievement && !stageCelebration')
+    expect(source).toContain('!awaitingModalDismiss && gardenCelebration')
   })
 
   test('6. Navigation blur listener clears isFocusedRef', () => {

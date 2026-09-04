@@ -10,19 +10,56 @@
 //   - Reduced motion is a replacement, not a slowdown
 // ─────────────────────────────────────────────────────────────
 
-import React, { useMemo } from 'react'
+import React, { useMemo, useEffect, useRef, useCallback } from 'react'
 import { View, Text, StyleSheet, Modal, TouchableOpacity } from 'react-native'
 import { SEMANTIC_COLORS, SEMANTIC_SPACE, SEMANTIC_RADIUS, SEMANTIC_TYPOGRAPHY } from '../constants/tokens'
 import { GARDEN_PALETTE, getColorMarkerColor } from './GardenVisualState'
 import { BED_METADATA, COLOR_METADATA } from '../constants/gardenTaxonomy'
 
+const AUTO_DISMISS_MS = 3500
+
 function GardenCelebrationOverlay({
   visible,
   celebration,
   onDismiss,
+  onModalDismiss,
   isReduced = false,
 }) {
   const { type, data } = celebration || {}
+
+  const autoDismissTimer = useRef(null)
+  const dismissedRef = useRef(false)
+
+  const handleDismiss = useCallback(() => {
+    if (dismissedRef.current) return
+    dismissedRef.current = true
+    if (autoDismissTimer.current) {
+      clearTimeout(autoDismissTimer.current)
+      autoDismissTimer.current = null
+    }
+    onDismiss()
+  }, [onDismiss])
+
+  useEffect(() => {
+    if (visible) {
+      dismissedRef.current = false
+      autoDismissTimer.current = setTimeout(() => {
+        autoDismissTimer.current = null
+        handleDismiss()
+      }, AUTO_DISMISS_MS)
+    } else {
+      if (autoDismissTimer.current) {
+        clearTimeout(autoDismissTimer.current)
+        autoDismissTimer.current = null
+      }
+    }
+    return () => {
+      if (autoDismissTimer.current) {
+        clearTimeout(autoDismissTimer.current)
+        autoDismissTimer.current = null
+      }
+    }
+  }, [visible])
 
   const content = useMemo(() => {
     if (!type || !data) return null
@@ -78,7 +115,8 @@ function GardenCelebrationOverlay({
       visible={visible}
       transparent
       animationType={isReduced ? 'none' : 'fade'}
-      onRequestClose={onDismiss}
+      onRequestClose={handleDismiss}
+      onDismiss={onModalDismiss}
       accessible
       accessibilityLabel={`Garden celebration: ${content.title}`}
     >
@@ -91,7 +129,7 @@ function GardenCelebrationOverlay({
           <Text style={styles.title}>{content.title}</Text>
           <Text style={styles.subtitle}>{content.subtitle}</Text>
           <TouchableOpacity
-            onPress={onDismiss}
+            onPress={handleDismiss}
             style={styles.button}
             accessibilityRole="button"
             accessibilityLabel="Dismiss celebration"

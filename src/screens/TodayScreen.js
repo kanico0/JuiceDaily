@@ -139,6 +139,7 @@ export default function TodayScreen({ navigation }) {
   const [stageCelebration, setStageCelebration] = useState(null)
   const [showGardenDetail, setShowGardenDetail] = useState(false)
   const [gardenCelebration, setGardenCelebration] = useState(null)
+  const [awaitingModalDismiss, setAwaitingModalDismiss] = useState(false)
   const glowJourneyViewedRef = useRef(false)
   const gardenViewedRef = useRef(false)
   const prevLifetimeDaysRef = useRef(0)
@@ -147,6 +148,48 @@ export default function TodayScreen({ navigation }) {
   const fadeAnim = useRef(new Animated.Value(0)).current
   const isNavigating = useRef(false)
   const isFocusedRef = useRef(false)
+
+  // -- Celebration modal deterministic sequencing --
+  // On iOS, the native Modal `onDismiss` callback fires after the
+  // modal has fully disappeared. We use this as the PRIMARY signal
+  // that the current celebration Modal is gone before permitting
+  // the next celebration to mount. This prevents two transparent
+  // Modals from transitioning simultaneously, which can leave an
+  // invisible touch-blocking layer.
+  //
+  // A defensive fallback timer (MODAL_DISMISS_FALLBACK_MS) is
+  // retained in case onDismiss does not fire (e.g., on Android
+  // where onDismiss is not supported, or edge cases on iOS).
+  const MODAL_DISMISS_FALLBACK_MS = 1000
+  const modalDismissFallbackTimer = useRef(null)
+
+  const beginAwaitingModalDismiss = useCallback(() => {
+    if (modalDismissFallbackTimer.current) {
+      clearTimeout(modalDismissFallbackTimer.current)
+    }
+    setAwaitingModalDismiss(true)
+    // Defensive fallback: if onDismiss doesn't fire, clear anyway
+    modalDismissFallbackTimer.current = setTimeout(() => {
+      modalDismissFallbackTimer.current = null
+      setAwaitingModalDismiss(false)
+    }, MODAL_DISMISS_FALLBACK_MS)
+  }, [])
+
+  const onCelebrationModalDismissed = useCallback(() => {
+    if (modalDismissFallbackTimer.current) {
+      clearTimeout(modalDismissFallbackTimer.current)
+      modalDismissFallbackTimer.current = null
+    }
+    setAwaitingModalDismiss(false)
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      if (modalDismissFallbackTimer.current) {
+        clearTimeout(modalDismissFallbackTimer.current)
+      }
+    }
+  }, [])
 
   useEffect(() => {
     if (isReduced) { fadeAnim.setValue(1) } else {
@@ -1109,20 +1152,31 @@ export default function TodayScreen({ navigation }) {
       <AchievementOverlay
         achievement={pendingAchievement}
         visible={!!pendingAchievement}
-        onDismiss={() => setPendingAchievement(null)}
+        onDismiss={() => {
+          setPendingAchievement(null)
+          beginAwaitingModalDismiss()
+        }}
+        onModalDismiss={onCelebrationModalDismissed}
       />
 
       {/* Stage Celebration Overlay — renders the GlowJourney
           celebration so stageCelebration state has a visible
-          Modal that can be dismissed. Without this, the
-          stageCelebration guard at line ~1128 blocks the
-          garden celebration invisibly. */}
-      {!pendingAchievement && stageCelebration && (
+          Modal that can be dismissed.
+          The !awaitingModalDismiss guard prevents this Modal from
+          mounting until the previous celebration's native Modal
+          has fully disappeared (signaled by onDismiss on iOS).
+          A fallback timer clears awaitingModalDismiss if
+          onDismiss does not fire. */}
+      {!pendingAchievement && !awaitingModalDismiss && stageCelebration && (
         <GlowJourneyCelebrationOverlay
           visible={true}
           stage={stageCelebration.stage}
           lifetimeDays={stageCelebration.lifetimeDays}
-          onDismiss={() => setStageCelebration(null)}
+          onDismiss={() => {
+            setStageCelebration(null)
+            beginAwaitingModalDismiss()
+          }}
+          onModalDismiss={onCelebrationModalDismissed}
           isReduced={isReduced}
         />
       )}
@@ -1143,11 +1197,15 @@ export default function TodayScreen({ navigation }) {
       />
 
       {/* Garden Celebration (only when no achievement or stage celebration showing) */}
-      {!pendingAchievement && !stageCelebration && gardenCelebration && (
+      {!pendingAchievement && !stageCelebration && !awaitingModalDismiss && gardenCelebration && (
         <GardenCelebrationOverlay
           visible={true}
           celebration={gardenCelebration}
-          onDismiss={() => setGardenCelebration(null)}
+          onDismiss={() => {
+            setGardenCelebration(null)
+            beginAwaitingModalDismiss()
+          }}
+          onModalDismiss={onCelebrationModalDismissed}
           isReduced={isReduced}
         />
       )}

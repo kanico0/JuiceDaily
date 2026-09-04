@@ -5,7 +5,7 @@
 // is unlocked. Elegant glow animation + "Nice ✨" dismiss.
 // ─────────────────────────────────────────────────────────────
 
-import React, { useEffect, useRef } from 'react'
+import React, { useEffect, useRef, useCallback } from 'react'
 import {
   View,
   Text,
@@ -16,13 +16,29 @@ import {
 } from 'react-native'
 import * as Haptics from 'expo-haptics'
 
-export default function AchievementOverlay({ achievement, visible, onDismiss }) {
+const AUTO_DISMISS_MS = 3500
+
+export default function AchievementOverlay({ achievement, visible, onDismiss, onModalDismiss }) {
   const scaleAnim = useRef(new Animated.Value(0.8)).current
   const opacityAnim = useRef(new Animated.Value(0)).current
   const glowAnim = useRef(new Animated.Value(0)).current
+  const autoDismissTimer = useRef(null)
+  const dismissedRef = useRef(false)
+
+  // Idempotent dismiss — prevents duplicate dismiss calls
+  const handleDismiss = useCallback(() => {
+    if (dismissedRef.current) return
+    dismissedRef.current = true
+    if (autoDismissTimer.current) {
+      clearTimeout(autoDismissTimer.current)
+      autoDismissTimer.current = null
+    }
+    onDismiss()
+  }, [onDismiss])
 
   useEffect(() => {
     if (visible) {
+      dismissedRef.current = false
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
       Animated.parallel([
         Animated.spring(scaleAnim, { toValue: 1, tension: 80, friction: 10, useNativeDriver: true }),
@@ -35,10 +51,25 @@ export default function AchievementOverlay({ achievement, visible, onDismiss }) 
           Animated.timing(glowAnim, { toValue: 0.3, duration: 1200, useNativeDriver: true }),
         ])
       ).start()
+      // Auto-dismiss timer starts only when this celebration is visible
+      autoDismissTimer.current = setTimeout(() => {
+        autoDismissTimer.current = null
+        handleDismiss()
+      }, AUTO_DISMISS_MS)
     } else {
       scaleAnim.setValue(0.8)
       opacityAnim.setValue(0)
       glowAnim.setValue(0)
+      if (autoDismissTimer.current) {
+        clearTimeout(autoDismissTimer.current)
+        autoDismissTimer.current = null
+      }
+    }
+    return () => {
+      if (autoDismissTimer.current) {
+        clearTimeout(autoDismissTimer.current)
+        autoDismissTimer.current = null
+      }
     }
   }, [visible])
 
@@ -54,7 +85,8 @@ export default function AchievementOverlay({ achievement, visible, onDismiss }) 
       visible={visible}
       transparent
       animationType="none"
-      onRequestClose={onDismiss}
+      onRequestClose={handleDismiss}
+      onDismiss={onModalDismiss}
     >
       <Animated.View style={[styles.overlay, { opacity: opacityAnim }]}>
         <Animated.View style={[styles.card, { transform: [{ scale: scaleAnim }] }]}>
@@ -70,7 +102,7 @@ export default function AchievementOverlay({ achievement, visible, onDismiss }) 
             style={({ pressed }) => [styles.btn, pressed && { opacity: 0.7 }]}
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-              onDismiss()
+              handleDismiss()
             }}
             hitSlop={10}
             accessibilityRole="button"
